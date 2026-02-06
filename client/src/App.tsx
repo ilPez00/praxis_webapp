@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
-import './styles/pages.css';  // This imports ALL page styles at once
-
+import './styles/pages.css'; // This imports ALL page styles at once
 
 function App() {
   const [message, setMessage] = useState('');

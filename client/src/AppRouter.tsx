@@ -18,7 +18,7 @@ const AppRouter: React.FC = () => {
         <Route path="/" element={<Navigate to="/login" replace />} /> {/* Redirect to login */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/test" element={<App />} /> 
+        <Route path="/test" element={<App />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:id" element={<ProfilePage />} /> {/* Profile page route */}
         <Route path="/matches/:id" element={<MatchesPage />} /> {/* Matches page route */}
@@ -27,7 +27,7 @@ const AppRouter: React.FC = () => {
         <Route path="/matches" element={<MatchesPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/chat/:id" element={<ChatRoom />} />
-       
+
            {/* TODO: Add more routes here as we build out the components:
           <Route path="/goals/:id" element={<GoalTreePage />} />
         */}
