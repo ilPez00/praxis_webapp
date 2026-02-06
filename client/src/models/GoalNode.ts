@@ -8,6 +8,9 @@ export interface GoalNode {
   weight: number;
   progress: number;
   subGoals: GoalNode[];
+  category?: string;
+  specificGoal?: string;
+  customDetails?: string;
 }
 
 export function updateWeightFromGrade(goalNode: GoalNode, grade: FeedbackGrade): GoalNode {
