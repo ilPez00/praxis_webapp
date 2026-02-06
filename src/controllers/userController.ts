@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { matchingEngineService } from '../services/MatchingEngineService'; // Import matching service
 
 export const getUserProfile = (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const user = mockDatabase.getUserById(id);
 
   if (!user) {
@@ -17,7 +17,7 @@ export const getUserProfile = (req: Request, res: Response) => {
 };
 
 export const updateUserProfile = (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const { name, age, bio, goalTree } = req.body;
 
   let user = mockDatabase.getUserById(id);
@@ -41,7 +41,7 @@ export const updateUserProfile = (req: Request, res: Response) => {
 };
 
 export const getUserGoals = (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const user = mockDatabase.getUserById(id);
 
   if (!user) {
@@ -52,7 +52,7 @@ export const getUserGoals = (req: Request, res: Response) => {
 };
 
 export const addGoalToUser = (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const newGoalData: GoalNode = req.body;
 
   let user = mockDatabase.getUserById(id);
@@ -87,7 +87,7 @@ function findAndUpdateGoal(goals: GoalNode[], goalId: string, updatedGoalData: P
 }
 
 export const updateUserGoal = (req: Request, res: Response) => {
-  const { id, goalId } = req.params;
+  const { id, goalId } = req.params as { id: string; goalId: string };
   const updatedGoalData: Partial<GoalNode> = req.body;
 
   let user = mockDatabase.getUserById(id);
@@ -121,7 +121,7 @@ function findAndDeleteGoal(goals: GoalNode[], goalId: string): boolean {
 }
 
 export const deleteUserGoal = (req: Request, res: Response) => {
-  const { id, goalId } = req.params;
+  const { id, goalId } = req.params as { id: string; goalId: string };
 
   let user = mockDatabase.getUserById(id);
 
@@ -141,7 +141,7 @@ export const deleteUserGoal = (req: Request, res: Response) => {
 };
 
 export const getUserMatches = (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const user = mockDatabase.getUserById(id);
 
   if (!user) {
@@ -155,7 +155,7 @@ export const getUserMatches = (req: Request, res: Response) => {
 };
 
 export const computeUserMatches = (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const user = mockDatabase.getUserById(id);
 
   if (!user) {

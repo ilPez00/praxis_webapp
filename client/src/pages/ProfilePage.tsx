@@ -1,79 +1,185 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
-import { User } from '../models/User'; // Adjust path as necessary
-import { GoalNode } from '../models/GoalNode'; // Adjust path as necessary
-import GoalTreeDisplay from '../components/GoalTreeDisplay'; // To be created
-import GoalForm from '../components/GoalForm'; // To be created
+// client/src/pages/ProfilePage.tsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import '../styles/ProfilePage.css';
+
+// Assume these exist or create simple mocks
+import { useUser } from '../hooks/useUser'; // your auth/user context
+// import GoalTree from '../components/GoalTree'; // we'll stub a simple version below
+
+// Mock user data structure (adapt to your real User model)
+interface UserProfile {
+  name: string;
+  username?: string;
+  avatarUrl?: string;
+  bio: string;
+  ageRange?: string;
+  verified?: boolean;
+  domains?: string[];
+  overallGrade?: string; // e.g. "Consistent Achiever"
+  totalGoals?: number;
+  completionRate?: number; // 0-100
+  goalTree: GoalNode[]; // root nodes
+}
+
+interface GoalNode {
+  id: string;
+  title: string;
+  domain: string;
+  weight: number;
+  progress: number; // 0-1
+  children?: GoalNode[];
+  grade?: string;
+}
 
 const ProfilePage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { user, loading } = useUser(); // Replace with your real hook
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showGoalForm, setShowGoalForm] = useState(false);
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!id) {
-        setError('User ID is missing.');
-        setLoading(false);
-        return;
-      }
-      try {
-        const response = await axios.get(`http://localhost:3001/users/${id}`);
-        setUser(response.data);
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to fetch user profile.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserProfile();
-  }, [id]);
-
-  const handleGoalAdded = (newGoal: GoalNode) => {
-    if (user) {
-      setUser({
-        ...user,
-        goalTree: [...user.goalTree, newGoal]
-      });
-      setShowGoalForm(false); // Hide form after adding
-    }
+  // Mock/fallback data — replace with real fetch/context
+  const profile: UserProfile = user || {
+    name: 'Alfonso',
+    username: '@alfonso_milano',
+    avatarUrl: 'https://example.com/avatar.jpg', // placeholder
+    bio: 'Building better habits in Milan. Fitness & investing enthusiast. Open to meaningful connections.',
+    ageRange: '25-34',
+    verified: true,
+    domains: ['Fitness', 'Investing', 'Career', 'Relationships'],
+    overallGrade: 'Consistent Achiever',
+    totalGoals: 17,
+    completionRate: 68,
+    goalTree: [
+      {
+        id: '1',
+        title: 'Reach 10% body fat',
+        domain: 'Fitness',
+        weight: 0.4,
+        progress: 0.65,
+        children: [
+          { id: '1.1', title: 'Daily gym 5×/week', domain: 'Fitness', weight: 0.6, progress: 0.8 },
+          { id: '1.2', title: 'Calorie deficit tracking', domain: 'Fitness', weight: 0.4, progress: 0.45 },
+        ],
+      },
+      {
+        id: '2',
+        title: 'Build €50k investment portfolio',
+        domain: 'Investing',
+        weight: 0.3,
+        progress: 0.42,
+        children: [],
+      },
+      // ... more roots
+    ],
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('userId'); // Clear stored user ID
-    navigate('/login'); // Redirect to login page
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+
+  const toggleNode = (id: string) => {
+    setExpandedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      return newSet;
+    });
   };
 
+  const renderGoalNode = (node: GoalNode, level = 0) => {
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = expandedNodes.has(node.id);
 
-  if (loading) return <div>Loading profile...</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (!user) return <div>No user data found.</div>;
+    return (
+      <div key={node.id} className={`goal-item level-${level}`}>
+        <div
+          className={`goal-header ${hasChildren ? 'clickable' : ''}`}
+          onClick={() => hasChildren && toggleNode(node.id)}
+        >
+          <div className="goal-title">
+            {hasChildren && <span className="toggle-icon">{isExpanded ? '▼' : '▶'}</span>}
+            {node.title}
+          </div>
+          <div className="goal-meta">
+            <span className="progress-bar-small" style={{ width: `${node.progress * 100}%` }} />
+            <span className="progress-text">{Math.round(node.progress * 100)}%</span>
+            {node.grade && <span className="grade-badge">{node.grade}</span>}
+          </div>
+        </div>
+
+        {hasChildren && isExpanded && (
+          <div className="goal-children">
+            {node.children!.map(child => renderGoalNode(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (loading) return <div className="loading">Loading profile...</div>;
 
   return (
-    <div>
-      <h1>{user.name}'s Profile</h1>
-      <p>Email: {user.email}</p>
-      <p>Age: {user.age}</p>
-      <p>Bio: {user.bio}</p>
-      <button onClick={handleLogout}>Logout</button>
+    <div className="profile-page">
+      <div className="profile-header">
+        {profile.avatarUrl ? (
+          <img src={profile.avatarUrl} alt="Profile" className="avatar-large" />
+        ) : (
+          <div className="avatar-placeholder">{profile.name.charAt(0)}</div>
+        )}
+        <div className="profile-info">
+          <h1>{profile.name}</h1>
+          <p className="username">{profile.username}</p>
+          {profile.verified && (
+            <div className="verified-badge">
+              Verified <span>✓</span>
+            </div>
+          )}
+          <p className="bio">{profile.bio}</p>
+          <div className="quick-stats">
+            <span>{profile.ageRange}</span>
+            <span>•</span>
+            <span>{profile.overallGrade}</span>
+          </div>
+        </div>
 
-      <h2>Goal Tree</h2>
-      <button onClick={() => setShowGoalForm(!showGoalForm)}>
-        {showGoalForm ? 'Cancel Add Goal' : 'Add New Goal'}
-      </button>
+        <button className="edit-btn" onClick={() => navigate('/profile/edit')}>
+          Edit Profile
+        </button>
+      </div>
 
-      {showGoalForm && <GoalForm userId={user.id} onGoalAdded={handleGoalAdded} />}
+      <div className="profile-stats-card">
+        <div className="stat-item">
+          <div className="stat-value">{profile.totalGoals}</div>
+          <div className="stat-label">Goals</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-value">{profile.completionRate}%</div>
+          <div className="stat-label">Overall Progress</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-value">{profile.domains.length}</div>
+          <div className="stat-label">Focus Areas</div>
+        </div>
+      </div>
 
-      {user.goalTree.length > 0 ? (
-        <GoalTreeDisplay goals={user.goalTree} userId={user.id} />
-      ) : (
-        <p>No goals defined yet. Add one!</p>
-      )}
+      <div className="domains-section">
+        <h2>Active Domains</h2>
+        <div className="domain-chips">
+          {profile.domains.map(domain => (
+            <span key={domain} className="domain-chip">{domain}</span>
+          ))}
+        </div>
+      </div>
+
+      <div className="goal-tree-section">
+        <h2>Your Goal Tree</h2>
+        <div className="goal-tree">
+          {profile.goalTree.length === 0 ? (
+            <p className="empty-state">No goals yet. Start building!</p>
+          ) : (
+            profile.goalTree.map(node => renderGoalNode(node))
+          )}
+        </div>
+      </div>
+
+      {/* Future: add sections for recent feedback, matches compatibility preview, etc. */}
     </div>
   );
 };

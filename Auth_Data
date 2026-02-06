@@ -1,0 +1,7 @@
+supbase: 
+URL: 
+https://valkqwbqgahrpdflwxxx.supabase.co
+KEY:
+sb_publishable_UQKQ1RSYAuUZatSW9nTS3w_Rm7LIXRS
+DIRECT-CONNCECTION:
+postgresql://postgres:[SanBasilio1488]@db.valkqwbqgahrpdflwxxx.supabase.co:5432/postgres

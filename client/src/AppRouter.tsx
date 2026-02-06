@@ -8,6 +8,8 @@ import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage'; // Import ProfilePage
 import MatchesPage from './pages/MatchesPage'; // Import MatchesPage
 import ChatPage from './pages/ChatPage';       // Import ChatPage
+import OnboardingPage from './pages/OnboardingPage'; // Import OnboardingPage
+import ChatRoom from './pages/ChatRoom';       // Import ChatRoom
 
 const AppRouter: React.FC = () => {
   return (
@@ -16,14 +18,17 @@ const AppRouter: React.FC = () => {
         <Route path="/" element={<Navigate to="/login" replace />} /> {/* Redirect to login */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        {/* The App component is currently a test component showing backend connection */}
         <Route path="/test" element={<App />} /> 
-        
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:id" element={<ProfilePage />} /> {/* Profile page route */}
         <Route path="/matches/:id" element={<MatchesPage />} /> {/* Matches page route */}
         <Route path="/chat/:user1Id/:user2Id" element={<ChatPage />} /> {/* Chat page route */}
-        {/*
-          TODO: Add more routes here as we build out the components:
+        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/matches" element={<MatchesPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/chat/:id" element={<ChatRoom />} />
+       
+           {/* TODO: Add more routes here as we build out the components:
           <Route path="/goals/:id" element={<GoalTreePage />} />
         */}
       </Routes>

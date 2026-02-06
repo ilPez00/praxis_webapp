@@ -4,7 +4,7 @@ import { Message } from '../models/Message';
 import { v4 as uuidv4 } from 'uuid';
 
 export const getMessages = (req: Request, res: Response) => {
-  const { user1Id, user2Id } = req.params;
+  const { user1Id, user2Id } = req.params as { user1Id: string; user2Id: string };
 
   if (!user1Id || !user2Id) {
     return res.status(400).json({ message: 'Both user IDs are required.' });
@@ -38,5 +38,5 @@ export const sendMessage = (req: Request, res: Response) => {
   };
 
   mockDatabase.saveMessage(newMessage);
-  res.status(201).json({ message: 'Message sent successfully.', message: newMessage });
+  res.status(201).json({ message: 'Message sent successfully.', sentMessage: newMessage });
 };

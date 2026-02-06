@@ -2,6 +2,7 @@ import { User } from '../models/User';
 import { GoalNode } from '../models/GoalNode';
 import { Match } from '../models/Match';
 import { Message } from '../models/Message'; // Import Message model
+import { Domain } from '../models/Domain'; // Import Domain enum
 
 class MockDatabase {
   private users: User[] = [];
@@ -12,8 +13,8 @@ class MockDatabase {
   constructor() {
     // Add some dummy data for initial testing
     const user1Goals: GoalNode[] = [
-      { id: 'g1', domain: 'Health', name: 'Run a marathon', weight: 1.0, progress: 0, subGoals: [] },
-      { id: 'g2', domain: 'Wealth', name: 'Save $1000', weight: 1.0, progress: 0, subGoals: [] },
+      { id: 'g1', domain: Domain.HEALTH, name: 'Run a marathon', weight: 1.0, progress: 0, subGoals: [] },
+      { id: 'g2', domain: Domain.WEALTH, name: 'Save $1000', weight: 1.0, progress: 0, subGoals: [] },
     ];
     const user1: User = {
       id: 'user1',
@@ -26,8 +27,8 @@ class MockDatabase {
     };
 
     const user2Goals: GoalNode[] = [
-      { id: 'g3', domain: 'Health', name: 'Run a marathon', weight: 1.0, progress: 0, subGoals: [] },
-      { id: 'g4', domain: 'Wisdom', name: 'Learn a new language', weight: 1.0, progress: 0, subGoals: [] },
+      { id: 'g3', domain: Domain.HEALTH, name: 'Run a marathon', weight: 1.0, progress: 0, subGoals: [] },
+      { id: 'g4', domain: Domain.WISDOM, name: 'Learn a new language', weight: 1.0, progress: 0, subGoals: [] },
     ];
     const user2: User = {
       id: 'user2',
@@ -99,7 +100,7 @@ class MockDatabase {
   getGoalNodeById(id: string): GoalNode | undefined {
     // This assumes goalNodes are stored flat for simplicity in mock db
     // In a real app, they would be nested within a user's goalTree
-    return this.goalNodes.find(node => node.id === node.id); // Fixed typo: node.id === id
+    return this.goalNodes.find(node => node.id === id);
   }
 
   saveGoalNode(goalNode: GoalNode): GoalNode {

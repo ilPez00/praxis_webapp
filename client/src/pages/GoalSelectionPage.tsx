@@ -18,9 +18,14 @@ const goalTemplates: Record<Domain, string[]> = {
   [Domain.MENTAL_HEALTH]: ['Therapy', 'Meditation', 'Stress Management', 'Sleep Quality', 'Mindfulness Practice'],
   [Domain.PHILOSOPHY]: ['Reading Philosophy', 'Critical Thinking', 'Meaning & Purpose', 'Ethical Living', 'Self-Reflection'],
   [Domain.CULTURE_HOBBIES]: ['Art Creation', 'Music', 'Writing', 'Photography', 'Crafts', 'Gaming'],
-  [Domain.INTIMACY_ROMANCE]: ['Dating', 'Relationship Building', 'Communication Skills', 'Intimacy Development'],
-  [Domain.FRIENDSHIP_SOCIAL]: ['Making New Friends', 'Deepening Friendships', 'Social Skills', 'Community Involvement'],
-};
+    [Domain.INTIMACY_ROMANCE]:  ['Dating', 'Relationship Building', 'Communication Skills', 'Intimacy Development'],
+    [Domain.FRIENDSHIP_SOCIAL]: ['Making New Friends', 'Deepening Friendships', 'Social Skills', 'Community Involvement'],
+    [Domain.HEALTH]:            ['Exercise Regularly', 'Eat Healthy', 'Improve Sleep', 'Manage Stress'],
+    [Domain.WEALTH]:            ['Save Money', 'Invest', 'Reduce Debt', 'Increase Income'],
+    [Domain.WISDOM]:            ['Read Books', 'Learn New Skills', 'Practice Mindfulness', 'Seek Knowledge'],
+    [Domain.RELATIONSHIPS]:     ['Spend Time with Family', 'Connect with Friends', 'Build Stronger Bonds', 'Resolve Conflicts'],
+    [Domain.HAPPINESS]:         ['Practice Gratitude', 'Engage in Hobbies', 'Volunteer', 'Travel'],
+  };
 
 const GoalSelectionPage: React.FC<GoalSelectionPageProps> = ({ userId }) => {
   const navigate = useNavigate();
@@ -240,3 +245,4 @@ const GoalSelectionPage: React.FC<GoalSelectionPageProps> = ({ userId }) => {
 };
 
 export default GoalSelectionPage;
+const _check: Record<Domain, string[]> = goalTemplates; //check for errors between goal selection and goaltemplates

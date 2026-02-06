@@ -7,5 +7,12 @@ export interface User {
   age: number;
   bio: string;
   goalTree: GoalNode[];
-  // Other user-related fields can be added here
+  username?: string;
+  avatarUrl?: string;
+  ageRange?: string;
+  verified?: boolean;
+  domains?: string[];
+  overallGrade?: string;
+  totalGoals?: number;
+  completionRate?: number;
 }
