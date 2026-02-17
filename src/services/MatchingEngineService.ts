@@ -1,8 +1,15 @@
 import { GoalTree } from '../models/GoalTree';
 import { GoalNode } from '../models/GoalNode';
 import { Domain } from '../models/Domain';
+import { EmbeddingService } from './EmbeddingService'; // Import the new EmbeddingService
 
 export class MatchingEngineService {
+  private embeddingService: EmbeddingService;
+
+  constructor() {
+    this.embeddingService = new EmbeddingService();
+  }
+
   /**
    * Calculates the compatibility score between two users' goal trees.
    * Based on Algorithm 1 Praxis Matching Engine from the whitepaper.
@@ -10,44 +17,46 @@ export class MatchingEngineService {
    * @param userBTree The goal tree of user B.
    * @returns The compatibility score S_AB.
    */
-  public calculateCompatibilityScore(userATree: GoalTree, userBTree: GoalTree): number {
+  public async calculateCompatibilityScore(userATree: GoalTree, userBTree: GoalTree): Promise<number> {
     let sAB = 0;
-    let totalWeightProduct = 0; // Denominator for normalization
+    let totalWeightProduct = 0;
 
-    if (!userATree.nodes || !userBTree.nodes) {
+    if (!userATree.nodes || userATree.nodes.length === 0 || !userBTree.nodes || userBTree.nodes.length === 0) {
         return 0; // No goals, no compatibility
     }
 
-    // Helper to simulate AI_sim (currently a placeholder)
-    // In a real scenario, this would involve a more sophisticated AI comparison
-    const aiSim = (nodeA: GoalNode, nodeB: GoalNode): number => {
-      // For now, a simple similarity based on domain and name match
-      // This will be replaced by an actual AI model later.
-      if (nodeA.domain === nodeB.domain && nodeA.name === nodeB.name) {
-        return 1;
+    // Cache embeddings to avoid redundant API calls
+    const embeddingCache = new Map<string, number[]>();
+
+    const getCachedEmbedding = async (text: string): Promise<number[]> => {
+      if (embeddingCache.has(text)) {
+        return embeddingCache.get(text)!;
       }
-      if (nodeA.domain === nodeB.domain) {
-        // Partial match on domain
-        return 0.5;
-      }
-      return 0;
+      const embedding = await this.embeddingService.getEmbedding(text);
+      embeddingCache.set(text, embedding);
+      return embedding;
+    };
+
+    // Helper to calculate AI_sim using Gemini Embeddings
+    const aiSim = async (nodeA: GoalNode, nodeB: GoalNode): Promise<number> => {
+      // For now, compare based on goal name. Could extend to description later.
+      const embeddingA = await getCachedEmbedding(nodeA.name);
+      const embeddingB = await getCachedEmbedding(nodeB.name);
+
+      return EmbeddingService.calculateCosineSimilarity(embeddingA, embeddingB);
     };
 
     for (const nodeA of userATree.nodes) {
       for (const nodeB of userBTree.nodes) {
         if (nodeA.domain === nodeB.domain) {
-          const sim = aiSim(nodeA, nodeB);
+          const sim = await aiSim(nodeA, nodeB); // Await the async aiSim function
           const weightProduct = nodeA.weight * nodeB.weight;
           sAB += sim * weightProduct;
-          totalWeightProduct += weightProduct; // Sum of weight products for normalization
+          totalWeightProduct += weightProduct;
         }
       }
     }
 
-    // Normalize S_AB by total weight products
-    // The whitepaper's formula for normalization is:
-    // S_AB = (Sum(delta(gi,gj) * sim(i,j) * Wi * Wj)) / (Sum(Wi * Wj))
-    // Where delta is 1 if domains match. Our loop already handles this by only adding if domains match.
     return totalWeightProduct > 0 ? sAB / totalWeightProduct : 0;
   }
 

@@ -9,10 +9,7 @@ User opted to proceed without Supabase setup.
        * Data Models: Define Goal, SubGoal, and GoalTree models for both frontend and backend. (COMPLETED)
           * Defined Domain enum for both frontend and backend. (COMPLETED)
           * Added parentId to GoalNode. (COMPLETED)
-       * Backend API: Build API endpoints for CRUD (Create, Read, Update, Delete) operations on goals and goal trees. (COMPLETED, now using Supabase)
-          * IMPORTANT: You need to set up your Supabase project:
-            1. Create a table named 'goal_trees' with columns: 'id' (uuid, Primary Key), 'userId' (text), 'nodes' (jsonb), 'rootNodes' (jsonb).
-            2. Set environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for the backend.
+       * Backend API: Build API endpoints for CRUD (Create, Read, Update, Delete) operations on goals and goal trees. (COMPLETED, now fully Supabase-integrated)
        * Frontend UI: Create a GoalTreePage for users to manage their goals, and develop the necessary React components to
          display and interact with the Goal Tree. (COMPLETED - display part, basic add goal, edit goal, and add sub-goal functionality)
 
@@ -28,8 +25,7 @@ User opted to proceed without Supabase setup.
        * Data Models: Create data models for user feedback/grades. (COMPLETED)
           * Defined FeedbackGrade enum for both frontend and backend. (COMPLETED)
           * Defined Feedback model for both frontend and backend. (COMPLETED)
-       * Backend API: Develop API endpoints for submitting feedback. (COMPLETED)
-          * IMPORTANT: You need to set up a 'feedback' table in Supabase with: 'id' (uuid), 'giverId' (text), 'receiverId' (text), 'goalNodeId' (text), 'grade' (text), 'comment' (text), 'createdAt' (timestamptz).
+       * Backend API: Develop API endpoints for submitting feedback. (COMPLETED, now fully Supabase-integrated)
        * Backend Logic: Implement the goal tree recalibration logic based on received feedback. (COMPLETED)
        * Frontend UI: Integrate a feedback submission UI into the ChatPage. (COMPLETED - integrated into ChatRoom.tsx)
 
@@ -70,9 +66,44 @@ User opted to proceed without Supabase setup.
   * **Issue 7:** Numerous errors in `src/pages/HomePage.tsx` (`getDomainColor`, `subGoals`).
       * **Resolution:** Replaced the entire content of `praxis_webapp/client/src/pages/HomePage.tsx` with a simple placeholder component.
 
-  This plan prioritizes the core features that define Praxis.
+  **6. Removal of MockDatabase Service:** (COMPLETED)
+  *   **Goal:** Remove the `MockDatabase.ts` file as it is no longer used by any backend services.
+  *   **Progress:**
+      *   Verified that `MockDatabase.ts` had no external dependencies after migrating user and message management to Supabase.
+      *   Deleted `src/services/MockDatabase.ts`.
+  *   **Status:** Completed. The backend now exclusively uses Supabase for data persistence.
 
-  --- Implemented Features and Progress ---
+  **5. Message Management Migration to Supabase:** (COMPLETED)
+  *   **Goal:** Migrate message retrieval and sending operations from `MockDatabase` to a Supabase `messages` table.
+  *   **Progress:**
+      *   Refactored `src/controllers/messageController.ts`:
+          *   `getMessages` now fetches messages from the `public.messages` table in Supabase.
+          *   `sendMessage` now inserts new messages into the `public.messages` table in Supabase.
+      *   Removed `mockDatabase` dependency from `src/controllers/messageController.ts`.
+      *   Proposed Supabase `messages` table structure: `id` (uuid, Primary Key), `senderId` (text, references `profiles.id`), `receiverId` (text, references `profiles.id`), `content` (text), `timestamp` (timestamptz, default `now()`).
+  *   **Status:** Completed. Message management is now fully handled by Supabase.
+
+  **4. User Profile Management Migration to Supabase:** (COMPLETED)
+  *   **Goal:** Migrate user profile retrieval and update operations from `MockDatabase` to Supabase `profiles` table.
+  *   **Progress:**
+      *   Refactored `src/controllers/userController.ts`:
+          *   `getUserProfile` now fetches user data from the `public.profiles` table in Supabase.
+          *   `updateUserProfile` now updates user data in the `public.profiles` table in Supabase.
+      *   Removed `mockDatabase` dependency from `src/controllers/userController.ts`.
+  *   **Status:** Completed. User profile management is now fully handled by Supabase.
+
+  **7. Matching Algorithm Enhancement with Gemini Embeddings:** (COMPLETED)
+  *   **Goal:** Replace the placeholder `aiSim` function in the matching algorithm with a more sophisticated AI-driven semantic similarity calculation using Gemini Embeddings.
+  *   **Progress:**
+      *   Installed `@google/generative-ai` and `dotenv` packages.
+      *   Created `src/services/EmbeddingService.ts` to encapsulate Gemini API calls for generating text embeddings and calculating cosine similarity.
+      *   Updated `src/services/MatchingEngineService.ts`:
+          *   Integrated `EmbeddingService` to generate embeddings for goal node names.
+          *   Replaced the placeholder `aiSim` logic with cosine similarity calculation between Gemini embeddings.
+          *   Made `calculateCompatibilityScore` and `aiSim` asynchronous and added `await` where necessary.
+      *   Updated `src/controllers/matchingController.ts` to `await` the `calculateCompatibilityScore` function call.
+  *   **IMPORTANT: You need to set the `GEMINI_API_KEY` environment variable in your backend environment to enable the Gemini Embeddings functionality.**
+  *   **Status:** Completed. The matching algorithm now leverages Gemini Embeddings for improved semantic understanding of goals.
 
   **1. Google Sign-In Feature:** (PENDING USER ACTION)
   *   **Goal:** Allow users to sign up and log in using their Google account.

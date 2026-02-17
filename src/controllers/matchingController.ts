@@ -37,7 +37,7 @@ export const getMatchesForUser = async (req: Request, res: Response) => {
     const potentialMatches: { user: string; score: number; goalTree: GoalTree }[] = [];
 
     for (const otherGoalTree of allGoalTrees || []) {
-      const score = matchingEngine.calculateCompatibilityScore(userGoalTree as GoalTree, otherGoalTree as GoalTree);
+      const score = await matchingEngine.calculateCompatibilityScore(userGoalTree as GoalTree, otherGoalTree as GoalTree);
       if (score > 0) { // Only consider matches with a positive score
         potentialMatches.push({ user: otherGoalTree.userId, score, goalTree: otherGoalTree as GoalTree });
       }

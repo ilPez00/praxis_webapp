@@ -12,12 +12,12 @@ const Navbar: React.FC = () => {
                 <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                     Praxis
                 </Typography>
-                <Button color="inherit" component={RouterLink} to="/">Home</Button>
+                <Button color="inherit" component={RouterLink} to="/home">Home</Button>
                 <Button color="inherit" component={RouterLink} to={`/profile/${userId}`}>Profile</Button>
                 <Button color="inherit" component={RouterLink} to={`/goals/${userId}`}>Goals</Button>
+                <Button color="inherit" component={RouterLink} to="/goal-selection">Select Goals</Button>
                 <Button color="inherit" component={RouterLink} to="/matches">Matches</Button>
                 <Button color="inherit" component={RouterLink} to="/login">Login</Button>
-                <Button color="inherit" component={RouterLink} to="/signup">Signup</Button>
             </Toolbar>
         </AppBar>
     );

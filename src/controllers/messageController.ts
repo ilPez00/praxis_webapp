@@ -1,42 +1,45 @@
 import { Request, Response } from 'express';
-import { mockDatabase } from '../services/MockDatabase';
-import { Message } from '../models/Message';
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
+// import { Message } from '../models/Message'; // Message model type is not directly used after Supabase integration
 
-export const getMessages = (req: Request, res: Response) => {
+export const getMessages = async (req: Request, res: Response) => {
   const { user1Id, user2Id } = req.params as { user1Id: string; user2Id: string };
 
   if (!user1Id || !user2Id) {
     return res.status(400).json({ message: 'Both user IDs are required.' });
   }
 
-  const messages = mockDatabase.getMessagesBetweenUsers(user1Id, user2Id);
-  res.status(200).json(messages);
+  // Fetch messages where sender is user1 and receiver is user2 OR sender is user2 and receiver is user1
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .or(`and(senderId.eq.${user1Id},receiverId.eq.${user2Id}),and(senderId.eq.${user2Id},receiverId.eq.${user1Id})`)
+    .order('timestamp', { ascending: true });
+
+  if (error) {
+    return res.status(500).json({ message: error.message });
+  }
+
+  res.status(200).json(data);
 };
 
-export const sendMessage = (req: Request, res: Response) => {
+export const sendMessage = async (req: Request, res: Response) => {
   const { senderId, receiverId, content } = req.body;
 
   if (!senderId || !receiverId || !content) {
     return res.status(400).json({ message: 'Sender ID, receiver ID, and content are required.' });
   }
 
-  // Optional: Check if senderId and receiverId exist as users in mockDatabase
-  const sender = mockDatabase.getUserById(senderId);
-  const receiver = mockDatabase.getUserById(receiverId);
+  // Insert the new message into the Supabase 'messages' table
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({ senderId, receiverId, content })
+    .select() // Select the newly inserted row
+    .single();
 
-  if (!sender || !receiver) {
-    return res.status(404).json({ message: 'Sender or receiver user not found.' });
+  if (error) {
+    return res.status(500).json({ message: error.message });
   }
 
-  const newMessage: Message = {
-    id: uuidv4(),
-    senderId,
-    receiverId,
-    content,
-    timestamp: new Date(),
-  };
-
-  mockDatabase.saveMessage(newMessage);
-  res.status(201).json({ message: 'Message sent successfully.', sentMessage: newMessage });
+  res.status(201).json({ message: 'Message sent successfully.', sentMessage: data });
 };
