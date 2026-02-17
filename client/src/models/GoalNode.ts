@@ -7,10 +7,10 @@ export interface GoalNode {
   name: string;
   weight: number;
   progress: number;
-  subGoals: GoalNode[];
   category?: string;
   specificGoal?: string;
   customDetails?: string;
+  parentId?: string;
 }
 
 export function updateWeightFromGrade(goalNode: GoalNode, grade: FeedbackGrade): GoalNode {

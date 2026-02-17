@@ -1,34 +1,54 @@
 #!/bin/bash
 
-# This script starts the Praxis web application.
-# It launches both the backend server and the frontend client.
+# This script builds and runs the Praxis web application (backend and frontend).
+#
+# Before running:
+# 1. Ensure Node.js and npm are installed.
+# 2. Make sure you have your Supabase environment variables set in the .env file
+#    located in the praxis_webapp/client/ directory.
 
-# Get the directory of the script
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+# --- Validate Environment Setup ---
+CLIENT_ENV_FILE="/home/gio/Praxis/praxis_webapp/client/.env"
+if [ -f "$CLIENT_ENV_FILE" ] && grep -q "YOUR_SUPABASE_URL" "$CLIENT_ENV_FILE"; then
+  echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+  echo "!! ERROR: Placeholder Supabase configuration found."
+  echo "!! Please edit the file '$CLIENT_ENV_FILE'"
+  echo "!! and replace 'YOUR_SUPABASE_URL' and 'YOUR_SUPABASE_ANON_KEY'"
+  echo "!! with your actual Supabase project credentials."
+  echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+  exit 1
+fi
 
-echo "Starting backend server..."
-(cd "$SCRIPT_DIR" && npm run dev) &
+
+# --- Backend Setup and Start ---
+echo "--- Setting up and starting Backend ---"
+cd /home/gio/Praxis/praxis_webapp || { echo "Error: Could not navigate to backend directory."; exit 1; }
+
+echo "Installing backend dependencies..."
+npm install
+
+echo "Building backend..."
+npm run build || { echo "Error: Backend build failed."; exit 1; }
+
+echo "Starting backend server in background..."
+# Using `npm start` which runs `node dist/index.js`
+npm start &
 BACKEND_PID=$!
+echo "Backend started with PID: $BACKEND_PID"
 
-echo "Starting frontend client..."
-(cd "$SCRIPT_DIR/client" && npm start) &
-FRONTEND_PID=$!
+# --- Frontend Setup and Start ---
+echo "--- Setting up and starting Frontend ---"
+cd /home/gio/Praxis/praxis_webapp/client || { echo "Error: Could not navigate to frontend directory."; exit 1; }
 
-# Give the servers a moment to start up
-echo "Waiting for servers to initialize..."
-sleep 10
+echo "Installing frontend dependencies..."
+npm install
 
-# It's common for react-scripts to automatically open a browser window.
-# This line is a fallback to ensure the page opens.
-# xdg-open is for Linux. Use 'open' on macOS.
-echo "Opening web browser..."
-xdg-open http://localhost:3000
+echo "Starting frontend development server..."
+# `npm start` for React apps usually opens in a browser and watches for changes
+npm start
 
-echo "Praxis is running."
-echo "Backend PID: $BACKEND_PID"
-echo "Frontend PID: $FRONTEND_PID"
-echo "Press Ctrl+C in the terminal to stop the servers."
-
-# Keep the script alive to monitor the processes
-wait $BACKEND_PID
-wait $FRONTEND_PID
+# --- Cleanup (This part might not be reached if frontend dev server runs indefinitely) ---
+echo "Frontend server stopped. Stopping backend..."
+kill $BACKEND_PID
+echo "Backend PID $BACKEND_PID stopped."
+echo "Praxis web application has been shut down."

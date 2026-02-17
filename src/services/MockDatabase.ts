@@ -13,8 +13,8 @@ class MockDatabase {
   constructor() {
     // Add some dummy data for initial testing
     const user1Goals: GoalNode[] = [
-      { id: 'g1', domain: Domain.HEALTH, name: 'Run a marathon', weight: 1.0, progress: 0, subGoals: [] },
-      { id: 'g2', domain: Domain.WEALTH, name: 'Save $1000', weight: 1.0, progress: 0, subGoals: [] },
+      { id: 'g1', domain: Domain.FITNESS, name: 'Run a marathon', weight: 1.0, progress: 0 },
+      { id: 'g2', domain: Domain.INVESTING, name: 'Save $1000', weight: 1.0, progress: 0 },
     ];
     const user1: User = {
       id: 'user1',
@@ -27,8 +27,8 @@ class MockDatabase {
     };
 
     const user2Goals: GoalNode[] = [
-      { id: 'g3', domain: Domain.HEALTH, name: 'Run a marathon', weight: 1.0, progress: 0, subGoals: [] },
-      { id: 'g4', domain: Domain.WISDOM, name: 'Learn a new language', weight: 1.0, progress: 0, subGoals: [] },
+      { id: 'g3', domain: Domain.FITNESS, name: 'Run a marathon', weight: 1.0, progress: 0 },
+      { id: 'g4', domain: Domain.ACADEMICS, name: 'Learn a new language', weight: 1.0, progress: 0 },
     ];
     const user2: User = {
       id: 'user2',
@@ -51,6 +51,7 @@ class MockDatabase {
     };
 
     this.users.push(user1, user2, adminUser);
+
     this.goalNodes.push(...user1Goals, ...user2Goals);
 
     // Simulate a match

@@ -1,52 +1,53 @@
 import { Request, Response } from 'express';
-import { mockDatabase } from '../services/MockDatabase';
-import { User } from '../models/User';
-import { v4 as uuidv4 } from 'uuid'; // For generating unique user IDs
+import { supabase } from '../lib/supabaseClient'; // Import the backend Supabase client
+// import { User } from '../models/User'; // User model type is not directly used after Supabase integration
 
-// In a real application, you would hash passwords and use JWTs for authentication.
-// For this MVP, we'll keep it simple.
-
-export const signup = (req: Request, res: Response) => {
+export const signup = async (req: Request, res: Response) => { // Make function async
   const { email, password, name, age, bio } = req.body;
 
   if (!email || !password || !name || !age || !bio) {
     return res.status(400).json({ message: 'All fields are required for signup.' });
   }
 
-  if (mockDatabase.getUserByEmail(email)) {
-    return res.status(409).json({ message: 'User with that email already exists.' });
+  // Supabase handles checking if user with that email already exists
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        name,
+        age,
+        bio,
+      },
+    },
+  });
+
+  if (error) {
+    return res.status(400).json({ message: error.message });
   }
 
-  const newUser: User = {
-    id: uuidv4(), // Generate a unique ID for the new user
-    email,
-    name,
-    age,
-    bio,
-    goalTree: [], // New users start with an empty goal tree
-    hashedPassword: password, // Store the provided password directly for mock (in real app, this would be hashed)
-  };
-
-  mockDatabase.saveUser(newUser);
-
-  // In a real app, you'd generate and return a JWT here
-  res.status(201).json({ message: 'User registered successfully.', user: { id: newUser.id, email: newUser.email, name: newUser.name } });
+  // Supabase takes care of user creation.
+  // The handle_new_user trigger in Supabase will create the profile in public.profiles table.
+  res.status(201).json({ message: 'User registered successfully. Please check your email for verification.', user: data.user });
 };
 
-export const login = (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response) => { // Make function async
   const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required for login.' });
   }
 
-  const user = mockDatabase.getUserByEmail(email);
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  // For MVP, we're doing a direct comparison. In a real app: bcrypt.compare(password, user.hashedPassword)
-  if (!user || user.hashedPassword !== password) {
-    return res.status(401).json({ message: 'Invalid credentials.' });
+  if (error) {
+    return res.status(401).json({ message: error.message });
   }
 
-  // In a real app, you'd generate and return a JWT here
-  res.status(200).json({ message: 'Login successful.', user: { id: user.id, email: user.email, name: user.name } });
+  // Supabase takes care of authentication.
+  // We can return the user info from the session.
+  res.status(200).json({ message: 'Login successful.', user: data.user });
 };

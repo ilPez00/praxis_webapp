@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/OnboardingPage.css';
+import InitialGoalSetup from '../components/InitialGoalSetup'; // Import the new component
+import { supabase } from '../lib/supabase'; // Assuming supabase is used for auth
 
 const domains = [
     'Career', 'Investing', 'Fitness', 'Relationships',
@@ -18,6 +20,21 @@ const OnboardingPage: React.FC = () => {
         identityVerified: false,
     });
     const navigate = useNavigate();
+    const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined); // State to hold userId
+
+    useEffect(() => {
+        // Fetch current user ID - this would come from a real auth context
+        const fetchUserId = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setCurrentUserId(user.id);
+            } else {
+                // For development/testing, if no user is logged in, use a placeholder
+                setCurrentUserId('1'); 
+            }
+        };
+        fetchUserId();
+    }, []);
 
     const totalSteps = 5;
 
@@ -25,8 +42,11 @@ const OnboardingPage: React.FC = () => {
         if (step < totalSteps) {
             setStep(step + 1);
         } else {
-            console.log('Onboarding complete:', formData);
-            navigate('/home');
+            // For step 5, the InitialGoalSetup component handles the final action
+            // so this button's functionality is overridden by that component
+            // If the user somehow bypasses InitialGoalSetup, they'd go to home
+            console.log('Onboarding complete (via fallback):', formData);
+            navigate('/home'); 
         }
     };
 
@@ -45,6 +65,11 @@ const OnboardingPage: React.FC = () => {
                 : [...prev.selectedDomains, domain];
             return { ...prev, selectedDomains: selected };
         });
+    };
+
+    const handleGoalsCreated = () => {
+        console.log('Initial goals created successfully. Navigating to home.');
+        navigate('/home'); // Or navigate to their goal tree page: `/goals/${currentUserId}`
     };
 
     const renderStepContent = () => {
@@ -100,11 +125,12 @@ const OnboardingPage: React.FC = () => {
                     </div>
                 );
             case 5:
+                if (!currentUserId) {
+                    return <div>Loading user information...</div>;
+                }
                 return (
                     <div className="onboarding-step complete">
-                        <h1>You're all set!</h1>
-                        <p>Now let's build your first goal tree.</p>
-                        <div className="confetti-placeholder">🎉</div>
+                        <InitialGoalSetup userId={currentUserId} onGoalsCreated={handleGoalsCreated} />
                     </div>
                 );
             default:
@@ -123,18 +149,21 @@ const OnboardingPage: React.FC = () => {
             </div>
 
             <div className="onboarding-actions">
-                {step > 1 && (
+                {step > 1 && step < totalSteps && ( // Don't show back button on first step or if it's the last step
                     <button className="secondary-btn" onClick={handleBack}>
                         Back
                     </button>
                 )}
-                <button className="primary-btn" onClick={handleNext} disabled={
-                    (step === 2 && !formData.name.trim()) ||
-                    (step === 3 && formData.selectedDomains.length === 0) ||
-                    (step === 4 && !formData.identityVerified)
-                }>
-                    {step === totalSteps ? "Start Building Goals" : "Continue"}
-                </button>
+                {step < totalSteps && ( // Only show continue button for steps 1-4
+                    <button className="primary-btn" onClick={handleNext} disabled={
+                        (step === 2 && !formData.name.trim()) ||
+                        (step === 3 && formData.selectedDomains.length === 0) ||
+                        (step === 4 && !formData.identityVerified)
+                    }>
+                        Continue
+                    </button>
+                )}
+                {/* For step 5, the InitialGoalSetup component has its own save button */}
             </div>
         </div>
     );

@@ -1,28 +1,27 @@
 import React from 'react';
+import { GoalTree } from '../models/GoalTree';
 import { GoalNode } from '../models/GoalNode';
-import GoalNodeDisplay from './GoalNodeDisplay'; // Import the new component
+import GoalNodeDisplay from './GoalNodeDisplay';
 
 interface GoalTreeDisplayProps {
-  goals: GoalNode[];
-  userId: string;
-  onGoalUpdated?: (updatedGoal: GoalNode) => void;
-  onGoalDeleted?: (deletedGoalId: string) => void;
+  goalTree: GoalTree;
+  onEdit: (node: GoalNode) => void;
+  onAddSubGoal: (parentId: string) => void;
 }
 
-const GoalTreeDisplay: React.FC<GoalTreeDisplayProps> = ({ goals, userId, onGoalUpdated, onGoalDeleted }) => {
+export const GoalTreeDisplay: React.FC<GoalTreeDisplayProps> = ({ goalTree, onEdit, onAddSubGoal }) => {
+  const renderGoalNode = (node: GoalNode) => (
+    <div key={node.id} style={{ marginLeft: node.parentId ? 20 : 0 }}>
+      <GoalNodeDisplay node={node} onEdit={onEdit} onAddSubGoal={onAddSubGoal} />
+      {goalTree.nodes
+        .filter((n) => n.parentId === node.id)
+        .map((n) => renderGoalNode(n))}
+    </div>
+  );
+
   return (
     <div>
-      {goals.map((goal) => (
-        <GoalNodeDisplay
-          key={goal.id}
-          goal={goal}
-          userId={userId}
-          onGoalUpdated={onGoalUpdated}
-          onGoalDeleted={onGoalDeleted}
-        />
-      ))}
+      {goalTree.rootNodes.map((node) => renderGoalNode(node))}
     </div>
   );
 };
-
-export default GoalTreeDisplay;

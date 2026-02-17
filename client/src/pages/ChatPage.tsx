@@ -18,11 +18,7 @@ const ChatPage: React.FC = () => {
                 {mockConversations.map(conv => (
                     <div key={conv.id} className="conversation-item" onClick={() => navigate(`/chat/${conv.id}`)}>
                         <div className="avatar-wrapper">
-                            {conv.matchAvatar ? (
-                                <img src={conv.matchAvatar} alt={conv.matchName} />
-                            ) : (
-                                <div className="avatar-placeholder">{conv.matchName.charAt(0)}</div>
-                            )}
+                            <div className="avatar-placeholder">{conv.matchName.charAt(0)}</div>
                             {conv.unread > 0 && <span className="unread-badge">{conv.unread}</span>}
                         </div>
                         <div className="conv-info">

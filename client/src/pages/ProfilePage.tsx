@@ -1,13 +1,23 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 import '../styles/ProfilePage.css';
 import { useUser } from '../hooks/useUser'; // your auth/user context
+import { supabase } from '../lib/supabase'; // Assuming supabase is used for auth
+import { GoalTree } from '../models/GoalTree';
+import { GoalNode } from '../models/GoalNode';
 
 const ProfilePage: React.FC = () => {
-    const { user, isLoading } = useUser(); // Replace with your real hook
+    const { user, loading: userLoading } = useUser(); // Replace with your real hook
     const navigate = useNavigate();
+    const { id: profileUserIdParam } = useParams<{ id: string }>(); // Get user ID from URL params
 
-    // Mock/fallback data — replace with real fetch/context
+    const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+    const [profileGoalTree, setProfileGoalTree] = useState<GoalTree | null>(null);
+    const [goalTreeLoading, setGoalTreeLoading] = useState(true);
+    const [goalTreeError, setGoalTreeError] = useState<string | null>(null);
+
+    // Mock/fallback data for other profile details — replace with real fetch/context
     const profile = user || {
         name: 'Alfonso',
         username: '@alfonso_milano',
@@ -19,68 +29,65 @@ const ProfilePage: React.FC = () => {
         overallGrade: 'Consistent Achiever',
         totalGoals: 17,
         completionRate: 68,
-        goalTree: [
-            {
-                id: '1',
-                title: 'Reach 10% body fat',
-                domain: 'Fitness',
-                weight: 0.4,
-                progress: 0.65,
-                children: [
-                    { id: '1.1', title: 'Daily gym 5×/week', domain: 'Fitness', weight: 0.6, progress: 0.8 },
-                    { id: '1.2', title: 'Calorie deficit tracking', domain: 'Fitness', weight: 0.4, progress: 0.45 },
-                ],
-            },
-            {
-                id: '2',
-                title: 'Build €50k investment portfolio',
-                domain: 'Investing',
-                weight: 0.3,
-                progress: 0.42,
-                children: [],
-            },
-            // ... more roots
-        ],
     };
 
-    const [expandedNodes, setExpandedNodes] = useState(new Set());
+    useEffect(() => {
+        const fetchUserId = async () => {
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            const idToFetch = profileUserIdParam || authUser?.id || '1'; // Prioritize URL param, then auth user, then hardcoded
+            setCurrentUserId(idToFetch);
+        };
+        fetchUserId();
+    }, [profileUserIdParam]);
 
-    const toggleNode = (id: any) => {
-        setExpandedNodes(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) newSet.delete(id);
-            else newSet.add(id);
-            return newSet;
-        });
-    };
+    useEffect(() => {
+        const fetchProfileGoalTree = async () => {
+            if (!currentUserId) return;
 
-    const renderGoalNode = (node: any, level = 0) => {
-        const hasChildren = node.children && node.children.length > 0;
-        const isExpanded = expandedNodes.has(node.id);
+            try {
+                const response = await axios.get(`http://localhost:3001/goals/${currentUserId}`);
+                setProfileGoalTree(response.data);
+            } catch (err) {
+                console.error('Failed to fetch profile goal tree:', err);
+                setGoalTreeError('Failed to load goal tree.');
+            } finally {
+                setGoalTreeLoading(false);
+            }
+        };
+
+        if (currentUserId) {
+            fetchProfileGoalTree();
+        }
+    }, [currentUserId]);
+
+    const renderGoalNode = (node: GoalNode, level = 0) => {
+        const children = profileGoalTree?.nodes.filter(n => n.parentId === node.id) || [];
+        const hasChildren = children.length > 0;
+        // No explicit expandedNodes state for now, just render children
         return (
             <div key={node.id} className={`goal-item level-${level}`}>
-                <div className={`goal-header ${hasChildren ? 'clickable' : ''}`} onClick={() => hasChildren && toggleNode(node.id)}>
+                <div className={`goal-header ${hasChildren ? 'has-children' : ''}`}>
                     <div className="goal-title">
-                        {hasChildren && <span className="toggle-icon">{isExpanded ? '▼' : '▶'}</span>}
-                        {node.title}
+                        {node.name} ({node.domain})
                     </div>
                     <div className="goal-meta">
+                        {/* Progress bar and text for GoalNode */}
                         <span className="progress-bar-small" style={{ width: `${node.progress * 100}%` }} />
                         <span className="progress-text">{Math.round(node.progress * 100)}%</span>
-                        {node.grade && <span className="grade-badge">{node.grade}</span>}
+                        {/* No grade in GoalNode model, but could be added later */}
                     </div>
                 </div>
 
-                {hasChildren && isExpanded && (
+                {hasChildren && (
                     <div className="goal-children">
-                        {node.children.map((child: any) => renderGoalNode(child, level + 1))}
+                        {children.map((child: GoalNode) => renderGoalNode(child, level + 1))}
                     </div>
                 )}
             </div>
         );
     };
 
-    if (isLoading) return <div className="loading">Loading profile...</div>;
+    if (userLoading || goalTreeLoading) return <div className="loading">Loading profile...</div>;
 
     return (
         <div className="profile-page">
@@ -113,9 +120,10 @@ const ProfilePage: React.FC = () => {
 
             <div className="profile-stats-card">
                 <div className="stat-item">
-                    <div className="stat-value">{profile.totalGoals}</div>
+                    <div className="stat-value">{profileGoalTree?.nodes.length || 0}</div>
                     <div className="stat-label">Goals</div>
                 </div>
+                {/*
                 <div className="stat-item">
                     <div className="stat-value">{profile.completionRate}%</div>
                     <div className="stat-label">Overall Progress</div>
@@ -124,26 +132,20 @@ const ProfilePage: React.FC = () => {
                     <div className="stat-value">{profile.domains.length}</div>
                     <div className="stat-label">Focus Areas</div>
                 </div>
-            </div>
-
-            <div className="domains-section">
-                <h2>Active Domains</h2>
-                <div className="domain-chips">
-                    {profile.domains.map(domain => (
-                        <span key={domain} className="domain-chip">{domain}</span>
-                    ))}
-                </div>
+                */}
             </div>
 
             <div className="goal-tree-section">
                 <h2>Your Goal Tree</h2>
-                <div className="goal-tree">
-                    {profile.goalTree.length === 0 ? (
-                        <p className="empty-state">No goals yet. Start building!</p>
-                    ) : (
-                        profile.goalTree.map(node => renderGoalNode(node))
-                    )}
-                </div>
+                {goalTreeError ? (
+                    <p className="error-state">{goalTreeError}</p>
+                ) : !profileGoalTree || profileGoalTree.rootNodes.length === 0 ? (
+                    <p className="empty-state">No goals yet. Start building!</p>
+                ) : (
+                    <div className="goal-tree">
+                        {profileGoalTree.rootNodes.map(node => renderGoalNode(node))}
+                    </div>
+                )}
             </div>
 
             {/* Future: add sections for recent feedback, matches compatibility preview, etc. */}
