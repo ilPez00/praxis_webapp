@@ -17,6 +17,7 @@ import ChatRoom from './pages/ChatRoom';
 import UpgradePage from './pages/UpgradePage'; // Import UpgradePage
 import SuccessPage from './pages/SuccessPage'; // Import SuccessPage
 import CancelPage from './pages/CancelPage';   // Import CancelPage
+import IdentityVerificationPage from './pages/IdentityVerificationPage'; // Import IdentityVerificationPage
 
 const AppRouter: React.FC = () => {
   return (
@@ -44,6 +45,7 @@ const AppRouter: React.FC = () => {
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:id" element={<ChatRoom />} />
           <Route path="/upgrade" element={<UpgradePage />} /> {/* Private upgrade page */}
+          <Route path="/verify-identity" element={<IdentityVerificationPage />} /> {/* Private identity verification page */}
         </Route>
       </Routes>
     </Router>

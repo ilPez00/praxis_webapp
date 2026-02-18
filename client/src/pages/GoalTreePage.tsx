@@ -23,6 +23,7 @@ import {
   DialogContent,
   DialogActions,
   Slider, // Import Slider (currently unused, but kept from previous refactor)
+  Chip,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete'; // Icon for delete action
 
@@ -48,6 +49,7 @@ const GoalTreePage: React.FC = () => {
   const [editedCategory, setEditedCategory] = useState('');
   const [editedProgress, setEditedProgress] = useState<number>(0); // Progress in 0-100 range
   const [editedWeight, setEditedWeight] = useState<number>(1.0);
+  const [editedPrerequisiteGoalIds, setEditedPrerequisiteGoalIds] = useState<string[]>([]); // State for prerequisites
 
   // States for adding a sub-goal
   const [addingSubGoalTo, setAddingSubGoalTo] = useState<string | null>(null); // Parent goal ID for new sub-goal
@@ -55,6 +57,7 @@ const GoalTreePage: React.FC = () => {
   const [newSubGoalDomain, setNewSubGoalDomain] = useState<Domain>(Domain.CAREER);
   const [newSubGoalCustomDetails, setNewSubGoalCustomDetails] = useState('');
   const [newSubGoalCategory, setNewSubGoalCategory] = useState('');
+  const [newSubGoalPrerequisiteGoalIds, setNewSubGoalPrerequisiteGoalIds] = useState<string[]>([]); // State for sub-goal prerequisites
 
   // States for delete confirmation dialog
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -434,6 +437,34 @@ const GoalTreePage: React.FC = () => {
               size="small"
               inputProps={{ step: 0.1 }}
             />
+            {/* Multi-select for choosing prerequisite goals */}
+            <FormControl fullWidth size="small" variant="outlined">
+              <InputLabel>Prerequisite Goals</InputLabel>
+              <Select
+                multiple
+                value={editedPrerequisiteGoalIds}
+                onChange={(e) => setEditedPrerequisiteGoalIds(e.target.value as string[])}
+                // Render selected chips for better UX
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => (
+                      // Display goal name for the selected ID
+                      <Chip key={value} label={goalTree?.nodes.find(n => n.id === value)?.name || value} />
+                    ))}
+                  </Box>
+                )}
+                label="Prerequisite Goals"
+              >
+                {/* Populate menu items with all available goals except the one being edited */}
+                {goalTree?.nodes
+                  .filter(node => node.id !== editingGoal?.id) // Cannot be a prerequisite for itself
+                  .map((node) => (
+                    <MenuItem key={node.id} value={node.id}>
+                      {node.name} ({node.domain})
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -487,6 +518,32 @@ const GoalTreePage: React.FC = () => {
               fullWidth
               size="small"
             />
+            {/* Multi-select for choosing prerequisite goals for the sub-goal */}
+            <FormControl fullWidth size="small" variant="outlined">
+              <InputLabel>Prerequisite Goals</InputLabel>
+              <Select
+                multiple
+                value={newSubGoalPrerequisiteGoalIds}
+                onChange={(e) => setNewSubGoalPrerequisiteGoalIds(e.target.value as string[])}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={goalTree?.nodes.find(n => n.id === value)?.name || value} />
+                    ))}
+                  </Box>
+                )}
+                label="Prerequisite Goals"
+              >
+                {/* Populate menu items with all available goals, filtering out the parent goal itself */}
+                {goalTree?.nodes
+                  .filter(node => node.id !== addingSubGoalTo) // Cannot be a prerequisite for itself or its parent
+                  .map((node) => (
+                    <MenuItem key={node.id} value={node.id}>
+                      {node.name} ({node.domain})
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
           </Stack>
         </DialogContent>
         <DialogActions>

@@ -86,7 +86,7 @@ export const useUser = () => {
 
     // Cleanup function to unsubscribe from the auth listener when the component unmounts
     return () => {
-      authListener?.unsubscribe();
+      authListener.subscription?.unsubscribe();
     };
   }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
 

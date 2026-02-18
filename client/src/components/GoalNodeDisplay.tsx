@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete'; // Import DeleteIcon
 import { Domain } from '../models/Domain'; // Assuming Domain enum is available
 
 interface GoalNodeDisplayProps {

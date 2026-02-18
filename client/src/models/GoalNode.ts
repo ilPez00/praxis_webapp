@@ -11,6 +11,7 @@ export interface GoalNode {
   specificGoal?: string;
   customDetails?: string;
   parentId?: string;
+  prerequisiteGoalIds?: string[]; // New field for progression pathways (IDs of goals this one depends on)
 }
 
 export function updateWeightFromGrade(goalNode: GoalNode, grade: FeedbackGrade): GoalNode {

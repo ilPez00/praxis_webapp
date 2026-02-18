@@ -42,88 +42,52 @@ Hi gemini. you are building praxis, as outlined in the whitepaper pdf. This file
     *   **Frontend Conditional UI:** Implemented conditional UI for premium features on `DashboardPage.tsx`, displaying an "Upgrade Now" button if the user is not premium.
     *   **User Model & Hook Update:** Updated `client/src/models/User.ts` with `is_premium` and modified `client/src/hooks/useUser.ts` to fetch this status from Supabase.
 
-**5. Code Commenting:** (COMPLETED)
+5.  **Code Commenting:** (COMPLETED)
     *   Added comments to logical blocks in both frontend and backend files, focusing on new features and complex logic introduced during this session.
     *   Commented on `src/controllers/stripeController.ts`, `src/controllers/achievementController.ts`, `src/controllers/goalController.ts`, `src/controllers/userController.ts` in the backend.
     *   Commented on `client/src/pages/UpgradePage.tsx`, `client/src/pages/SuccessPage.tsx`, `client/src/pages/CancelPage.tsx`, `client/src/hooks/useUser.ts`, `client/src/pages/DashboardPage.tsx`, and `client/src/pages/ProfilePage.tsx` in the frontend.
 
 ---
-**Supabase Table Definitions for Stripe Integration**
+**Proposed Steps Forward (based on Praxis Whitepaper & Current Progress):**
 
-**1. `user_subscriptions` Table:**
+### **Immediate Next Steps (Focus on Core Features & Whitepaper Alignment):**
 
-```sql
-CREATE TABLE public.user_subscriptions (
-    id text PRIMARY KEY, -- Stripe Subscription ID
-    user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-    status text NOT NULL, -- e.g., 'active', 'cancelled', 'past_due', 'trialing'
-    current_period_start timestamp with time zone NOT NULL,
-    current_period_end timestamp with time zone NOT NULL,
-    product_id text NOT NULL, -- Stripe Product ID
-    price_id text NOT NULL, -- Stripe Price ID
-    customer_id text NOT NULL, -- Stripe Customer ID
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    UNIQUE (user_id) -- A user can only have one active subscription of this type
-);
+1.  **Enhance Goal Tree Functionality (Weights & Progression Pathways):**
+    *   **Implement UI for adjusting `W_j` (goal weights):** The whitepaper states weights are "User-defined priorities, dynamically adjusted via peer feedback." Implement a UI in `GoalTreePage.tsx` to allow users to set these weights, and backend logic to store them.
+    *   **Implement UI for setting/updating Goal Node `progress`:** Add clear UI elements (e.g., sliders, input fields) in `GoalTreePage.tsx` or `GoalNodeDisplay.tsx` for users to set/update their progress on goals.
+    *   **Integrate "Edges: Progression Pathways":** Design and implement a mechanism (data model and UI) to represent and manage dependencies or sequential relationships between goal nodes.
 
--- RLS for user_subscriptions
-ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view their own subscriptions." ON public.user_subscriptions FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert their own subscriptions." ON public.user_subscriptions FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own subscriptions." ON public.user_subscriptions FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own subscriptions." ON public.user_subscriptions FOR DELETE USING (auth.uid() = user_id);
+2.  **Refine Post-Interaction Feedback & Tree Recalibration:**
+    *   **Automate `W_j` adjustments based on feedback:** Implement backend logic (`feedbackController.ts` or a new service) to dynamically adjust goal node weights based on the submitted "mutual grading" (e.g., "Distracted" increases weight, "Succeeded" decreases weight, as described in section 3.5 of the whitepaper).
+    *   **Integrate feedback effects into Matching:** Ensure the matching algorithm (`MatchingEngineService`) properly utilizes the dynamically recalibrated weights.
 
--- Trigger to set updated_at on user_subscriptions table (assuming set_updated_at function exists)
-CREATE TRIGGER set_user_subscriptions_updated_at
-BEFORE UPDATE ON public.user_subscriptions
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
+3.  **Refine Dynamic Matching Scoring (`sim(i, j)` & Normalization):**
+    *   **`sim(i, j)` implementation review:** While Gemini Embeddings are used, the precise calculation of "AI-evaluated progress similarity (0-1)" should be reviewed and potentially refined for optimal matching accuracy.
+    *   **$S_{AB}$ Normalization:** Verify and ensure the normalization step for the compatibility score $S_{AB}$ ("Normalize $S_{AB}$ by total weight products") is correctly and robustly implemented in `MatchingEngineService`.
 
--- You might need to define the set_updated_at function if it's not already in your Supabase project:
-/*
-CREATE OR REPLACE FUNCTION public.set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-*/
-```
+4.  **Implement Identity Verification (Facial Scanning):**
+    *   **Research & Choose a Facial Scanning API/SDK:** Investigate and select a suitable third-party service or SDK for facial scanning to "confirm human presence and build trust" (section 3.1.1).
+    *   **Integrate Frontend UI:** Add a new step in the user onboarding flow or a dedicated section in the `ProfilePage.tsx` for users to perform facial scanning.
+    *   **Backend Integration:** Implement backend endpoints (`userController.ts` or a new controller) to interact with the chosen facial scanning service and securely store the verification status in the `profiles` table.
 
-**2. `profiles` Table Modification & Trigger:**
+5.  **Configure `CLIENT_URL` Environment Variable:**
+    *   Set `CLIENT_URL` as an environment variable in the backend's production environment. Update `stripeController.ts` to use `process.env.CLIENT_URL` without a fallback for deployment.
 
-```sql
--- Add is_premium column to profiles table
-ALTER TABLE public.profiles ADD COLUMN is_premium boolean DEFAULT false NOT NULL;
+### **Mid-Term Steps (Expanding Core Functionality & Monetization):**
 
--- Function to update profiles.is_premium based on user_subscriptions status
-CREATE OR REPLACE FUNCTION public.update_profile_premium_status()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- For INSERT or UPDATE on user_subscriptions
-    IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
-        UPDATE public.profiles
-        SET is_premium = (NEW.status = 'active' OR NEW.status = 'trialing')
-        WHERE id = NEW.user_id;
-    -- For DELETE on user_subscriptions
-    ELSIF (TG_OP = 'DELETE') THEN
-        -- Check if user has any other active/trialing subscriptions
-        IF NOT EXISTS (SELECT 1 FROM public.user_subscriptions WHERE user_id = OLD.user_id AND (status = 'active' OR status = 'trialing')) THEN
-            UPDATE public.profiles
-            SET is_premium = false
-            WHERE id = OLD.user_id;
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+6.  **Implement "Unlimited Goals" for Premium Users:**
+    *   Enforce the premium constraint: Non-premium users should be limited to 3 primary goals (as per whitepaper section 3.1). Implement this validation in both the frontend UI (e.g., `GoalTreePage.tsx`) and the backend API (`goalController.ts`).
+7.  **AI Coaching Integration:**
+    *   Design and implement how "AI coaching" will manifest as a premium feature. This could involve personalized insights, suggestions for goal refinement, or AI-generated guidance based on user progress and feedback data (leveraging Gemini API).
+8.  **Develop Advanced Analytics for Premium Users:**
+    *   Define the scope of "advanced analytics" (e.g., deeper progress reports, comparative insights with anonymized similar users, trend analysis).
+    *   Implement backend data aggregation/processing and frontend visualizations for these premium analytics features.
+9.  **Begin Planning for Job Marketplace / Ethical Ads / Anonymized Trend Analytics:**
+    *   Start with architectural planning, market research for potential partners, and defining the scope for initial implementations of these additional revenue streams.
 
--- Trigger for profiles.is_premium status
-CREATE TRIGGER user_subscriptions_premium_status_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.user_subscriptions
-FOR EACH ROW EXECUTE FUNCTION public.update_profile_premium_status();
-```
+### **Long-Term Steps (Growth, Scalability, & Robustness):**
 
-Please run these SQL commands in your Supabase SQL editor to set up the necessary tables and triggers.
+10. **Robust Error Handling & Monitoring:** Systematically review and enhance error handling, logging, and monitoring across both frontend and backend for a production-grade application.
+11. **Comprehensive Testing Suite:** Develop a full suite of unit, integration, and end-to-end tests for all features to ensure long-term stability and maintainability.
+12. **Automated Deployment (CI/CD):** Set up Continuous Integration and Continuous Deployment pipelines for automated testing, building, and deployment processes.
+13. **Performance Optimization:** Proactively identify and optimize bottlenecks in database queries, API responses, and frontend rendering to ensure the application scales efficiently with user growth.

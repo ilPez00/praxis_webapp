@@ -1,3 +1,5 @@
+import { Domain } from './Domain';
+
 export interface Achievement {
   id: string;
   userId: string;

@@ -37,13 +37,29 @@ export class MatchingEngineService {
       return embedding;
     };
 
-    // Helper to calculate AI_sim using Gemini Embeddings
+    // Helper to calculate AI_sim using Gemini Embeddings, incorporating more goal details and progress similarity
     const aiSim = async (nodeA: GoalNode, nodeB: GoalNode): Promise<number> => {
-      // For now, compare based on goal name. Could extend to description later.
-      const embeddingA = await getCachedEmbedding(nodeA.name);
-      const embeddingB = await getCachedEmbedding(nodeB.name);
+      // Construct a richer text representation for each goal node to feed into the embedding model.
+      // Include name, custom details, and category.
+      const textA = `${nodeA.name}. ${nodeA.customDetails || ''} ${nodeA.category ? `Category: ${nodeA.category}.` : ''}`.trim();
+      const textB = `${nodeB.name}. ${nodeB.customDetails || ''} ${nodeB.category ? `Category: ${nodeB.category}.` : ''}`.trim();
 
-      return EmbeddingService.calculateCosineSimilarity(embeddingA, embeddingB);
+      const embeddingA = await getCachedEmbedding(textA);
+      const embeddingB = await getCachedEmbedding(textB);
+
+      // Calculate cosine similarity for the semantic content of the goals
+      const semanticSimilarity = EmbeddingService.calculateCosineSimilarity(embeddingA, embeddingB);
+
+      // Incorporate progress similarity.
+      // Goals with similar progress (closer to 0 difference) should have a higher progress factor (closer to 1).
+      // Goals with very different progress (closer to 1 difference) should have a lower progress factor (closer to 0).
+      const progressDifference = Math.abs(nodeA.progress - nodeB.progress); // Range 0 to 1
+      const progressSimilarityFactor = 1 - progressDifference; // Range 0 to 1
+
+      // Combine semantic similarity and progress similarity.
+      // The progress similarity factor acts as a modifier to the semantic similarity.
+      // If goals are semantically very similar, but their progress is far apart, their overall similarity should be reduced.
+      return semanticSimilarity * progressSimilarityFactor;
     };
 
     for (const nodeA of userATree.nodes) {
