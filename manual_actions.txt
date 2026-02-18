@@ -1,0 +1,138 @@
+# Manual Actions Required for Praxis Webapp Setup
+
+This document outlines the essential manual configurations and actions you need to perform outside of the codebase. These steps are crucial for the proper functioning of authentication (via Supabase and Google) and payment processing (via Stripe).
+
+---
+
+## 1. Environment Variable Setup
+
+You need to create `.env` files in two locations:
+
+### a) Frontend Environment Variables (`./client/.env`)
+
+Create a file named `.env` inside the `client/` directory (`/home/gio/Praxis/praxis_webapp/client/.env`) and add the following:
+
+```
+REACT_APP_SUPABASE_URL="YOUR_SUPABASE_PROJECT_URL"
+REACT_APP_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
+REACT_APP_STRIPE_PUBLISHABLE_KEY="YOUR_STRIPE_PUBLISHABLE_KEY"
+```
+*   **`YOUR_SUPABASE_PROJECT_URL`**: Find this in your Supabase project settings (e.g., `https://abcdefghijk.supabase.co`).
+*   **`YOUR_SUPABASE_ANON_KEY`**: Find this in your Supabase project settings under API Keys (it's the `anon` public key).
+*   **`YOUR_STRIPE_PUBLISHABLE_KEY`**: Your public Stripe API key, typically starting with `pk_test_...` for test mode.
+
+### b) Backend Environment Variables (`./.env`)
+
+Create a file named `.env` in the root of your project (`/home/gio/Praxis/praxis_webapp/.env`) and add the following:
+
+```
+SUPABASE_URL="YOUR_SUPABASE_PROJECT_URL"
+SUPABASE_SERVICE_ROLE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY"
+STRIPE_SECRET_KEY="YOUR_STRIPE_SECRET_KEY"
+STRIPE_PRODUCT_ID="YOUR_STRIPE_PRODUCT_ID"
+STRIPE_PRICE_ID="YOUR_STRIPE_PRICE_ID"
+STRIPE_WEBHOOK_SECRET="YOUR_STRIPE_WEBHOOK_SECRET"
+CLIENT_URL="http://localhost:3000" # Or your frontend's deployment URL
+```
+*   **`YOUR_SUPABASE_PROJECT_URL`**: Same as above.
+*   **`YOUR_SUPABASE_SERVICE_ROLE_KEY`**: Found in your Supabase project settings under API Keys (it's the `service_role` secret key). **Keep this confidential!**
+*   **`YOUR_STRIPE_SECRET_KEY`**: Your secret Stripe API key, typically starting with `sk_test_...` for test mode. **Keep this confidential!**
+*   **`YOUR_STRIPE_PRODUCT_ID`**: The ID of your product defined in Stripe (e.g., for "Premium Membership").
+*   **`YOUR_STRIPE_PRICE_ID`**: The ID of the recurring price associated with your Stripe product.
+*   **`YOUR_STRIPE_WEBHOOK_SECRET`**: The secret for verifying Stripe webhook events. You'll generate this when setting up webhooks in Stripe. **Keep this confidential!**
+*   **`CLIENT_URL`**: The URL where your frontend application is served. Use `http://localhost:3000` for local development.
+
+**ACTION**: After creating/modifying these `.env` files, **restart both your frontend and backend development servers** for the changes to take effect.
+
+---
+
+## 2. Supabase Project Configuration (Dashboard: app.supabase.com)
+
+Log in to your Supabase project dashboard and configure the following:
+
+### a) General Site URL & Redirect URLs
+
+*   Navigate to `Project Settings` -> `Authentication`.
+*   **Site URL**: Set this to your application's base URL (e.g., `http://localhost:3000` for local development, or your deployed domain).
+*   **Redirect URLs**: Add `http://localhost:3000/**` (or your deployed domain's equivalent with `/**`). This is crucial for OAuth redirects.
+
+### b) Google Provider Configuration (for "Login/Signup with Google")
+
+*   Navigate to `Authentication` -> `Providers`.
+*   Enable the `Google` provider.
+*   You will need to enter a **Google Client ID** and **Google Client Secret**. These come from your Google Cloud Console project.
+
+### c) Google Cloud Console Configuration (console.cloud.google.com)
+
+*   Go to your Google Cloud Console project where you created the OAuth 2.0 Client ID for your application.
+*   Navigate to `APIs & Services` -> `Credentials`.
+*   Edit your OAuth 2.0 Client ID.
+*   Ensure that the `Authorized redirect URIs` include the **Supabase OAuth callback URL**. This typically looks like: `https://<your-project-ref>.supabase.co/auth/v1/callback` (replace `<your-project-ref>` with your actual Supabase project reference).
+
+### d) Email Confirmation Settings (for Email/Password Signup)
+
+*   Navigate to `Authentication` -> `Settings`.
+*   Check the `Email Confirmation` setting. If it's enabled, users signing up with email/password will receive a verification email and must click the link before they can log in. This is the expected behavior based on the current frontend messaging.
+
+### e) Database `public.profiles` Table and `handle_new_user` Trigger
+
+The backend `signup` controller relies on a database trigger to create user profiles.
+
+*   **Verify `public.profiles` Table:**
+    *   Ensure a table named `profiles` exists in the `public` schema (`public.profiles`).
+    *   It should have at least `id`, `name`, `age`, and `bio` columns.
+    *   The `id` column should be a UUID and typically set as the primary key and foreign key referencing `auth.users.id`.
+*   **Verify `handle_new_user` Trigger:**
+    *   In your Supabase SQL Editor, confirm that the `handle_new_user` function and `on_auth_user_created` trigger are set up.
+    *   If not, you may need to create them. A common setup looks like this (adjust column names in `INSERT` statement based on your `profiles` table schema and how `name`, `age`, `bio` are passed in `raw_user_meta_data`):
+
+    ```sql
+    -- This trigger automatically creates a profile entry when a new user signs up via Auth.
+    CREATE FUNCTION public.handle_new_user()
+    RETURNS TRIGGER AS $$
+    BEGIN
+      INSERT INTO public.profiles (id, name, age, bio)
+      VALUES (NEW.id, NEW.raw_user_meta_data->>'name', (NEW.raw_user_meta_data->>'age')::int, NEW.raw_user_meta_data->>'bio');
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+    -- Drop the trigger if it already exists to avoid recreation errors
+    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+    -- Create the trigger
+    CREATE TRIGGER on_auth_user_created
+      AFTER INSERT ON auth.users
+      FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+    ```
+    *   **Note:** The `(NEW.raw_user_meta_data->>'age')::int` part explicitly casts the `age` from text to integer.
+
+---
+
+## 3. Stripe Configuration (Dashboard: dashboard.stripe.com)
+
+Log in to your Stripe dashboard and configure the following:
+
+### a) API Keys
+
+*   Navigate to `Developers` -> `API Keys`.
+*   Locate your `Publishable key` (for frontend `.env`) and `Secret key` (for backend `.env`).
+
+### b) Products and Prices
+
+*   Navigate to `Products`.
+*   Ensure you have at least one product (e.g., "Premium Membership") and a recurring price associated with it.
+*   Note down the **Product ID** and **Price ID** to use in your backend `.env`.
+
+### c) Webhooks
+
+*   Navigate to `Developers` -> `Webhooks`.
+*   **Add an endpoint**:
+    *   For local development, you'll need a tool like `ngrok` or `Stripe CLI` to expose your local backend's webhook endpoint to Stripe. Your backend webhook endpoint is typically `/stripe/webhook`.
+    *   The URL will look something like `https://your-ngrok-url/stripe/webhook` or `http://localhost:3001/stripe/webhook` if using Stripe CLI with forwarding.
+    *   **Events to send**: Select `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`. These are processed by your backend's `stripeController.ts`.
+*   After creating the webhook endpoint, Stripe will provide a **Webhook Secret**. Note this down and add it to your backend `.env` as `STRIPE_WEBHOOK_SECRET`.
+
+---
+
+Please complete these manual actions. If you encounter any issues or need further assistance with any of these steps, let me know.

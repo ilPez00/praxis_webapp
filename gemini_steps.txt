@@ -2,7 +2,13 @@ Hi gemini. you are building praxis, as outlined in the whitepaper pdf. This file
 
 **Completed Development Plan:**
 
-1.  **Goal Tree Visualization and Editing Page:** (COMPLETED)
+1.  **General Development & Infrastructure Setup:** (COMPLETED)
+    *   Created `README.md` with project overview and development workflow.
+    *   Migrated content from `README.txt` to `README.md`, and deleted `README.txt`.
+    *   Fixed compilation errors in `client/src/pages/DashboardPage.tsx`, `client/src/pages/GoalTreePage.tsx`, and `client/src/pages/IdentityVerificationPage.tsx`.
+    *   Created `manual_actions.txt` with detailed setup instructions for Supabase, Google OAuth, and Stripe.
+
+2.  **Goal Tree Visualization and Editing Page:** (COMPLETED)
     *   Enhanced `GoalTreePage.tsx` to allow users to visualize and edit their goal trees, including adding, updating, and deleting goal nodes.
     *   `GoalNodeDisplay.tsx` and `GoalTreeDisplay.tsx` updated for proper interaction.
     *   Implemented UI for adding new goal nodes to a tree.
@@ -10,13 +16,13 @@ Hi gemini. you are building praxis, as outlined in the whitepaper pdf. This file
     *   Implemented UI for deleting goal nodes with confirmation and recursive deletion of sub-goals.
     *   Backend API (via `POST /goals`) handles these goal tree editing operations.
 
-2.  **User Profile Enhancements:** (COMPLETED)
+3.  **User Profile Enhancements:** (COMPLETED)
     *   Allowed users to edit their profile picture, name, age, and bio.
     *   Implemented profile picture upload functionality to Supabase storage.
     *   `ProfilePage.tsx` updated with file input for avatar and logic for handling image upload to Supabase and updating the user's `avatar_url`.
     *   Ensured UI for editing name, age, and bio on `ProfilePage` is functional and correctly updates the backend via `axios.put` to `/users/:id`.
 
-3.  **Dashboard with Achievements:** (COMPLETED)
+4.  **Dashboard with Achievements:** (COMPLETED)
     *   Displayed a list of other users' achievements on the `DashboardPage.tsx` with functionality to upvote, downvote, and comment.
     *   Created client-side models (`client/src/models/Achievement.ts`, `AchievementComment.ts`, `AchievementVote.ts`).
     *   Provided SQL definitions for `achievements`, `achievement_comments`, and `achievement_votes` Supabase tables, including RLS and vote count triggers.
@@ -32,7 +38,7 @@ Hi gemini. you are building praxis, as outlined in the whitepaper pdf. This file
         *   Provide buttons for upvoting and downvoting with `refreshAchievements` callback.
         *   Implement a dialog to display and add comments with `refreshAchievements` callback.
 
-4.  **Stripe Payment System Integration:** (COMPLETED)
+5.  **Stripe Payment System Integration:** (COMPLETED)
     *   **Stripe SDKs:** Installed `stripe` Node.js library in the backend and `@stripe/stripe-js`, `@stripe/react-stripe-js` in the frontend.
     *   **Stripe Configuration:** Set up Stripe environment variables (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRODUCT_ID`, `STRIPE_PRICE_ID`) and `dotenv` in the backend. `REACT_APP_STRIPE_PUBLISHABLE_KEY` added to frontend `.env`.
     *   **Backend Checkout API:** Implemented backend API endpoint (`POST /stripe/create-checkout-session`) for creating Stripe Checkout Sessions.
@@ -42,8 +48,8 @@ Hi gemini. you are building praxis, as outlined in the whitepaper pdf. This file
     *   **Frontend Conditional UI:** Implemented conditional UI for premium features on `DashboardPage.tsx`, displaying an "Upgrade Now" button if the user is not premium.
     *   **User Model & Hook Update:** Updated `client/src/models/User.ts` with `is_premium` and modified `client/src/hooks/useUser.ts` to fetch this status from Supabase.
 
-5.  **Code Commenting:** (COMPLETED)
-    *   Added comments to logical blocks in both frontend and backend files, focusing on new features and complex logic introduced during this session.
+6.  **Code Commenting & Documentation:** (COMPLETED)
+    *   Added comments to logical blocks in both frontend and backend files, focusing on new features, complex logic introduced during this session, and error fixes.
     *   Commented on `src/controllers/stripeController.ts`, `src/controllers/achievementController.ts`, `src/controllers/goalController.ts`, `src/controllers/userController.ts` in the backend.
     *   Commented on `client/src/pages/UpgradePage.tsx`, `client/src/pages/SuccessPage.tsx`, `client/src/pages/CancelPage.tsx`, `client/src/hooks/useUser.ts`, `client/src/pages/DashboardPage.tsx`, and `client/src/pages/ProfilePage.tsx` in the frontend.
 
