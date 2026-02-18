@@ -8,6 +8,8 @@ export interface GoalNode {
   weight: number;
   progress: number;
   parentId?: string;
+  category?: string; // Add category field
+  customDetails?: string; // Add customDetails field
 }
 
 export function updateWeightFromGrade(goalNode: GoalNode, grade: FeedbackGrade): GoalNode {

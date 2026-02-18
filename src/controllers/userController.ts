@@ -23,11 +23,11 @@ export const getUserProfile = async (req: Request, res: Response) => {
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { id } = req.params as { id: string };
-  const { name, age, bio } = req.body;
+  const { name, age, bio, avatarUrl } = req.body;
 
   const { data, error } = await supabase
     .from('profiles')
-    .update({ name, age, bio })
+    .update({ name, age, bio, avatarUrl })
     .eq('id', id)
     .single();
 

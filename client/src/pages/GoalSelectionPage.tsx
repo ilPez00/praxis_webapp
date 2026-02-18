@@ -5,6 +5,21 @@ import { supabase } from '../lib/supabase';
 import { Domain } from '../models/Domain';
 import { GoalNode } from '../models/GoalNode';
 import { GoalTree } from '../models/GoalTree';
+import {
+  Container,
+  Box,
+  Typography,
+  Button,
+  Stack,
+  Paper,
+  Chip,
+  IconButton,
+  TextField,
+  useTheme,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import CloseIcon from '@mui/icons-material/Close';
 
 const DOMAIN_COLORS: Record<Domain, string> = {
   [Domain.CAREER]: '#4CAF50',
@@ -82,6 +97,7 @@ interface SelectedGoal {
 
 const GoalSelectionPage: React.FC = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [expandedDomain, setExpandedDomain] = useState<Domain | null>(null);
   const [selectedGoals, setSelectedGoals] = useState<SelectedGoal[]>([]);
@@ -91,7 +107,7 @@ const GoalSelectionPage: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      const uid = authUser?.id || '1';
+      const uid = authUser?.id || '1'; // Fallback for dev
       setCurrentUserId(uid);
 
       // Load existing goals if any
@@ -111,15 +127,16 @@ const GoalSelectionPage: React.FC = () => {
           }));
           setSelectedGoals(converted);
         }
-      } catch {
-        // No existing tree — that's fine
+      } catch (error) {
+        // No existing tree — that's fine for first-time users
+        console.log('No existing goal tree found:', error);
       }
     };
     init();
   }, []);
 
   const handleSelectCategory = (domain: Domain, category: string) => {
-    if (selectedGoals.length >= MAX_FREE_GOALS) return;
+    if (!canAddMore) return; // Prevent adding if max reached
 
     // Don't add duplicates
     if (selectedGoals.some(g => g.domain === domain && g.category === category)) return;
@@ -133,7 +150,7 @@ const GoalSelectionPage: React.FC = () => {
     };
 
     setSelectedGoals([...selectedGoals, newGoal]);
-    setExpandedDomain(null);
+    setExpandedDomain(null); // Collapse domain after selection
   };
 
   const handleRemoveGoal = (goalId: string) => {
@@ -178,7 +195,7 @@ const GoalSelectionPage: React.FC = () => {
         rootNodes: nodes,
       });
 
-      navigate(`/goals/${currentUserId}`);
+      navigate(`/goals/${currentUserId}`); // Redirect to GoalTreePage
     } catch (err) {
       console.error('Failed to save goals:', err);
       alert('Failed to save goals. Please try again.');
@@ -194,186 +211,185 @@ const GoalSelectionPage: React.FC = () => {
   const canAddMore = selectedGoals.length < MAX_FREE_GOALS;
 
   return (
-    <div className="goal-selection-page">
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 16px' }}>
+    <Container component="main" maxWidth="md" sx={{ py: 4 }}>
+      <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Typography component="h1" variant="h4" gutterBottom sx={{ color: 'primary.main' }}>
+          Choose Your Goals
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+          Select up to {MAX_FREE_GOALS} primary goals from any domain.
+          You can customize names and add details to refine your matches.
+        </Typography>
+        <Typography variant="h6" sx={{ color: theme.palette.action.active }}>
+          {selectedGoals.length} / {MAX_FREE_GOALS} Goals Selected
+        </Typography>
+      </Box>
 
-        {/* Header */}
-        <div className="page-header">
-          <h1>Choose Your Goals</h1>
-          <p className="page-subtitle">
-            Select up to {MAX_FREE_GOALS} primary goals from any domain.
-            You can customize names and add details to refine your matches.
-          </p>
-          <div className="goals-counter">
-            <span className="counter-value">{selectedGoals.length}</span>
-            <span>/</span>
-            <span className="counter-max">{MAX_FREE_GOALS}</span>
-          </div>
-        </div>
-
-        {/* Selected Goals */}
-        {selectedGoals.length > 0 && (
-          <section className="selected-goals fade-in">
-            <h2>Selected Goals</h2>
-            <div className="selected-goals-list">
-              {selectedGoals.map((goal) => (
-                <div
-                  key={goal.id}
-                  className="selected-goal-card"
-                  style={{ borderLeftColor: DOMAIN_COLORS[goal.domain] }}
-                >
-                  <div className="goal-content">
-                    <div className="goal-top">
-                      <span
-                        className="goal-domain-badge"
-                        style={{
-                          backgroundColor: `${DOMAIN_COLORS[goal.domain]}20`,
-                          color: DOMAIN_COLORS[goal.domain],
-                        }}
-                      >
-                        {DOMAIN_ICONS[goal.domain]} {goal.domain}
-                      </span>
-                      <button
-                        className="remove-btn"
-                        onClick={() => handleRemoveGoal(goal.id)}
-                        title="Remove goal"
-                      >
-                        ×
-                      </button>
-                    </div>
-
-                    <div className="goal-customize">
-                      <input
-                        className="goal-input"
-                        type="text"
-                        value={goal.customName}
-                        onChange={(e) => handleUpdateGoal(goal.id, 'customName', e.target.value)}
-                        placeholder="Goal name"
-                      />
-                      <textarea
-                        className="goal-textarea"
-                        value={goal.details}
-                        onChange={(e) => handleUpdateGoal(goal.id, 'details', e.target.value)}
-                        placeholder="Add details (optional) — what specifically do you want to achieve?"
-                        rows={2}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Domain Selection */}
-        <section className="domain-selection fade-in" style={{ animationDelay: '0.1s' }}>
-          <h2>{selectedGoals.length > 0 ? 'Add More Goals' : 'Pick a Domain'}</h2>
-          <div className="domains-list">
-            {Object.values(Domain).map((domain) => {
-              const isExpanded = expandedDomain === domain;
-              const alreadySelected = selectedGoals.filter(g => g.domain === domain).length;
-
-              return (
-                <div key={domain} className="domain-item">
-                  <button
-                    className="domain-button"
-                    onClick={() => toggleDomain(domain)}
-                    disabled={!canAddMore && !isExpanded}
-                  >
-                    <div
-                      className="domain-indicator"
-                      style={{ backgroundColor: DOMAIN_COLORS[domain] }}
+      {selectedGoals.length > 0 && (
+        <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
+            Selected Goals
+          </Typography>
+          <Stack spacing={2}>
+            {selectedGoals.map((goal) => (
+              <Paper key={goal.id} variant="outlined" sx={{
+                p: 2,
+                display: 'flex',
+                alignItems: 'center',
+                borderColor: DOMAIN_COLORS[goal.domain],
+                borderLeft: '8px solid',
+              }}>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Chip
+                      label={`${DOMAIN_ICONS[goal.domain]} ${goal.domain}`}
+                      sx={{
+                        backgroundColor: `${DOMAIN_COLORS[goal.domain]}15`,
+                        color: DOMAIN_COLORS[goal.domain],
+                        fontWeight: 'bold',
+                      }}
                     />
-                    <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>
-                      {DOMAIN_ICONS[domain]}
-                    </span>
-                    <span className="domain-name">
-                      {domain}
-                      {alreadySelected > 0 && (
-                        <span style={{
-                          marginLeft: 8,
-                          fontSize: '0.75rem',
-                          color: DOMAIN_COLORS[domain],
-                          fontWeight: 500,
-                        }}>
-                          ({alreadySelected} selected)
-                        </span>
-                      )}
-                    </span>
-                    <span className="expand-icon">{isExpanded ? '−' : '+'}</span>
-                  </button>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemoveGoal(goal.id)}
+                      aria-label="remove goal"
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    margin="dense"
+                    label="Goal Name"
+                    value={goal.customName}
+                    onChange={(e) => handleUpdateGoal(goal.id, 'customName', e.target.value)}
+                    sx={{ mb: 1 }}
+                  />
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    margin="dense"
+                    label="Details (optional)"
+                    multiline
+                    rows={2}
+                    value={goal.details}
+                    onChange={(e) => handleUpdateGoal(goal.id, 'details', e.target.value)}
+                  />
+                </Box>
+              </Paper>
+            ))}
+          </Stack>
+        </Paper>
+      )}
 
-                  {isExpanded && (
-                    <div className="goal-categories">
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
+          {selectedGoals.length > 0 ? 'Add More Goals' : 'Pick a Domain'}
+        </Typography>
+        <Stack spacing={1}>
+          {Object.values(Domain).map((domain) => {
+            const isExpanded = expandedDomain === domain;
+            const alreadySelectedCount = selectedGoals.filter(g => g.domain === domain).length;
+
+            return (
+              <Paper key={domain} elevation={1} sx={{ p: 2 }}>
+                <Button
+                  fullWidth
+                  variant="text"
+                  onClick={() => toggleDomain(domain)}
+                  disabled={!canAddMore && !isExpanded}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    color: 'text.primary',
+                    '&:hover': {
+                      backgroundColor: theme.palette.action.hover,
+                    }
+                  }}
+                >
+                  <Box sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    backgroundColor: DOMAIN_COLORS[domain],
+                    mr: 1,
+                  }} />
+                  <Typography variant="h6" component="span" sx={{ flexGrow: 1 }}>
+                    {DOMAIN_ICONS[domain]} {domain}
+                    {alreadySelectedCount > 0 && (
+                      <Chip
+                        label={`${alreadySelectedCount} selected`}
+                        size="small"
+                        sx={{ ml: 1, backgroundColor: `${DOMAIN_COLORS[domain]}15`, color: DOMAIN_COLORS[domain] }}
+                      />
+                    )}
+                  </Typography>
+                  <IconButton size="small" sx={{ color: 'text.secondary' }}>
+                    {isExpanded ? <RemoveIcon /> : <AddIcon />}
+                  </IconButton>
+                </Button>
+
+                {isExpanded && (
+                  <Box sx={{ mt: 2, pl: 4, pr: 2 }}>
+                    <Stack direction="row" flexWrap="wrap" spacing={1}>
                       {DOMAIN_CATEGORIES[domain].map((cat) => {
                         const isAlreadyPicked = selectedGoals.some(
                           g => g.domain === domain && g.category === cat
                         );
                         return (
-                          <button
+                          <Chip
                             key={cat}
-                            className="category-button"
+                            label={cat}
                             onClick={() => handleSelectCategory(domain, cat)}
                             disabled={isAlreadyPicked || !canAddMore}
-                            style={{
-                              ...(isAlreadyPicked
-                                ? {
-                                    borderColor: DOMAIN_COLORS[domain],
-                                    backgroundColor: `${DOMAIN_COLORS[domain]}15`,
-                                    opacity: 0.6,
-                                  }
-                                : {}),
-                              ['--hover-color' as string]: DOMAIN_COLORS[domain],
+                            variant={isAlreadyPicked ? 'filled' : 'outlined'}
+                            color={isAlreadyPicked ? 'primary' : 'default'}
+                            sx={{
+                              borderColor: DOMAIN_COLORS[domain],
+                              color: isAlreadyPicked ? theme.palette.common.white : DOMAIN_COLORS[domain],
+                              backgroundColor: isAlreadyPicked ? DOMAIN_COLORS[domain] : 'transparent',
+                              '&:hover': {
+                                backgroundColor: isAlreadyPicked ? DOMAIN_COLORS[domain] : `${DOMAIN_COLORS[domain]}15`,
+                              },
                             }}
-                          >
-                            {cat}
-                            {isAlreadyPicked && ' ✓'}
-                          </button>
+                          />
                         );
                       })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                    </Stack>
+                  </Box>
+                )}
+              </Paper>
+            );
+          })}
+        </Stack>
+      </Box>
 
-        {/* Actions */}
-        <div className="page-actions fade-in" style={{ animationDelay: '0.2s', marginTop: 32, marginBottom: 48 }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              padding: '12px 32px',
-              borderRadius: 8,
-              border: '1px solid #ccc',
-              background: 'transparent',
-              fontSize: '1rem',
-              cursor: 'pointer',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={selectedGoals.length === 0 || saving}
-            style={{
-              padding: '12px 32px',
-              borderRadius: 8,
-              border: 'none',
-              background: selectedGoals.length === 0 ? '#ccc' : '#007AFF',
-              color: 'white',
-              fontSize: '1rem',
-              fontWeight: 600,
-              cursor: selectedGoals.length === 0 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {saving ? 'Saving...' : `Save ${selectedGoals.length} Goal${selectedGoals.length !== 1 ? 's' : ''}`}
-          </button>
-        </div>
-
-      </div>
-    </div>
+      <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 4 }}>
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={() => navigate(-1)}
+          sx={{ borderRadius: 0 }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSave}
+          disabled={selectedGoals.length === 0 || saving}
+          sx={{
+            borderRadius: 0,
+            backgroundColor: theme.palette.action.active,
+            '&:hover': {
+              backgroundColor: theme.palette.primary.dark,
+            },
+          }}
+        >
+          {saving ? 'Saving...' : `Save ${selectedGoals.length} Goal${selectedGoals.length !== 1 ? 's' : ''}`}
+        </Button>
+      </Stack>
+    </Container>
   );
 };
 

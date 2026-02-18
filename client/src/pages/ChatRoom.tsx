@@ -5,11 +5,35 @@ import axios from 'axios';
 import { FeedbackGrade } from '../models/FeedbackGrade';
 import { GoalTree } from '../models/GoalTree';
 import { GoalNode } from '../models/GoalNode';
-import '../styles/ChatRoom.css';
+import {
+    Container,
+    Box,
+    Typography,
+    TextField,
+    Button,
+    List,
+    ListItem,
+    ListItemText,
+    AppBar,
+    Toolbar,
+    IconButton,
+    Paper,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Stack,
+    Avatar,
+    useTheme,
+} from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SendIcon from '@mui/icons-material/Send';
+import CloseIcon from '@mui/icons-material/Close';
 
 const ChatRoom: React.FC = () => {
-    const { id: conversationId } = useParams(); // This ID should ideally map to a match or shared goal
+    const { user1Id, user2Id } = useParams<{ user1Id: string; user2Id: string }>();
     const navigate = useNavigate();
+    const theme = useTheme();
 
     const [messages, setMessages] = useState<any[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -18,15 +42,13 @@ const ChatRoom: React.FC = () => {
     const channelRef = useRef<any>(null);
 
     const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+    const [receiverName, setReceiverName] = useState<string>('Partner');
     const [showFeedbackForm, setShowFeedbackForm] = useState(false);
     const [userGoalTree, setUserGoalTree] = useState<GoalTree | null>(null);
     const [receiverGoalTree, setReceiverGoalTree] = useState<GoalTree | null>(null);
     const [selectedGoalNode, setSelectedGoalNode] = useState<string>(''); // GoalNode ID
     const [selectedGrade, setSelectedGrade] = useState<FeedbackGrade>(FeedbackGrade.SUCCEEDED);
     const [feedbackComment, setFeedbackComment] = useState('');
-
-    // Assuming the conversationId actually represents the receiverId for now, for simplicity
-    const receiverId = conversationId; 
 
     useEffect(() => {
         const getCurrentUser = async () => {
@@ -36,8 +58,27 @@ const ChatRoom: React.FC = () => {
         getCurrentUser();
     }, []);
 
+    // Fetch receiver's name
     useEffect(() => {
-        if (!currentUserId) return; // Wait for currentUserId to be set
+        if (!user2Id) return;
+        const fetchReceiverName = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('name')
+                    .eq('id', user2Id)
+                    .single();
+                if (error) throw error;
+                setReceiverName(data.name || 'Partner');
+            } catch (error) {
+                console.error('Error fetching receiver name:', error);
+            }
+        };
+        fetchReceiverName();
+    }, [user2Id]);
+
+    useEffect(() => {
+        if (!currentUserId) return;
 
         const fetchUserGoalTree = async () => {
             try {
@@ -48,57 +89,56 @@ const ChatRoom: React.FC = () => {
             }
         };
         fetchUserGoalTree();
-    }, [currentUserId]); // Refetch when currentUserId changes
+    }, [currentUserId]);
 
-    // Fetch receiver's goal tree
     useEffect(() => {
-        if (!receiverId) return;
+        if (!user2Id) return;
 
         const fetchReceiverGoalTree = async () => {
             try {
-                const response = await axios.get(`http://localhost:3001/goals/${receiverId}`);
+                const response = await axios.get(`http://localhost:3001/goals/${user2Id}`);
                 setReceiverGoalTree(response.data);
             } catch (err) {
                 console.error('Failed to fetch receiver goal tree:', err);
             }
         };
         fetchReceiverGoalTree();
-    }, [receiverId]);
+    }, [user2Id]);
 
     useEffect(() => {
-        if (!conversationId) return;
+        if (!user1Id || !user2Id) return;
 
         const fetchMessages = async () => {
-            const { data, error } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('conversation_id', conversationId)
-                .order('created_at', { ascending: true });
-            if (error) console.error('Fetch error:', error);
-            else setMessages(data || []);
-            setLoading(false);
+            try {
+                const response = await axios.get(`http://localhost:3001/messages/${user1Id}/${user2Id}`);
+                setMessages(response.data || []);
+            } catch (error) {
+                console.error('Fetch messages error:', error);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchMessages();
 
-        channelRef.current = supabase.channel(`conversation:${conversationId}`)
+        // Create a unique channel name for the conversation
+        const channelName = [user1Id, user2Id].sort().join('-');
+
+        channelRef.current = supabase.channel(`chat_${channelName}`)
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'messages',
-                filter: `conversation_id=eq.${conversationId}`,
+                filter: `or(senderId.eq.${user1Id},senderId.eq.${user2Id})`, // Filter for messages relevant to this chat
             }, (payload) => {
-                setMessages(prev => [...prev, payload.new]);
+                // Only add message if it's for this specific conversation
+                const newMessage = payload.new;
+                if ((newMessage.senderId === user1Id && newMessage.receiverId === user2Id) ||
+                    (newMessage.senderId === user2Id && newMessage.receiverId === user1Id)) {
+                    setMessages(prev => [...prev, newMessage]);
+                }
             })
             .subscribe((status) => {
                 console.log('Realtime status:', status);
-            });
-
-        channelRef.current
-            .on('broadcast', { event: 'typing' }, ({ payload }: any) => {
-                // Show "Other is typing..." if payload.user !== currentUserId
-            })
-            .on('presence', { event: 'sync' }, () => {
-                // Online status
             });
 
         return () => {
@@ -106,28 +146,29 @@ const ChatRoom: React.FC = () => {
                 supabase.removeChannel(channelRef.current);
             }
         };
-    }, [conversationId]);
+    }, [user1Id, user2Id]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
     const sendMessage = async () => {
-        if (!newMessage.trim() || !conversationId) return;
+        if (!newMessage.trim() || !currentUserId || !user2Id) return;
 
-        const { error } = await supabase
-            .from('messages')
-            .insert({
-                conversation_id: conversationId,
-                sender_id: currentUserId,
+        try {
+            await axios.post('http://localhost:3001/messages/send', {
+                senderId: currentUserId,
+                receiverId: user2Id,
                 content: newMessage.trim(),
             });
-        if (error) console.error('Send error:', error);
-        else setNewMessage('');
+            setNewMessage('');
+        } catch (error) {
+            console.error('Send message error:', error);
+        }
     };
 
     const handleSubmitFeedback = async () => {
-        if (!currentUserId || !receiverId || !selectedGoalNode || !selectedGrade) {
+        if (!currentUserId || !user2Id || !selectedGoalNode || !selectedGrade) {
             alert('Please select a goal and a grade for feedback.');
             return;
         }
@@ -135,14 +176,13 @@ const ChatRoom: React.FC = () => {
         try {
             await axios.post('http://localhost:3001/feedback', {
                 giverId: currentUserId,
-                receiverId: receiverId,
+                receiverId: user2Id,
                 goalNodeId: selectedGoalNode,
                 grade: selectedGrade,
                 comment: feedbackComment,
             });
             alert('Feedback submitted successfully!');
             setShowFeedbackForm(false);
-            // Optionally, reset form fields
             setSelectedGoalNode('');
             setSelectedGrade(FeedbackGrade.SUCCEEDED);
             setFeedbackComment('');
@@ -152,8 +192,12 @@ const ChatRoom: React.FC = () => {
         }
     };
 
-    if (loading) {
-        return <div className="chat-room">Loading messages...</div>;
+    if (loading || !currentUserId) {
+        return (
+            <Container component="main" maxWidth="md" sx={{ mt: 4, textAlign: 'center' }}>
+                <Typography variant="h5" color="text.secondary">Loading chat...</Typography>
+            </Container>
+        );
     }
 
     const receiverRootGoalsSummary = receiverGoalTree?.rootNodes
@@ -161,88 +205,162 @@ const ChatRoom: React.FC = () => {
         .join(', ');
 
     return (
-        <div className="chat-room">
-            <div className="chat-header">
-                <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-                <h2>Chat with User {receiverId}</h2>
+        <Container component="main" maxWidth="md" sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+            <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid', borderColor: theme.palette.divider }}>
+                <Toolbar>
+                    <IconButton edge="start" color="inherit" aria-label="back" onClick={() => navigate(-1)}>
+                        <ArrowBackIcon />
+                    </IconButton>
+                    <Avatar sx={{ bgcolor: theme.palette.action.active, mr: 1 }}>
+                        {receiverName.charAt(0)}
+                    </Avatar>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main' }}>
+                        Chat with {receiverName}
+                    </Typography>
+                </Toolbar>
+            </AppBar>
+
+            <Box sx={{ p: 2, bgcolor: 'background.default', flexGrow: 1, overflowY: 'auto' }}>
                 {receiverRootGoalsSummary && (
-                    <p className="shared-goal-context">
-                        Focusing on: {receiverRootGoalsSummary}
-                    </p>
+                    <Paper elevation={0} sx={{ p: 1, mb: 2, bgcolor: theme.palette.grey[200], textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                            Focusing on: {receiverRootGoalsSummary}
+                        </Typography>
+                    </Paper>
                 )}
-            </div>
+                <List>
+                    {messages.length === 0 ? (
+                        <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', mt: 2 }}>
+                            Say hi to start the conversation!
+                        </Typography>
+                    ) : (
+                        messages.map(msg => (
+                            <ListItem
+                                key={msg.id}
+                                sx={{
+                                    justifyContent: msg.senderId === currentUserId ? 'flex-end' : 'flex-start',
+                                    p: 0,
+                                    mb: 1,
+                                }}
+                            >
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        p: 1.5,
+                                        borderRadius: '20px',
+                                        backgroundColor: msg.senderId === currentUserId ? theme.palette.primary.main : theme.palette.secondary.main,
+                                        color: msg.senderId === currentUserId ? theme.palette.common.white : theme.palette.text.primary,
+                                        maxWidth: '70%',
+                                        wordBreak: 'break-word',
+                                        borderColor: msg.senderId === currentUserId ? theme.palette.primary.main : theme.palette.secondary.light,
+                                    }}
+                                >
+                                    <Typography variant="body2">{msg.content}</Typography>
+                                    <Typography variant="caption" display="block" sx={{ textAlign: 'right', mt: 0.5, color: msg.senderId === currentUserId ? 'rgba(255,255,255,0.7)' : theme.palette.text.secondary }}>
+                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </Typography>
+                                </Paper>
+                            </ListItem>
+                        ))
+                    )}
+                    <div ref={messagesEndRef} />
+                </List>
+            </Box>
 
-            <div className="messages-container">
-                {messages.length === 0 ? (
-                    <p className="empty-state">Say hi to start the conversation!</p>
-                ) : (
-                    messages.map(msg => (
-                        <div key={msg.id} className={`message ${msg.sender_id === currentUserId ? 'sent' : 'received'}`}>
-                            <div className="bubble">{msg.content}</div>
-                            <span className="time">
-                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                        </div>
-                    ))
-                )}
-                <div ref={messagesEndRef} />
-            </div>
-
-            <div className="input-area">
-                <input
-                    type="text"
-                    value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    onKeyPress={e => e.key === 'Enter' && sendMessage()}
-                />
-                <button className="send-btn" onClick={sendMessage}>Send</button>
-            </div>
-
-            <button onClick={() => setShowFeedbackForm(!showFeedbackForm)} className="feedback-toggle-btn">
-                {showFeedbackForm ? 'Hide Feedback Form' : 'Give Feedback'}
-            </button>
+            <Box sx={{ p: 2, borderTop: '1px solid', borderColor: theme.palette.divider, bgcolor: 'background.paper' }}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <TextField
+                        fullWidth
+                        variant="outlined"
+                        placeholder="Type a message..."
+                        value={newMessage}
+                        onChange={e => setNewMessage(e.target.value)}
+                        onKeyPress={e => e.key === 'Enter' && sendMessage()}
+                        size="small"
+                    />
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={sendMessage}
+                        endIcon={<SendIcon />}
+                        sx={{ height: '40px', bgcolor: theme.palette.action.active }}
+                    >
+                        Send
+                    </Button>
+                </Stack>
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                    <Button
+                        onClick={() => setShowFeedbackForm(!showFeedbackForm)}
+                        variant="text"
+                        sx={{ color: theme.palette.action.active }}
+                    >
+                        {showFeedbackForm ? 'Hide Feedback Form' : 'Give Feedback'}
+                    </Button>
+                </Box>
+            </Box>
 
             {showFeedbackForm && (
-                <div className="feedback-form">
-                    <h3>Submit Feedback</h3>
-                    <div>
-                        <label>Goal Node:</label>
-                        <select
-                            value={selectedGoalNode}
-                            onChange={(e) => setSelectedGoalNode(e.target.value)}
-                            disabled={!userGoalTree || userGoalTree.nodes.length === 0}
-                        >
-                            <option value="">Select a goal</option>
-                            {userGoalTree?.nodes.map((node: GoalNode) => (
-                                <option key={node.id} value={node.id}>
-                                    {node.name} ({node.domain})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label>Grade:</label>
-                        <select value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value as FeedbackGrade)}>
-                            {Object.values(FeedbackGrade).map((grade) => (
-                                <option key={grade} value={grade}>
-                                    {grade}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label>Comment (optional):</label>
-                        <textarea
+                <Paper elevation={3} sx={{ p: 3, mt: 2, bgcolor: 'background.paper' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6" sx={{ color: 'primary.main' }}>Submit Feedback</Typography>
+                        <IconButton onClick={() => setShowFeedbackForm(false)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Box>
+                    <Stack spacing={2}>
+                        <FormControl fullWidth variant="outlined">
+                            <InputLabel>Goal Node</InputLabel>
+                            <Select
+                                value={selectedGoalNode}
+                                onChange={(e) => setSelectedGoalNode(e.target.value as string)}
+                                label="Goal Node"
+                                disabled={!userGoalTree || userGoalTree.nodes.length === 0}
+                            >
+                                <MenuItem value="">
+                                    <em>Select a goal</em>
+                                </MenuItem>
+                                {userGoalTree?.nodes.map((node: GoalNode) => (
+                                    <MenuItem key={node.id} value={node.id}>
+                                        {node.name} ({node.domain})
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <FormControl fullWidth variant="outlined">
+                            <InputLabel>Grade</InputLabel>
+                            <Select
+                                value={selectedGrade}
+                                onChange={(e) => setSelectedGrade(e.target.value as FeedbackGrade)}
+                                label="Grade"
+                            >
+                                {Object.values(FeedbackGrade).map((grade) => (
+                                    <MenuItem key={grade} value={grade}>
+                                        {grade}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <TextField
+                            label="Comment (optional)"
+                            multiline
+                            rows={3}
+                            variant="outlined"
+                            fullWidth
                             value={feedbackComment}
                             onChange={(e) => setFeedbackComment(e.target.value)}
-                            rows={3}
-                        ></textarea>
-                    </div>
-                    <button onClick={handleSubmitFeedback}>Submit Feedback</button>
-                </div>
+                        />
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleSubmitFeedback}
+                            sx={{ bgcolor: theme.palette.action.active }}
+                        >
+                            Submit Feedback
+                        </Button>
+                    </Stack>
+                </Paper>
             )}
-        </div>
+        </Container>
     );
 };
 

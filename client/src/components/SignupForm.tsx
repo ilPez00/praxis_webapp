@@ -9,7 +9,7 @@ import {
     TextField,
     Button,
     Stack,
-    Link
+    Link as MuiLink,
 } from '@mui/material';
 
 const SignupForm: React.FC = () => {
@@ -57,72 +57,80 @@ const SignupForm: React.FC = () => {
                     alignItems: 'center',
                 }}
             >
-                <Typography component="h1" variant="h5">
-                    Sign up
+                <Typography component="h1" variant="h4" sx={{ color: 'primary.main' }}>
+                    Sign Up
                 </Typography>
                 {message && (
-                    <Typography color="error" sx={{ mt: 1 }}>
+                    <Typography color="error" sx={{ mt: 2 }}>
                         {message}
                     </Typography>
                 )}
-                <Box component="form" onSubmit={handleSignup} noValidate sx={{ mt: 1 }}>
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="email"
-                        label="Email Address"
-                        name="email"
-                        autoComplete="email"
-                        autoFocus
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        name="password"
-                        label="Password"
-                        type="password"
-                        id="password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="name"
-                        label="Name"
-                        name="name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="age"
-                        label="Age"
-                        name="age"
-                        type="number"
-                        value={age}
-                        onChange={(e) => setAge(e.target.value)}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="bio"
-                        label="Bio"
-                        name="bio"
-                        multiline
-                        rows={4}
-                        value={bio}
-                        onChange={(e) => setBio(e.target.value)}
-                    />
+                <Box component="form" onSubmit={handleSignup} noValidate sx={{ mt: 3 }}>
+                    <Stack spacing={2}>
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            id="email"
+                            label="Email Address"
+                            name="email"
+                            autoComplete="email"
+                            autoFocus
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            variant="outlined"
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            name="password"
+                            label="Password"
+                            type="password"
+                            id="password"
+                            autoComplete="new-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            variant="outlined"
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            id="name"
+                            label="Name"
+                            name="name"
+                            autoComplete="name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            variant="outlined"
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            id="age"
+                            label="Age"
+                            name="age"
+                            type="number"
+                            value={age}
+                            onChange={(e) => setAge(e.target.value)}
+                            variant="outlined"
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            id="bio"
+                            label="Bio"
+                            name="bio"
+                            multiline
+                            rows={4}
+                            value={bio}
+                            onChange={(e) => setBio(e.target.value)}
+                            variant="outlined"
+                        />
+                    </Stack>
                     <Button
                         type="submit"
                         fullWidth
@@ -131,19 +139,18 @@ const SignupForm: React.FC = () => {
                     >
                         Sign Up
                     </Button>
-                    <Stack spacing={2}>
-                        <Button
-                            type="button"
-                            fullWidth
-                            variant="outlined"
-                            onClick={handleGoogleSignup}
-                        >
-                            Sign up with Google
-                        </Button>
-                        <Link href="/login" variant="body2">
-                            Already have an account? Login here
-                        </Link>
-                    </Stack>
+                    <Button
+                        type="button"
+                        fullWidth
+                        variant="outlined"
+                        onClick={handleGoogleSignup}
+                        sx={{ mb: 2 }}
+                    >
+                        Sign up with Google
+                    </Button>
+                    <MuiLink href="/login" variant="body2" sx={{ color: 'action.active' }}>
+                        Already have an account? Login here
+                    </MuiLink>
                 </Box>
             </Box>
         </Container>

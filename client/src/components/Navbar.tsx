@@ -1,23 +1,68 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useUser } from '../hooks/useUser';
+import { supabase } from '../lib/supabase';
+import { AppBar, Toolbar, Typography, Button, Box, Link } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 
 const Navbar: React.FC = () => {
-    // A real implementation would fetch user data to get the ID
-    const userId = '1'; // Hardcoded for now
+    const { user } = useUser();
+    const navigate = useNavigate();
+    const theme = useTheme();
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        navigate('/');
+    };
 
     return (
         <AppBar position="static">
             <Toolbar>
                 <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                    Praxis
+                    <Link
+                        component={RouterLink}
+                        to="/"
+                        color="inherit"
+                        sx={{ textDecoration: 'none' }}
+                    >
+                        P<Box component="span" sx={{ color: theme.palette.action.active }}>R</Box>AXIS
+                    </Link>
                 </Typography>
-                <Button color="inherit" component={RouterLink} to="/home">Home</Button>
-                <Button color="inherit" component={RouterLink} to={`/profile/${userId}`}>Profile</Button>
-                <Button color="inherit" component={RouterLink} to={`/goals/${userId}`}>Goals</Button>
-                <Button color="inherit" component={RouterLink} to="/goal-selection">Select Goals</Button>
-                <Button color="inherit" component={RouterLink} to="/matches">Matches</Button>
-                <Button color="inherit" component={RouterLink} to="/login">Login</Button>
+                <Box>
+                    {user ? (
+                        <>
+                            <Button color="inherit" component={RouterLink} to="/dashboard">
+                                Dashboard
+                            </Button>
+                            <Button color="inherit" component={RouterLink} to={`/profile/${user.id}`}>
+                                Profile
+                            </Button>
+                            <Button color="inherit" onClick={handleLogout}>
+                                Logout
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button color="inherit" component={RouterLink} to="/login">
+                                Login
+                            </Button>
+                            <Button
+                                variant="contained"
+                                sx={{
+                                    ml: 2,
+                                    backgroundColor: theme.palette.action.active,
+                                    '&:hover': {
+                                        backgroundColor: theme.palette.primary.dark,
+                                    },
+                                }}
+                                component={RouterLink}
+                                to="/signup"
+                            >
+                                Sign Up
+                            </Button>
+                        </>
+                    )}
+                </Box>
             </Toolbar>
         </AppBar>
     );

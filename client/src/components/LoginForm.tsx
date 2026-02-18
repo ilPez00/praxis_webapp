@@ -9,7 +9,7 @@ import {
     TextField,
     Button,
     Stack,
-    Link
+    Link as MuiLink,
 } from '@mui/material';
 
 const LoginForm: React.FC = () => {
@@ -54,39 +54,43 @@ const LoginForm: React.FC = () => {
                     alignItems: 'center',
                 }}
             >
-                <Typography component="h1" variant="h5">
+                <Typography component="h1" variant="h4" sx={{ color: 'primary.main' }}>
                     Login
                 </Typography>
                 {message && (
-                    <Typography color="error" sx={{ mt: 1 }}>
+                    <Typography color="error" sx={{ mt: 2 }}>
                         {message}
                     </Typography>
                 )}
-                <Box component="form" onSubmit={handleLogin} noValidate sx={{ mt: 1 }}>
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="email"
-                        label="Email Address"
-                        name="email"
-                        autoComplete="email"
-                        autoFocus
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        name="password"
-                        label="Password"
-                        type="password"
-                        id="password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
+                <Box component="form" onSubmit={handleLogin} noValidate sx={{ mt: 3 }}>
+                    <Stack spacing={2}>
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            id="email"
+                            label="Email Address"
+                            name="email"
+                            autoComplete="email"
+                            autoFocus
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            variant="outlined"
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            name="password"
+                            label="Password"
+                            type="password"
+                            id="password"
+                            autoComplete="current-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            variant="outlined"
+                        />
+                    </Stack>
                     <Button
                         type="submit"
                         fullWidth
@@ -95,19 +99,18 @@ const LoginForm: React.FC = () => {
                     >
                         Login
                     </Button>
-                    <Stack spacing={2}>
-                        <Button
-                            type="button"
-                            fullWidth
-                            variant="outlined"
-                            onClick={handleGoogleLogin}
-                        >
-                            Login with Google
-                        </Button>
-                        <Link href="/signup" variant="body2">
-                            Don't have an account? Signup here
-                        </Link>
-                    </Stack>
+                    <Button
+                        type="button"
+                        fullWidth
+                        variant="outlined"
+                        onClick={handleGoogleLogin}
+                        sx={{ mb: 2 }}
+                    >
+                        Login with Google
+                    </Button>
+                    <MuiLink href="/signup" variant="body2" sx={{ color: 'action.active' }}>
+                        Don't have an account? Signup here
+                    </MuiLink>
                 </Box>
             </Box>
         </Container>

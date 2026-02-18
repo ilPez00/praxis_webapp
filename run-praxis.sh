@@ -43,9 +43,25 @@ cd /home/gio/Praxis/praxis_webapp/client || { echo "Error: Could not navigate to
 echo "Installing frontend dependencies..."
 npm install
 
-echo "Starting frontend development server..."
+echo "Starting frontend development server and opening browser..."
 # `npm start` for React apps usually opens in a browser and watches for changes
-npm start
+# We'll run it in background to allow the script to explicitly open the browser.
+npm start &
+FRONTEND_PID=$!
+echo "Frontend server started with PID: $FRONTEND_PID"
+
+echo "Waiting for frontend server to initialize..."
+sleep 5 # Give the server some time to launch
+
+echo "Opening client web browser..."
+# Attempt to open the browser cross-platform (Linux: xdg-open, macOS: open, Windows Git Bash: start)
+# Using common Linux browsers as fallbacks
+xdg-open http://localhost:3000 || google-chrome http://localhost:3000 || firefox http://localhost:3000 || open http://localhost:3000 &
+BROWSER_PID=$!
+echo "Browser opening command executed with PID: $BROWSER_PID"
+
+# Wait for the frontend process to finish (e.g., if user stops it manually)
+wait $FRONTEND_PID
 
 # --- Cleanup (This part might not be reached if frontend dev server runs indefinitely) ---
 echo "Frontend server stopped. Stopping backend..."
