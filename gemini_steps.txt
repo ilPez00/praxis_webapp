@@ -42,6 +42,11 @@ Hi gemini. you are building praxis, as outlined in the whitepaper pdf. This file
     *   **Frontend Conditional UI:** Implemented conditional UI for premium features on `DashboardPage.tsx`, displaying an "Upgrade Now" button if the user is not premium.
     *   **User Model & Hook Update:** Updated `client/src/models/User.ts` with `is_premium` and modified `client/src/hooks/useUser.ts` to fetch this status from Supabase.
 
+**5. Code Commenting:** (COMPLETED)
+    *   Added comments to logical blocks in both frontend and backend files, focusing on new features and complex logic introduced during this session.
+    *   Commented on `src/controllers/stripeController.ts`, `src/controllers/achievementController.ts`, `src/controllers/goalController.ts`, `src/controllers/userController.ts` in the backend.
+    *   Commented on `client/src/pages/UpgradePage.tsx`, `client/src/pages/SuccessPage.tsx`, `client/src/pages/CancelPage.tsx`, `client/src/hooks/useUser.ts`, `client/src/pages/DashboardPage.tsx`, and `client/src/pages/ProfilePage.tsx` in the frontend.
+
 ---
 **Supabase Table Definitions for Stripe Integration**
 

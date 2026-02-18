@@ -1,34 +1,51 @@
 import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
-import { GoalTree } from '../models/GoalTree';
-import { GoalNode } from '../models/GoalNode'; // Import GoalNode for type checking
-import { Domain } from '../models/Domain';
-import { createAchievementFromGoal } from './achievementController'; // Import the new function
+import { GoalTree } from '../models/GoalTree'; // Type definition for GoalTree
+import { GoalNode } from '../models/GoalNode'; // Type definition for GoalNode
+import { Domain } from '../models/Domain'; // Enum for Goal Domain
+import { createAchievementFromGoal } from './achievementController'; // Import function to create achievements from goals
 
-// Helper to get user profile details
+/**
+ * @description Helper function to fetch user profile details (name and avatar URL).
+ * Used for denormalizing user info when creating achievements.
+ * @param userId - The ID of the user whose profile to fetch.
+ * @returns An object containing user's name and avatarUrl, or default values if not found.
+ */
 const getUserProfileDetails = async (userId: string) => {
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('name, avatarUrl')
+    .select('name, avatar_url') // Select name and avatar_url from the profiles table
     .eq('id', userId)
-    .single();
-  if (error) console.error('Error fetching user profile for achievement:', error);
-  return profile || { name: 'Unknown User', avatarUrl: null };
+    .single(); // Expect a single matching profile
+
+  if (error) {
+    console.error('Error fetching user profile for achievement:', error);
+  }
+  // Return fetched profile or default values if profile is null or error occurs
+  return profile || { name: 'Unknown User', avatar_url: null };
 };
 
+/**
+ * @description HTTP endpoint to retrieve a user's entire goal tree.
+ * @param req - The Express request object, with userId in params.
+ * @param res - The Express response object.
+ */
 export const getGoalTree = async (req: Request, res: Response) => {
-  const { userId } = req.params;
+  const { userId } = req.params; // Extract user ID from request parameters
 
+  // Query Supabase for the goal tree associated with the userId
   const { data, error } = await supabase
     .from('goal_trees')
-    .select('*')
+    .select('*') // Select all columns of the goal tree
     .eq('userId', userId)
-    .single();
+    .single(); // Expect a single goal tree per user
 
-  if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+  // Handle errors, excluding 'PGRST116' which indicates no rows found (expected for new users)
+  if (error && error.code !== 'PGRST116') {
     return res.status(500).json({ message: error.message });
   }
 
+  // Respond with the fetched goal tree or a 404 if not found
   if (data) {
     res.json(data);
   } else {
@@ -36,11 +53,18 @@ export const getGoalTree = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @description HTTP endpoint to create or update a user's goal tree.
+ * This function also checks for newly completed goals and triggers achievement creation.
+ * @param req - The Express request object, containing userId, nodes, and rootNodes in the body.
+ * @param res - The Express response object.
+ */
 export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
-  const { userId, nodes, rootNodes } = req.body;
+  const { userId, nodes, rootNodes } = req.body; // Extract user ID, all goal nodes, and root nodes
 
-  // Fetch existing tree and user profile for achievement creation logic
+  // --- Achievement Creation Logic (before updating the tree) ---
   let existingNodes: GoalNode[] = [];
+  // Fetch the user's existing goal tree to compare against new changes
   const { data: existingTreeData, error: fetchExistingTreeError } = await supabase
     .from('goal_trees')
     .select('nodes')
@@ -50,21 +74,27 @@ export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
   if (fetchExistingTreeError && fetchExistingTreeError.code !== 'PGRST116') {
     console.error('Error fetching existing goal tree for achievement check:', fetchExistingTreeError.message);
   } else if (existingTreeData) {
-    existingNodes = existingTreeData.nodes;
+    existingNodes = existingTreeData.nodes; // Store existing nodes for comparison
   }
 
+  // Fetch user profile details to be used in achievement creation (denormalized data)
   const userProfile = await getUserProfileDetails(userId);
 
-
-  // Check for newly completed goals
+  // Iterate through the new set of goal nodes to identify newly completed goals
   for (const newNode of nodes) {
-    if (newNode.progress >= 1) { // Goal is completed
+    // Check if a goal's progress has reached 100%
+    if (newNode.progress >= 1) {
+      // Find the corresponding old node to see its previous progress
       const oldNode = existingNodes.find(n => n.id === newNode.id);
-      if (!oldNode || oldNode.progress < 1) { // It's a newly completed goal
-        await createAchievementFromGoal(newNode, userId, userProfile.name, userProfile.avatarUrl || undefined);
+      // If the goal is newly completed (wasn't completed before or didn't exist)
+      if (!oldNode || oldNode.progress < 1) {
+        // Trigger the creation of an achievement for this completed goal
+        await createAchievementFromGoal(newNode, userId, userProfile.name, userProfile.avatar_url || undefined);
       }
     }
   }
+  // --- End Achievement Creation Logic ---
+
 
   // Check if a goal tree already exists for the user
   const { data: existingTree, error: fetchError } = await supabase
@@ -78,7 +108,7 @@ export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
   }
 
   if (existingTree) {
-    // Update existing tree
+    // If a tree exists, update it with the new nodes and root nodes
     const { data, error } = await supabase
       .from('goal_trees')
       .update({ nodes, rootNodes })
@@ -89,9 +119,9 @@ export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
     if (error) {
       return res.status(500).json({ message: error.message });
     }
-    res.json(data);
+    res.json(data); // Respond with the updated goal tree
   } else {
-    // Create new tree
+    // If no tree exists, create a new one
     const { data, error } = await supabase
       .from('goal_trees')
       .insert([{ userId, nodes, rootNodes }])
@@ -101,6 +131,6 @@ export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
     if (error) {
       return res.status(500).json({ message: error.message });
     }
-    res.status(201).json(data);
+    res.status(201).json(data); // Respond with the newly created goal tree
   }
 };
