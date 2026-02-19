@@ -1,72 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import '../styles/MatchesPage.css';
-import { useUser } from '../hooks/useUser';
-
-interface Match {
-    userId: string;
-    score: number;
-}
+import React, { useState } from 'react';
+import {
+    Container,
+    Box,
+    Typography,
+    Paper,
+    Grid,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Slider,
+    Button
+} from '@mui/material';
+import { Domain } from '../models/Domain';
 
 const MatchesPage: React.FC = () => {
-    const { user } = useUser();
-    const [matches, setMatches] = useState<Match[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        if (!user) return;
-
-        const fetchMatches = async () => {
-            try {
-                const response = await axios.get(`http://localhost:3001/matches/${user.id}`);
-                setMatches(response.data);
-            } catch (err) {
-                setError('Failed to fetch matches.');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchMatches();
-    }, [user]);
-
-    if (loading) {
-        return <div className="matches-page">Loading matches...</div>;
-    }
-
-    if (error) {
-        return <div className="matches-page">{error}</div>;
-    }
+    const [compatibility, setCompatibility] = useState<number>(50);
+    const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
 
     return (
-        <div className="matches-page">
-            <div className="matches-header">
-                <h1>Your Matches</h1>
-            </div>
+        <Container maxWidth="lg" sx={{ mt: 4 }}>
+            <Paper elevation={3} sx={{ p: 4 }}>
+                <Typography variant="h4" component="h1" gutterBottom>
+                    Matches
+                </Typography>
 
-            <div className="matches-list">
-                {matches.length === 0 ? (
-                    <p className="empty-state">No matches yet — keep building your goals!</p>
-                ) : (
-                    matches.map(match => (
-                        <div key={match.userId} className="match-card" onClick={() => user && navigate(`/chat/${user.id}/${match.userId}`)}>
-                            <div className="match-avatar-placeholder">{match.userId.charAt(0)}</div>
-                            <div className="match-info">
-                                <div className="match-name-row">
-                                    <h3>User: {match.userId.substring(0, 8)}...</h3>
-                                    <span className="compatibility-badge">{Math.round(match.score * 100)}% Match</span>
-                                </div>
-                                <p className="bio-snippet">Compatible on shared goals.</p>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-        </div>
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                    <Grid item xs={12} md={6}>
+                        <FormControl fullWidth>
+                            <InputLabel id="domain-filter-label">Filter by Domain</InputLabel>
+                            <Select
+                                labelId="domain-filter-label"
+                                multiple
+                                value={selectedDomains}
+                                onChange={(e) => setSelectedDomains(e.target.value as string[])}
+                                renderValue={(selected) => (selected as string[]).join(', ')}
+                            >
+                                {Object.values(Domain).map((domain) => (
+                                    <MenuItem key={domain} value={domain}>
+                                        {domain}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <Typography gutterBottom>Minimum Compatibility (%)</Typography>
+                        <Slider
+                            value={compatibility}
+                            onChange={(e, newValue) => setCompatibility(newValue as number)}
+                            aria-labelledby="compatibility-slider"
+                            valueLabelDisplay="auto"
+                            min={0}
+                            max={100}
+                        />
+                    </Grid>
+                </Grid>
+                
+                <Box sx={{ textAlign: 'center', py: 8, border: '2px dashed grey', borderRadius: 2 }}>
+                    <Typography variant="h5" color="text.secondary" gutterBottom>
+                        No matches yet – invite friends!
+                    </Typography>
+                    <Button variant="contained" sx={{mt: 2}}>Invite Friends</Button>
+                </Box>
+            </Paper>
+        </Container>
     );
 };
 
