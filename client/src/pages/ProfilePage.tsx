@@ -22,6 +22,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import toast from 'react-hot-toast';
 
 interface Profile {
     name: string;
@@ -71,6 +72,7 @@ const ProfilePage: React.FC = () => {
 
             } catch (err: any) {
                 setError(err.message);
+                toast.error(`Failed to fetch profile: ${err.message}`);
             } finally {
                 setLoading(false);
             }
@@ -91,8 +93,9 @@ const ProfilePage: React.FC = () => {
 
     const handleSave = async () => {
         if (!user) return;
-        setLoading(true);
-        try {
+        
+        const promise = async () => {
+            setLoading(true);
             let avatarUrl = profile?.avatar_url;
             if (selectedAvatarFile) {
                 const fileExt = selectedAvatarFile.name.split('.').pop();
@@ -125,12 +128,14 @@ const ProfilePage: React.FC = () => {
             
             setProfile(data);
             setIsEditing(false);
-
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
             setLoading(false);
         }
+
+        toast.promise(promise(), {
+            loading: 'Saving profile...',
+            success: 'Profile saved!',
+            error: (err) => `Error: ${err.message}`,
+        });
     };
 
     const handleCancel = () => {
@@ -147,7 +152,7 @@ const ProfilePage: React.FC = () => {
         return <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Container>;
     }
 
-    if (error) {
+    if (error && !toast) {
         return <Container sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Container>;
     }
 

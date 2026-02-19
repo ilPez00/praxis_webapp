@@ -24,6 +24,7 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import { supabase } from '../lib/supabase';
 import { Domain } from '../models/Domain';
+import toast from 'react-hot-toast';
 
 const steps = ['Welcome', 'Profile', 'Interests', 'Finish'];
 
@@ -44,8 +45,7 @@ const OnboardingPage: React.FC = () => {
   const theme = useTheme();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  
   // Form State
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
@@ -73,52 +73,53 @@ const OnboardingPage: React.FC = () => {
   
 
   const handleComplete = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No authenticated user found');
+    const promise = async () => {
+        setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('No authenticated user found');
 
-      let avatarUrl: string | null = null;
-      if (profilePhotoFile) {
-        const { data, error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(`${user.id}/${profilePhotoFile.name}`, profilePhotoFile, {
-            cacheControl: '3600',
-            upsert: true,
-          });
+        let avatarUrl: string | null = null;
+        if (profilePhotoFile) {
+            const { data, error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(`${user.id}/${profilePhotoFile.name}`, profilePhotoFile, {
+                cacheControl: '3600',
+                upsert: true,
+            });
 
-        if (uploadError) throw uploadError;
-        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(data.path);
-        avatarUrl = publicUrlData.publicUrl;
-      }
+            if (uploadError) throw uploadError;
+            const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(data.path);
+            avatarUrl = publicUrlData.publicUrl;
+        }
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          name,
-          age: parseInt(age),
-          bio,
-          avatar_url: avatarUrl,
-          onboarding_completed: true,
-        })
-        .eq('id', user.id);
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+            name,
+            age: parseInt(age),
+            bio,
+            avatar_url: avatarUrl,
+            onboarding_completed: true,
+            })
+            .eq('id', user.id);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
 
-      // Update user metadata to reflect onboarding completion and photo status
-      await supabase.auth.updateUser({
-        data: {
-          onboarded: true,
-          has_photo: !!profilePhotoFile,
-        },
-      });
-
-      navigate('/goal-selection');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+        await supabase.auth.updateUser({
+            data: {
+            onboarded: true,
+            has_photo: !!profilePhotoFile,
+            },
+        });
+        setLoading(false);
+        navigate('/goal-selection');
     }
+
+    toast.promise(promise(), {
+        loading: 'Saving profile...',
+        success: 'Profile saved!',
+        error: (err) => `Error: ${err.message}`,
+    });
   };
 
   const renderStepContent = (step: number) => {

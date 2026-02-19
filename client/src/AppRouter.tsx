@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import PrivateRoute from './components/PrivateRoute';
+import { Toaster } from 'react-hot-toast';
 
 import Root from './pages/Root';
 import LoginPage from './pages/LoginPage';
@@ -24,6 +25,7 @@ const AppRouter: React.FC = () => {
   return (
     <Router>
       <Navbar />
+      <Toaster position="top-right" />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Root />} />
@@ -55,4 +57,3 @@ const AppRouter: React.FC = () => {
 };
 
 export default AppRouter;
-
