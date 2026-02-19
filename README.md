@@ -47,13 +47,16 @@ This package contains the complete implementation of the Praxis webapp based on 
 *   ✅ Theme toggle (light/dark mode)
 *   ✅ Protected routing
 
+## Done
+*   **OnboardingPage**: Implemented with profile basics + optional photo (facial verification skipped for MVP).
+*   **ProfilePage**: Basic user info display + goal teaser.
+*   **AI Coaching & Analytics**: Integrated (Feb 19).
+
 ## Next Steps:
-*   Create `OnboardingPage` for identity verification
-*   Create `ProfilePage` with goal tree visualization
 *   Create `MatchesPage` with filtering
 *   Create `ChatPage` with feedback grading UI
 *   Enhance backend matching algorithm
-*   Add identity verification (facial scan as per whitepaper)
+*   Add identity verification (facial scan as per whitepaper) - POST-MVP
 *   Implement real-time chat
 *   Add analytics dashboard
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -17,17 +17,15 @@ import {
   useTheme,
   Avatar,
   IconButton,
-  Alert,
 } from '@mui/material';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import * as faceapi from 'face-api.js';
 import { supabase } from '../lib/supabase';
 import { Domain } from '../models/Domain';
 
-const steps = ['Welcome', 'Profile', 'Interests', 'Verification', 'Finish'];
+const steps = ['Welcome', 'Profile', 'Interests', 'Finish'];
 
 const DOMAIN_COLORS: Record<Domain, string> = {
   [Domain.CAREER]: '#007AFF',
@@ -52,33 +50,10 @@ const OnboardingPage: React.FC = () => {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [bio, setBio] = useState('');
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState<string | null>(null);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
-  const [isVerified, setIsVerified] = useState(false);
 
-  // Face API State
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [isModelsLoaded, setIsModelsLoaded] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
-
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        const MODEL_URL = '/models'; // Ensure models are in public/models
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        ]);
-        setIsModelsLoaded(true);
-      } catch (err) {
-        console.error('Failed to load face-api models:', err);
-        // Fallback: allow manual verification if models fail to load in dev
-        setIsModelsLoaded(true); 
-      }
-    };
-    loadModels();
-  }, []);
 
   const handleNext = () => {
     if (activeStep === steps.length - 1) {
@@ -95,36 +70,7 @@ const OnboardingPage: React.FC = () => {
       prev.includes(domain) ? prev.filter((d) => d !== domain) : [...prev, domain]
     );
   };
-
-  const startCamera = async () => {
-    setIsCameraActive(true);
-    setError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      setError('Could not access camera. Please ensure permissions are granted.');
-      setIsCameraActive(false);
-    }
-  };
-
-  const simulateScan = () => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 5;
-      setScanProgress(progress);
-      if (progress >= 100) {
-        clearInterval(interval);
-        setIsVerified(true);
-        if (videoRef.current?.srcObject) {
-          (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-        }
-        setIsCameraActive(false);
-      }
-    }, 100);
-  };
+  
 
   const handleComplete = async () => {
     setLoading(true);
@@ -132,18 +78,40 @@ const OnboardingPage: React.FC = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user found');
 
+      let avatarUrl: string | null = null;
+      if (profilePhotoFile) {
+        const { data, error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(`${user.id}/${profilePhotoFile.name}`, profilePhotoFile, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) throw uploadError;
+        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(data.path);
+        avatarUrl = publicUrlData.publicUrl;
+      }
+
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           name,
           age: parseInt(age),
           bio,
-          is_verified: isVerified,
+          avatar_url: avatarUrl,
           onboarding_completed: true,
         })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
+
+      // Update user metadata to reflect onboarding completion and photo status
+      await supabase.auth.updateUser({
+        data: {
+          onboarded: true,
+          has_photo: !!profilePhotoFile,
+        },
+      });
 
       navigate('/goal-selection');
     } catch (err: any) {
@@ -217,6 +185,56 @@ const OnboardingPage: React.FC = () => {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
             />
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Upload a profile photo (optional)
+              </Typography>
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="profile-photo-upload"
+                type="file"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    setProfilePhotoFile(e.target.files[0]);
+                    setProfilePhotoPreviewUrl(URL.createObjectURL(e.target.files[0]));
+                  } else {
+                    setProfilePhotoFile(null);
+                    setProfilePhotoPreviewUrl(null);
+                  }
+                }}
+              />
+              <label htmlFor="profile-photo-upload">
+                <IconButton component="span" sx={{ p: 0 }}>
+                  <Avatar
+                    src={profilePhotoPreviewUrl || undefined}
+                    sx={{
+                      width: 80,
+                      height: 80,
+                      bgcolor: 'primary.light',
+                      cursor: 'pointer',
+                      border: `2px dashed ${theme.palette.primary.main}`,
+                      '&:hover': {
+                        opacity: 0.8,
+                      },
+                    }}
+                  >
+                    {!profilePhotoPreviewUrl && <CameraAltIcon />}
+                  </Avatar>
+                </IconButton>
+              </label>
+              {profilePhotoFile && (
+                <Button size="small" color="error" onClick={() => {
+                  setProfilePhotoFile(null);
+                  setProfilePhotoPreviewUrl(null);
+                }} sx={{ mt: 1, display: 'block', mx: 'auto' }}>
+                  Remove Photo
+                </Button>
+              )}
+               <Typography variant="caption" display="block" sx={{mt: 2}}>
+                Identity verification coming soon – for now, let's build your Praxis profile!
+               </Typography>
+            </Box>
           </Box>
         );
       case 2: // Interests
@@ -253,79 +271,7 @@ const OnboardingPage: React.FC = () => {
             </Grid>
           </Box>
         );
-      case 3: // Verification
-        return (
-          <Box sx={{ textAlign: 'center', py: 2 }}>
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
-              Identity Verification
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Praxis ensures all users are verified humans. Secure facial scan required.
-            </Typography>
-            <Paper
-              elevation={0}
-              sx={{
-                width: 300,
-                height: 300,
-                mx: 'auto',
-                bgcolor: '#000',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `4px solid ${isVerified ? theme.palette.success.main : theme.palette.primary.main}`,
-              }}
-            >
-              {isCameraActive ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : isVerified ? (
-                <CheckCircleIcon sx={{ fontSize: '5rem', color: 'success.main' }} />
-              ) : (
-                <IconButton onClick={startCamera} sx={{ color: 'white' }}>
-                  <CameraAltIcon sx={{ fontSize: '4rem' }} />
-                </IconButton>
-              )}
-              {isCameraActive && !isVerified && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 20,
-                    width: '80%',
-                  }}
-                >
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={simulateScan}
-                    sx={{ borderRadius: '20px' }}
-                  >
-                    Start Scan
-                  </Button>
-                </Box>
-              )}
-            </Paper>
-            {scanProgress > 0 && scanProgress < 100 && (
-              <Box sx={{ width: '100%', mt: 2 }}>
-                <CircularProgress variant="determinate" value={scanProgress} />
-                <Typography variant="caption" display="block">Scanning: {scanProgress}%</Typography>
-              </Box>
-            )}
-            {isVerified && (
-              <Alert severity="success" sx={{ mt: 2, borderRadius: '12px' }}>
-                Identity Verified Successfully
-              </Alert>
-            )}
-            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-          </Box>
-        );
-      case 4: // Finish
+      case 3: // Finish
         return (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 800 }}>
@@ -345,7 +291,6 @@ const OnboardingPage: React.FC = () => {
   const isNextDisabled = () => {
     if (activeStep === 1) return !name || !age;
     if (activeStep === 2) return selectedDomains.length === 0;
-    if (activeStep === 3) return !isVerified;
     return false;
   };
 

@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../hooks/useUser';
 import { supabase } from '../lib/supabase';
-import { User } from '../models/User'; // Ensure User model is comprehensive
-import { GoalTree } from '../models/GoalTree'; // Not directly used in render, but might be for data fetching.
-import { GoalNode } from '../models/GoalNode'; // Not directly used in render, but might be for data fetching.
-
 import {
     Container,
     Box,
@@ -18,302 +13,235 @@ import {
     CircularProgress,
     Alert,
     TextField,
-    useTheme,
+    Chip,
+    Card,
+    CardContent,
+    CardActions
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit'; // Icon for editing
-import SaveIcon from '@mui/icons-material/Save'; // Icon for saving
-import CancelIcon from '@mui/icons-material/Cancel'; // Icon for canceling
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
-/**
- * @description Profile page component displaying user information and allowing them to edit it.
- * It fetches profile data from the backend and handles updates, including avatar uploads to Supabase Storage.
- */
+interface Profile {
+    name: string;
+    age: number;
+    bio: string;
+    avatar_url: string;
+    onboarding_completed: boolean;
+}
+
 const ProfilePage: React.FC = () => {
-    const theme = useTheme(); // Access the Material-UI theme for styling
-    // Get the authenticated user and their loading state from the custom hook
-    const { user: authUser, loading: authUserLoading } = useUser();
-    const navigate = useNavigate(); // Hook for programmatic navigation
-    // Get the profile user ID from the URL parameters
-    const { id: profileUserIdParam } = useParams<{ id: string }>();
+    const { user, loading: authLoading } = useUser();
+    const navigate = useNavigate();
 
-    const [profileUser, setProfileUser] = useState<User | null>(null); // State for the user whose profile is being viewed/edited
-    const [loadingProfile, setLoadingProfile] = useState(true); // State to manage profile data loading
-    const [error, setError] = useState<string | null>(null); // State to store error messages
-    const [isEditing, setIsEditing] = useState(false); // State to control edit mode
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
 
-    // States for editable fields
+    // Editable state
     const [editedName, setEditedName] = useState('');
-    const [editedAge, setEditedAge] = useState<number | ''>(''); // Can be number or empty string
     const [editedBio, setEditedBio] = useState('');
-    // State for the selected avatar file for upload
     const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+    const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState<string | null>(null);
 
-    // Determine if the currently logged-in user is viewing their own profile
-    const isOwnProfile = authUser?.id === profileUserIdParam || (!profileUserIdParam && authUser);
 
-    // Effect to fetch the profile data when the component mounts or dependencies change
     useEffect(() => {
-        const fetchProfileData = async () => {
-            setLoadingProfile(true); // Start loading profile data
-            setError(null); // Clear previous errors
-            // Determine which user's ID to fetch: URL param or authenticated user's ID
-            const userIdToFetch = profileUserIdParam || authUser?.id;
-
-            if (!userIdToFetch) {
-                setError('User ID not found for profile.');
-                setLoadingProfile(false);
+        const fetchProfile = async () => {
+            if (!user) {
+                setLoading(false);
                 return;
             }
 
+            setLoading(true);
             try {
-                // Fetch user details from the backend API
-                const userResponse = await axios.get(`http://localhost:3001/users/${userIdToFetch}`);
-                const fetchedUser: User = userResponse.data;
-                setProfileUser(fetchedUser); // Set the fetched profile user
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
 
-                // Initialize editable states with fetched data
-                setEditedName(fetchedUser.name);
-                setEditedAge(fetchedUser.age);
-                setEditedBio(fetchedUser.bio);
-                setSelectedAvatarFile(null); // Ensure no old file is selected
-            } catch (err) {
-                console.error('Failed to fetch profile data:', err);
-                setError('Failed to load profile.');
+                if (error) throw error;
+
+                setProfile(data);
+                setEditedName(data.name || '');
+                setEditedBio(data.bio || '');
+                setProfilePhotoPreviewUrl(data.avatar_url);
+
+            } catch (err: any) {
+                setError(err.message);
             } finally {
-                setLoadingProfile(false); // End loading
+                setLoading(false);
             }
         };
 
-        // Fetch data only after the authenticated user status is known
-        if (!authUserLoading) {
-            fetchProfileData();
+        if (!authLoading) {
+            fetchProfile();
         }
-    }, [profileUserIdParam, authUser?.id, authUserLoading]); // Dependencies for re-fetching
+    }, [user, authLoading]);
 
-    /**
-     * @description Handles file selection for avatar upload.
-     * Stores the selected file in state.
-     */
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      if (event.target.files && event.target.files[0]) {
-        setSelectedAvatarFile(event.target.files[0]);
-      }
+        if (event.target.files && event.target.files[0]) {
+            const file = event.target.files[0];
+            setSelectedAvatarFile(file);
+            setProfilePhotoPreviewUrl(URL.createObjectURL(file));
+        }
     };
 
-    /**
-     * @description Handles saving the updated profile details.
-     * Uploads new avatar to Supabase Storage if selected, then updates profile in backend.
-     */
-    const handleSaveProfile = async () => {
-        if (!profileUser) return; // Prevent saving if no profile user is loaded
-        setLoadingProfile(true); // Indicate saving process
+    const handleSave = async () => {
+        if (!user) return;
+        setLoading(true);
         try {
-            let newAvatarUrl = profileUser.avatarUrl; // Start with existing avatar URL
-
-            // If a new avatar file is selected, upload it to Supabase Storage
+            let avatarUrl = profile?.avatar_url;
             if (selectedAvatarFile) {
                 const fileExt = selectedAvatarFile.name.split('.').pop();
-                // Generate a unique file name to avoid collisions
-                const fileName = `${profileUser.id}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                const filePath = `avatars/${fileName}`; // Path within the Supabase storage bucket
-
-                // Upload the file
-                const { data, error: uploadError } = await supabase.storage
-                    .from('avatars') // Specify the storage bucket
-                    .upload(filePath, selectedAvatarFile, {
-                        cacheControl: '3600', // Cache for one hour
-                        upsert: true, // Overwrite if a file with the same path exists
+                const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('avatars')
+                    .upload(fileName, selectedAvatarFile, {
+                        cacheControl: '3600',
+                        upsert: true,
                     });
 
-                if (uploadError) {
-                    throw uploadError; // Propagate upload errors
-                }
+                if (uploadError) throw uploadError;
 
-                // Get the public URL of the uploaded file
-                const { data: publicUrlData } = supabase.storage
-                    .from('avatars')
-                    .getPublicUrl(filePath);
-
-                newAvatarUrl = publicUrlData.publicUrl; // Use the new public URL
+                const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(uploadData.path);
+                avatarUrl = publicUrlData.publicUrl;
             }
 
-            // Construct the updated profile object
-            const updatedProfile: User = {
-                ...profileUser, // Keep existing profile data
-                name: editedName,
-                age: typeof editedAge === 'number' ? editedAge : (editedAge === '' ? 0 : parseInt(editedAge)),
-                bio: editedBio,
-                avatarUrl: newAvatarUrl, // Use the new (or existing) avatar URL
-            };
+            const { data, error: updateError } = await supabase
+                .from('profiles')
+                .update({
+                    name: editedName,
+                    bio: editedBio,
+                    avatar_url: avatarUrl,
+                })
+                .eq('id', user.id)
+                .select()
+                .single();
 
-            // Send the updated profile data to the backend API
-            await axios.put(`http://localhost:3001/users/${profileUser.id}`, updatedProfile);
-            setProfileUser(updatedProfile); // Update local state with new data
-            setIsEditing(false); // Exit editing mode
+            if (updateError) throw updateError;
+            
+            setProfile(data);
+            setIsEditing(false);
+
         } catch (err: any) {
-            console.error('Failed to save profile:', err.message);
-            setError('Failed to save profile: ' + err.message);
+            setError(err.message);
         } finally {
-            setLoadingProfile(false); // End saving
+            setLoading(false);
         }
     };
 
-    /**
-     * @description Handles canceling the edit operation.
-     * Reverts editable fields to original profile values and exits edit mode.
-     */
-    const handleCancelEdit = () => {
-        // Revert to original profile values
-        if (profileUser) {
-            setEditedName(profileUser.name);
-            setEditedAge(profileUser.age);
-            setEditedBio(profileUser.bio);
-            setSelectedAvatarFile(null); // Clear any selected file
+    const handleCancel = () => {
+        if(profile) {
+            setEditedName(profile.name);
+            setEditedBio(profile.bio);
+            setProfilePhotoPreviewUrl(profile.avatar_url);
+            setSelectedAvatarFile(null);
         }
-        setIsEditing(false); // Exit editing mode
+        setIsEditing(false);
     };
 
-    // Display loading state while auth or profile data is being fetched
-    if (authUserLoading || loadingProfile) {
-        return (
-            <Container component="main" maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                <CircularProgress />
-            </Container>
-        );
+    if (loading || authLoading) {
+        return <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Container>;
     }
 
-    // Display error message if fetching failed
     if (error) {
-        return (
-            <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
-                <Alert severity="error">{error}</Alert>
-            </Container>
-        );
+        return <Container sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Container>;
     }
 
-    // Display message if no profile was found
-    if (!profileUser) {
-        return (
-            <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
-                <Alert severity="info">No profile found for this user.</Alert>
-            </Container>
-        );
+    if (!profile) {
+        return <Container sx={{ mt: 4 }}><Alert severity="info">Profile not found.</Alert></Container>;
     }
 
-    // Render the profile UI
     return (
-        <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
-            <Paper elevation={3} sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                {/* User Avatar */}
-                <Avatar
-                    alt={profileUser.name}
-                    // Display selected file preview or existing avatar URL
-                    src={selectedAvatarFile ? URL.createObjectURL(selectedAvatarFile) : (profileUser.avatarUrl || undefined)}
-                    sx={{ width: 120, height: 120, bgcolor: theme.palette.action.active, mb: 2 }}
-                >
-                    {/* Fallback to first letter of name if no avatar */}
-                    {profileUser.name.charAt(0)}
-                </Avatar>
-
-                {isEditing ? (
-                    // Render editable fields when in editing mode
-                    <>
-                        <TextField
-                            label="Name"
-                            variant="outlined"
-                            fullWidth
-                            value={editedName}
-                            onChange={(e) => setEditedName(e.target.value)}
+        <Container maxWidth="md" sx={{ mt: 4 }}>
+            <Paper elevation={3} sx={{ p: 4 }}>
+                <Stack direction="row" spacing={4} alignItems="center">
+                    <Box>
+                        <Avatar
+                            src={profilePhotoPreviewUrl || undefined}
+                            sx={{ width: 120, height: 120, mb: 2, cursor: isEditing ? 'pointer' : 'default' }}
+                            onClick={() => isEditing && document.getElementById('avatar-upload-button')?.click()}
                         />
-                        <TextField
-                            label="Age"
-                            variant="outlined"
-                            fullWidth
-                            type="number"
-                            value={editedAge}
-                            onChange={(e) => setEditedAge(parseInt(e.target.value) || '')}
-                        />
-                        <TextField
-                            label="Bio"
-                            variant="outlined"
-                            fullWidth
-                            multiline
-                            rows={4}
-                            value={editedBio}
-                            onChange={(e) => setEditedBio(e.target.value)}
-                        />
-                        {/* Hidden file input for avatar upload */}
-                        <input
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            id="avatar-upload-button"
-                            type="file"
-                            onChange={handleFileChange}
-                        />
-                        {/* Label acts as a button to trigger the hidden file input */}
-                        <label htmlFor="avatar-upload-button">
-                            <Button variant="outlined" component="span" startIcon={<EditIcon />}>
-                                {selectedAvatarFile ? selectedAvatarFile.name : 'Change Avatar'}
-                            </Button>
-                        </label>
-                        {/* Action buttons for saving or canceling edits */}
-                        <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                            <Button
-                                variant="contained"
-                                startIcon={<SaveIcon />}
-                                onClick={handleSaveProfile}
-                                color="primary"
-                            >
-                                Save
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                startIcon={<CancelIcon />}
-                                onClick={handleCancelEdit}
-                                color="secondary"
-                            >
-                                Cancel
-                            </Button>
-                        </Stack>
-                    </>
-                ) : (
-                    // Render static profile display when not in editing mode
-                    <>
-                        <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'primary.main' }}>
-                            {profileUser.name}
-                        </Typography>
-                        <Typography variant="h6" color="text.secondary">
-                            @{profileUser.name.toLowerCase().replace(/\s/g, '_')}
-                        </Typography> {/* Dynamically generate username from name */}
-                        <Typography variant="body1" sx={{ mt: 1 }}>
-                            Age: {profileUser.age}
-                        </Typography>
-                        <Typography variant="body1" sx={{ mt: 1, textAlign: 'center' }}>
-                            {profileUser.bio}
-                        </Typography>
-
-                        {/* Edit Profile button, only visible if it's the user's own profile */}
-                        {isOwnProfile && (
-                            <Button
-                                variant="contained"
-                                startIcon={<EditIcon />}
-                                onClick={() => setIsEditing(true)}
-                                sx={{ mt: 3, bgcolor: theme.palette.action.active }}
-                            >
-                                Edit Profile
-                            </Button>
+                        {isEditing && (
+                            <input
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                id="avatar-upload-button"
+                                type="file"
+                                onChange={handleFileChange}
+                            />
                         )}
-                    </>
-                )}
-                {/* Button to navigate to the user's Goal Tree page */}
-                <Button
-                    variant="outlined"
-                    sx={{ mt: 3 }}
-                    onClick={() => navigate(`/goals/${profileUser.id}`)}
-                >
-                    View / Edit Goal Tree
-                </Button>
+                    </Box>
+                    <Box flexGrow={1}>
+                        {isEditing ? (
+                            <Stack spacing={2}>
+                                <TextField
+                                    label="Name"
+                                    value={editedName}
+                                    onChange={(e) => setEditedName(e.target.value)}
+                                    fullWidth
+                                />
+                                <TextField
+                                    label="Bio"
+                                    value={editedBio}
+                                    onChange={(e) => setEditedBio(e.target.value)}
+                                    multiline
+                                    rows={4}
+                                    fullWidth
+                                />
+                            </Stack>
+                        ) : (
+                            <>
+                                <Typography variant="h4" component="h1" gutterBottom>
+                                    {profile.name}
+                                </Typography>
+                                <Typography variant="body1" color="text.secondary">
+                                    {profile.bio}
+                                </Typography>
+                            </>
+                        )}
+                    </Box>
+                </Stack>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 3 }}>
+                    {profile.onboarding_completed && (
+                        <Chip
+                            icon={<CheckCircleIcon />}
+                            label="Onboarding Complete!"
+                            color="success"
+                            variant="outlined"
+                        />
+                    )}
+
+                    {isEditing ? (
+                        <Stack direction="row" spacing={2}>
+                            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave}>Save</Button>
+                            <Button variant="outlined" startIcon={<CancelIcon />} onClick={handleCancel}>Cancel</Button>
+                        </Stack>
+                    ) : (
+                        <Button variant="contained" startIcon={<EditIcon />} onClick={() => setIsEditing(true)}>
+                            Edit Profile
+                        </Button>
+                    )}
+                </Box>
             </Paper>
+
+            <Card sx={{ mt: 4 }}>
+                <CardContent>
+                    <Typography variant="h5" component="h2" gutterBottom>
+                        Your Goal Tree
+                    </Typography>
+                    <Typography color="text.secondary">
+                        Your hierarchical goal structure is coming soon. This is where you'll be able to visualize and manage your goals.
+                    </Typography>
+                </CardContent>
+                <CardActions>
+                    <Button size="small" onClick={() => navigate('/goal-tree')}>View Goal Tree</Button>
+                </CardActions>
+            </Card>
         </Container>
     );
 };
