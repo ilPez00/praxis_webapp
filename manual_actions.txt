@@ -1,294 +1,515 @@
-# Manual Actions Required for Praxis Webapp Setup
+================================================================================
+  PRAXIS — MANUAL ACTIONS REQUIRED
+  Complete these steps in order. Each section is labeled with where to act.
+================================================================================
 
-This document outlines the essential manual configurations and actions you need to perform outside of the codebase. These steps are crucial for the proper functioning of authentication (via Supabase and Google) and payment processing (via Stripe).
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — ROTATE EXPOSED KEYS  ⚠️  DO THIS BEFORE ANYTHING ELSE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
----
+Your Supabase anon key, Supabase service role key, and Stripe secret key were
+committed to git history. Even after `git rm`, they are recoverable from old
+commits. Rotate them now.
 
-## 1. Environment Variable Setup
+─── 1A. Rotate Stripe Secret Key ───────────────────────────────────────────────
+  WHERE: https://dashboard.stripe.com/test/apikeys
 
-You need to create `.env` files in two locations:
+  1. Find "Secret key" (starts with sk_test_...).
+  2. Click the "..." menu → "Roll key" → confirm in the dialog.
+     The old key is immediately invalidated.
+  3. Copy the new secret key.
+  4. Open:  praxis_webapp/.env
+     Update: STRIPE_SECRET_KEY=sk_test_<new_value>
 
-### a) Frontend Environment Variables (`./client/.env`)
+─── 1B. Rotate Supabase Anon Key ───────────────────────────────────────────────
+  WHERE: https://supabase.com/dashboard/project/<your-project-id>/settings/api
+         (your project ID is in the URL when you open your project)
 
-Create a file named `.env` inside the `client/` directory (`/home/gio/Praxis/praxis_webapp/client/.env`) and add the following:
+  1. Under "Project API keys", find the "anon / public" row.
+  2. Click "Generate new key" → confirm.
+  3. Copy the new anon key.
+  4. Open:  praxis_webapp/client/.env
+     Update: REACT_APP_SUPABASE_ANON_KEY=<new_value>
 
-```
-REACT_APP_SUPABASE_URL="YOUR_SUPABASE_PROJECT_URL"
-REACT_APP_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
-REACT_APP_STRIPE_PUBLISHABLE_KEY="YOUR_STRIPE_PUBLISHABLE_KEY"
-```
-*   **`YOUR_SUPABASE_PROJECT_URL`**: Find this in your Supabase project settings (e.g., `https://abcdefghijk.supabase.co`).
-*   **`YOUR_SUPABASE_ANON_KEY`**: Find this in your Supabase project settings under API Keys (it's the `anon` public key).
-*   **`YOUR_STRIPE_PUBLISHABLE_KEY`**: Your public Stripe API key, typically starting with `pk_test_...` for test mode.
+─── 1C. Rotate Supabase Service Role Key ───────────────────────────────────────
+  WHERE: Same page as 1B.
 
-### b) Backend Environment Variables (`./.env`)
+  1. Find the "service_role" row → "Generate new key" → confirm.
+  2. Copy the new service role key.
+  3. Open:  praxis_webapp/.env
+     Update: SUPABASE_SERVICE_ROLE_KEY=<new_value>
 
-Create a file named `.env` in the root of your project (`/home/gio/Praxis/praxis_webapp/.env`) and add the following:
+  ⚠️  The service role key bypasses all Row Level Security.
+      It must NEVER appear in client-side code or be committed to git.
 
-```
-SUPABASE_URL="YOUR_SUPABASE_PROJECT_URL"
-SUPABASE_SERVICE_ROLE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY"
-STRIPE_SECRET_KEY="YOUR_STRIPE_SECRET_KEY"
-STRIPE_PRODUCT_ID="YOUR_STRIPE_PRODUCT_ID"
-STRIPE_PRICE_ID="YOUR_STRIPE_PRICE_ID"
-STRIPE_WEBHOOK_SECRET="YOUR_STRIPE_WEBHOOK_SECRET"
-CLIENT_URL="http://localhost:3000" # Or your frontend's deployment URL
-```
-*   **`YOUR_SUPABASE_PROJECT_URL`**: Same as above.
-*   **`YOUR_SUPABASE_SERVICE_ROLE_KEY`**: Found in your Supabase project settings under API Keys (it's the `service_role` secret key). **Keep this confidential!**
-*   **`YOUR_STRIPE_SECRET_KEY`**: Your secret Stripe API key, typically starting with `sk_test_...` for test mode. **Keep this confidential!**
-*   **`YOUR_STRIPE_PRODUCT_ID`**: The ID of your product defined in Stripe (e.g., for "Premium Membership").
-*   **`YOUR_STRIPE_PRICE_ID`**: The ID of the recurring price associated with your Stripe product.
-*   **`YOUR_STRIPE_WEBHOOK_SECRET`**: The secret for verifying Stripe webhook events. You'll generate this when setting up webhooks in Stripe. **Keep this confidential!**
-*   **`CLIENT_URL`**: The URL where your frontend application is served. Use `http://localhost:3000` for local development.
+─── 1D. (Optional) Rotate Supabase JWT Secret ──────────────────────────────────
+  This logs out ALL existing users. Only do this if sessions may be compromised.
 
-**ACTION**: After creating/modifying these `.env` files, **restart both your frontend and backend development servers** for the changes to take effect.
+  WHERE: Supabase Dashboard → Project Settings → API → JWT Settings
+  Action: Click "Generate new JWT secret" → confirm.
 
----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — FILL IN BOTH .env FILES COMPLETELY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## 2. Supabase Project Configuration (Dashboard: app.supabase.com)
+─── File: praxis_webapp/.env (backend) ─────────────────────────────────────────
 
-Log in to your Supabase project dashboard and configure the following:
+  STRIPE_SECRET_KEY=sk_test_...          ← updated in Step 1A
+  STRIPE_WEBHOOK_SECRET=whsec_...        ← get from Stripe CLI in Step 6C
+  STRIPE_PRICE_ID=price_...             ← get from Stripe Dashboard in Step 5B
+  SUPABASE_URL=https://<id>.supabase.co  ← Supabase Dashboard → Settings → API
+  SUPABASE_SERVICE_ROLE_KEY=eyJ...       ← updated in Step 1C
+  GEMINI_API_KEY=...                     ← Google AI Studio (for AI coaching)
+  CLIENT_URL=http://localhost:3000       ← change to prod URL when deploying
+  PORT=3001
 
-### a) General Site URL & Redirect URLs
+─── File: praxis_webapp/client/.env (frontend) ─────────────────────────────────
 
-*   Navigate to `Project Settings` -> `Authentication`.
-*   **Site URL**: Set this to your application's base URL (e.g., `http://localhost:3000` for local development, or your deployed domain).
-*   **Redirect URLs**: Add `http://localhost:3000/**` (or your deployed domain's equivalent with `/**`). This is crucial for OAuth redirects.
+  REACT_APP_SUPABASE_URL=https://<id>.supabase.co   ← same project URL as above
+  REACT_APP_SUPABASE_ANON_KEY=eyJ...                ← updated in Step 1B
+  REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_...      ← from Stripe Dashboard (safe to expose)
+  REACT_APP_API_URL=http://localhost:3001            ← change to prod URL when deploying
 
-### b) Google Provider Configuration (for "Login/Signup with Google")
+  How to find REACT_APP_STRIPE_PUBLISHABLE_KEY:
+    → https://dashboard.stripe.com/test/apikeys
+    → Copy the "Publishable key" (starts with pk_test_...)
 
-*   Navigate to `Authentication` -> `Providers`.
-*   Enable the `Google` provider.
-*   You will need to enter a **Google Client ID** and **Google Client Secret**. These come from your Google Cloud Console project.
+  After editing either .env file: restart your dev servers.
 
-### c) Google Cloud Console Configuration (console.cloud.google.com)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — GOOGLE CLOUD CONSOLE (for Google OAuth login)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHERE: https://console.cloud.google.com
 
-*   Go to your Google Cloud Console project where you created the OAuth 2.0 Client ID for your application.
-*   Navigate to `APIs & Services` -> `Credentials`.
-*   Edit your OAuth 2.0 Client ID.
-*   Ensure that the `Authorized redirect URIs` include the **Supabase OAuth callback URL**. This typically looks like: `https://<your-project-ref>.supabase.co/auth/v1/callback` (replace `<your-project-ref>` with your actual Supabase project reference).
+─── 3A. Create a project ───────────────────────────────────────────────────────
 
-### d) Email Confirmation Settings (for Email/Password Signup)
+  1. Click the project dropdown (top-left) → "New Project".
+  2. Name it "Praxis" → click "Create".
+  3. Make sure the new project is selected in the dropdown.
 
-*   Navigate to `Authentication` -> `Settings`.
-*   Check the `Email Confirmation` setting. If it's enabled, users signing up with email/password will receive a verification email and must click the link before they can log in. This is the expected behavior based on the current frontend messaging.
+─── 3B. Configure the OAuth Consent Screen ─────────────────────────────────────
 
-### e) Database `public.profiles` Table and `handle_new_user` Trigger
+  1. Left menu → "APIs & Services" → "OAuth consent screen".
+  2. User Type: select "External" → click "Create".
+  3. Fill in the required fields:
+       App name:              Praxis
+       User support email:    <your email>
+       Developer contact:     <your email>
+  4. Click "Save and Continue".
+  5. Scopes screen: click "Add or Remove Scopes".
+     Check all three of these:
+       - .../auth/userinfo.email
+       - .../auth/userinfo.profile
+       - openid
+     Click "Update" → "Save and Continue".
+  6. Test users screen: add your own email address → "Save and Continue".
+  7. Summary: click "Back to Dashboard".
 
-The backend `signup` controller relies on a database trigger to create user profiles.
+─── 3C. Create OAuth 2.0 Credentials ───────────────────────────────────────────
 
-*   **Verify `public.profiles` Table:**
-    *   Ensure a table named `profiles` exists in the `public` schema (`public.profiles`).
-    *   It should have at least `id`, `name`, `age`, and `bio` columns.
-    *   The `id` column should be a UUID and typically set as the primary key and foreign key referencing `auth.users.id`.
-*   **Verify `handle_new_user` Trigger:**
-    *   In your Supabase SQL Editor, confirm that the `handle_new_user` function and `on_auth_user_created` trigger are set up.
-    *   If not, you may need to create them. A common setup looks like this (adjust column names in `INSERT` statement based on your `profiles` table schema and how `name`, `age`, `bio` are passed in `raw_user_meta_data`):
+  1. Left menu → "APIs & Services" → "Credentials".
+  2. Click "+ Create Credentials" → "OAuth 2.0 Client ID".
+  3. Application type: Web application.
+  4. Name: "Praxis Web".
+  5. Under "Authorized redirect URIs" → click "+ Add URI".
+     Enter EXACTLY this (replace <your-project-id> with your Supabase project ID):
 
-    ```sql
-    -- This trigger automatically creates a profile entry when a new user signs up via Auth.
-    CREATE FUNCTION public.handle_new_user()
-    RETURNS TRIGGER AS $$
-    BEGIN
-      INSERT INTO public.profiles (id, name, age, bio)
-      VALUES (NEW.id, NEW.raw_user_meta_data->>'name', (NEW.raw_user_meta_data->>'age')::int, NEW.raw_user_meta_data->>'bio');
+       https://<your-project-id>.supabase.co/auth/v1/callback
+
+     Example: https://kuyzjjbeiawnnkkrjsda.supabase.co/auth/v1/callback
+
+  6. Click "Create".
+  7. A dialog shows your credentials. COPY BOTH NOW:
+       Client ID:     ends in .apps.googleusercontent.com
+       Client Secret: starts with GOCSPX-...
+     You can retrieve these later from the Credentials list if needed.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — SUPABASE DASHBOARD CONFIGURATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+─── 4A. Enable Google OAuth Provider ───────────────────────────────────────────
+  WHERE: https://supabase.com/dashboard/project/<your-project-id>/auth/providers
+
+  1. Scroll to "Google" in the provider list.
+  2. Toggle it ON.
+  3. Paste the values from Step 3C:
+       Client ID (for OAuth):      <Google Client ID>
+       Client Secret (for OAuth):  <Google Client Secret>
+  4. Click "Save".
+
+─── 4B. Set Site URL and Redirect URLs ─────────────────────────────────────────
+  WHERE: https://supabase.com/dashboard/project/<your-project-id>/auth/url-configuration
+
+  1. Site URL:
+       Development: http://localhost:3000
+       Production:  https://yourdomain.com  (update before deploying)
+
+  2. Redirect URLs — click "Add URL" for EACH of the following:
+       http://localhost:3000/**
+       http://localhost:3000/dashboard
+       http://localhost:3000/onboarding
+
+     For production, also add:
+       https://yourdomain.com/**
+
+  3. Click "Save".
+
+─── 4C. Email Confirmation Settings ────────────────────────────────────────────
+  WHERE: Supabase Dashboard → Authentication → Settings
+
+  Review the "Enable email confirmations" toggle.
+  - ON  = users must verify email before logging in (more secure, standard for prod)
+  - OFF = users can log in immediately after signup (easier for dev/testing)
+
+  During development you may want this OFF to avoid having to check email
+  every time you create a test account.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5 — SUPABASE SQL EDITOR (run all four queries below)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHERE: https://supabase.com/dashboard/project/<your-project-id>/sql/new
+
+  Open a "New Query" tab for each query. Paste it, then click "Run".
+
+─── Query 1: handle_new_user trigger (email + Google OAuth) ────────────────────
+
+  Purpose: When any new user signs up — whether via email/password or
+  Google OAuth — automatically create their row in `public.profiles`.
+  Google users send name/avatar_url differently from email users,
+  so this handles both with COALESCE fallbacks.
+
+  -- PASTE AND RUN:
+
+  CREATE OR REPLACE FUNCTION public.handle_new_user()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  SECURITY DEFINER SET search_path = public
+  AS $$
+  BEGIN
+    INSERT INTO public.profiles (id, name, email, avatar_url, is_premium, onboarding_completed)
+    VALUES (
+      NEW.id,
+      COALESCE(
+        NEW.raw_user_meta_data->>'name',
+        NEW.raw_user_meta_data->>'full_name',
+        SPLIT_PART(NEW.email, '@', 1)
+      ),
+      NEW.email,
+      COALESCE(
+        NEW.raw_user_meta_data->>'avatar_url',
+        NEW.raw_user_meta_data->>'picture'
+      ),
+      false,
+      false
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      avatar_url = COALESCE(profiles.avatar_url, EXCLUDED.avatar_url);
+    RETURN NEW;
+  END;
+  $$;
+
+  DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+  CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+─── Query 2: user_subscriptions table ──────────────────────────────────────────
+
+  Purpose: Stores Stripe subscription records. The webhook handler in
+  stripeController.ts writes here after each successful payment event.
+  Skip this query if the table already exists (check Table Editor first).
+
+  -- PASTE AND RUN:
+
+  CREATE TABLE IF NOT EXISTS public.user_subscriptions (
+    id                   TEXT PRIMARY KEY,
+    user_id              UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    status               TEXT NOT NULL,
+    customer_id          TEXT NOT NULL,
+    price_id             TEXT,
+    product_id           TEXT,
+    current_period_start TIMESTAMPTZ,
+    current_period_end   TIMESTAMPTZ,
+    created_at           TIMESTAMPTZ DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;
+
+  DROP POLICY IF EXISTS "Users can view own subscription" ON public.user_subscriptions;
+  CREATE POLICY "Users can view own subscription"
+    ON public.user_subscriptions FOR SELECT
+    USING (auth.uid() = user_id);
+
+─── Query 3: update_profile_premium_status trigger ─────────────────────────────
+
+  Purpose: Automatically sets profiles.is_premium = true when a subscription
+  with status 'active' or 'trialing' exists for the user, and false when the
+  subscription is cancelled or deleted. This is what makes the premium badge
+  appear after a successful Stripe payment — no manual update needed.
+
+  -- PASTE AND RUN:
+
+  CREATE OR REPLACE FUNCTION public.update_profile_premium_status()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  SECURITY DEFINER SET search_path = public
+  AS $$
+  BEGIN
+    IF (TG_OP = 'DELETE') THEN
+      UPDATE public.profiles
+        SET is_premium = false
+        WHERE id = OLD.user_id;
+      RETURN OLD;
+    ELSE
+      UPDATE public.profiles
+        SET is_premium = (NEW.status IN ('active', 'trialing'))
+        WHERE id = NEW.user_id;
       RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql SECURITY DEFINER;
+    END IF;
+  END;
+  $$;
 
-    -- Drop the trigger if it already exists to avoid recreation errors
-    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+  DROP TRIGGER IF EXISTS on_subscription_change ON public.user_subscriptions;
+  CREATE TRIGGER on_subscription_change
+    AFTER INSERT OR UPDATE OR DELETE ON public.user_subscriptions
+    FOR EACH ROW EXECUTE PROCEDURE public.update_profile_premium_status();
 
-    -- Create the trigger
-    CREATE TRIGGER on_auth_user_created
-      AFTER INSERT ON auth.users
-      FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-    ```
-    *   **Note:** The `(NEW.raw_user_meta_data->>'age')::int` part explicitly casts the `age` from text to integer.
+─── Query 4: messages table + RLS (required for chat) ──────────────────────────
 
----
+  Purpose: Stores chat messages between users. The ChatRoom component reads
+  and writes here via the Express backend (messageController.ts).
+  Skip if the table already exists.
 
-## 3. Stripe Configuration (Dashboard: dashboard.stripe.com)
+  -- PASTE AND RUN:
 
-Log in to your Stripe dashboard and configure the following:
+  CREATE TABLE IF NOT EXISTS public.messages (
+    id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    sender_id   UUID REFERENCES auth.users(id),
+    receiver_id UUID REFERENCES auth.users(id),
+    content     TEXT NOT NULL,
+    goal_node_id TEXT,
+    timestamp   TIMESTAMPTZ DEFAULT NOW()
+  );
 
-### a) API Keys
+  ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
-*   Navigate to `Developers` -> `API Keys`.
-*   Locate your `Publishable key` (for frontend `.env`) and `Secret key` (for backend `.env`).
+  DROP POLICY IF EXISTS "Users can read their own messages" ON public.messages;
+  CREATE POLICY "Users can read their own messages"
+    ON public.messages FOR SELECT
+    USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
-### b) Products and Prices
+  DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
+  CREATE POLICY "Users can send messages"
+    ON public.messages FOR INSERT
+    WITH CHECK (auth.uid() = sender_id);
 
-*   Navigate to `Products`.
-*   Ensure you have at least one product (e.g., "Premium Membership") and a recurring price associated with it.
-*   Note down the **Product ID** and **Price ID** to use in your backend `.env`.
+─── Query 5: Verify triggers are installed ─────────────────────────────────────
 
-### c) Webhooks
+  Run this after the queries above to confirm everything is wired up.
+  You should see at least: on_auth_user_created, on_subscription_change.
 
-*   Navigate to `Developers` -> `Webhooks`.
-*   **Add an endpoint**:
-    *   For local development, you'll need a tool like `ngrok` or `Stripe CLI` to expose your local backend's webhook endpoint to Stripe. Your backend webhook endpoint is typically `/stripe/webhook`.
-    *   The URL will look something like `https://your-ngrok-url/stripe/webhook` or `http://localhost:3001/stripe/webhook` if using Stripe CLI with forwarding.
-    *   **Events to send**: Select `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`. These are processed by your backend's `stripeController.ts`.
-*   After creating the webhook endpoint, Stripe will provide a **Webhook Secret**. Note this down and add it to your backend `.env` as `STRIPE_WEBHOOK_SECRET`.
+  -- PASTE AND RUN:
 
----
+  SELECT trigger_name, event_object_schema, event_object_table, action_timing, event_manipulation
+  FROM information_schema.triggers
+  WHERE trigger_name IN ('on_auth_user_created', 'on_subscription_change')
+  ORDER BY trigger_name;
 
-## 4. Backend `.env` — Additional Required Variables
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 6 — STRIPE DASHBOARD + CLI SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Add the following to your backend `.env` if not already set:
+─── 6A. Create a Product and Price ─────────────────────────────────────────────
+  WHERE: https://dashboard.stripe.com/test/products/create
 
-```
-SUPABASE_URL=https://<your-project>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<service_role_key_from_supabase_dashboard>
-GEMINI_API_KEY=<your_google_ai_studio_key>
-CLIENT_URL=http://localhost:3000
-STRIPE_PRICE_ID=<price_ID_from_stripe_dashboard>
-STRIPE_WEBHOOK_SECRET=<from_stripe_webhook_setup>
-```
+  1. Product name: "Praxis Premium"
+  2. Pricing model: Standard pricing
+  3. Price: 10.00 USD, Monthly (recurring)
+  4. Click "Save product".
+  5. On the product page, under "Pricing", find and copy the Price ID.
+     It looks like: price_1AbCdEfGhIjKlMnO...
+  6. Add to praxis_webapp/.env:
+       STRIPE_PRICE_ID=price_1AbCdEfGhIjKlMnO...
 
----
+─── 6B. Install the Stripe CLI ─────────────────────────────────────────────────
 
-## 5. Supabase — `messages` Table Setup
+  On Debian/Ubuntu Linux:
 
-If not yet created, run this in the Supabase SQL Editor:
+    sudo apt install stripe
 
-```sql
-CREATE TABLE messages (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  sender_id UUID REFERENCES auth.users(id),
-  receiver_id UUID REFERENCES auth.users(id),
-  content TEXT NOT NULL,
-  goal_node_id TEXT,
-  timestamp TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can read their own messages"
-  ON messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
-CREATE POLICY "Users can send messages"
-  ON messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
-```
+  Or download manually:
+    https://github.com/stripe/stripe-cli/releases/latest
+    → Download stripe_linux_x86_64.tar.gz
+    → tar -xzf stripe_linux_x86_64.tar.gz
+    → sudo mv stripe /usr/local/bin/stripe
 
----
+  Verify:
+    stripe --version
 
-## 6. Supabase — Enable Realtime on `messages` Table
+─── 6C. Login and forward webhooks locally ─────────────────────────────────────
 
-For live chat to work:
-- Dashboard → Database → Replication → Enable for `messages` table.
+  Step 1 — Login (opens a browser):
+    stripe login
 
----
+  Step 2 — With your backend running on port 3001, open a second terminal and run:
+    stripe listen --forward-to localhost:3001/stripe/webhook
 
-## 7. Install Frontend Dependencies
+  Step 3 — The CLI prints something like:
+    > Ready! Your webhook signing secret is whsec_abc123def456ghi789...
 
-```bash
-cd client && npm install recharts @mui/x-charts
-```
+  Step 4 — Copy that whsec_... value.
+  Step 5 — Add to praxis_webapp/.env:
+       STRIPE_WEBHOOK_SECRET=whsec_abc123def456ghi789...
 
----
+  Step 6 — Restart the backend server so it reads the new env var.
 
-## 8. Stripe Webhook Setup
+  IMPORTANT: Keep this `stripe listen` terminal open while testing locally.
+             The whsec_ from the CLI is different from the Dashboard webhook
+             secret — use the CLI one for local dev only.
 
-Set webhook endpoint to: `https://your-domain.com/stripe/webhook`
+─── 6D. Test a payment end-to-end ──────────────────────────────────────────────
 
-For local dev: `stripe listen --forward-to localhost:3001/stripe/webhook`
+  Run all three simultaneously:
+    Terminal 1: npm run dev          (from praxis_webapp/ — backend on :3001)
+    Terminal 2: stripe listen --forward-to localhost:3001/stripe/webhook
+    Terminal 3: npm start            (from praxis_webapp/client/ — frontend on :3000)
 
-Events to listen for: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+  Test flow:
+    1. Log in as any test user → go to /upgrade
+    2. Click "Get Started Now"
+    3. Stripe Checkout opens. Use this test card:
+         Number:  4242 4242 4242 4242
+         Expiry:  Any future date (e.g. 12/29)
+         CVC:     Any 3 digits (e.g. 123)
+         Name:    Anything
+    4. Click "Subscribe" → redirected to /success
+    5. Check Stripe CLI terminal → should show:
+         checkout.session.completed
+         customer.subscription.created
+    6. Check Supabase Table Editor:
+         → public.user_subscriptions: new row, status = 'active'
+         → public.profiles: is_premium = true for that user ✓
 
----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 7 — SUPABASE: ENABLE REALTIME ON messages TABLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHERE: Supabase Dashboard → Database → Replication
 
-### a) Install framer-motion (for GoalTree animations)
+  1. Find the "messages" table in the list.
+  2. Toggle it ON under "Realtime".
+  3. Save.
 
-```bash
-cd client && npm install framer-motion
-```
+  This is required for live chat in ChatRoom.tsx to receive new messages
+  without the user having to refresh the page.
 
-### b) New Files Created for Goal Tree Visualization
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 8 — BACKEND CODE CHANGES (manual edits required)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-*   `client/src/types/goal.ts` (GoalNode interface, Domain enum, etc.)
-*   `client/src/components/GoalTree/GoalTreeComponent.tsx` (main Goal Tree visualization)
-*   `client/src/components/GoalTree/GoalNodeComponent.tsx` (individual Goal Node rendering)
+─── 8A. Add completeOnboarding to userController.ts ────────────────────────────
+  FILE: praxis_webapp/src/controllers/userController.ts
 
----
-Please complete these manual actions. If you encounter any issues or need further assistance with any of these steps, let me know.
+  Add this function. Make sure supabase, catchAsync, and BadRequestError are
+  already imported at the top of that file (they should be):
 
----
-## 5. Backend `.env` additions (Claude audit — required for full functionality)
+    export const completeOnboarding = catchAsync(async (req, res, _next) => {
+      const { userId } = req.body;
+      if (!userId) throw new BadRequestError('userId is required.');
 
-Ensure all of the following are set in `/home/gio/Praxis/praxis_webapp/.env`:
+      const { error } = await supabase
+        .from('profiles')
+        .update({ onboarding_completed: true })
+        .eq('id', userId);
 
-```
-SUPABASE_URL=https://<your-project>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<service_role_key_from_supabase_dashboard>
-GEMINI_API_KEY=<your_google_ai_studio_key>
-CLIENT_URL=http://localhost:3000
-STRIPE_SECRET_KEY=<already_set>
-STRIPE_PUBLISHABLE_KEY=<from_stripe_dashboard>
-STRIPE_PRICE_ID=<price_ID_from_stripe_dashboard>
-STRIPE_WEBHOOK_SECRET=<from_stripe_webhook_setup>
-```
+      if (error) throw new Error(`Failed to update onboarding: ${error.message}`);
 
-**Note:** `authenticateToken` middleware (now in `src/middleware/authenticateToken.ts`) uses
-`SUPABASE_SERVICE_ROLE_KEY` via the supabaseClient. Ensure it is set or AI Coaching and
-Analytics endpoints will return 401 for all requests.
+      res.status(200).json({ message: 'Onboarding complete.' });
+    });
 
----
-## 6. Supabase: Create `messages` table (required for chat)
+─── 8B. Register the route in userRoutes.ts ────────────────────────────────────
+  FILE: praxis_webapp/src/routes/userRoutes.ts
 
-If not yet created, run in the Supabase SQL Editor:
+  Add this import and route:
 
-```sql
-CREATE TABLE IF NOT EXISTS messages (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  sender_id UUID REFERENCES auth.users(id),
-  receiver_id UUID REFERENCES auth.users(id),
-  content TEXT NOT NULL,
-  goal_node_id TEXT,
-  timestamp TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can read their own messages"
-  ON messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
-CREATE POLICY "Users can send messages"
-  ON messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
-```
+    import { completeOnboarding } from '../controllers/userController';
+    router.post('/complete-onboarding', completeOnboarding);
 
----
-## 7. Supabase: Enable Realtime on `messages` table
+─── 8C. Call it from the frontend onboarding flow ──────────────────────────────
+  FILE: whichever component has your final onboarding "Finish" button
+        (likely client/src/features/onboarding/components/InitialGoalSetup.tsx)
 
-Navigate to: Dashboard → Database → Replication → Enable Realtime for `messages` table.
-This is required for live chat updates in ChatRoom.tsx without polling.
+  After saving goals, before navigating away:
 
----
-## 8. Frontend dependencies for new styling
+    import axios from 'axios';
+    import { API_URL } from '../../../lib/api';  // adjust relative path
 
-```bash
-cd /home/gio/Praxis/praxis_webapp/client && npm install recharts @mui/x-charts
-```
+    // In the finish/submit handler:
+    await axios.post(`${API_URL}/users/complete-onboarding`, { userId: user.id });
+    navigate('/dashboard');
 
-Note: `framer-motion` should already be installed (Step 4b above). Verify with:
-```bash
-cd /home/gio/Praxis/praxis_webapp/client && npm list framer-motion
-```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 9 — INSTALL MISSING FRONTEND DEPENDENCIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
----
-## 9. Stripe Webhook setup
+  Run from praxis_webapp/client/:
 
-In the Stripe Dashboard, set the webhook endpoint to:
-  `https://your-domain.com/stripe/webhook`
+    npm install recharts @mui/x-charts
 
-For local development, use the Stripe CLI:
-```bash
-stripe listen --forward-to localhost:3001/stripe/webhook
-```
+  Verify framer-motion is already present (it should be):
 
-This will print the webhook secret — add it to `.env` as `STRIPE_WEBHOOK_SECRET`.
+    npm list framer-motion
 
----
-## 10. Google Fonts (already added to index.html by Claude)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 10 — PRODUCTION WEBHOOK (when you deploy the backend)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHERE: https://dashboard.stripe.com/test/webhooks/create
 
-The following fonts are now loaded in `client/public/index.html`:
-- **Inter** (body text, weights 300-700)
-- **Plus Jakarta Sans** (headings, weights 600-800)
+  When the backend is deployed to a public URL, replace the Stripe CLI
+  tunnel with a real registered webhook endpoint.
 
-No additional action required — they load from Google CDN at runtime.
+  1. Endpoint URL:    https://your-backend-domain.com/stripe/webhook
+  2. Events to send: checkout.session.completed
+                     customer.subscription.updated
+                     customer.subscription.deleted
+  3. Click "Add endpoint".
+  4. On the endpoint detail page, reveal and copy the "Signing secret" (whsec_...).
+  5. Set in your production environment (NOT in code):
+       STRIPE_WEBHOOK_SECRET=whsec_...  ← Dashboard secret, different from CLI secret
+
+  For production keys (not test), repeat Steps 6A and 10 on the live dashboard:
+    https://dashboard.stripe.com/products/create
+    https://dashboard.stripe.com/webhooks/create
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHECKLIST — TICK OFF AS YOU COMPLETE EACH ITEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [ ] 1A  Stripe secret key rolled → updated in praxis_webapp/.env
+  [ ] 1B  Supabase anon key rotated → updated in praxis_webapp/client/.env
+  [ ] 1C  Supabase service role key rotated → updated in praxis_webapp/.env
+  [ ] 2   All env vars present and filled in both .env files
+  [ ] 3A  Google Cloud project created
+  [ ] 3B  OAuth consent screen configured (External, email + profile + openid)
+  [ ] 3C  OAuth 2.0 Client ID created, Supabase callback URI added
+  [ ] 4A  Google provider enabled in Supabase with Client ID + Secret
+  [ ] 4B  Supabase redirect URLs configured (localhost:3000/**)
+  [ ] 4C  Email confirmation setting reviewed
+  [ ] 5Q1 handle_new_user trigger updated in Supabase SQL Editor
+  [ ] 5Q2 user_subscriptions table created in Supabase SQL Editor
+  [ ] 5Q3 update_profile_premium_status trigger created in Supabase SQL Editor
+  [ ] 5Q4 messages table created in Supabase SQL Editor
+  [ ] 5Q5 Verification query run — both triggers confirmed present
+  [ ] 6A  Stripe product "Praxis Premium" created, price_... added to .env
+  [ ] 6B  Stripe CLI installed
+  [ ] 6C  stripe listen running, whsec_... added to praxis_webapp/.env
+  [ ] 6D  End-to-end payment test passing (subscription row + is_premium = true)
+  [ ] 7   Realtime enabled for messages table in Supabase Dashboard
+  [ ] 8A  completeOnboarding function added to userController.ts
+  [ ] 8B  Route registered in userRoutes.ts
+  [ ] 8C  Frontend calls complete-onboarding endpoint at end of onboarding flow
+  [ ] 9   recharts and @mui/x-charts installed in client/
+  [ ] 10  (Prod) Real webhook endpoint registered in Stripe Dashboard
+
+================================================================================
