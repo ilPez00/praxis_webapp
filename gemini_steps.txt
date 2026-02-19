@@ -8,15 +8,17 @@ not just a checklist.
 
 The whitepaper is the authoritative product spec. When in doubt, check it.
 The companion file `manual_actions.txt` contains all required Supabase/Stripe setup SQL.
-
+Feel free to delegate tasks to gemini-cli, which you can call by running "gemini" 
 ---
 
-## Project Health (last updated: 2026-02-19 Session 11)
+## Project Health (last updated: 2026-02-19 Session 13)
 
 - Backend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from project root)
 - Frontend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from `client/`)
-- Git branch: `main` — up to date locally, pending push (SSH key not yet authorized on GitHub)
-- Deployment: ❌ not yet deployed (next major priority)
+- Frontend startup: ✅ Compiles and runs on :3000 (face-api.js source map warnings suppressed by GENERATE_SOURCEMAP=false)
+- Backend startup: ❌ Requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in .env to start
+- Git branch: `main` — 12+ commits ahead of origin, pending push (SSH key not yet authorized on GitHub)
+- Deployment: ❌ not yet deployed (Railway + Vercel — full steps in manual_actions.txt Steps 11–12)
 
 ---
 
@@ -66,6 +68,33 @@ The companion file `manual_actions.txt` contains all required Supabase/Stripe se
 goalController, analyticsController, useUser hook, PrivateRoute
 
 **Phase 5 — Docs:** `claude_steps.txt` created, `manual_actions.txt` updated
+
+---
+
+### Session 13 — Claude Code (2026-02-19) — MatchesPage polish + run script + docs
+
+**MatchesPage full rewrite:**
+- `client/src/data/mockMatches.ts`: added `overallProgress` field (0-100) to all 7 profiles
+- `MatchesPage.tsx`: goal progress bar tease (linear bar with %, color-coded); bio line-clamped
+  to 3 lines; demo user Message click → toast + redirect to /goals/:id instead of /chat/demo-X
+- Empty state: two CTAs (Build goal tree + Upgrade for more matches)
+- Removed unused `IconButton` import and unused `currentUserId` prop from `MatchCard`
+
+**Startup:**
+- `run_praxis.sh` created: checks env vars, reports which are missing and why they matter,
+  kills stale processes on :3000/:3001, starts backend + frontend with PID tracking,
+  writes to .logs/, graceful Ctrl+C cleanup
+- Discovered: backend requires `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` to start.
+  Frontend starts standalone on :3000 (with harmless face-api.js source map warnings,
+  now suppressed by `GENERATE_SOURCEMAP=false` in client/.env)
+
+**Docs:**
+- `README.md`: complete rewrite — what Praxis is, how matching works, current status table,
+  quick start, first-run expectations, API routes, env var reference, architecture notes
+- `manual_actions.txt`: full idiot-proof rewrite — QUICK START section (4 steps to run locally),
+  full numbered checklist, every step has WHERE+WHAT+SUCCESS, TROUBLESHOOTING section
+
+**Note:** `gemini_steps.txt` was renamed to `claude` on disk by user; restored.
 
 ---
 
