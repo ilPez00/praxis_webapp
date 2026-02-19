@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Box, CircularProgress, Alert, Button, Paper } from '@mui/material';
+import { Container, Typography, CircularProgress, Alert, Button, Paper } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios'; // axios is imported but not used, can be removed if not needed
 
 /**
  * @description Page displayed after a successful return from Stripe Checkout.

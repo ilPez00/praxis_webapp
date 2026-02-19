@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../../lib/api';
+import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import axios from 'axios';
@@ -53,6 +54,7 @@ const ChatRoom: React.FC = () => {
   const [selectedGoalNode, setSelectedGoalNode] = useState<string>('');
   const [selectedGrade, setSelectedGrade] = useState<FeedbackGrade>(FeedbackGrade.SUCCEEDED);
   const [feedbackComment, setFeedbackComment] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -162,25 +164,31 @@ const ChatRoom: React.FC = () => {
 
   const handleSubmitFeedback = async () => {
     if (!currentUserId || !user2Id || !selectedGoalNode || !selectedGrade) {
-      alert('Please select a goal and a grade for feedback.');
+      toast.error('Please select a goal and a grade before submitting.');
       return;
     }
+    setSubmittingFeedback(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       await axios.post(`${API_URL}/feedback`, {
         giverId: currentUserId,
         receiverId: user2Id,
         goalNodeId: selectedGoalNode,
         grade: selectedGrade,
         comment: feedbackComment,
+      }, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      alert('Feedback submitted successfully!');
+      toast.success('Feedback submitted! Their goal weights have been updated.');
       setShowFeedbackForm(false);
       setSelectedGoalNode('');
       setSelectedGrade(FeedbackGrade.SUCCEEDED);
       setFeedbackComment('');
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      alert('Failed to submit feedback.');
+      toast.error('Failed to submit feedback. Please try again.');
+    } finally {
+      setSubmittingFeedback(false);
     }
   };
 
@@ -298,8 +306,8 @@ const ChatRoom: React.FC = () => {
               onChange={(e) => setFeedbackComment(e.target.value)}
               sx={{ flexGrow: 1 }}
             />
-            <Button variant="contained" size="small" onClick={handleSubmitFeedback}>
-              Submit
+            <Button variant="contained" size="small" onClick={handleSubmitFeedback} disabled={submittingFeedback}>
+              {submittingFeedback ? 'Submitting…' : 'Submit'}
             </Button>
           </Stack>
         </Box>

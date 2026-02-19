@@ -11,13 +11,14 @@ The companion file `manual_actions.txt` contains all required Supabase/Stripe se
 Feel free to delegate tasks to gemini-cli, which you can call by running "gemini" 
 ---
 
-## Project Health (last updated: 2026-02-19 Session 13)
+## Project Health (last updated: 2026-02-19 Session 14)
 
 - Backend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from project root)
 - Frontend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from `client/`)
-- Frontend startup: ✅ Compiles and runs on :3000 (face-api.js source map warnings suppressed by GENERATE_SOURCEMAP=false)
-- Backend startup: ❌ Requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in .env to start
-- Git branch: `main` — 12+ commits ahead of origin, pending push (SSH key not yet authorized on GitHub)
+- Frontend startup: ✅ Compiles and runs on :3000
+- Backend startup: ✅ Starts cleanly with all env vars set (SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY + others)
+- ts-node fix: ✅ Added `/// <reference path="./types/express.d.ts" />` to `src/index.ts` so ts-node finds the Express type augmentation
+- Git branch: `main` — commits ahead of origin, pending push (SSH key not yet authorized on GitHub)
 - Deployment: ❌ not yet deployed (Railway + Vercel — full steps in manual_actions.txt Steps 11–12)
 
 ---
@@ -70,6 +71,56 @@ goalController, analyticsController, useUser hook, PrivateRoute
 **Phase 5 — Docs:** `claude_steps.txt` created, `manual_actions.txt` updated
 
 ---
+
+### Session 14 cont. — Claude Code (2026-02-19) — Forced onboarding + one free re-edit gate
+
+**Forced goal tree after login:**
+- `OnboardingPage.tsx`: Removed `onboarding_completed: true` from profile update — goal tree setup now required before app access
+- `GoalSelectionPage.tsx`: After saving goals, calls `supabase.update({ onboarding_completed: true })` then `refetch()` then navigates. Users cannot access the dashboard until they've saved their initial goal tree.
+
+**One free re-edit gate:**
+- `manual_actions.txt` (Step 5 Query 5): SQL to add `goal_tree_edit_count INT DEFAULT 0` to profiles
+- `goalController.ts`: When updating (not inserting) a goal tree — checks `goal_tree_edit_count >= 1 && !isPremium` → 403 ForbiddenError; on success increments the count
+- `User.ts` + `useUser.ts`: `goal_tree_edit_count` mapped from profile
+- `GoalSelectionPage.tsx`: On mount, if `onboarding_completed === true` (re-edit):
+  - `edit_count >= 1 && !premium` → toast.error + redirect to /upgrade
+  - `edit_count === 0` → toast warning "1 free edit remaining"
+- Edge: graceful degradation if column doesn't exist (treats as 0)
+
+### Session 14 — Claude Code (2026-02-19) — Run + debug + SHOULD HAVE features
+
+**Debugging & startup fixes:**
+- `ChatPage.tsx`: Removed undefined `theme.palette.action.active` ref from Avatar sx — fixed TS error
+- `src/index.ts`: Added `/// <reference path="./types/express.d.ts" />` — ts-node was not discovering the
+  global Express Request augmentation, causing `req.user` to error at runtime even though tsc passed
+- Both backend (:3001) and frontend (:3000) now start cleanly with the env vars in .env
+
+**ProfilePage — public read-only view:**
+- Reads `:id` from `useParams`; computes `isOwnProfile = !paramId || paramId === user.id`
+- When viewing another user: hides Edit/Save buttons, hides edit form, shows their name in "Goal Tree" card
+- Route `/profile/:id` already existed in routes.tsx — now actually works
+
+**MatchesPage — "View Profile" button on match cards:**
+- Added `onViewProfile` prop to `MatchCard`; renders "Profile" outlined button beside "Message"
+- Demo profiles: shows toast; real profiles: navigates to `/profile/:userId`
+
+**ChatRoom — feedback form auth + UX fixes:**
+- `handleSubmitFeedback`: added `Authorization: Bearer ${session?.access_token}` header
+- Replaced `alert()` calls with `toast.error()` / `toast.success()`
+- Added `submittingFeedback` state; button shows "Submitting…" and is disabled during request
+
+**GoalTreePage — empty-state CTA:**
+- Replaced bare Alert("You haven't set any goals yet") with a proper CTA card → `/goal-selection`
+
+**DashboardPage — empty-state CTA:**
+- Replaced generic "Initialize Tree" link with styled "Set Up My Goals" button → `/goal-selection`
+
+**ESLint cleanup (unused imports removed):**
+- `DashboardPage.tsx`: removed ThumbDownIcon, PeopleIcon, EmojiEventsIcon
+- `GoalTreePage.tsx`: removed DOMAIN_COLORS (kept Domain), removed useUser (not needed)
+- `GoalNodeComponent.tsx`: removed AnimatePresence, Tooltip
+- `GoalTreeComponent.tsx`: removed exampleGoalTreeData
+- `IdentityVerificationPage.tsx`: removed Stack, renamed `data` → `_` in destructure
 
 ### Session 13 — Claude Code (2026-02-19) — MatchesPage polish + run script + docs
 
@@ -215,15 +266,12 @@ With 5–20 users this is fine, but it fails completely when `GEMINI_API_KEY` is
 ### 🟡 SHOULD HAVE — First week of beta
 
 #### Empty-state CTAs
-- [ ] DashboardPage: if no goals → show "Set up your goals" CTA card → `/goal-selection`
-- [ ] GoalTreePage: if no goals loaded → show "You haven't set goals yet" + link
-- **Commit:** `feat: empty state CTAs on dashboard and goal tree`
+- [x] DashboardPage: "Set Up My Goals" CTA → `/goal-selection` ✅
+- [x] GoalTreePage: full CTA card → `/goal-selection` ✅
 
 #### "View Profile" for match cards
-- [ ] MatchesPage match cards: add "View Profile" link navigating to `/profile/:userId`
-- [ ] ProfilePage: if `:id` param present and != current user → show read-only view
-      (hide edit controls, show public-facing info: name, bio, domains only)
-- **Commit:** `feat: public profile view for matched users`
+- [x] MatchesPage match cards: "Profile" button added ✅
+- [x] ProfilePage: read-only view when `:id` !== current user ✅
 
 #### Verify real-time chat end-to-end
 - [ ] Open two browser sessions; log in as different users
@@ -231,12 +279,10 @@ With 5–20 users this is fine, but it fails completely when `GEMINI_API_KEY` is
 - [ ] If not working: Supabase Realtime may need the messages table enabled (see above)
 
 #### Wire feedback form to backend
-The ChatRoom already has the feedback UI (grade select + comment input).
-It calls `POST /feedback` via axios but may be missing the auth header.
-- [ ] Check `handleSubmitFeedback` in `ChatRoom.tsx` — add auth header if missing
-- [ ] Add `toast.success()` on submit; prevent double-submission (disable button)
+- [x] Added `Authorization: Bearer` header to `handleSubmitFeedback` ✅
+- [x] Replaced `alert()` with `toast.success()` / `toast.error()` ✅
+- [x] `submittingFeedback` state prevents double-submission ✅
 - [ ] Test: grade a partner → check that their goal weight changes in DB
-- **Commit:** `fix: add auth header to ChatRoom feedback submission, disable on submit`
 
 #### Mobile responsiveness pass
 - [ ] Navbar: add hamburger menu for mobile (collapse nav links into drawer)

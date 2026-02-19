@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import GlassCard from '../../components/common/GlassCard';
@@ -14,7 +14,8 @@ import {
   Alert,
   TextField,
   Chip,
-  IconButton,
+  MenuItem,
+  Grid,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -32,46 +33,59 @@ interface Profile {
   avatar_url: string;
   onboarding_completed: boolean;
   is_premium?: boolean;
+  sex?: string;
+  location?: string;
 }
 
+const SEX_OPTIONS = ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'];
+
 const ProfilePage: React.FC = () => {
+  const { id: paramId } = useParams<{ id: string }>();
   const { user, loading: authLoading } = useUser();
   const navigate = useNavigate();
 
+  // If a :id param is present and different from current user → read-only view
+  const isOwnProfile = !paramId || paramId === user?.id;
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   const [editedName, setEditedName] = useState('');
   const [editedBio, setEditedBio] = useState('');
+  const [editedAge, setEditedAge] = useState('');
+  const [editedSex, setEditedSex] = useState('');
+  const [editedLocation, setEditedLocation] = useState('');
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) { setLoading(false); return; }
+      const targetId = paramId || user?.id;
+      if (!targetId) { setLoading(false); return; }
       setLoading(true);
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
+          .eq('id', targetId)
           .single();
         if (error) throw error;
         setProfile(data);
         setEditedName(data.name || '');
         setEditedBio(data.bio || '');
+        setEditedAge(data.age ? String(data.age) : '');
+        setEditedSex(data.sex || '');
+        setEditedLocation(data.location || '');
         setProfilePhotoPreviewUrl(data.avatar_url);
       } catch (err: any) {
-        setError(err.message);
         toast.error(`Failed to fetch profile: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
     if (!authLoading) fetchProfile();
-  }, [user, authLoading]);
+  }, [user, authLoading, paramId]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -215,21 +229,23 @@ const ProfilePage: React.FC = () => {
               )}
             </Box>
 
-            {/* Edit / Save buttons */}
-            {isEditing ? (
-              <Stack direction="row" spacing={1}>
-                <Button variant="contained" size="small" startIcon={<SaveIcon />} onClick={handleSave}>Save</Button>
-                <Button variant="outlined" size="small" startIcon={<CancelIcon />} onClick={handleCancel}>Cancel</Button>
-              </Stack>
-            ) : (
-              <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={() => setIsEditing(true)}>
-                Edit Profile
-              </Button>
+            {/* Edit / Save buttons — only shown when viewing own profile */}
+            {isOwnProfile && (
+              isEditing ? (
+                <Stack direction="row" spacing={1}>
+                  <Button variant="contained" size="small" startIcon={<SaveIcon />} onClick={handleSave}>Save</Button>
+                  <Button variant="outlined" size="small" startIcon={<CancelIcon />} onClick={handleCancel}>Cancel</Button>
+                </Stack>
+              ) : (
+                <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={() => setIsEditing(true)}>
+                  Edit Profile
+                </Button>
+              )
             )}
           </Box>
 
           {/* Name + bio */}
-          {isEditing ? (
+          {isOwnProfile && isEditing ? (
             <Stack spacing={2}>
               <TextField
                 label="Name"
@@ -293,9 +309,11 @@ const ProfilePage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <AccountTreeIcon sx={{ color: 'secondary.main' }} />
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>Your Goal Tree</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {isOwnProfile ? 'Your Goal Tree' : `${profile.name}'s Goal Tree`}
+              </Typography>
               <Typography variant="body2" color="text.secondary">
-                Visualize and manage your hierarchical goals.
+                {isOwnProfile ? 'Visualize and manage your hierarchical goals.' : 'View their goal architecture.'}
               </Typography>
             </Box>
           </Box>
@@ -303,7 +321,7 @@ const ProfilePage: React.FC = () => {
             variant="outlined"
             size="small"
             color="secondary"
-            onClick={() => navigate(`/goals/${user?.id}`)}
+            onClick={() => navigate(`/goals/${paramId || user?.id}`)}
           >
             View Tree
           </Button>

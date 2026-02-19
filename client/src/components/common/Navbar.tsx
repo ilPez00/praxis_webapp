@@ -10,14 +10,12 @@ import {
   Box,
   Avatar,
   Chip,
-  useTheme,
 } from '@mui/material';
 import BoltIcon from '@mui/icons-material/Bolt';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
-  const theme = useTheme();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

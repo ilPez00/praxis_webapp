@@ -37,14 +37,11 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import SendIcon from '@mui/icons-material/Send';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import StarIcon from '@mui/icons-material/Star';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
-import PeopleIcon from '@mui/icons-material/People';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ExploreIcon from '@mui/icons-material/Explore';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -491,9 +488,19 @@ const DashboardPage: React.FC = () => {
                   ))}
                 </Stack>
               ) : (
-                <Box sx={{ py: 6, textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">No active objectives found.</Typography>
-                  <Button component={RouterLink} to={`/goals/${currentUserId}`} sx={{ mt: 2 }}>Initialize Tree</Button>
+                <Box sx={{ py: 4, textAlign: 'center' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>No goals yet</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Set up your goal tree to start getting matched with aligned partners.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    component={RouterLink}
+                    to="/goal-selection"
+                    sx={{ borderRadius: '10px', fontWeight: 700 }}
+                  >
+                    Set Up My Goals
+                  </Button>
                 </Box>
               )}
             </GlassCard>

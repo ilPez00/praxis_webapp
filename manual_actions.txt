@@ -41,6 +41,7 @@ FULL SETUP CHECKLIST  (tick each box as you complete it)
   [ ] 5Q2 user_subscriptions table created
   [ ] 5Q3 update_profile_premium_status trigger installed
   [ ] 5Q4 messages table created
+  [ ] 5Q5 goal_tree_edit_count column added to profiles (free re-edit gate)
   [ ] 6A  Stripe product "Praxis Premium" created, price_... set in .env
   [ ] 6B  Stripe CLI installed
   [ ] 6C  stripe listen running, whsec_... set in .env
@@ -357,7 +358,16 @@ STEP 5 — SUPABASE SQL (run each query in SQL Editor)
   CREATE POLICY "Users can send messages"
     ON messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
-─── Query 5: verify all tables exist ──────────────────────────────────────────
+─── Query 5: goal_tree_edit_count column (free re-edit gate) ─────────────────
+
+  -- Tracks how many times a user has re-edited their goal tree after initial setup.
+  -- 0 = free re-edit still available; 1+ = Premium required.
+  ALTER TABLE profiles
+    ADD COLUMN IF NOT EXISTS goal_tree_edit_count INT DEFAULT 0;
+
+  -- ✓ Expected: "Success. No rows returned"
+
+─── Query 6: verify all tables exist ──────────────────────────────────────────
 
   SELECT table_name FROM information_schema.tables
     WHERE table_schema = 'public'

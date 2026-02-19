@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import {
     Container,
     Box,
@@ -11,11 +11,9 @@ import {
     ListItemText,
     Badge,
     Divider,
-    useTheme,
 } from '@mui/material';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
-import axios from 'axios';
 
 interface ConversationSummary {
     otherUserId: string;
@@ -26,8 +24,6 @@ interface ConversationSummary {
 }
 
 const ChatPage: React.FC = () => {
-    const navigate = useNavigate();
-    const theme = useTheme();
     const { user: currentUser, loading: currentUserLoading } = useUser();
     const [conversations, setConversations] = useState<ConversationSummary[]>([]);
     const [loading, setLoading] = useState(true);
@@ -123,7 +119,7 @@ const ChatPage: React.FC = () => {
                                         overlap="circular"
                                         invisible={conv.unreadCount === 0}
                                     >
-                                        <Avatar sx={{ bgcolor: theme.palette.action.active }}>
+                                        <Avatar>
                                             {conv.otherUserName.charAt(0)}
                                         </Avatar>
                                     </Badge>

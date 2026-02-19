@@ -17,4 +17,5 @@ export interface User {
   completionRate?: number;
   is_premium?: boolean;
   onboarding_completed?: boolean;
+  goal_tree_edit_count?: number;
 }

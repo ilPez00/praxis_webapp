@@ -46,6 +46,7 @@ export const useUser = () => {
         avatarUrl: profile.avatar_url,
         is_premium: profile.is_premium,
         onboarding_completed: profile.onboarding_completed,
+        goal_tree_edit_count: profile.goal_tree_edit_count ?? 0,
         goalTree: [],
       });
     } catch (error) {

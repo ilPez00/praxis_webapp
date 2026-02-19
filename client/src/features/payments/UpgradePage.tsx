@@ -4,7 +4,6 @@ import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import StarIcon from '@mui/icons-material/Star';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import GlassCard from '../../components/common/GlassCard';
 

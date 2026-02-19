@@ -21,8 +21,9 @@ const getUserProfileDetails = async (userId: string) => {
     .single(); // Expect a single matching profile
 
   if (error) {
-    logger.error('Error fetching user profile for achievement:', error);
-    throw new InternalServerError('Failed to fetch user profile details.');
+    // Non-fatal: achievement creation is a nice-to-have; don't block goal tree save
+    logger.warn('Could not fetch user profile for achievement (non-fatal):', error.message);
+    return { name: 'Unknown User', avatar_url: null };
   }
   // Return fetched profile or default values if profile is null or error occurs
   return profile || { name: 'Unknown User', avatar_url: null };
@@ -66,10 +67,10 @@ export const getGoalTree = catchAsync(async (req: Request, res: Response, next: 
 export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { userId, nodes, rootNodes } = req.body;
 
-  // Fetch user's premium status
+  // Fetch user's premium status and edit count
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('is_premium')
+    .select('*')
     .eq('id', userId)
     .single();
 
@@ -79,6 +80,8 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   }
 
   const isPremium = profile?.is_premium || false;
+  // goal_tree_edit_count may be null if the column hasn't been added yet — treat as 0
+  const editCount: number = profile?.goal_tree_edit_count ?? 0;
   const rootGoalLimit = 3;
 
   // Enforce root goal limit for non-premium users
@@ -139,6 +142,13 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   }
 
   if (existingTree) {
+    // Re-edit gate: non-premium users only get one free re-edit after their initial setup.
+    // editCount === 0 → free re-edit (initial setup doesn't count against the limit)
+    // editCount >= 1 → must be premium
+    if (!isPremium && editCount >= 1) {
+      throw new ForbiddenError('You have used your free goal tree edit. Upgrade to Premium to make further changes.');
+    }
+
     // If a tree exists, update it with the new nodes and root nodes
     const { data, error } = await supabase
       .from('goal_trees')
@@ -151,6 +161,17 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       logger.error('Error updating goal tree:', error.message);
       throw new InternalServerError('Failed to update goal tree.');
     }
+
+    // Increment edit count (best-effort — non-fatal if column not yet added)
+    try {
+      await supabase
+        .from('profiles')
+        .update({ goal_tree_edit_count: editCount + 1 })
+        .eq('id', userId);
+    } catch (incrementErr) {
+      logger.warn('Could not increment goal_tree_edit_count (column may not exist yet):', incrementErr);
+    }
+
     res.json(data); // Respond with the updated goal tree
   } else {
     // If no tree exists, create a new one

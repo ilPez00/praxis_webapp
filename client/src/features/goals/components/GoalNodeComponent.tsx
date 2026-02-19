@@ -1,6 +1,6 @@
 // client/src/components/GoalTree/GoalNodeComponent.tsx
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { GoalNode, DOMAIN_COLORS } from '../../../types/goal';
 import {
     Box,
@@ -8,7 +8,6 @@ import {
     IconButton,
     Paper,
     LinearProgress,
-    Tooltip,
     Chip,
     Stack,
     Dialog,

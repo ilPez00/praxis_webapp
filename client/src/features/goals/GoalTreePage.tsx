@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../lib/api';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
-import { GoalNode as FrontendGoalNode, DOMAIN_COLORS, Domain } from '../../types/goal';
+import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
 import GoalTreeComponent from './components/GoalTreeComponent';
 import {
   Container,
-  Box,
   Typography,
   CircularProgress,
   Alert,
+  Button,
+  Box,
 } from '@mui/material';
 
 /**
@@ -52,7 +52,7 @@ function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
  */
 const GoalTreePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user: authUser } = useUser();
+  const navigate = useNavigate();
 
   const [treeData, setTreeData] = useState<FrontendGoalNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,9 +118,22 @@ const GoalTreePage: React.FC = () => {
       </Typography>
 
       {treeData.length === 0 ? (
-        <Alert severity="info">
-          You haven't set any goals yet. Complete onboarding to build your goal tree.
-        </Alert>
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5, color: 'text.primary' }}>
+            No goals yet
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 4, maxWidth: 400, mx: 'auto', lineHeight: 1.7 }}>
+            Your goal tree is empty. Set up your initial goals to start finding aligned partners.
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => navigate('/goal-selection')}
+            sx={{ px: 5, py: 1.5, borderRadius: '12px', fontWeight: 700 }}
+          >
+            Set Up Your Goals
+          </Button>
+        </Box>
       ) : (
         <GoalTreeComponent data={treeData} />
       )}

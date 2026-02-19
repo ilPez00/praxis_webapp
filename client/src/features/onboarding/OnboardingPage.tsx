@@ -92,6 +92,8 @@ const OnboardingPage: React.FC = () => {
             avatarUrl = publicUrlData.publicUrl;
         }
 
+        // Note: onboarding_completed is set to true in GoalSelectionPage,
+        // only after the user has actually saved their goal tree.
         const { error: updateError } = await supabase
             .from('profiles')
             .update({
@@ -99,7 +101,6 @@ const OnboardingPage: React.FC = () => {
             age: parseInt(age),
             bio,
             avatar_url: avatarUrl,
-            onboarding_completed: true,
             })
             .eq('id', user.id);
 

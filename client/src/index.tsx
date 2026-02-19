@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import AppRouter from './AppRouter';
 import ErrorBoundary from './components/ErrorBoundary';
-import { ThemeProvider, createTheme, alpha } from '@mui/material/styles';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
 // ─── Premium Dark Theme ────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Container, Box, Typography, Button, Paper, CircularProgress, Alert, Stack } from '@mui/material';
+import { Container, Box, Typography, Button, Paper, CircularProgress, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import * as faceapi from 'face-api.js';
 import { useUser } from '../../hooks/useUser';
@@ -112,7 +112,7 @@ const IdentityVerificationPage: React.FC = () => {
     if (!user) return;
     try {
       // Update the user's profile in Supabase
-      const { data, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ is_face_verified: isVerified }) // Assuming 'is_face_verified' column exists
         .eq('id', user.id);

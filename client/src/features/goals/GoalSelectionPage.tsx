@@ -3,6 +3,8 @@ import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { supabase } from '../../lib/supabase';
+import { useUser } from '../../hooks/useUser';
+import toast from 'react-hot-toast';
 import { Domain } from '../../models/Domain';
 import { GoalNode } from '../../models/GoalNode';
 import { GoalTree } from '../../models/GoalTree';
@@ -99,11 +101,35 @@ interface SelectedGoal {
 const GoalSelectionPage: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { user, loading: userLoading, refetch } = useUser();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [expandedDomain, setExpandedDomain] = useState<Domain | null>(null);
   const [selectedGoals, setSelectedGoals] = useState<SelectedGoal[]>([]);
   const [saving, setSaving] = useState(false);
   const [existingTree, setExistingTree] = useState<GoalTree | null>(null);
+
+  // Gate: free re-edit notification and premium gate
+  useEffect(() => {
+    if (userLoading || !user) return;
+
+    const isReEdit = user.onboarding_completed === true;
+    const editCount = user.goal_tree_edit_count ?? 0;
+
+    if (isReEdit && editCount >= 1 && !user.is_premium) {
+      // Re-edit limit reached — redirect to upgrade
+      toast.error("You've used your free goal tree edit. Upgrade to Premium for unlimited changes.");
+      navigate('/upgrade');
+      return;
+    }
+
+    if (isReEdit && editCount === 0) {
+      // Warn: this is the one free re-edit
+      toast('✏️ You have 1 free goal tree edit. Future changes will require Premium.', {
+        duration: 6000,
+        style: { maxWidth: 400 },
+      });
+    }
+  }, [user, userLoading, navigate]);
 
   useEffect(() => {
     const init = async () => {
@@ -196,10 +222,21 @@ const GoalSelectionPage: React.FC = () => {
         rootNodes: nodes,
       });
 
-      navigate(`/goals/${currentUserId}`); // Redirect to GoalTreePage
-    } catch (err) {
+      // Mark onboarding complete if this is the first goal tree setup.
+      // This gates the rest of the app behind goal tree completion.
+      if (!user?.onboarding_completed) {
+        await supabase
+          .from('profiles')
+          .update({ onboarding_completed: true })
+          .eq('id', currentUserId);
+        await refetch(); // sync useUser cache before navigating to a guarded route
+      }
+
+      navigate(`/goals/${currentUserId}`);
+    } catch (err: any) {
       console.error('Failed to save goals:', err);
-      alert('Failed to save goals. Please try again.');
+      const msg = err.response?.data?.message || 'Failed to save goals. Please try again.';
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
