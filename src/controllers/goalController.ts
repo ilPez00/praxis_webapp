@@ -86,7 +86,12 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     throw new ForbiddenError(`Non-premium users are limited to ${rootGoalLimit} primary goals. Upgrade to premium for unlimited goals.`);
   }
 
-  // --- Achievement Creation Logic (before updating the tree) ---
+  // --- Achievement Creation Logic ---
+  // When any goal's progress reaches >= 1.0 (100%) and it wasn't completed before,
+  // createAchievementFromGoal() is automatically called. This creates a public
+  // achievement entry visible to the whole community on the dashboard.
+  // The check compares the incoming `nodes` against the existing tree's nodes;
+  // newly completed goals (progress was < 1 or node didn't exist before) trigger creation.
   let existingNodes: GoalNode[] = [];
   // Fetch the user's existing goal tree to compare against new changes
   const { data: existingTreeData, error: fetchExistingTreeError } = await supabase

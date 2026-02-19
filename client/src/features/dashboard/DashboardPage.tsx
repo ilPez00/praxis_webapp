@@ -3,18 +3,17 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
-import { GoalTree } from '../models/GoalTree';
-import { GoalNode } from '../models/GoalNode';
+import { GoalTree } from '../../models/GoalTree';
 import { Domain } from '../../models/Domain';
-import { Achievement } from '../models/Achievement'; // Import Achievement model
-import { AchievementComment } from '../models/AchievementComment'; // Import AchievementComment model
+import { Achievement } from '../../models/Achievement';
+import { AchievementComment } from '../../models/AchievementComment';
+import GlassCard from '../../components/common/GlassCard';
 
 import {
   Container,
   Box,
   Typography,
   Button,
-  Paper,
   Stack,
   CircularProgress,
   Alert,
@@ -31,7 +30,8 @@ import {
   ListItemAvatar,
   ListItemText,
   Divider,
-  useTheme,
+  LinearProgress,
+  Grid,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SendIcon from '@mui/icons-material/Send';
@@ -39,133 +39,108 @@ import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import StarIcon from '@mui/icons-material/Star';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import PeopleIcon from '@mui/icons-material/People';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ExploreIcon from '@mui/icons-material/Explore';
+import ChatIcon from '@mui/icons-material/Chat';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
-// Interface for match results, typically including user ID and a compatibility score
 interface MatchResult {
   userId: string;
   score: number;
 }
 
-// Map domain enum values to specific Material-UI colors for consistent styling
 const DOMAIN_COLORS: Record<Domain, string> = {
-  [Domain.CAREER]: '#4CAF50',
-  [Domain.INVESTING]: '#26A69A',
-  [Domain.FITNESS]: '#E57373',
-  [Domain.ACADEMICS]: '#EC407A',
-  [Domain.MENTAL_HEALTH]: '#64B5F6',
-  [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#78909C',
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#9CCC65',
-  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#FFA726',
-  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#AB47BC',
+  [Domain.CAREER]: '#F59E0B',
+  [Domain.INVESTING]: '#3B82F6',
+  [Domain.FITNESS]: '#EF4444',
+  [Domain.ACADEMICS]: '#8B5CF6',
+  [Domain.MENTAL_HEALTH]: '#10B981',
+  [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#EC4899',
+  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#A855F7',
+  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#F97316',
+  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#06B6D4',
 };
 
-/**
- * @description Dashboard page component for authenticated users.
- * Displays user's goal overview, top matches, community achievements, and quick actions.
- * Integrates conditional UI for premium features.
- */
 const DashboardPage: React.FC = () => {
-  const theme = useTheme(); // Access the Material-UI theme for styling
-  const { user, loading: userLoading } = useUser(); // Custom hook to get authenticated user data
-  const navigate = useNavigate(); // Hook for programmatic navigation
+  const { user, loading: userLoading } = useUser();
+  const navigate = useNavigate();
 
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined); // State for the current user's ID
-  const [goalTree, setGoalTree] = useState<GoalTree | null>(null); // State for the user's goal tree
-  const [matches, setMatches] = useState<MatchResult[]>([]); // State for top matched users
-  const [achievements, setAchievements] = useState<Achievement[]>([]); // State for community achievements
-  const [loadingContent, setLoadingContent] = useState(true); // State to manage content loading
-  const [error, setError] = useState<string | null>(null); // State to store error messages
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [goalTree, setGoalTree] = useState<GoalTree | null>(null);
+  const [matches, setMatches] = useState<MatchResult[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loadingContent, setLoadingContent] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // States for comments dialog
-  const [openCommentsDialog, setOpenCommentsDialog] = useState(false); // Controls visibility of comments dialog
-  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null); // Stores the achievement selected for comments
-  const [comments, setComments] = useState<AchievementComment[]>([]); // Stores comments for the selected achievement
-  const [newCommentText, setNewCommentText] = useState(''); // State for the new comment input
+  // Comments dialog state
+  const [openCommentsDialog, setOpenCommentsDialog] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+  const [comments, setComments] = useState<AchievementComment[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [commentsLoading, setCommentsLoading] = useState(false);
+
+  // AI Coaching state
   const [aiCoachingResponse, setAiCoachingResponse] = useState<string | null>(null);
   const [aiCoachingLoading, setAiCoachingLoading] = useState(false);
   const [aiCoachingPrompt, setAiCoachingPrompt] = useState('');
 
-  /**
-   * @description Handles requesting AI coaching from the backend.
-   * Sends the user's prompt and displays the AI's response.
-   */
   const requestAiCoaching = async () => {
     if (!currentUserId || !aiCoachingPrompt.trim()) {
       alert('Please enter a prompt for AI Coaching.');
       return;
     }
     setAiCoachingLoading(true);
-    setAiCoachingResponse(null); // Clear previous response
+    setAiCoachingResponse(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await axios.post(`http://localhost:3001/ai-coaching/request`, {
         userPrompt: aiCoachingPrompt,
+      }, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       setAiCoachingResponse(response.data.response);
     } catch (error: any) {
-      console.error('Error requesting AI coaching:', error);
       setAiCoachingResponse(`Error: ${error.response?.data?.message || error.message}`);
     } finally {
       setAiCoachingLoading(false);
     }
   };
 
-  // Effect to set the current user ID once authentication is resolved
   useEffect(() => {
     const fetchUserId = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       setCurrentUserId(authUser?.id);
     };
     fetchUserId();
-  }, []); // Runs once on component mount
+  }, []);
 
-  // Effect to fetch dashboard data (goal tree, matches, achievements)
   useEffect(() => {
-    if (!currentUserId) return; // Only fetch if currentUserId is available
-
+    if (!currentUserId) return;
     const fetchData = async () => {
-      setLoadingContent(true); // Start loading
+      setLoadingContent(true);
       try {
-        // Fetch all data concurrently using Promise.allSettled for robust error handling
         const [goalsRes, matchesRes, achievementsRes] = await Promise.allSettled([
-          axios.get(`http://localhost:3001/goals/${currentUserId}`), // Fetch user's goal tree
-          axios.get(`http://localhost:3001/matches/${currentUserId}`), // Fetch user's matches
-          axios.get(`http://localhost:3001/achievements`), // Fetch all community achievements
+          axios.get(`http://localhost:3001/goals/${currentUserId}`),
+          axios.get(`http://localhost:3001/matches/${currentUserId}`),
+          axios.get(`http://localhost:3001/achievements`),
         ]);
-
-        // Process results for goals
-        if (goalsRes.status === 'fulfilled') {
-          setGoalTree(goalsRes.value.data);
-        } else {
-          console.error('Error fetching goals:', goalsRes.reason);
-        }
-
-        // Process results for matches (limit to top 3 for dashboard display)
-        if (matchesRes.status === 'fulfilled') {
-          setMatches(matchesRes.value.data.slice(0, 3));
-        } else {
-          console.error('Error fetching matches:', matchesRes.reason);
-        }
-
-        // Process results for achievements
-        if (achievementsRes.status === 'fulfilled') {
-          setAchievements(achievementsRes.value.data);
-        } else {
-          console.error('Error fetching achievements:', achievementsRes.reason);
-        }
+        if (goalsRes.status === 'fulfilled') setGoalTree(goalsRes.value.data);
+        if (matchesRes.status === 'fulfilled') setMatches(matchesRes.value.data.slice(0, 3));
+        if (achievementsRes.status === 'fulfilled') setAchievements(achievementsRes.value.data);
       } catch (err) {
-        setError('Failed to fetch dashboard data.'); // Catch any unexpected errors
-        console.error('Dashboard fetch error:', err);
+        setError('Failed to fetch dashboard data.');
       } finally {
-        setLoadingContent(false); // End loading
+        setLoadingContent(false);
       }
     };
+    fetchData();
+  }, [currentUserId]);
 
-    fetchData(); // Execute data fetching
-  }, [currentUserId]); // Re-fetch if currentUserId changes
-
-  /**
-   * @description Refreshes the list of community achievements.
-   */
   const refreshAchievements = async () => {
     try {
       const response = await axios.get(`http://localhost:3001/achievements`);
@@ -175,512 +150,548 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  /**
-   * @description Handles upvoting or downvoting an achievement.
-   * @param achievementId - The ID of the achievement being voted on.
-   * @param type - The type of vote ('upvote' or 'downvote').
-   */
   const handleVote = async (achievementId: string, type: 'upvote' | 'downvote') => {
-    if (!currentUserId) {
-      alert('Please log in to vote.'); // Prompt user to log in if not authenticated
-      return;
-    }
+    if (!currentUserId) return;
     try {
-      // Send a POST request to the backend to record the vote
-      await axios.post(`http://localhost:3001/achievements/${achievementId}/votes`, {
-        userId: currentUserId,
-        type,
-      });
-      refreshAchievements(); // Refresh achievements to update vote counts on UI
+      await axios.post(`http://localhost:3001/achievements/${achievementId}/votes`, { userId: currentUserId, type });
+      refreshAchievements();
     } catch (error) {
       console.error('Error submitting vote:', error);
-      alert('Failed to submit vote.');
     }
   };
 
-  /**
-   * @description Fetches comments for a specific achievement.
-   * @param achievementId - The ID of the achievement to fetch comments for.
-   */
   const fetchComments = async (achievementId: string) => {
-    setCommentsLoading(true); // Start loading comments
+    setCommentsLoading(true);
     try {
-      // Fetch comments from the backend
       const response = await axios.get(`http://localhost:3001/achievements/${achievementId}/comments`);
-      setComments(response.data); // Update comments state
+      setComments(response.data);
     } catch (error) {
-      console.error('Error fetching comments:', error);
-      setComments([]); // Clear comments on error
+      setComments([]);
     } finally {
-      setCommentsLoading(false); // End loading comments
+      setCommentsLoading(false);
     }
   };
 
-  /**
-   * @description Opens the comments dialog and fetches comments for the selected achievement.
-   * @param achievement - The achievement object for which comments are to be displayed.
-   */
   const handleOpenComments = (achievement: Achievement) => {
-    setSelectedAchievement(achievement); // Set the achievement to display comments for
-    fetchComments(achievement.id); // Fetch comments for this achievement
-    setOpenCommentsDialog(true); // Open the dialog
+    setSelectedAchievement(achievement);
+    fetchComments(achievement.id);
+    setOpenCommentsDialog(true);
   };
 
-  /**
-   * @description Closes the comments dialog and resets related states.
-   */
   const handleCloseComments = () => {
-    setOpenCommentsDialog(false); // Close the dialog
-    setSelectedAchievement(null); // Clear selected achievement
-    setComments([]); // Clear comments
-    setNewCommentText(''); // Clear new comment input
+    setOpenCommentsDialog(false);
+    setSelectedAchievement(null);
+    setComments([]);
+    setNewCommentText('');
   };
 
-  /**
-   * @description Adds a new comment to the currently selected achievement.
-   */
   const handleAddComment = async () => {
-    // Validate that user is logged in, an achievement is selected, and comment text is not empty
-    if (!currentUserId || !selectedAchievement || !newCommentText.trim()) {
-      alert('Comment cannot be empty.');
-      return;
-    }
+    if (!currentUserId || !selectedAchievement || !newCommentText.trim()) return;
     try {
-      // Send POST request to backend to add comment
       await axios.post(`http://localhost:3001/achievements/${selectedAchievement.id}/comments`, {
         userId: currentUserId,
-        userName: user?.name, // Pass current user's name (denormalized)
-        userAvatarUrl: user?.avatarUrl, // Pass current user's avatar (denormalized)
-        content: newCommentText, // The comment text
+        userName: user?.name,
+        userAvatarUrl: user?.avatarUrl,
+        content: newCommentText,
       });
-      setNewCommentText(''); // Clear the input field
-      fetchComments(selectedAchievement.id); // Refresh comments in dialog to show new comment
-      refreshAchievements(); // Optionally refresh achievements on dashboard if comment counts are shown there
+      setNewCommentText('');
+      fetchComments(selectedAchievement.id);
+      refreshAchievements();
     } catch (error) {
       console.error('Error adding comment:', error);
-      alert('Failed to add comment.');
     }
   };
 
-  // Display loading spinner while user data or main content is loading
   if (userLoading || loadingContent) {
     return (
-      <Container component="main" maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Container>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <CircularProgress color="primary" />
+      </Box>
     );
   }
 
-  // Display error message if content loading failed
   if (error) {
     return (
-      <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Alert severity="error">{error}</Alert>
       </Container>
     );
   }
 
-  // Derived state for rendering
   const rootGoals = goalTree?.rootNodes || [];
   const allNodes = goalTree?.nodes || [];
   const hasGoals = rootGoals.length > 0;
-  const userName = user?.name || 'there';
-
-  // Calculate average progress across root goals
+  const userName = user?.name || 'Explorer';
   const avgProgress = hasGoals
     ? Math.round(rootGoals.reduce((sum, g) => sum + g.progress * 100, 0) / rootGoals.length)
     : 0;
 
-  // Count unique domains represented in the user's goal tree
-  const activeDomains = new Set(allNodes.map(n => n.domain)).size;
-
   return (
-    <Container component="main" maxWidth="lg" sx={{ mt: 4 }}>
-      {/* Welcome Section: Greets the user and provides a summary of their goals */}
-      <Paper elevation={3} sx={{ p: 4, mb: 4, bgcolor: theme.palette.background.paper }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'primary.main' }}>
-          Welcome back, {userName} ⚡
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          {hasGoals
-            ? `${allNodes.length} goals across ${activeDomains} domain${activeDomains !== 1 ? 's' : ''} · ${avgProgress}% average progress`
-            : 'Start building your goal tree to find meaningful connections.'}
-        </Typography>
-      </Paper>
-
-      {/* AI Coaching Section */}
-      <Paper elevation={3} sx={{ p: 4, mb: 4, bgcolor: theme.palette.background.paper }}>
-        <Typography variant="h5" component="h2" gutterBottom sx={{ color: 'primary.main' }}>
-          AI Coaching
-        </Typography>
-        {user?.is_premium ? (
-          <Box>
-            <TextField
-              fullWidth
-              label="Ask your AI Coach"
-              variant="outlined"
-              multiline
-              rows={3}
-              value={aiCoachingPrompt}
-              onChange={(e) => setAiCoachingPrompt(e.target.value)}
-              sx={{ mb: 2 }}
-              disabled={aiCoachingLoading}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={requestAiCoaching}
-              disabled={aiCoachingLoading || !aiCoachingPrompt.trim()}
-              startIcon={aiCoachingLoading ? <CircularProgress size={20} color="inherit" /> : null}
-            >
-              {aiCoachingLoading ? 'Getting Insights...' : 'Get Coaching'}
-            </Button>
-
-            {aiCoachingResponse && (
-              <Box sx={{ mt: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {aiCoachingResponse}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        ) : (
-          <Alert severity="info" action={
-            <Button color="inherit" size="small" component={RouterLink} to="/upgrade">
-              Upgrade Now
-            </Button>
-          }>
-            AI Coaching is a premium feature. Unlock personalized insights to accelerate your growth!
-          </Alert>
-        )}
-      </Paper>
-
-      {/* Premium Upgrade Section: Conditionally displayed if the user is not a premium member */}
-      {!user?.is_premium && (
-        <Paper elevation={3} sx={{ p: 3, mb: 4, bgcolor: theme.palette.warning.light, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box>
-            <Typography variant="h6" sx={{ color: theme.palette.warning.contrastText }}>
-              Unlock Premium Features!
-            </Typography>
-            <Typography variant="body2" sx={{ color: theme.palette.warning.contrastText }}>
-              Get unlimited matches, advanced goal insights, and more.
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            color="warning"
-            component={RouterLink}
-            to="/upgrade"
-            sx={{ ml: 2, bgcolor: theme.palette.warning.dark }}
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 8 }}>
+      <Container maxWidth="xl">
+        {/* Welcome Banner */}
+        <Box sx={{ py: 4 }}>
+          <GlassCard
+            sx={{
+              p: 4,
+              position: 'relative',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(139,92,246,0.1) 100%)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '24px',
+            }}
           >
-            Upgrade Now
-          </Button>
-        </Paper>
-      )}
-
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-        {/* Left Column: Contains user's goals overview and top matches */}
-        <Box sx={{ flex: 1 }}>
-          {/* Your Goals Overview Section */}
-          <Paper elevation={3} sx={{ p: 3, mb: 4, bgcolor: theme.palette.background.paper }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5" component="h2" sx={{ color: 'primary.main' }}>Your Goals</Typography>
-              <Button component={RouterLink} to={`/goals/${currentUserId}`} variant="outlined" startIcon={<EditIcon />}>
-                {hasGoals ? 'Edit Goals' : 'Create Goals'}
-              </Button>
-            </Box>
-            {hasGoals ? (
-              // Display each root goal with its domain, progress, and actions
-              <Stack spacing={2}>
-                {rootGoals.map((goal) => (
-                  <Paper key={goal.id} variant="outlined" sx={{ p: 2, borderColor: DOMAIN_COLORS[goal.domain] }}>
-                    <Typography variant="h6" sx={{ color: 'primary.main' }}>{goal.name}</Typography>
-                    <Chip
-                      label={goal.domain}
-                      size="small"
-                      sx={{
-                        backgroundColor: `${DOMAIN_COLORS[goal.domain]}15`,
-                        color: DOMAIN_COLORS[goal.domain],
-                        fontWeight: 'bold',
-                        mb: 1
-                      }}
-                    />
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Progress:</Typography>
-                      <Box sx={{ width: '100%', mr: 1 }}>
-                        <CircularProgress variant="determinate" value={goal.progress * 100} size={24} thickness={5} />
-                      </Box>
-                      <Typography variant="body2" color="text.secondary">{Math.round(goal.progress * 100)}%</Typography>
-                    </Box>
-                  </Paper>
-                ))}
-              </Stack>
-            ) : (
-              // Prompt to create goals if none exist
-              <Alert severity="info">No goals yet. Define your goals to start matching!</Alert>
-            )}
-          </Paper>
-
-          {/* Top Matches Section */}
-          <Paper elevation={3} sx={{ p: 3, bgcolor: theme.palette.background.paper }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5" component="h2" sx={{ color: 'primary.main' }}>Top Matches</Typography>
-              <Button component={RouterLink} to="/matches" variant="outlined">
-                View All →
-              </Button>
-            </Box>
-            {matches.length > 0 ? (
-              // Display a list of top matches
-              <Stack spacing={2}>
-                {matches.map((match) => (
-                  <Paper
-                    key={match.userId}
-                    variant="outlined"
-                    sx={{ p: 2, cursor: 'pointer', '&:hover': { bgcolor: theme.palette.action.hover } }}
-                    onClick={() => navigate(`/chat/${currentUserId}/${match.userId}`)} // Navigate to chat with match
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      {/* Avatar for the matched user */}
-                      <Avatar sx={{ bgcolor: theme.palette.action.active }}>
-                        {match.userId.charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="h6" sx={{ color: 'primary.main' }}>User {match.userId.slice(0, 8)}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {Math.round(match.score * 100)}% Compatible
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Paper>
-                ))}
-              </Stack>
-            ) : (
-              // Message if no matches are found
-              <Alert severity="info">
-                {hasGoals
-                  ? 'Waiting for other users with similar goals to join.'
-                  : 'Set up your goals first to start finding matches.'}
-              </Alert>
-            )}
-          </Paper>
+            <Grid container alignItems="center" spacing={3}>
+              <Grid size={{ xs: 12, md: 8 }}>
+                <Typography variant="h3" sx={{ fontWeight: 900, mb: 1.5, letterSpacing: '-0.03em' }}>
+                  Greetings, {' '}
+                  <Box component="span" sx={{
+                    background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)',
+                    backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  }}>
+                    {userName}
+                  </Box>
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, mb: 3 }}>
+                  Your journey continues. You've made significant progress across your goal architecture. 
+                  Ready to reach the next milestone?
+                </Typography>
+                <Stack direction="row" spacing={2}>
+                  <Chip 
+                    icon={<TrackChangesIcon sx={{ color: 'primary.main !important' }} />} 
+                    label={`${allNodes.length} Goals`} 
+                    sx={{ bgcolor: 'rgba(245,158,11,0.1)', fontWeight: 700, p: 1 }} 
+                  />
+                  <Chip 
+                    icon={<TrendingUpIcon sx={{ color: 'secondary.main !important' }} />} 
+                    label={`${avgProgress}% Avg Progress`} 
+                    sx={{ bgcolor: 'rgba(139,92,246,0.1)', fontWeight: 700, p: 1 }} 
+                  />
+                </Stack>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { md: 'flex-end', xs: 'flex-start' } }}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h2" sx={{ fontWeight: 900, lineHeight: 1, color: 'primary.main' }}>
+                    {avgProgress}<Typography component="span" variant="h5" sx={{ fontWeight: 900, opacity: 0.6 }}>%</Typography>
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.1em', color: 'text.secondary' }}>
+                    OVERALL COMPLETION
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </GlassCard>
         </Box>
 
-        {/* Right Column: Community Achievements */}
-        <Box sx={{ flex: 1 }}>
-          <Paper elevation={3} sx={{ p: 3, bgcolor: theme.palette.background.paper }}>
-            <Typography variant="h5" component="h2" gutterBottom sx={{ color: 'primary.main' }}>
-              Community Achievements
-            </Typography>
-            {achievements.length > 0 ? (
-              // Display a list of community achievements
+        {/* Quick Actions Pill Row */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 6 }}>
+          <GlassCard 
+            sx={{ 
+              p: 1, 
+              borderRadius: '50px', 
+              display: 'flex', 
+              gap: 1, 
+              background: 'rgba(17,24,39,0.8)',
+              backdropFilter: 'blur(30px)',
+              border: '1px solid rgba(255,255,255,0.05)',
+            }}
+          >
+            {[
+              { label: 'Profile', to: `/profile/${currentUserId}`, icon: <AccountCircleIcon /> },
+              { label: 'Goal Tree', to: `/goals/${currentUserId}`, icon: <TrackChangesIcon /> },
+              { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
+              { label: 'Chat', to: '/chat', icon: <ChatIcon /> },
+            ].map((action) => (
+              <Button
+                key={action.label}
+                component={RouterLink}
+                to={action.to}
+                variant="text"
+                sx={{
+                  borderRadius: '40px',
+                  px: 3,
+                  py: 1,
+                  color: 'text.primary',
+                  '&:hover': {
+                    bgcolor: 'rgba(255,255,255,0.05)',
+                    color: 'primary.main',
+                  }
+                }}
+                startIcon={action.icon}
+              >
+                {action.label}
+              </Button>
+            ))}
+          </GlassCard>
+        </Box>
+
+        {/* Bento Grid Layout */}
+        <Grid container spacing={3}>
+          {/* AI Coaching Section */}
+          <Grid size={{ xs: 12, md: 7 }}>
+            <GlassCard 
+              glow="secondary"
+              sx={{ 
+                p: 4, 
+                height: '100%', 
+                minHeight: '400px',
+                position: 'relative',
+                boxShadow: '0 0 40px rgba(139,92,246,0.15)',
+              }}
+            >
+              <Chip 
+                label="PREMIUM" 
+                size="small" 
+                sx={{ 
+                  position: 'absolute', 
+                  top: 24, 
+                  right: 24, 
+                  background: 'linear-gradient(135deg, #8B5CF6, #F59E0B)', 
+                  color: '#0A0B14', 
+                  fontWeight: 800, 
+                  fontSize: '0.65rem' 
+                }} 
+              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <Box sx={{ 
+                  p: 1.5, 
+                  borderRadius: '12px', 
+                  bgcolor: 'rgba(139,92,246,0.15)', 
+                  color: 'secondary.main' 
+                }}>
+                  <AutoAwesomeIcon />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 800 }}>AI Performance Coach</Typography>
+                  <Typography variant="body2" color="text.secondary">Powered by Gemini Pro</Typography>
+                </Box>
+              </Box>
+
+              {user?.is_premium ? (
+                <Stack spacing={3}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={4}
+                    variant="outlined"
+                    placeholder="Ask about your strategy, blockers, or next steps..."
+                    value={aiCoachingPrompt}
+                    onChange={(e) => setAiCoachingPrompt(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'rgba(255,255,255,0.03)',
+                        borderRadius: '16px',
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    onClick={requestAiCoaching}
+                    disabled={aiCoachingLoading || !aiCoachingPrompt.trim()}
+                    sx={{ 
+                      py: 2, 
+                      borderRadius: '16px', 
+                      background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
+                      boxShadow: '0 8px 20px rgba(139,92,246,0.3)',
+                      fontWeight: 700
+                    }}
+                    startIcon={aiCoachingLoading ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
+                  >
+                    {aiCoachingLoading ? 'Analyzing Performance...' : 'Generate Strategic Insight'}
+                  </Button>
+                  {aiCoachingResponse && (
+                    <Box sx={{ 
+                      p: 3, 
+                      borderRadius: '16px', 
+                      bgcolor: 'rgba(139,92,246,0.05)', 
+                      border: '1px solid rgba(139,92,246,0.15)',
+                    }}>
+                      <Typography variant="body2" sx={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+                        {aiCoachingResponse}
+                      </Typography>
+                    </Box>
+                  )}
+                </Stack>
+              ) : (
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  height: '250px',
+                  textAlign: 'center'
+                }}>
+                  <StarIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2, opacity: 0.5 }} />
+                  <Typography variant="h6" sx={{ mb: 1 }}>Premium AI Insights</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 300 }}>
+                    Unlock strategic coaching tailored to your specific goals and progress data.
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    component={RouterLink} 
+                    to="/upgrade" 
+                    sx={{ px: 4, borderRadius: '12px' }}
+                  >
+                    Upgrade to Premium
+                  </Button>
+                </Box>
+              )}
+            </GlassCard>
+          </Grid>
+
+          {/* Goals Section */}
+          <Grid size={{ xs: 12, md: 5 }}>
+            <GlassCard sx={{ p: 4, height: '100%' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <Typography variant="h5" sx={{ fontWeight: 800 }}>Core Objectives</Typography>
+                <IconButton component={RouterLink} to={`/goals/${currentUserId}`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              
+              {hasGoals ? (
+                <Stack spacing={2.5}>
+                  {rootGoals.map((goal) => (
+                    <Box 
+                      key={goal.id} 
+                      sx={{ 
+                        p: 2.5, 
+                        borderRadius: '16px', 
+                        bgcolor: 'background.paper',
+                        borderLeft: `6px solid ${DOMAIN_COLORS[goal.domain]}`,
+                        transition: 'transform 0.2s',
+                        '&:hover': { transform: 'translateX(4px)' }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                        <Typography variant="body1" sx={{ fontWeight: 700 }}>{goal.name}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: DOMAIN_COLORS[goal.domain] }}>
+                          {Math.round(goal.progress * 100)}%
+                        </Typography>
+                      </Box>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={goal.progress * 100} 
+                        sx={{ 
+                          height: 6, 
+                          borderRadius: 3, 
+                          bgcolor: 'rgba(255,255,255,0.05)',
+                          '& .MuiLinearProgress-bar': {
+                            bgcolor: DOMAIN_COLORS[goal.domain],
+                          }
+                        }}
+                      />
+                      <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary', fontWeight: 600 }}>
+                        {goal.domain.toUpperCase()}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Box sx={{ py: 6, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">No active objectives found.</Typography>
+                  <Button component={RouterLink} to={`/goals/${currentUserId}`} sx={{ mt: 2 }}>Initialize Tree</Button>
+                </Box>
+              )}
+            </GlassCard>
+          </Grid>
+
+          {/* Matches Section */}
+          <Grid size={{ xs: 12, md: 5 }}>
+            <GlassCard sx={{ p: 4 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <Typography variant="h5" sx={{ fontWeight: 800 }}>Top Alignments</Typography>
+                <Button component={RouterLink} to="/matches" size="small" variant="text" color="primary">View All</Button>
+              </Box>
+              
+              <Stack spacing={2}>
+                {matches.length > 0 ? (
+                  matches.map((match) => {
+                    const compatibility = Math.round(match.score * 100);
+                    const pillColor = compatibility > 70 ? '#10B981' : compatibility > 50 ? '#F59E0B' : '#9CA3AF';
+                    
+                    return (
+                      <Box 
+                        key={match.userId}
+                        onClick={() => navigate(`/chat/${currentUserId}/${match.userId}`)}
+                        sx={{ 
+                          p: 2, 
+                          borderRadius: '16px', 
+                          cursor: 'pointer',
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 2,
+                          bgcolor: 'rgba(255,255,255,0.02)',
+                          border: '1px solid rgba(255,255,255,0.05)',
+                          '&:hover': {
+                            bgcolor: 'rgba(255,255,255,0.04)',
+                            borderColor: 'primary.main',
+                          }
+                        }}
+                      >
+                        <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.main', fontWeight: 700 }}>
+                          {match.userId.charAt(0).toUpperCase()}
+                        </Avatar>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                            {match.userId.slice(0, 8)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">Active today</Typography>
+                        </Box>
+                        <Box sx={{ 
+                          px: 1.5, 
+                          py: 0.5, 
+                          borderRadius: '20px', 
+                          bgcolor: `${pillColor}15`, 
+                          color: pillColor,
+                          border: `1px solid ${pillColor}40`,
+                          fontSize: '0.75rem',
+                          fontWeight: 800
+                        }}>
+                          {compatibility}% Match
+                        </Box>
+                      </Box>
+                    );
+                  })
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                    Seeking optimal matches...
+                  </Typography>
+                )}
+              </Stack>
+            </GlassCard>
+          </Grid>
+
+          {/* Community Achievements Section */}
+          <Grid size={{ xs: 12, md: 7 }}>
+            <GlassCard sx={{ p: 4 }}>
+              <Typography variant="h5" sx={{ fontWeight: 800, mb: 4 }}>Global Achievements</Typography>
               <Stack spacing={3}>
-                {achievements.map((achievement) => (
-                  <Paper key={achievement.id} variant="outlined" sx={{ p: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
-                      {/* User avatar for the achiever */}
-                      <Avatar src={achievement.userAvatarUrl || undefined} sx={{ bgcolor: theme.palette.secondary.main, color: theme.palette.primary.main }}>
+                {achievements.slice(0, 3).map((achievement) => (
+                  <GlassCard 
+                    key={achievement.id}
+                    sx={{ 
+                      p: 3, 
+                      bgcolor: 'rgba(255,255,255,0.01)', 
+                      border: '1px solid rgba(255,255,255,0.04)',
+                      borderRadius: '20px'
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                      <Avatar 
+                        src={achievement.userAvatarUrl || undefined}
+                        sx={{ width: 44, height: 44, border: '2px solid rgba(255,255,255,0.1)' }}
+                      >
                         {achievement.userName.charAt(0)}
                       </Avatar>
-                      <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {achievement.userName}
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 700 }}>{achievement.userName}</Typography>
+                          <Chip 
+                            label={achievement.domain} 
+                            size="small" 
+                            sx={{ 
+                              height: 20, 
+                              fontSize: '0.65rem', 
+                              fontWeight: 800,
+                              bgcolor: `${DOMAIN_COLORS[achievement.domain]}15`,
+                              color: DOMAIN_COLORS[achievement.domain],
+                            }} 
+                          />
+                        </Box>
+                        <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 800, mb: 0.5 }}>
+                          {achievement.title}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Achieved on {new Date(achievement.createdAt).toLocaleDateString()}
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          {achievement.description}
                         </Typography>
+                        
+                        <Stack direction="row" spacing={3}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <IconButton size="small" onClick={() => handleVote(achievement.id, 'upvote')} sx={{ p: 0.5 }}>
+                              <ThumbUpIcon fontSize="small" sx={{ opacity: 0.7 }} />
+                            </IconButton>
+                            <Typography variant="caption" sx={{ fontWeight: 700 }}>{achievement.totalUpvotes}</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <IconButton size="small" onClick={() => handleOpenComments(achievement)} sx={{ p: 0.5 }}>
+                              <ChatBubbleOutlineIcon fontSize="small" sx={{ opacity: 0.7 }} />
+                            </IconButton>
+                            <Typography variant="caption" sx={{ fontWeight: 700 }}>0</Typography>
+                          </Box>
+                          <Typography variant="caption" sx={{ ml: 'auto', alignSelf: 'center', opacity: 0.5 }}>
+                            {new Date(achievement.createdAt).toLocaleDateString()}
+                          </Typography>
+                        </Stack>
                       </Box>
                     </Box>
-                    <Typography variant="h6" sx={{ color: 'primary.main', mt: 1 }}>
-                      {achievement.title}
-                    </Typography>
-                    <Chip
-                      label={achievement.domain}
-                      size="small"
-                      sx={{
-                        backgroundColor: `${DOMAIN_COLORS[achievement.domain]}15`,
-                        color: DOMAIN_COLORS[achievement.domain],
-                        fontWeight: 'bold',
-                        mb: 1
-                      }}
-                    />
-                    {achievement.description && (
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {achievement.description}
-                      </Typography>
-                    )}
-
-                    <Divider sx={{ my: 1 }} /> {/* Separator for actions */}
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      {/* Upvote button and count */}
-                      <IconButton size="small" onClick={() => handleVote(achievement.id, 'upvote')}>
-                        <ThumbUpIcon fontSize="small" />
-                      </IconButton>
-                      <Typography variant="body2" color="text.secondary">{achievement.totalUpvotes}</Typography>
-                      {/* Downvote button and count */}
-                      <IconButton size="small" onClick={() => handleVote(achievement.id, 'downvote')}>
-                        <ThumbDownIcon fontSize="small" />
-                      </IconButton>
-                      <Typography variant="body2" color="text.secondary">{achievement.totalDownvotes}</Typography>
-                      {/* Comments button */}
-                      <Button
-                        size="small"
-                        startIcon={<ChatBubbleOutlineIcon />}
-                        onClick={() => handleOpenComments(achievement)}
-                        sx={{ ml: 'auto' }}
-                      >
-                        Comments
-                      </Button>
-                    </Stack>
-                  </Paper>
+                  </GlassCard>
                 ))}
               </Stack>
-            ) : (
-              // Message if no community achievements exist
-              <Alert severity="info">No community achievements yet. Be the first to complete a goal!</Alert>
-            )}
-          </Paper>
-        </Box>
-      </Stack>
+            </GlassCard>
+          </Grid>
+        </Grid>
+      </Container>
 
-      {/* Quick Actions Section */}
-      <Paper elevation={3} sx={{ p: 3, mt: 4, bgcolor: theme.palette.background.paper }}>
-        <Typography variant="h5" component="h2" gutterBottom sx={{ color: 'primary.main' }}>Quick Actions</Typography>
-        <Stack direction="row" spacing={2} flexWrap="wrap">
-          <Button
-            component={RouterLink} to={`/profile/${currentUserId}`} variant="outlined"
-            startIcon={<Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.grey[400] }}>👤</Avatar>}
-          >
-            Profile
-          </Button>
-          <Button
-            component={RouterLink} to={`/goals/${currentUserId}`} variant="outlined"
-            startIcon={<Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.grey[400] }}>🌳</Avatar>}
-          >
-            Goal Tree
-          </Button>
-          <Button
-            component={RouterLink} to="/matches" variant="outlined"
-            startIcon={<Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.grey[400] }}>🔍</Avatar>}
-          >
-            Find Matches
-          </Button>
-          <Button
-            component={RouterLink} to="/chat" variant="outlined"
-            startIcon={<Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.grey[400] }}>💬</Avatar>}
-          >
-            Messages
-          </Button>
-          {user?.is_premium && (
-            <Button
-              component={RouterLink} to="/analytics" variant="outlined"
-              startIcon={<Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.grey[400] }}>📊</Avatar>}
-            >
-              Advanced Analytics
-            </Button>
-          )}
-        </Stack>
-      </Paper>
-
-
-      {/* Comments Dialog: Displays and allows adding comments for a selected achievement */}
+      {/* Comments Dialog (Unchanged Logic) */}
       <Dialog open={openCommentsDialog} onClose={handleCloseComments} maxWidth="sm" fullWidth>
         <DialogTitle>
-          Comments for "{selectedAchievement?.title}"
+          Insights for "{selectedAchievement?.title}"
           <IconButton
-            aria-label="close"
             onClick={handleCloseComments}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
-            }}
+            sx={{ position: 'absolute', right: 8, top: 8, color: 'text.secondary' }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
           {commentsLoading ? (
-            // Show loading spinner if comments are being fetched
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
               <CircularProgress size={20} />
             </Box>
           ) : comments.length > 0 ? (
-            // Display list of comments
             <List>
               {comments.map((comment, index) => (
                 <React.Fragment key={comment.id}>
                   <ListItem alignItems="flex-start">
                     <ListItemAvatar>
-                      {/* Commenter's avatar */}
-                      <Avatar alt={comment.userName} src={comment.userAvatarUrl || undefined} sx={{ bgcolor: theme.palette.secondary.main, color: theme.palette.primary.main }}>
-                        {comment.userName.charAt(0)}
-                      </Avatar>
+                      <Avatar src={comment.userAvatarUrl || undefined}>{comment.userName.charAt(0)}</Avatar>
                     </ListItemAvatar>
                     <ListItemText
-                      primary={
-                        // Commenter's name
-                        <Typography
-                          sx={{ display: 'inline' }}
-                          component="span"
-                          variant="body2"
-                          color="text.primary"
-                          fontWeight="bold"
-                        >
-                          {comment.userName}
-                        </Typography>
-                      }
+                      primary={<Typography variant="body2" fontWeight={700}>{comment.userName}</Typography>}
                       secondary={
-                        <React.Fragment>
-                          {/* Comment content */}
-                          <Typography
-                            sx={{ display: 'block' }}
-                            component="span"
-                            variant="body2"
-                            color="text.secondary"
-                          >
-                            {comment.content}
-                          </Typography>
-                          {/* Comment timestamp */}
+                        <>
+                          <Typography variant="body2" color="text.primary">{comment.content}</Typography>
                           <Typography variant="caption" color="text.disabled">
                             {new Date(comment.createdAt).toLocaleString()}
                           </Typography>
-                        </React.Fragment>
+                        </>
                       }
                     />
                   </ListItem>
-                  {/* Add divider between comments */}
                   {index < comments.length - 1 && <Divider variant="inset" component="li" />}
                 </React.Fragment>
               ))}
             </List>
           ) : (
-            // Message if no comments exist yet
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-              No comments yet. Be the first to comment!
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              Be the first to share an insight.
             </Typography>
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          {/* Textfield for new comment input */}
           <TextField
-            fullWidth
-            variant="outlined"
-            placeholder="Add a comment..."
+            fullWidth variant="outlined" size="small" placeholder="Add a comment..."
             value={newCommentText}
             onChange={(e) => setNewCommentText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAddComment()} // Send on Enter key
-            size="small"
-            sx={{ mr: 1 }}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
           />
-          {/* Button to post the new comment */}
-          <Button variant="contained" onClick={handleAddComment} endIcon={<SendIcon />} sx={{ bgcolor: theme.palette.action.active }}>
-            Post
-          </Button>
+          <Button variant="contained" onClick={handleAddComment} endIcon={<SendIcon />}>Post</Button>
         </DialogActions>
       </Dialog>
-
-    </Container>
+    </Box>
   );
 };
 

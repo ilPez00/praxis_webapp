@@ -1,109 +1,161 @@
 import React, { useState } from 'react';
-import { Container, Box, Typography, Button, Paper, CircularProgress, Alert } from '@mui/material';
+import { Container, Box, Typography, Button, CircularProgress, Alert, Stack, Divider } from '@mui/material';
 import axios from 'axios';
-import { loadStripe } from '@stripe/stripe-js';
 import { useUser } from '../../hooks/useUser';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import StarIcon from '@mui/icons-material/Star';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import GlassCard from '../../components/common/GlassCard';
 
-// Initialize Stripe.js with the publishable key.
-// This is done outside the component render to ensure it's loaded only once
-// and to avoid re-creating the Stripe object on every re-render, which is a Stripe best practice.
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY as string);
+const PREMIUM_FEATURES = [
+  'Unlimited goals',
+  'AI Coaching',
+  'Advanced Analytics',
+  'Priority matching',
+  'Goal collaboration chat',
+];
 
 /**
- * @description Page component for users to upgrade to premium features.
- * It initiates a Stripe Checkout Session via the backend.
+ * @description Redesigned UpgradePage with premium styling.
  */
 const UpgradePage: React.FC = () => {
-  // Access the current authenticated user and loading status from the custom hook
   const { user, loading: userLoading } = useUser();
-  // State to manage loading status during checkout initiation
   const [loadingCheckout, setLoadingCheckout] = useState(false);
-  // State to store and display any error messages
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * @description Handles the click event for the "Upgrade Now" button.
-   * It calls the backend to create a Stripe Checkout Session and redirects the user.
-   */
   const handleUpgradeClick = async () => {
-    // Prevent upgrade if user is not logged in or user data is still loading
     if (!user || userLoading) {
       setError('You must be logged in to upgrade.');
       return;
     }
-
-    setLoadingCheckout(true); // Indicate that checkout process is starting
-    setError(null); // Clear previous errors
-
+    setLoadingCheckout(true);
+    setError(null);
     try {
-      // Call the backend API to create a new Stripe Checkout Session
       const response = await axios.post('http://localhost:3001/stripe/create-checkout-session', {
-        userId: user.id, // Pass the user's ID to the backend
-        email: user.email, // Pass the user's email to pre-fill Stripe Checkout
+        userId: user.id,
+        email: user.email,
       });
-
-      const { url } = response.data; // Extract the redirect URL from the backend response
-      if (url) {
-        window.location.href = url; // Redirect the user to Stripe's hosted checkout page
-      } else {
-        setError('Failed to get checkout URL from server.'); // Handle case where URL is missing
-      }
+      const { url } = response.data;
+      if (url) window.location.href = url;
+      else setError('Failed to get checkout URL from server.');
     } catch (err: any) {
-      // Log and display any errors during the checkout session creation
-      console.error('Error creating checkout session:', err);
       setError(err.response?.data?.error || 'Failed to initiate upgrade process.');
     } finally {
-      setLoadingCheckout(false); // Reset loading state
+      setLoadingCheckout(false);
     }
   };
 
-  // Display a loading spinner while user data is being fetched
   if (userLoading) {
     return (
-      <Container component="main" maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Container>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <CircularProgress color="primary" />
+      </Box>
     );
   }
 
-  // Render the upgrade page UI
   return (
-    <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
-      <Paper elevation={3} sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Upgrade to Premium
-        </Typography>
-        <Typography variant="body1" align="center" color="text.secondary">
-          Unlock exclusive features and enhance your Praxis experience!
-        </Typography>
-
-        {/* Display error messages if any */}
-        {error && <Alert severity="error">{error}</Alert>}
-
-        {/* Display plan details */}
-        <Box sx={{ my: 2 }}>
-          <Typography variant="h5" component="h2" gutterBottom>
-            Monthly Plan: $10.00
+    <Box sx={{
+      minHeight: 'calc(100vh - 64px)',
+      background: 'background.default',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      py: 6,
+    }}>
+      <Container maxWidth="sm">
+        <Box sx={{ textAlign: 'center', mb: 6 }}>
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <AutoAwesomeIcon sx={{ color: 'primary.main', fontSize: 24 }} />
+            <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 800, letterSpacing: '0.2em' }}>
+              LEVEL UP YOUR JOURNEY
+            </Typography>
+          </Box>
+          <Typography variant="h2" sx={{ fontWeight: 900, mb: 2, letterSpacing: '-0.02em' }}>
+            Praxis{' '}
+            <Box component="span" sx={{
+              background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>
+              Premium
+            </Box>
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Billed monthly. Cancel anytime.
+          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
+            Join the elite tier of goal-seekers and unlock the full power of our AI-driven ecosystem.
           </Typography>
         </Box>
 
-        {/* Upgrade button */}
-        <Button
-          variant="contained"
-          color="primary"
-          size="large"
-          onClick={handleUpgradeClick}
-          // Disable button while checkout is loading or if user is not logged in
-          disabled={loadingCheckout || !user}
-        >
-          {/* Show loading spinner in button if checkout is in progress */}
-          {loadingCheckout ? <CircularProgress size={24} color="inherit" /> : 'Upgrade Now'}
-        </Button>
-      </Paper>
-    </Container>
+        <Box sx={{
+          background: 'linear-gradient(#111827,#111827) padding-box, linear-gradient(135deg,#F59E0B,#8B5CF6) border-box',
+          border: '2px solid transparent',
+          borderRadius: '24px',
+          overflow: 'hidden',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(245,158,11,0.1)',
+          position: 'relative',
+        }}>
+          <GlassCard sx={{ borderRadius: 0, border: 'none', p: 5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>Premium</Typography>
+                <Typography variant="body2" color="text.secondary">Full platform access</Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end' }}>
+                  <Typography variant="h3" sx={{ fontWeight: 900, color: 'primary.main' }}>$10</Typography>
+                  <Typography variant="h6" color="text.secondary" sx={{ ml: 0.5 }}>/mo</Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            <Divider sx={{ mb: 4, borderColor: 'rgba(255,255,255,0.08)' }} />
+
+            <Stack spacing={2.5} sx={{ mb: 5 }}>
+              {PREMIUM_FEATURES.map((feature) => (
+                <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <CheckCircleIcon sx={{ color: 'primary.main', fontSize: 22 }} />
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>{feature}</Typography>
+                </Box>
+              ))}
+            </Stack>
+
+            {error && <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>{error}</Alert>}
+
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              onClick={handleUpgradeClick}
+              disabled={loadingCheckout || !user}
+              sx={{
+                py: 2,
+                borderRadius: '12px',
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                textTransform: 'none',
+                background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                boxShadow: '0 8px 20px rgba(245,158,11,0.3)',
+                animation: loadingCheckout ? 'none' : 'glow-pulse 2s infinite',
+                '@keyframes glow-pulse': {
+                  '0%': { boxShadow: '0 0 0 0 rgba(245,158,11,0.4)' },
+                  '70%': { boxShadow: '0 0 0 15px rgba(245,158,11,0)' },
+                  '100%': { boxShadow: '0 0 0 0 rgba(245,158,11,0)' },
+                },
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #fbbf24, #F59E0B)',
+                }
+              }}
+            >
+              {loadingCheckout ? <CircularProgress size={26} color="inherit" /> : 'Get Started Now'}
+            </Button>
+            
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', textAlign: 'center', mt: 3 }}>
+              Secure payment via Stripe. Cancel anytime with one click.
+            </Typography>
+          </GlassCard>
+        </Box>
+      </Container>
+    </Box>
   );
 };
 

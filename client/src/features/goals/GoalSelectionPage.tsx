@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { supabase } from '../lib/supabase';
-import { Domain } from '../models/Domain';
-import { GoalNode } from '../models/GoalNode';
-import { GoalTree } from '../models/GoalTree';
+import { supabase } from '../../lib/supabase';
+import { Domain } from '../../models/Domain';
+import { GoalNode } from '../../models/GoalNode';
+import { GoalTree } from '../../models/GoalTree';
 import {
   Container,
   Box,

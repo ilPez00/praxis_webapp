@@ -1,6 +1,6 @@
 // client/src/components/GoalTree/GoalTreeComponent.tsx
 import React, { useState } from 'react';
-import { GoalNode, exampleGoalTreeData } from '../../types/goal';
+import { GoalNode, exampleGoalTreeData } from '../../../types/goal';
 import GoalNodeComponent from './GoalNodeComponent';
 import { Box, Container } from '@mui/material';
 

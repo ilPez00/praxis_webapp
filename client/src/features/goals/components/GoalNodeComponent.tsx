@@ -1,7 +1,7 @@
 // client/src/components/GoalTree/GoalNodeComponent.tsx
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoalNode, DOMAIN_COLORS } from '../../types/goal';
+import { GoalNode, DOMAIN_COLORS } from '../../../types/goal';
 import {
     Box,
     Typography,
@@ -61,7 +61,7 @@ const GoalNodeComponent: React.FC<GoalNodeComponentProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     marginBottom: theme.spacing(1),
-                    paddingLeft: level * theme.spacing(2), // Indent based on level
+                    paddingLeft: theme.spacing(level * 2), // Indent based on level
                 }}
             >
                 <Paper

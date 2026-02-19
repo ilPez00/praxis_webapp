@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '../hooks/useUser';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { GoalTree } from '../models/GoalTree'; // Type definition for GoalTree structure
-import { GoalNode } from '../models/GoalNode'; // Type definition for individual goal nodes
-import { Domain, exampleGoalTreeData } from '../types/goal'; // Enum for various goal domains, and example data
-import { useParams } from 'react-router-dom'; // Hook to access URL parameters
-import GoalTreeComponent from '../components/GoalTree/GoalTreeComponent'; // New GoalTreeComponent
-
+import { useUser } from '../../hooks/useUser';
+import { supabase } from '../../lib/supabase';
+import { GoalNode as FrontendGoalNode, DOMAIN_COLORS, Domain } from '../../types/goal';
+import GoalTreeComponent from './components/GoalTreeComponent';
 import {
   Container,
   Box,
@@ -16,35 +14,84 @@ import {
 } from '@mui/material';
 
 /**
- * @description Page component for displaying a user's goal tree.
- * Now uses the new GoalTreeComponent for visualization.
+ * Maps a flat array of backend GoalNodes (with parentId) into the hierarchical
+ * tree structure expected by GoalTreeComponent (with children arrays).
+ * Also converts: name→title, progress 0-1→0-100, domain string→Domain enum.
+ */
+function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
+  // Map each backend node to the frontend shape
+  const nodeMap = new Map<string, FrontendGoalNode>();
+  for (const n of backendNodes) {
+    nodeMap.set(n.id, {
+      id: n.id,
+      title: n.name,
+      description: n.customDetails,
+      weight: Math.round(n.weight * 100) / 100,
+      progress: Math.round(n.progress * 100),
+      domain: n.domain as Domain,
+      children: [],
+    });
+  }
+
+  const roots: FrontendGoalNode[] = [];
+  for (const n of backendNodes) {
+    const node = nodeMap.get(n.id)!;
+    if (n.parentId && nodeMap.has(n.parentId)) {
+      nodeMap.get(n.parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  return roots;
+}
+
+/**
+ * @description Page component that displays a user's goal tree fetched from the backend.
+ * Uses the GoalTreeComponent for hierarchical visualization.
  */
 const GoalTreePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user: authUser } = useUser(); // Get authenticated user and premium status
+  const { user: authUser } = useUser();
 
-  const [loading, setLoading] = useState(true); // State to manage overall loading status
-  const [error, setError] = useState<string | null>(null); // State to store error messages
+  const [treeData, setTreeData] = useState<FrontendGoalNode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // For demonstration, we will use exampleGoalTreeData directly.
-  // In a real application, you would fetch this data from a backend.
   useEffect(() => {
-    // Simulate loading data
-    setLoading(true);
-    setError(null);
-    try {
-      // Here you would typically fetch data based on `id`
-      // For now, we just use the example data
-      if (!id) {
-        throw new Error("User ID is missing.");
+    const fetchGoalTree = async () => {
+      // Determine which user's tree to show: URL param or current authenticated user
+      let userId = id;
+      if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
       }
-      // Assuming exampleGoalTreeData represents a user's tree
-      // In a real app, filter/process exampleGoalTreeData based on 'id' if multiple users
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      if (!userId) {
+        setError('Could not determine user ID.');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get(`http://localhost:3001/goals/${userId}`);
+        const goalTree = response.data;
+        // goalTree = { id, userId, nodes: GoalNode[], rootNodes: GoalNode[] }
+        const allNodes: any[] = goalTree.nodes || [];
+        setTreeData(buildFrontendTree(allNodes));
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          // User has no goals yet — not an error, just empty state
+          setTreeData([]);
+        } else {
+          setError(err.response?.data?.message || 'Failed to load goal tree.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGoalTree();
   }, [id]);
 
   if (loading) {
@@ -69,7 +116,13 @@ const GoalTreePage: React.FC = () => {
         Your Goal Tree
       </Typography>
 
-      <GoalTreeComponent data={exampleGoalTreeData} />
+      {treeData.length === 0 ? (
+        <Alert severity="info">
+          You haven't set any goals yet. Complete onboarding to build your goal tree.
+        </Alert>
+      ) : (
+        <GoalTreeComponent data={treeData} />
+      )}
     </Container>
   );
 };

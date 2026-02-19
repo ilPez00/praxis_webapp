@@ -1,5 +1,5 @@
 import React from 'react';
-import { GoalNode } from '../models/GoalNode';
+import { GoalNode } from '../../../models/GoalNode';
 import {
   Box,
   Typography,
@@ -14,7 +14,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
-import { Domain } from '../models/Domain';
+import { Domain } from '../../../models/Domain';
 
 interface GoalNodeDisplayProps {
   node: GoalNode;

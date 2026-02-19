@@ -2,8 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Container, Box, Typography, Button, Paper, CircularProgress, Alert, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import * as faceapi from 'face-api.js';
-import { useUser } from '../hooks/useUser';
-import { supabase } from '../lib/supabase'; // To update user profile
+import { useUser } from '../../hooks/useUser';
+import { supabase } from '../../lib/supabase'; // To update user profile
 
 const IdentityVerificationPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);

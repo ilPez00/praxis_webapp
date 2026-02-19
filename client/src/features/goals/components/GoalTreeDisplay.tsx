@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { GoalTree } from '../models/GoalTree';
-import { GoalNode } from '../models/GoalNode';
+import { GoalTree } from '../../../models/GoalTree';
+import { GoalNode } from '../../../models/GoalNode';
 import GoalNodeDisplay from './GoalNodeDisplay';
 import { Box } from '@mui/material';
 

@@ -117,3 +117,57 @@ Hi gemini. you are building praxis, as outlined in the whitepaper pdf. This file
 11. **Comprehensive Testing Suite:** Develop a full suite of unit, integration, and end-to-end tests for all features to ensure long-term stability and maintainability.
 12. **Automated Deployment (CI/CD): Set up Continuous Integration and Continuous Deployment pipelines for automated testing, building, and deployment processes.
 13. **Performance Optimization:** Proactively identify and optimize bottlenecks in database queries, API responses, and frontend rendering to ensure the application scales efficiently with user growth.
+
+---
+## Steps 10-15 (Claude — Whitepaper Gap Analysis)
+
+### Step 10 — Goal-Focused Match Chat (HIGH PRIORITY)
+Whitepaper §3.5: When S_AB exceeds the match threshold, show a "Start Collaboration" button.
+- Opens a dedicated ChatRoom pre-populated with both users' shared goal context
+- Chat is scoped to a specific goalNodeId (add `goal_node_id` column to messages table)
+- Backend: add optional `goalNodeId` filter to `messageController.getMessages()`
+- Frontend: pass goal context as chat room header/sidebar
+- See manual_actions.txt for the messages table SQL with goal_node_id column
+
+### Step 11 — Mutual Grading UI (HIGH PRIORITY)
+Whitepaper §3.5: After a chat session, prompt both users to grade each other's goal engagement.
+- Backend: existing `feedbackController.submitFeedback()` and `FeedbackGrade` enum already support this
+- Frontend: add a post-session dialog in ChatRoom (triggered by "End Session" button) with:
+  - 8 FeedbackGrade options (SUCCEEDED, LEARNED, DISTRACTED, ADAPTED, NOT_APPLICABLE, etc.)
+  - Optional free-text comment field
+  - Submit → auto-recalibrates receiver's goal weights (already implemented in feedbackController)
+- Both parties must submit before weights are recalibrated (add `pending_feedback` tracking)
+
+### Step 12 — Guided Onboarding Interest Tree (HIGH PRIORITY)
+Whitepaper §3.1: Replace InitialGoalSetup.tsx stub with proper multi-step domain selection.
+- Step 1: Show 9 domain cards, user selects their top domains (min 1, max 3 for free / unlimited premium)
+- Step 2: For each selected domain, show a hierarchical sub-goal tree to navigate and select specific goals
+- Step 3: Set initial weight (importance) and estimated start progress for each selected goal
+- Step 4: Summary screen → save via POST /goals and mark onboarding_completed = true in profiles
+- Free users limited to 3 primary goal selections (enforced by goalController 403 logic)
+
+### Step 13 — Progress Streaks (MEDIUM PRIORITY)
+Whitepaper §3.7: Engage users with streak tracking.
+- Backend: Add `last_activity_date DATE` and `current_streak INT DEFAULT 0` columns to public.profiles
+- Streak logic: any goal update (progress change) via createOrUpdateGoalTree resets last_activity_date;
+  cron job or trigger decrements streak if no activity in 24h
+- Frontend: Display streak counter in Dashboard header with animated flame icon (🔥)
+- Trigger: any goal update or check-in counts as "activity" for streak purposes
+
+### Step 14 — Community Challenges (MEDIUM PRIORITY)
+Whitepaper §3.7: Shared goal events to drive collective accountability.
+- New Supabase table: challenges {id UUID, title TEXT, domain TEXT, deadline TIMESTAMPTZ, participant_ids UUID[], created_by UUID}
+- Backend: challengeController.ts with CRUD + joinChallenge endpoint
+- Frontend: new ChallengesPage.tsx showing active challenges; DashboardPage section showing joined challenges
+- Join challenge → links participants into a shared accountability group chat (extends Step 10)
+- Prize: completion badge auto-created as Achievement for all participants who met deadline
+
+### Step 15 — Goal Tree Evolution / History (MEDIUM PRIORITY)
+Whitepaper §3.7: Show users how their goals have changed over time.
+- New Supabase table: goal_tree_snapshots {id UUID, user_id UUID, snapshot JSONB, created_at TIMESTAMPTZ}
+- Trigger: store snapshot each time createOrUpdateGoalTree is called (append-only log)
+- Backend: analyticsController.getGoalTreeHistory(userId) — returns snapshots array
+- Frontend: new "Journey" tab in GoalTreePage showing a timeline of tree states
+  - Weight changes shown as trend arrows (↑↓)
+  - Progress deltas shown as colored diff overlays on each node
+  - Date picker to view tree at any historical date

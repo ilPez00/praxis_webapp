@@ -11,11 +11,19 @@ export class MatchingEngineService {
   }
 
   /**
-   * Calculates the compatibility score between two users' goal trees.
-   * Based on Algorithm 1 Praxis Matching Engine from the whitepaper.
+   * Calculates the compatibility score S_AB between two users' goal trees.
+   * Implements Algorithm 1 from the Praxis whitepaper §3.3.
+   *
+   * Normalization formula (§3.3):
+   *   S_AB = Σ(sim(i,j) * W_i * W_j) / Σ(W_i * W_j)
+   *
+   * where sim(i,j) = semanticSimilarity(i,j) * (1 - |progress_i - progress_j|)
+   * The progress factor ensures we match users at similar stages of their goals.
+   * Only nodes sharing the same domain are compared (cross-domain is ignored).
+   *
    * @param userATree The goal tree of user A.
    * @param userBTree The goal tree of user B.
-   * @returns The compatibility score S_AB.
+   * @returns The normalized compatibility score S_AB in [0, 1].
    */
   public async calculateCompatibilityScore(userATree: GoalTree, userBTree: GoalTree): Promise<number> {
     let sAB = 0;

@@ -3,10 +3,19 @@ import { User } from '../models/User'; // Import the User interface
 import { supabase } from '../lib/supabase'; // Import the Supabase client
 
 /**
- * @description Custom React hook to manage and provide the authenticated user's data.
- * It fetches the user's authentication state and their associated profile from Supabase,
- * including premium status.
- * @returns An object containing the user object, and a loading state.
+ * @description Custom React hook that provides the authenticated user's full profile.
+ *
+ * Two-step auth flow:
+ *   1. supabase.auth.getUser() — returns the raw auth user (id, email, metadata).
+ *      This is the authoritative identity from Supabase Auth, verified server-side.
+ *   2. supabase.from('profiles').select('*').eq('id', authUser.id) — fetches the
+ *      app-level profile row created by the handle_new_user database trigger on signup.
+ *      This row stores name, age, bio, avatar_url, is_premium, and onboarding_completed.
+ *
+ * The hook also subscribes to onAuthStateChange so the user state automatically
+ * updates on login, logout, and token refresh without a page reload.
+ *
+ * @returns { user: User | null, loading: boolean }
  */
 export const useUser = () => {
   const [user, setUser] = useState<User | null>(null); // State to store the authenticated user's data

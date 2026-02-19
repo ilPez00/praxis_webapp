@@ -1,6 +1,19 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import logger from '../utils/logger'; // Import the logger
 
+/**
+ * EmbeddingService wraps the Google Gemini text embedding model for semantic similarity.
+ *
+ * Model used: "embedding-001" (Gemini Text Embedding, 768-dim vectors)
+ * Task type: SEMANTIC_SIMILARITY — optimized for comparing goal descriptions.
+ *
+ * Cost note: Each getEmbedding() call makes a Gemini API request.
+ * The MatchingEngineService uses an in-request cache (Map) to avoid duplicate
+ * calls for the same goal text within a single match calculation. However,
+ * for large user bases the full O(|A| * |B|) comparison across all user pairs
+ * in matchingController.ts could be expensive. Consider pre-computing and
+ * storing embeddings in the database if latency/cost becomes a concern.
+ */
 export class EmbeddingService {
   private genAI: GoogleGenerativeAI;
   private embeddingModel: any; // Type for the embedding model
@@ -11,7 +24,7 @@ export class EmbeddingService {
       throw new Error('GEMINI_API_KEY is not set in environment variables.');
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    // 'embedding-001' is a common choice for text embeddings.
+    // embedding-001: 768-dimensional dense vector, suitable for semantic similarity.
     this.embeddingModel = this.genAI.getGenerativeModel({ model: "embedding-001" });
   }
 

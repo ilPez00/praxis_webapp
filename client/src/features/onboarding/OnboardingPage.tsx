@@ -22,8 +22,8 @@ import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import { supabase } from '../lib/supabase';
-import { Domain } from '../models/Domain';
+import { supabase } from '../../lib/supabase';
+import { Domain } from '../../models/Domain';
 import toast from 'react-hot-toast';
 
 const steps = ['Welcome', 'Profile', 'Interests', 'Finish'];
@@ -249,7 +249,7 @@ const OnboardingPage: React.FC = () => {
             </Typography>
             <Grid container spacing={1} justifyContent="center">
               {Object.values(Domain).map((domain) => (
-                <Grid item key={domain}>
+                <Grid size="auto" key={domain}>
                   <Chip
                     label={domain}
                     onClick={() => toggleDomain(domain)}

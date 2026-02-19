@@ -82,7 +82,7 @@ export const createAchievement = catchAsync(async (req: Request, res: Response, 
     handleSupabaseError(error);
   }
 
-  res.status(201).json(data[0]); // Respond with the created achievement
+  if (!data) throw new InternalServerError("Insert returned no data."); res.status(201).json(data[0]); // Respond with the created achievement
 });
 
 /**
@@ -207,7 +207,7 @@ export const addCommentToAchievement = catchAsync(async (req: Request, res: Resp
     handleSupabaseError(error);
   }
 
-  res.status(201).json(data[0]); // Respond with the created comment
+  if (!data) throw new InternalServerError("Insert returned no data."); res.status(201).json(data[0]); // Respond with the created comment
 });
 
 /**
@@ -327,6 +327,7 @@ export const addVoteToAchievement = catchAsync(async (req: Request, res: Respons
       if (error) {
           handleSupabaseError(error);
       }
+      if (!data) throw new InternalServerError("Update returned no data.");
       return res.status(200).json(data[0]); // Respond with the updated vote
   } else {
       // If no existing vote, insert a new one
@@ -338,6 +339,7 @@ export const addVoteToAchievement = catchAsync(async (req: Request, res: Respons
       if (error) {
           handleSupabaseError(error);
       }
+      if (!data) throw new InternalServerError("Insert returned no data.");
       return res.status(201).json(data[0]); // Respond with the new vote
   }
 });

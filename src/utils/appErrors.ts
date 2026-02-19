@@ -75,14 +75,16 @@ export class InternalServerError extends AppError {
   }
 }
 
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+
 /**
  * @description Utility function to wrap an async Express route handler
  * to catch errors and pass them to the next middleware (errorHandler).
  * This avoids repetitive try-catch blocks in each async route.
  * @param fn - The async Express route handler function.
- * @returns A new function that wraps the original handler with error catching.
+ * @returns A properly-typed RequestHandler that wraps the original handler with error catching.
  */
-export const catchAsync = (fn: Function) => {
+export const catchAsync = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>): RequestHandler => {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };

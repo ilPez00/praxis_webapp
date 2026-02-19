@@ -134,7 +134,68 @@ Log in to your Stripe dashboard and configure the following:
 *   After creating the webhook endpoint, Stripe will provide a **Webhook Secret**. Note this down and add it to your backend `.env` as `STRIPE_WEBHOOK_SECRET`.
 
 ---
-## 4. Frontend Component Installation
+
+## 4. Backend `.env` — Additional Required Variables
+
+Add the following to your backend `.env` if not already set:
+
+```
+SUPABASE_URL=https://<your-project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service_role_key_from_supabase_dashboard>
+GEMINI_API_KEY=<your_google_ai_studio_key>
+CLIENT_URL=http://localhost:3000
+STRIPE_PRICE_ID=<price_ID_from_stripe_dashboard>
+STRIPE_WEBHOOK_SECRET=<from_stripe_webhook_setup>
+```
+
+---
+
+## 5. Supabase — `messages` Table Setup
+
+If not yet created, run this in the Supabase SQL Editor:
+
+```sql
+CREATE TABLE messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  sender_id UUID REFERENCES auth.users(id),
+  receiver_id UUID REFERENCES auth.users(id),
+  content TEXT NOT NULL,
+  goal_node_id TEXT,
+  timestamp TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can read their own messages"
+  ON messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+CREATE POLICY "Users can send messages"
+  ON messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
+```
+
+---
+
+## 6. Supabase — Enable Realtime on `messages` Table
+
+For live chat to work:
+- Dashboard → Database → Replication → Enable for `messages` table.
+
+---
+
+## 7. Install Frontend Dependencies
+
+```bash
+cd client && npm install recharts @mui/x-charts
+```
+
+---
+
+## 8. Stripe Webhook Setup
+
+Set webhook endpoint to: `https://your-domain.com/stripe/webhook`
+
+For local dev: `stripe listen --forward-to localhost:3001/stripe/webhook`
+
+Events to listen for: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+
+---
 
 ### a) Install framer-motion (for GoalTree animations)
 
@@ -150,3 +211,84 @@ cd client && npm install framer-motion
 
 ---
 Please complete these manual actions. If you encounter any issues or need further assistance with any of these steps, let me know.
+
+---
+## 5. Backend `.env` additions (Claude audit — required for full functionality)
+
+Ensure all of the following are set in `/home/gio/Praxis/praxis_webapp/.env`:
+
+```
+SUPABASE_URL=https://<your-project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service_role_key_from_supabase_dashboard>
+GEMINI_API_KEY=<your_google_ai_studio_key>
+CLIENT_URL=http://localhost:3000
+STRIPE_SECRET_KEY=<already_set>
+STRIPE_PUBLISHABLE_KEY=<from_stripe_dashboard>
+STRIPE_PRICE_ID=<price_ID_from_stripe_dashboard>
+STRIPE_WEBHOOK_SECRET=<from_stripe_webhook_setup>
+```
+
+**Note:** `authenticateToken` middleware (now in `src/middleware/authenticateToken.ts`) uses
+`SUPABASE_SERVICE_ROLE_KEY` via the supabaseClient. Ensure it is set or AI Coaching and
+Analytics endpoints will return 401 for all requests.
+
+---
+## 6. Supabase: Create `messages` table (required for chat)
+
+If not yet created, run in the Supabase SQL Editor:
+
+```sql
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  sender_id UUID REFERENCES auth.users(id),
+  receiver_id UUID REFERENCES auth.users(id),
+  content TEXT NOT NULL,
+  goal_node_id TEXT,
+  timestamp TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can read their own messages"
+  ON messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+CREATE POLICY "Users can send messages"
+  ON messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
+```
+
+---
+## 7. Supabase: Enable Realtime on `messages` table
+
+Navigate to: Dashboard → Database → Replication → Enable Realtime for `messages` table.
+This is required for live chat updates in ChatRoom.tsx without polling.
+
+---
+## 8. Frontend dependencies for new styling
+
+```bash
+cd /home/gio/Praxis/praxis_webapp/client && npm install recharts @mui/x-charts
+```
+
+Note: `framer-motion` should already be installed (Step 4b above). Verify with:
+```bash
+cd /home/gio/Praxis/praxis_webapp/client && npm list framer-motion
+```
+
+---
+## 9. Stripe Webhook setup
+
+In the Stripe Dashboard, set the webhook endpoint to:
+  `https://your-domain.com/stripe/webhook`
+
+For local development, use the Stripe CLI:
+```bash
+stripe listen --forward-to localhost:3001/stripe/webhook
+```
+
+This will print the webhook secret — add it to `.env` as `STRIPE_WEBHOOK_SECRET`.
+
+---
+## 10. Google Fonts (already added to index.html by Claude)
+
+The following fonts are now loaded in `client/public/index.html`:
+- **Inter** (body text, weights 300-700)
+- **Plus Jakarta Sans** (headings, weights 600-800)
+
+No additional action required — they load from Google CDN at runtime.

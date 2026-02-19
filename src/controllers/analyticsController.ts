@@ -30,7 +30,7 @@ async function isUserPremium(userId: string): Promise<boolean> {
  * A more advanced implementation would require historical data storage.
  */
 export const getProgressOverTime = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.params.userId;
+  const userId = req.params.userId as string;
   if (!userId) {
     throw new BadRequestError('User ID is required.');
   }
@@ -73,7 +73,7 @@ export const getProgressOverTime = catchAsync(async (req: Request, res: Response
  * Calculates average progress and total weighted progress per domain.
  */
 export const getDomainPerformance = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.params.userId;
+  const userId = req.params.userId as string;
   if (!userId) {
     throw new BadRequestError('User ID is required.');
   }
@@ -120,7 +120,7 @@ export const getDomainPerformance = catchAsync(async (req: Request, res: Respons
  * Counts occurrences of each feedback grade.
  */
 export const getFeedbackTrends = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.params.userId;
+  const userId = req.params.userId as string;
   if (!userId) {
     throw new BadRequestError('User ID is required.');
   }
@@ -164,7 +164,7 @@ export const getFeedbackTrends = catchAsync(async (req: Request, res: Response, 
  * Counts total goals and completed achievements.
  */
 export const getAchievementRate = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.params.userId;
+  const userId = req.params.userId as string;
   if (!userId) {
     throw new BadRequestError('User ID is required.');
   }
@@ -198,21 +198,28 @@ export const getAchievementRate = catchAsync(async (req: Request, res: Response,
     throw new InternalServerError('Failed to fetch achievement data.');
   }
 
-  const achievementRate = totalGoals > 0 ? completedAchievements / totalGoals : 0;
+  const completedCount = completedAchievements ?? 0;
+  const achievementRate = totalGoals > 0 ? completedCount / totalGoals : 0;
 
   res.json({
     totalGoals,
-    completedAchievements,
+    completedAchievements: completedCount,
     achievementRate: parseFloat(achievementRate.toFixed(2)),
   });
 });
 
 /**
- * @description Provides comparative insights with anonymized similar users (placeholder).
- * This would require a more complex aggregation strategy and data anonymization.
+ * @description Provides comparative insights with anonymized similar users.
+ * TODO: This endpoint is a PLACEHOLDER and returns simulated aggregate data.
+ * A real implementation would require:
+ *   1. A periodic aggregation job (e.g. pg_cron) to compute anonymized averages
+ *      across all users, grouped by domain or goal category.
+ *   2. Differential privacy measures to ensure no individual's data is exposed.
+ *   3. A dedicated `aggregated_stats` table to serve pre-computed values efficiently.
+ * See whitepaper §6 (Anonymized Trend Analytics API) for the full design intent.
  */
 export const getComparisonData = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.params.userId;
+  const userId = req.params.userId as string;
   if (!userId) {
     throw new BadRequestError('User ID is required.');
   }

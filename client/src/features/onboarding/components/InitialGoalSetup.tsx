@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { GoalNode } from '../models/GoalNode';
-import { Domain } from '../models/Domain';
+import { GoalNode } from '../../../models/GoalNode';
+import { Domain } from '../../../models/Domain';
 
 interface InitialGoalSetupProps {
   userId: string;

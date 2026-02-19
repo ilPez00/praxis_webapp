@@ -14,9 +14,8 @@ import {
     useTheme,
 } from '@mui/material';
 import { supabase } from '../../lib/supabase';
-import { useUser } from '../hooks/useUser';
+import { useUser } from '../../hooks/useUser';
 import axios from 'axios';
-import { User } from '../models/User';
 
 interface ConversationSummary {
     otherUserId: string;

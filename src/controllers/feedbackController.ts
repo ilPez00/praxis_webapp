@@ -7,6 +7,21 @@ import { v4 as uuidv4 } from 'uuid';
 import logger from '../utils/logger'; // Import the logger
 import { catchAsync, BadRequestError, InternalServerError, NotFoundError } from '../utils/appErrors'; // Import custom errors and catchAsync
 
+/**
+ * POST /feedback
+ * Submits peer feedback and triggers automatic weight recalibration on the receiver's goal tree.
+ *
+ * Weight recalibration table (whitepaper §3.5):
+ *   SUCCEEDED    → W_j *= 0.8  (goal is easier now, reduce priority)
+ *   DISTRACTED   → W_j *= 1.2  (needs more focus, increase priority)
+ *   LEARNED      → W_j *= 0.9  (skill gained, slightly reduce pressure)
+ *   ADAPTED      → W_j *= 1.05 (adapted approach, slight focus increase)
+ *   NOT_APPLICABLE → no change
+ *
+ * After recalibration the updated goal tree is persisted to Supabase.
+ * If the tree update fails (unlikely), feedback is still returned as submitted —
+ * the weight adjustment is considered a best-effort side-effect.
+ */
 export const submitFeedback = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { giverId, receiverId, goalNodeId, grade, comment } = req.body;
 

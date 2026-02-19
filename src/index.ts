@@ -2,8 +2,16 @@ require('dotenv').config();
 import express from 'express';
 import cors from 'cors';
 
-import aiCoachingRoutes from './routes/aiCoachingRoutes'; // Import AI Coaching routes
-import analyticsRoutes from './routes/analyticsRoutes'; // Import analytics routes
+import authRoutes from './routes/authRoutes';
+import userRoutes from './routes/userRoutes';
+import messageRoutes from './routes/messageRoutes';
+import goalRoutes from './routes/goalRoutes';
+import matchingRoutes from './routes/matchingRoutes';
+import feedbackRoutes from './routes/feedbackRoutes';
+import achievementRoutes from './routes/achievementRoutes';
+import stripeRoutes from './routes/stripeRoutes';
+import aiCoachingRoutes from './routes/aiCoachingRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
 
 import { notFoundHandler, errorHandler } from './middleware/errorHandler'; // Import error handling middleware
 

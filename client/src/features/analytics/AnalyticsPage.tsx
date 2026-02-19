@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useUser } from '../hooks/useUser';
-
+import { useUser } from '../../hooks/useUser';
+import { supabase } from '../../lib/supabase';
+import GlassCard from '../../components/common/GlassCard';
 import {
   Container,
   Box,
@@ -11,12 +12,49 @@ import {
   Alert,
   Button,
   Stack,
-  Paper,
+  Chip,
+  LinearProgress,
+  Grid,
 } from '@mui/material';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import FeedbackIcon from '@mui/icons-material/Feedback';
+import InsightsIcon from '@mui/icons-material/Insights';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import LockIcon from '@mui/icons-material/Lock';
+
+// Domain colors matching the app's palette
+const DOMAIN_COLORS: Record<string, string> = {
+  'Career': '#FF9F0A',
+  'Investing': '#007AFF',
+  'Fitness': '#FF3B30',
+  'Academics': '#5856D6',
+  'Mental Health': '#34C759',
+  'Philosophical Development': '#FF2D55',
+  'Culture, Hobbies & Creative Pursuits': '#AF52DE',
+  'Intimacy & Romantic Exploration': '#636366',
+  'Friendship & Social Engagement': '#00C7BE',
+};
+
+const StatCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode; glowColor?: string }> = ({
+  icon, title, children, glowColor,
+}) => (
+  <GlassCard glowColor={glowColor} sx={{ p: 3, height: '100%' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+      <Box sx={{ color: 'primary.main' }}>{icon}</Box>
+      <Typography variant="h6" sx={{ fontWeight: 600 }}>{title}</Typography>
+    </Box>
+    {children}
+  </GlassCard>
+);
 
 /**
- * @description Analytics page component for premium users.
- * Displays various charts and insights into their goal progress, feedback, and comparisons.
+ * @description Advanced Analytics page — premium-only feature.
+ * Displays goal progress, domain performance, feedback trends, achievement rate,
+ * and anonymized comparison data. All endpoints require auth token.
+ *
+ * NOTE: getComparisonData endpoint is a placeholder returning simulated aggregates.
+ * Real implementation requires anonymized aggregate DB queries (whitepaper §6).
  */
 const AnalyticsPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
@@ -31,13 +69,10 @@ const AnalyticsPage: React.FC = () => {
   const [achievementRate, setAchievementRate] = useState<any>(null);
   const [comparisonData, setComparisonData] = useState<any>(null);
 
-
   useEffect(() => {
-    if (userLoading) return; // Wait for user loading to complete
-
+    if (userLoading) return;
     if (!user || !user.is_premium) {
-      // If user is not premium, redirect or show an error
-      navigate('/upgrade'); // Redirect to upgrade page
+      navigate('/upgrade');
       return;
     }
 
@@ -46,13 +81,16 @@ const AnalyticsPage: React.FC = () => {
       setError(null);
       try {
         const userId = user.id;
+        // Auth header required — analytics endpoints are protected by authenticateToken middleware
+        const { data: { session } } = await supabase.auth.getSession();
+        const authHeaders = { headers: { Authorization: `Bearer ${session?.access_token}` } };
 
         const [progressRes, domainRes, feedbackRes, achievementRes, comparisonRes] = await Promise.allSettled([
-          axios.get(`http://localhost:3001/analytics/progress-over-time/${userId}`),
-          axios.get(`http://localhost:3001/analytics/domain-performance/${userId}`),
-          axios.get(`http://localhost:3001/analytics/feedback-trends/${userId}`),
-          axios.get(`http://localhost:3001/analytics/achievement-rate/${userId}`),
-          axios.get(`http://localhost:3001/analytics/comparison-data/${userId}`),
+          axios.get(`http://localhost:3001/analytics/progress-over-time/${userId}`, authHeaders),
+          axios.get(`http://localhost:3001/analytics/domain-performance/${userId}`, authHeaders),
+          axios.get(`http://localhost:3001/analytics/feedback-trends/${userId}`, authHeaders),
+          axios.get(`http://localhost:3001/analytics/achievement-rate/${userId}`, authHeaders),
+          axios.get(`http://localhost:3001/analytics/comparison-data/${userId}`, authHeaders),
         ]);
 
         if (progressRes.status === 'fulfilled') setProgressData(progressRes.value.data);
@@ -60,9 +98,7 @@ const AnalyticsPage: React.FC = () => {
         if (feedbackRes.status === 'fulfilled') setFeedbackTrends(feedbackRes.value.data);
         if (achievementRes.status === 'fulfilled') setAchievementRate(achievementRes.value.data);
         if (comparisonRes.status === 'fulfilled') setComparisonData(comparisonRes.value.data);
-
       } catch (err) {
-        console.error('Error fetching analytics data:', err);
         setError('Failed to fetch analytics data.');
       } finally {
         setLoadingAnalytics(false);
@@ -74,109 +110,220 @@ const AnalyticsPage: React.FC = () => {
 
   if (userLoading || loadingAnalytics) {
     return (
-      <Container component="main" maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+      <Container sx={{ mt: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         <CircularProgress />
+        <Typography color="text.secondary">Loading analytics...</Typography>
       </Container>
     );
   }
 
   if (error) {
     return (
-      <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
+      <Container sx={{ mt: 4 }}>
         <Alert severity="error">{error}</Alert>
       </Container>
     );
   }
 
   if (!user || !user.is_premium) {
-    // This case should be handled by the redirect in useEffect, but as a fallback
     return (
-      <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
-        <Alert severity="warning">You need a premium subscription to access Advanced Analytics.</Alert>
-        <Button variant="contained" color="primary" onClick={() => navigate('/upgrade')} sx={{ mt: 2 }}>
-          Upgrade Now
-        </Button>
+      <Container sx={{ mt: 4 }}>
+        <Alert
+          severity="warning"
+          icon={<LockIcon />}
+          action={
+            <Button color="inherit" size="small" onClick={() => navigate('/upgrade')}>Upgrade</Button>
+          }
+        >
+          Advanced Analytics requires a Premium subscription.
+        </Alert>
       </Container>
     );
   }
 
   return (
-    <Container component="main" maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Advanced Analytics for {user.name}
-      </Typography>
+    <Container maxWidth="lg" sx={{ mt: 4, pb: 6 }}>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <InsightsIcon sx={{ color: 'primary.main', fontSize: 28 }} />
+          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+            Advanced Analytics
+          </Typography>
+          <Chip label="PREMIUM" size="small" sx={{ bgcolor: 'rgba(245,158,11,0.15)', color: 'primary.main', fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)' }} />
+        </Box>
+        <Typography color="text.secondary">
+          Deep insights into your goal progress and peer interactions.
+        </Typography>
+      </Box>
 
-      <Stack spacing={4} sx={{ mt: 4 }}>
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h5" gutterBottom>Goal Progress Overview</Typography>
-          {progressData.length > 0 ? (
-            <Box>
-              {progressData.map((data, index) => (
-                <Typography key={index}>
-                  {data.goalName} ({data.domain}): {Math.round(data.progress * 100)}% progress, Weight: {data.weight.toFixed(1)}
-                </Typography>
-              ))}
-            </Box>
-          ) : (
-            <Typography>No goal progress data available.</Typography>
-          )}
-        </Paper>
-
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h5" gutterBottom>Domain Performance</Typography>
-          {domainPerformance.length > 0 ? (
-            <Box>
-              {domainPerformance.map((data, index) => (
-                <Typography key={index}>
-                  {data.domain}: Average Progress {Math.round(data.averageProgress * 100)}%, Total Goals: {data.goalCount}
-                </Typography>
-              ))}
-            </Box>
-          ) : (
-            <Typography>No domain performance data available.</Typography>
-          )}
-        </Paper>
-
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h5" gutterBottom>Feedback Trends</Typography>
-          {feedbackTrends.length > 0 ? (
-            <Box>
-              {feedbackTrends.map((data, index) => (
-                <Typography key={index}>
-                  {data.grade}: {data.count} occurrences
-                </Typography>
-              ))}
-            </Box>
-          ) : (
-            <Typography>No feedback trends data available.</Typography>
-          )}
-        </Paper>
-
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h5" gutterBottom>Achievement Rate</Typography>
-          {achievementRate ? (
-            <Typography>
-              Total Goals: {achievementRate.totalGoals}, Completed Achievements: {achievementRate.completedAchievements}, Rate: {Math.round(achievementRate.achievementRate * 100)}%
-            </Typography>
-          ) : (
-            <Typography>No achievement rate data available.</Typography>
-          )}
-        </Paper>
-
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h5" gutterBottom>Comparison Data</Typography>
-          {comparisonData ? (
-            <Box>
-              <Typography>{comparisonData.message}</Typography>
-              {comparisonData.globalAverageProgress && <Typography>Global Average Progress: {Math.round(comparisonData.globalAverageProgress * 100)}%</Typography>}
-              {comparisonData.globalAverageFeedbackDistribution && (
-                <Typography>Global Average Feedback (Succeeded): {comparisonData.globalAverageFeedbackDistribution.Succeeded}</Typography>
+      <Stack spacing={3}>
+        {/* Row 1: Progress + Achievement Rate */}
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 7 }}>
+            <StatCard icon={<TrendingUpIcon />} title="Goal Progress" glowColor="rgba(245,158,11,0.15)">
+              {progressData.length > 0 ? (
+                <Stack spacing={2}>
+                  {progressData.map((data, i) => {
+                    const pct = Math.round(data.progress * 100);
+                    const color = DOMAIN_COLORS[data.domain] || '#F59E0B';
+                    return (
+                      <Box key={i}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>{data.goalName}</Typography>
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                            <Chip label={data.domain} size="small" sx={{ bgcolor: `${color}20`, color, border: `1px solid ${color}40`, fontSize: '0.7rem', height: 20 }} />
+                            <Typography variant="body2" sx={{ color, fontWeight: 700 }}>{pct}%</Typography>
+                          </Box>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={pct}
+                          sx={{
+                            height: 6, borderRadius: 3,
+                            bgcolor: 'rgba(255,255,255,0.06)',
+                            '& .MuiLinearProgress-bar': { bgcolor: color, borderRadius: 3 },
+                          }}
+                        />
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <Typography color="text.secondary" variant="body2">No goal data yet.</Typography>
               )}
-            </Box>
+            </StatCard>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 5 }}>
+            <StatCard icon={<EmojiEventsIcon />} title="Achievement Rate" glowColor="rgba(16,185,129,0.15)">
+              {achievementRate ? (
+                <Box>
+                  <Box sx={{ textAlign: 'center', py: 2 }}>
+                    <Typography variant="h2" sx={{ fontWeight: 800, color: 'success.main', lineHeight: 1 }}>
+                      {Math.round(achievementRate.achievementRate * 100)}%
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>completion rate</Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={achievementRate.achievementRate * 100}
+                    sx={{
+                      height: 8, borderRadius: 4, mb: 2,
+                      bgcolor: 'rgba(16,185,129,0.12)',
+                      '& .MuiLinearProgress-bar': { bgcolor: '#10B981', borderRadius: 4 },
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h5" sx={{ fontWeight: 700 }}>{achievementRate.totalGoals}</Typography>
+                      <Typography variant="caption" color="text.secondary">Total Goals</Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main' }}>
+                        {achievementRate.completedAchievements}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">Completed</Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              ) : (
+                <Typography color="text.secondary" variant="body2">No achievement data yet.</Typography>
+              )}
+            </StatCard>
+          </Grid>
+        </Grid>
+
+        {/* Row 2: Domain Performance */}
+        <StatCard icon={<InsightsIcon />} title="Domain Performance" glowColor="rgba(139,92,246,0.15)">
+          {domainPerformance.length > 0 ? (
+            <Grid container spacing={2}>
+              {domainPerformance.map((data, i) => {
+                const color = DOMAIN_COLORS[data.domain] || '#8B5CF6';
+                const pct = Math.round(data.averageProgress * 100);
+                return (
+                  <Grid size={{ xs: 6, sm: 4, md: 3 }} key={i}>
+                    <Box
+                      sx={{
+                        p: 2, borderRadius: 2, textAlign: 'center',
+                        bgcolor: `${color}12`, border: `1px solid ${color}30`,
+                        transition: 'all 0.2s',
+                        '&:hover': { bgcolor: `${color}20`, transform: 'translateY(-2px)' },
+                      }}
+                    >
+                      <Typography variant="h4" sx={{ fontWeight: 800, color }}>{pct}%</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                        {data.domain}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: color + 'cc' }}>
+                        {data.goalCount} goal{data.goalCount !== 1 ? 's' : ''}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                );
+              })}
+            </Grid>
           ) : (
-            <Typography>No comparison data available.</Typography>
+            <Typography color="text.secondary" variant="body2">No domain data yet.</Typography>
           )}
-        </Paper>
+        </StatCard>
+
+        {/* Row 3: Feedback Trends + Comparison */}
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StatCard icon={<FeedbackIcon />} title="Feedback Trends" glowColor="rgba(59,130,246,0.15)">
+              {feedbackTrends.filter(d => d.count > 0).length > 0 ? (
+                <Stack spacing={1.5}>
+                  {feedbackTrends.filter(d => d.count > 0).map((data, i) => {
+                    const maxCount = Math.max(...feedbackTrends.map(d => d.count));
+                    const pct = maxCount > 0 ? (data.count / maxCount) * 100 : 0;
+                    return (
+                      <Box key={i}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>{data.grade}</Typography>
+                          <Typography variant="body2" color="text.secondary">{data.count}×</Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={pct}
+                          sx={{
+                            height: 6, borderRadius: 3,
+                            bgcolor: 'rgba(255,255,255,0.06)',
+                            '& .MuiLinearProgress-bar': { bgcolor: 'info.main', borderRadius: 3 },
+                          }}
+                        />
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <Typography color="text.secondary" variant="body2">No feedback received yet.</Typography>
+              )}
+            </StatCard>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StatCard icon={<CompareArrowsIcon />} title="Community Comparison" glowColor="rgba(245,158,11,0.1)">
+              {comparisonData ? (
+                <Box>
+                  <Alert severity="info" sx={{ mb: 2, fontSize: '0.8rem' }}>
+                    Placeholder data — real aggregation coming in Step 15.
+                  </Alert>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2, bgcolor: 'rgba(255,255,255,0.04)', borderRadius: 2 }}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                        {Math.round((comparisonData.globalAverageProgress || 0) * 100)}%
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">Global Avg Progress</Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              ) : (
+                <Typography color="text.secondary" variant="body2">No comparison data available.</Typography>
+              )}
+            </StatCard>
+          </Grid>
+        </Grid>
       </Stack>
     </Container>
   );
