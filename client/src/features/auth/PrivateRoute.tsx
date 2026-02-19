@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Box, CircularProgress } from '@mui/material';
 import { useUser } from '../../hooks/useUser';
 
 /**
@@ -23,7 +24,11 @@ const PrivateRoute: React.FC = () => {
   const location = useLocation();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress color="primary" />
+      </Box>
+    );
   }
 
   if (!user) {
