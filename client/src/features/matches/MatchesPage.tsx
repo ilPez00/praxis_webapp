@@ -22,7 +22,7 @@ import {
   CircularProgress,
   Alert,
   Collapse,
-  IconButton,
+  LinearProgress,
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MessageIcon from '@mui/icons-material/Message';
@@ -50,67 +50,55 @@ interface MatchProfile {
   isDemo?: boolean;
   sharedGoals?: string[];
   progressPace?: string;
+  overallProgress?: number; // 0–100
 }
 
-// ─── Domain color mapping (mirrors types/goal.ts DOMAIN_COLORS) ───────────────
+// ─── Domain color mapping ─────────────────────────────────────────────────────
 
 const DOMAIN_COLORS: Record<string, string> = {
-  'Career':                              '#FF9F0A',
-  'Investing / Financial Growth':        '#007AFF',
-  'Investing':                           '#007AFF',
-  'Fitness':                             '#FF3B30',
-  'Academics':                           '#5856D6',
-  'Mental Health':                       '#34C759',
-  'Philosophical Development':           '#FF2D55',
+  'Career':                               '#FF9F0A',
+  'Investing / Financial Growth':         '#007AFF',
+  'Investing':                            '#007AFF',
+  'Fitness':                              '#FF3B30',
+  'Academics':                            '#5856D6',
+  'Mental Health':                        '#34C759',
+  'Philosophical Development':            '#FF2D55',
   'Culture / Hobbies / Creative Pursuits':'#AF52DE',
-  'Culture, Hobbies & Creative Pursuits':'#AF52DE',
-  'Intimacy / Romantic Exploration':     '#636366',
-  'Intimacy & Romantic Exploration':     '#636366',
-  'Friendship / Social Engagement':      '#00C7BE',
-  'Friendship & Social Engagement':      '#00C7BE',
+  'Culture, Hobbies & Creative Pursuits': '#AF52DE',
+  'Intimacy / Romantic Exploration':      '#636366',
+  'Intimacy & Romantic Exploration':      '#636366',
+  'Friendship / Social Engagement':       '#00C7BE',
+  'Friendship & Social Engagement':       '#00C7BE',
 };
 
 function domainColor(domain: string): string {
   return DOMAIN_COLORS[domain] ?? '#9CA3AF';
 }
 
-// ─── Compatibility ring (SVG circular progress) ───────────────────────────────
+// ─── Compatibility ring (SVG circular arc) ────────────────────────────────────
 
-interface CompatibilityRingProps {
-  score: number; // 0–100
-}
-
-const CompatibilityRing: React.FC<CompatibilityRingProps> = ({ score }) => {
+const CompatibilityRing: React.FC<{ score: number }> = ({ score }) => {
   const radius = 28;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
   const color = score >= 80 ? '#10B981' : score >= 60 ? '#F59E0B' : '#6B7280';
-  const glowColor = score >= 80 ? 'rgba(16,185,129,0.4)' : score >= 60 ? 'rgba(245,158,11,0.4)' : 'rgba(107,114,128,0.3)';
+  const glow  = score >= 80 ? 'rgba(16,185,129,0.5)' : score >= 60 ? 'rgba(245,158,11,0.5)' : 'rgba(107,114,128,0.3)';
 
   return (
     <Box sx={{ position: 'relative', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <svg width="72" height="72" style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
-        {/* Track */}
         <circle cx="36" cy="36" r={radius} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="5" />
-        {/* Progress arc */}
         <circle
           cx="36" cy="36" r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth="5"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
+          fill="none" stroke={color} strokeWidth="5"
+          strokeDasharray={circumference} strokeDashoffset={offset}
           strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 6px ${glowColor})` }}
+          style={{ filter: `drop-shadow(0 0 5px ${glow})` }}
         />
       </svg>
       <Box sx={{ textAlign: 'center', zIndex: 1, lineHeight: 1 }}>
-        <Typography sx={{ fontWeight: 700, color, fontSize: '1.05rem', lineHeight: 1 }}>
-          {score}%
-        </Typography>
-        <Typography sx={{ fontSize: '0.55rem', color: 'text.disabled', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-          match
-        </Typography>
+        <Typography sx={{ fontWeight: 800, color, fontSize: '1rem', lineHeight: 1 }}>{score}%</Typography>
+        <Typography sx={{ fontSize: '0.5rem', color: 'text.disabled', letterSpacing: 0.5, textTransform: 'uppercase' }}>match</Typography>
       </Box>
     </Box>
   );
@@ -132,63 +120,54 @@ const PaceBadge: React.FC<{ pace: string }> = ({ pace }) => (
     bgcolor: `${PACE_COLORS[pace] ?? '#6B7280'}22`,
     border: `1px solid ${PACE_COLORS[pace] ?? '#6B7280'}44`,
   }}>
-    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: PACE_COLORS[pace] ?? '#6B7280' }} />
-    <Typography sx={{ fontSize: '0.7rem', color: PACE_COLORS[pace] ?? '#9CA3AF', fontWeight: 600 }}>
+    <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: PACE_COLORS[pace] ?? '#6B7280' }} />
+    <Typography sx={{ fontSize: '0.68rem', color: PACE_COLORS[pace] ?? '#9CA3AF', fontWeight: 600 }}>
       {pace}
     </Typography>
   </Box>
 );
 
-// ─── Individual match card ────────────────────────────────────────────────────
+// ─── Single match card ────────────────────────────────────────────────────────
 
 interface MatchCardProps {
   match: MatchProfile;
-  currentUserId: string;
   onMessage: (match: MatchProfile) => void;
 }
 
-const MatchCard: React.FC<MatchCardProps> = ({ match, currentUserId, onMessage }) => {
+const MatchCard: React.FC<MatchCardProps> = ({ match, onMessage }) => {
   const compatPct = Math.round(match.score * 100);
-  const color = compatPct >= 80 ? '#10B981' : compatPct >= 60 ? '#F59E0B' : '#6B7280';
+  const color    = compatPct >= 80 ? '#10B981' : compatPct >= 60 ? '#F59E0B' : '#6B7280';
   const glowRgba = compatPct >= 80 ? 'rgba(16,185,129,0.12)' : compatPct >= 60 ? 'rgba(245,158,11,0.12)' : undefined;
 
   return (
     <GlassCard
       glowColor={glowRgba}
       sx={{
-        p: 3,
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
+        p: 3, height: '100%',
+        display: 'flex', flexDirection: 'column', position: 'relative',
         transition: 'transform 0.2s ease',
         '&:hover': { transform: 'translateY(-4px)' },
       }}
     >
       {/* Demo badge */}
       {match.isDemo && (
-        <Chip
-          label="DEMO"
-          size="small"
-          sx={{
-            position: 'absolute', top: 12, left: 12,
-            fontSize: '0.6rem', height: 18, letterSpacing: 1,
-            bgcolor: 'rgba(255,255,255,0.06)',
-            color: 'text.disabled',
-            border: '1px solid rgba(255,255,255,0.1)',
-          }}
-        />
+        <Chip label="DEMO" size="small" sx={{
+          position: 'absolute', top: 12, left: 12,
+          fontSize: '0.58rem', height: 17, letterSpacing: 1,
+          bgcolor: 'rgba(255,255,255,0.05)', color: 'text.disabled',
+          border: '1px solid rgba(255,255,255,0.09)',
+        }} />
       )}
 
-      {/* Top row: avatar + name + ring */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2, mt: match.isDemo ? 2 : 0 }}>
+      {/* Top row: avatar + name + compatibility ring */}
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2, mt: match.isDemo ? 2.5 : 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, mr: 1 }}>
           <Avatar
             src={match.avatarUrl}
             sx={{
-              width: 52, height: 52, flexShrink: 0,
-              border: `2px solid ${color}`,
-              boxShadow: `0 0 12px ${color}44`,
+              width: 54, height: 54, flexShrink: 0,
+              border: `2.5px solid ${color}`,
+              boxShadow: `0 0 14px ${color}55`,
             }}
           >
             {match.name.charAt(0).toUpperCase()}
@@ -205,21 +184,48 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, currentUserId, onMessage }
 
       {/* Bio */}
       {match.bio && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6, fontSize: '0.82rem' }}>
+        <Typography variant="body2" color="text.secondary"
+          sx={{ mb: 2, lineHeight: 1.6, fontSize: '0.81rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {match.bio}
         </Typography>
+      )}
+
+      {/* Goal progress bar tease */}
+      {match.overallProgress !== undefined && (
+        <Box sx={{ mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+            <Typography sx={{ fontSize: '0.63rem', color: 'text.disabled', textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 600 }}>
+              Goal Progress
+            </Typography>
+            <Typography sx={{ fontSize: '0.72rem', color, fontWeight: 700 }}>
+              {match.overallProgress}%
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={match.overallProgress}
+            sx={{
+              height: 4, borderRadius: '3px',
+              bgcolor: 'rgba(255,255,255,0.06)',
+              '& .MuiLinearProgress-bar': {
+                borderRadius: '3px',
+                background: `linear-gradient(90deg, ${color}88, ${color})`,
+              },
+            }}
+          />
+        </Box>
       )}
 
       {/* Aligned goals */}
       {match.sharedGoals && match.sharedGoals.length > 0 && (
         <Box sx={{ mb: 2 }}>
-          <Typography sx={{ fontSize: '0.65rem', color: 'text.disabled', textTransform: 'uppercase', letterSpacing: 1.5, mb: 0.75, fontWeight: 600 }}>
+          <Typography sx={{ fontSize: '0.63rem', color: 'text.disabled', textTransform: 'uppercase', letterSpacing: 1.5, mb: 0.75, fontWeight: 600 }}>
             Aligned Goals
           </Typography>
           {match.sharedGoals.slice(0, 3).map((goal) => (
             <Box key={goal} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 0.5 }}>
-              <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: color, flexShrink: 0, mt: '6px' }} />
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.4, color: 'text.secondary' }}>
+              <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: color, flexShrink: 0, mt: '6px' }} />
+              <Typography variant="body2" sx={{ fontSize: '0.79rem', lineHeight: 1.4, color: 'text.secondary' }}>
                 {goal}
               </Typography>
             </Box>
@@ -233,44 +239,32 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, currentUserId, onMessage }
           {match.domains.slice(0, 4).map((domain) => {
             const dc = domainColor(domain);
             return (
-              <Chip
-                key={domain}
-                label={domain}
-                size="small"
-                sx={{
-                  height: 22, fontSize: '0.68rem',
-                  bgcolor: `${dc}18`,
-                  color: dc,
-                  border: `1px solid ${dc}40`,
-                  '& .MuiChip-label': { px: 1.25 },
-                }}
-              />
+              <Chip key={domain} label={domain} size="small" sx={{
+                height: 21, fontSize: '0.67rem',
+                bgcolor: `${dc}16`, color: dc, border: `1px solid ${dc}38`,
+                '& .MuiChip-label': { px: 1.25 },
+              }} />
             );
           })}
           {match.domains.length > 4 && (
             <Chip label={`+${match.domains.length - 4}`} size="small"
-              sx={{ height: 22, fontSize: '0.68rem', bgcolor: 'rgba(255,255,255,0.05)', color: 'text.disabled' }} />
+              sx={{ height: 21, fontSize: '0.67rem', bgcolor: 'rgba(255,255,255,0.05)', color: 'text.disabled' }} />
           )}
         </Box>
       )}
 
-      {/* Spacer pushes button to bottom */}
       <Box sx={{ flexGrow: 1 }} />
 
-      {/* Action button */}
+      {/* Message button */}
       <Button
         variant="contained"
         fullWidth
-        startIcon={<MessageIcon sx={{ fontSize: '1rem' }} />}
+        startIcon={<MessageIcon sx={{ fontSize: '0.95rem' }} />}
         onClick={() => onMessage(match)}
         sx={{
-          mt: 1,
-          background: `linear-gradient(135deg, ${color}CC, ${color}88)`,
-          color: '#fff',
-          fontWeight: 600,
-          fontSize: '0.85rem',
-          borderRadius: '10px',
-          boxShadow: `0 4px 16px ${color}44`,
+          mt: 1, fontWeight: 700, fontSize: '0.84rem', borderRadius: '10px',
+          background: `linear-gradient(135deg, ${color}CC, ${color}99)`,
+          boxShadow: `0 4px 14px ${color}44`,
           '&:hover': {
             background: `linear-gradient(135deg, ${color}, ${color}BB)`,
             boxShadow: `0 6px 20px ${color}66`,
@@ -283,7 +277,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, currentUserId, onMessage }
   );
 };
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 const MatchesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -291,12 +285,11 @@ const MatchesPage: React.FC = () => {
 
   const [realMatches, setRealMatches] = useState<MatchProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [compatibilityFilter, setCompatibilityFilter] = useState<number>(0);
+  const [compatibilityFilter, setCompatibilityFilter] = useState(0);
   const [selectedDomainsFilter, setSelectedDomainsFilter] = useState<string[]>([]);
 
-  // Convert mock data to MatchProfile shape
+  // Convert mock data to MatchProfile shape (used as fallback)
   const demoProfiles: MatchProfile[] = mockMatches.map((m: MockMatch) => ({
     userId: m.id,
     score: m.compatibility / 100,
@@ -306,92 +299,70 @@ const MatchesPage: React.FC = () => {
     bio: m.bio,
     sharedGoals: m.sharedGoals,
     progressPace: m.progressPace,
+    overallProgress: m.overallProgress,
     isDemo: true,
   }));
 
   useEffect(() => {
     if (userLoading || !user) return;
-
     const fetchMatches = async () => {
       setLoading(true);
-      setError(null);
       try {
         const matchRes = await axios.get(`${API_URL}/matches/${user.id}`);
         const rawMatches: MatchResult[] = matchRes.data ?? [];
 
-        if (rawMatches.length === 0) {
-          setRealMatches([]);
-          return;
-        }
+        if (rawMatches.length === 0) { setRealMatches([]); return; }
 
-        const profilePromises = rawMatches.map(async (m) => {
+        const profiles = await Promise.all(rawMatches.map(async (m) => {
           try {
             const { data: profile } = await supabase
-              .from('profiles')
-              .select('name, avatar_url, bio')
-              .eq('id', m.userId)
-              .single();
-
+              .from('profiles').select('name, avatar_url, bio').eq('id', m.userId).single();
             let domains: string[] = [];
             try {
               const goalRes = await axios.get(`${API_URL}/goals/${m.userId}`);
               const nodes = goalRes.data?.nodes ?? [];
               domains = Array.from(new Set<string>(nodes.map((n: any) => n.domain).filter(Boolean)));
             } catch { /* non-fatal */ }
-
             return {
-              userId: m.userId,
-              score: m.score,
+              userId: m.userId, score: m.score,
               name: profile?.name ?? `User ${m.userId.slice(0, 6)}`,
               avatarUrl: profile?.avatar_url ?? undefined,
               bio: profile?.bio ?? undefined,
               domains,
             } as MatchProfile;
           } catch {
-            return {
-              userId: m.userId,
-              score: m.score,
-              name: `User ${m.userId.slice(0, 6)}`,
-              domains: [],
-            } as MatchProfile;
+            return { userId: m.userId, score: m.score, name: `User ${m.userId.slice(0, 6)}`, domains: [] } as MatchProfile;
           }
-        });
-
-        setRealMatches(await Promise.all(profilePromises));
+        }));
+        setRealMatches(profiles);
       } catch {
-        // Backend unreachable or user has no goal tree — show demo data only
         setRealMatches([]);
       } finally {
         setLoading(false);
       }
     };
-
     fetchMatches();
   }, [user, userLoading]);
 
+  const applyFilters = (list: MatchProfile[]) =>
+    list.filter((m) => {
+      const pct = Math.round(m.score * 100);
+      return pct >= compatibilityFilter &&
+        (selectedDomainsFilter.length === 0 || selectedDomainsFilter.some(d => m.domains.includes(d)));
+    });
+
+  const showingDemo = realMatches.length === 0;
+  const allDisplayed = showingDemo ? applyFilters(demoProfiles) : applyFilters(realMatches);
+
   const handleMessage = (match: MatchProfile) => {
+    if (match.isDemo) {
+      toast('Build your goal tree first to connect with real users like this!', { icon: '🎯' });
+      navigate('/goals/' + user!.id);
+      return;
+    }
     toast.success(`Opening chat with ${match.name}!`);
     navigate(`/chat/${user!.id}/${match.userId}`);
   };
-
-  // Decide which profiles to display: real matches take priority.
-  // Show demo profiles as supplemental "example matches" when real is empty.
-  const displayRealMatches = realMatches.filter((m) => {
-    const pct = Math.round(m.score * 100);
-    return pct >= compatibilityFilter &&
-      (selectedDomainsFilter.length === 0 || selectedDomainsFilter.some(d => m.domains.includes(d)));
-  });
-
-  const displayDemoMatches = realMatches.length === 0
-    ? demoProfiles.filter((m) => {
-        const pct = Math.round(m.score * 100);
-        return pct >= compatibilityFilter &&
-          (selectedDomainsFilter.length === 0 || selectedDomainsFilter.some(d => m.domains.includes(d)));
-      })
-    : [];
-
-  const allDisplayed = [...displayRealMatches, ...displayDemoMatches];
-  const showingDemo = realMatches.length === 0;
 
   if (userLoading || loading) {
     return (
@@ -416,23 +387,21 @@ const MatchesPage: React.FC = () => {
           </Box>
           <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
             {showingDemo
-              ? 'Example profiles — complete your goal tree to see real matches'
+              ? 'Sample profiles — build your goal tree to see real matches'
               : `${allDisplayed.length} people aligned with your goals`}
           </Typography>
         </Box>
-
         <Button
-          variant="outlined"
-          startIcon={<FilterListIcon />}
+          variant="outlined" startIcon={<FilterListIcon />} size="small"
           onClick={() => setShowFilters(f => !f)}
-          size="small"
-          sx={{ borderRadius: '10px', borderColor: 'rgba(255,255,255,0.15)', color: 'text.secondary', '&:hover': { borderColor: 'primary.main', color: 'primary.main' } }}
+          sx={{ borderRadius: '10px', borderColor: 'rgba(255,255,255,0.15)', color: 'text.secondary',
+            '&:hover': { borderColor: 'primary.main', color: 'primary.main' } }}
         >
           Filters {compatibilityFilter > 0 || selectedDomainsFilter.length > 0 ? '·' : ''}
         </Button>
       </Box>
 
-      {/* ── Filters (collapsible) ───────────────────────────────────────── */}
+      {/* ── Filters ─────────────────────────────────────────────────────── */}
       <Collapse in={showFilters}>
         <GlassCard sx={{ p: 3, mb: 4 }}>
           <Grid container spacing={3} alignItems="center">
@@ -440,12 +409,10 @@ const MatchesPage: React.FC = () => {
               <FormControl fullWidth size="small">
                 <InputLabel id="domain-filter-label">Filter by Domain</InputLabel>
                 <Select
-                  labelId="domain-filter-label"
-                  multiple
+                  labelId="domain-filter-label" multiple label="Filter by Domain"
                   value={selectedDomainsFilter}
-                  label="Filter by Domain"
                   onChange={(e) => setSelectedDomainsFilter(e.target.value as string[])}
-                  renderValue={(selected) => (selected as string[]).join(', ')}
+                  renderValue={(sel) => (sel as string[]).join(', ')}
                 >
                   {Object.values(Domain).map((domain) => (
                     <MenuItem key={domain} value={domain}>
@@ -462,13 +429,8 @@ const MatchesPage: React.FC = () => {
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 Minimum compatibility: <strong style={{ color: '#F59E0B' }}>{compatibilityFilter}%</strong>
               </Typography>
-              <Slider
-                value={compatibilityFilter}
-                onChange={(_, v) => setCompatibilityFilter(v as number)}
-                valueLabelDisplay="auto"
-                min={0} max={100} step={5}
-                sx={{ color: 'primary.main' }}
-              />
+              <Slider value={compatibilityFilter} onChange={(_, v) => setCompatibilityFilter(v as number)}
+                valueLabelDisplay="auto" min={0} max={100} step={5} sx={{ color: 'primary.main' }} />
             </Grid>
             {(compatibilityFilter > 0 || selectedDomainsFilter.length > 0) && (
               <Grid size={{ xs: 12 }}>
@@ -481,56 +443,48 @@ const MatchesPage: React.FC = () => {
         </GlassCard>
       </Collapse>
 
-      {/* ── Demo mode banner ────────────────────────────────────────────── */}
+      {/* ── Demo banner ──────────────────────────────────────────────────── */}
       {showingDemo && (
-        <Alert
-          severity="info"
-          icon={<TrendingUpIcon />}
-          sx={{ mb: 4, bgcolor: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '12px', color: 'text.secondary' }}
-        >
-          <strong style={{ color: '#fff' }}>These are example matches.</strong> Once you build your goal tree, our algorithm will find real people aligned with your specific goals and progress pace.
+        <Alert severity="info" icon={<TrendingUpIcon />}
+          sx={{ mb: 3, bgcolor: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)', borderRadius: '12px' }}>
+          <strong>These are sample matches.</strong> Once you set up your goal tree, the algorithm will find real people aligned with your progress pace and specific goals.
         </Alert>
       )}
 
-      {/* ── Premium teaser (shown when not premium) ─────────────────────── */}
+      {/* ── Upgrade teaser (non-premium) ─────────────────────────────────── */}
       {!user?.is_premium && (
         <GlassCard
-          glowColor="rgba(139,92,246,0.12)"
+          glowColor="rgba(139,92,246,0.1)"
           sx={{
             p: 3, mb: 4,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            flexWrap: 'wrap', gap: 2,
-            background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(245,158,11,0.05))',
-            border: '1px solid rgba(139,92,246,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2,
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.07), rgba(245,158,11,0.04))',
+            border: '1px solid rgba(139,92,246,0.22)',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(139,92,246,0.15)', display: 'flex' }}>
-              <WorkspacePremiumIcon sx={{ color: '#8B5CF6', fontSize: '1.4rem' }} />
+            <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(139,92,246,0.14)', display: 'flex' }}>
+              <WorkspacePremiumIcon sx={{ color: '#8B5CF6', fontSize: '1.3rem' }} />
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
-                Unlock Advanced Matching
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 0.5 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Unlock Advanced Matching</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 0.4 }}>
                 {['Semantic AI matching', 'Chat priority', 'Unlimited filters', 'Mutual grading insights'].map(f => (
                   <Box key={f} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <LockIcon sx={{ fontSize: '0.65rem', color: '#8B5CF6' }} />
-                    <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{f}</Typography>
+                    <LockIcon sx={{ fontSize: '0.6rem', color: '#8B5CF6' }} />
+                    <Typography sx={{ fontSize: '0.73rem', color: 'text.secondary' }}>{f}</Typography>
                   </Box>
                 ))}
               </Box>
             </Box>
           </Box>
           <Button
-            variant="contained"
-            size="small"
+            variant="contained" size="small"
             onClick={() => navigate('/upgrade')}
             sx={{
               background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
               borderRadius: '10px', fontWeight: 700, fontSize: '0.8rem',
-              boxShadow: '0 4px 16px rgba(139,92,246,0.4)',
-              whiteSpace: 'nowrap',
+              boxShadow: '0 4px 14px rgba(139,92,246,0.38)', whiteSpace: 'nowrap',
               '&:hover': { background: 'linear-gradient(135deg, #7C3AED, #6D28D9)' },
             }}
           >
@@ -539,37 +493,35 @@ const MatchesPage: React.FC = () => {
         </GlassCard>
       )}
 
-      {/* ── Error state ─────────────────────────────────────────────────── */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 4 }}>{error}</Alert>
-      )}
-
-      {/* ── Match cards ─────────────────────────────────────────────────── */}
+      {/* ── Cards grid ───────────────────────────────────────────────────── */}
       {allDisplayed.length > 0 ? (
         <Grid container spacing={3}>
           {allDisplayed.map((match) => (
             <Grid key={match.userId} size={{ xs: 12, sm: 6, md: 4 }}>
-              <MatchCard match={match} currentUserId={user!.id} onMessage={handleMessage} />
+              <MatchCard match={match} onMessage={handleMessage} />
             </Grid>
           ))}
         </Grid>
       ) : (
-        /* ── Empty state ─────────────────────────────────────────────── */
-        <GlassCard sx={{ p: 8, textAlign: 'center' }}>
-          <AutoAwesomeIcon sx={{ fontSize: 56, color: 'primary.main', mb: 2, opacity: 0.7 }} />
+        /* ── Empty state ──────────────────────────────────────────────── */
+        <GlassCard sx={{ p: { xs: 5, md: 8 }, textAlign: 'center' }}>
+          <AutoAwesomeIcon sx={{ fontSize: 52, color: 'primary.main', mb: 2, opacity: 0.65 }} />
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
             No matches yet — keep building your goals!
           </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
-            The more detail you add to your goal tree, the more precisely our algorithm can find people aligned with where you're going.
+          <Typography color="text.secondary" sx={{ mb: 3, maxWidth: 420, mx: 'auto', lineHeight: 1.7 }}>
+            The more specific your goal tree, the more precisely we can find people aligned with where you're heading.
           </Typography>
-          <Button
-            variant="contained"
-            onClick={() => navigate('/goals')}
-            sx={{ borderRadius: '10px', px: 4 }}
-          >
-            Build my goal tree
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button variant="contained" onClick={() => navigate(`/goals/${user?.id}`)} sx={{ borderRadius: '10px', px: 4 }}>
+              Build my goal tree
+            </Button>
+            {!user?.is_premium && (
+              <Button variant="outlined" onClick={() => navigate('/upgrade')} sx={{ borderRadius: '10px', px: 3, borderColor: '#8B5CF6', color: '#8B5CF6' }}>
+                Upgrade for more matches
+              </Button>
+            )}
+          </Box>
         </GlassCard>
       )}
 

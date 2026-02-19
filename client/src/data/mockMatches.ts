@@ -19,6 +19,7 @@ export interface MockMatch {
   sharedGoals: string[];
   progressPace: ProgressPace;
   bio: string;
+  overallProgress: number; // 0–100, weighted average across their goals
 }
 
 export const mockMatches: MockMatch[] = [
@@ -35,6 +36,7 @@ export const mockMatches: MockMatch[] = [
     ],
     progressPace: 'Consistent',
     bio: 'Software engineer building in public. Running my first marathon while investing in index funds. Open to serious accountability partners.',
+    overallProgress: 51,
   },
   {
     id: 'demo-2',
@@ -49,6 +51,7 @@ export const mockMatches: MockMatch[] = [
     ],
     progressPace: 'Consistent',
     bio: 'Principal engineer at fintech scale-up. Deep into distributed systems and Stoic philosophy. Serious about long-term compounding in all areas of life.',
+    overallProgress: 55,
   },
   {
     id: 'demo-3',
@@ -63,6 +66,7 @@ export const mockMatches: MockMatch[] = [
     ],
     progressPace: 'Rapid',
     bio: 'Neuroscience postdoc optimizing for career excellence and inner peace simultaneously. Looking for science-minded people who also care about well-being.',
+    overallProgress: 36,
   },
   {
     id: 'demo-4',
@@ -76,6 +80,7 @@ export const mockMatches: MockMatch[] = [
     ],
     progressPace: 'Rapid',
     bio: 'PhD dropout turned ML engineer. Reading philosophy at night, building LLM tooling by day. Looking for people who think long-term about technology.',
+    overallProgress: 44,
   },
   {
     id: 'demo-5',
@@ -89,6 +94,7 @@ export const mockMatches: MockMatch[] = [
     ],
     progressPace: 'Consistent',
     bio: 'Therapist-in-training and amateur triathlete. Passionate about the intersection of physical performance and mental resilience.',
+    overallProgress: 65,
   },
   {
     id: 'demo-6',
@@ -102,6 +108,7 @@ export const mockMatches: MockMatch[] = [
     ],
     progressPace: 'Adapting',
     bio: 'Bootstrapped two companies, sold one. Now angel investing while building again. Interested in founders who think differently.',
+    overallProgress: 28,
   },
   {
     id: 'demo-7',
@@ -115,5 +122,6 @@ export const mockMatches: MockMatch[] = [
     ],
     progressPace: 'Learning',
     bio: 'Former pro cyclist now coaching. Exploring what it means to compete when the prize is personal growth. Into stoicism, jazz, and cold water swimming.',
+    overallProgress: 39,
   },
 ];
