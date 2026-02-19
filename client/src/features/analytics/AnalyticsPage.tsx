@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
@@ -86,11 +87,11 @@ const AnalyticsPage: React.FC = () => {
         const authHeaders = { headers: { Authorization: `Bearer ${session?.access_token}` } };
 
         const [progressRes, domainRes, feedbackRes, achievementRes, comparisonRes] = await Promise.allSettled([
-          axios.get(`http://localhost:3001/analytics/progress-over-time/${userId}`, authHeaders),
-          axios.get(`http://localhost:3001/analytics/domain-performance/${userId}`, authHeaders),
-          axios.get(`http://localhost:3001/analytics/feedback-trends/${userId}`, authHeaders),
-          axios.get(`http://localhost:3001/analytics/achievement-rate/${userId}`, authHeaders),
-          axios.get(`http://localhost:3001/analytics/comparison-data/${userId}`, authHeaders),
+          axios.get(`${API_URL}/analytics/progress-over-time/${userId}`, authHeaders),
+          axios.get(`${API_URL}/analytics/domain-performance/${userId}`, authHeaders),
+          axios.get(`${API_URL}/analytics/feedback-trends/${userId}`, authHeaders),
+          axios.get(`${API_URL}/analytics/achievement-rate/${userId}`, authHeaders),
+          axios.get(`${API_URL}/analytics/comparison-data/${userId}`, authHeaders),
         ]);
 
         if (progressRes.status === 'fulfilled') setProgressData(progressRes.value.data);

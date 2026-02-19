@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import {
   Box,
@@ -26,12 +27,10 @@ const LoginForm: React.FC = () => {
     e.preventDefault();
     setMessage('');
     try {
-      const response = await axios.post('http://localhost:3001/auth/login', { email, password });
+      const response = await axios.post(`${API_URL}/auth/login`, { email, password });
       setIsError(false);
       setMessage(response.data.message);
-      const userId = response.data.user.id;
-      localStorage.setItem('userId', userId);
-      navigate(`/profile/${userId}`);
+      navigate('/dashboard');
     } catch (error: any) {
       setIsError(true);
       setMessage(error.response?.data?.message || 'Login failed.');
@@ -39,7 +38,12 @@ const LoginForm: React.FC = () => {
   };
 
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
     if (error) { setIsError(true); setMessage(error.message); }
   };
 

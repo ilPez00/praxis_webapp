@@ -1,103 +1,76 @@
-import { useState, useEffect } from 'react';
-import { User } from '../models/User'; // Import the User interface
-import { supabase } from '../lib/supabase'; // Import the Supabase client
+import { useState, useEffect, useCallback } from 'react';
+import { User } from '../models/User';
+import { supabase } from '../lib/supabase';
 
 /**
- * @description Custom React hook that provides the authenticated user's full profile.
+ * Custom hook providing the authenticated user's full profile.
  *
- * Two-step auth flow:
- *   1. supabase.auth.getUser() — returns the raw auth user (id, email, metadata).
- *      This is the authoritative identity from Supabase Auth, verified server-side.
- *   2. supabase.from('profiles').select('*').eq('id', authUser.id) — fetches the
- *      app-level profile row created by the handle_new_user database trigger on signup.
- *      This row stores name, age, bio, avatar_url, is_premium, and onboarding_completed.
+ * Two-step flow:
+ *   1. supabase.auth.getUser() — authoritative auth identity
+ *   2. supabase.from('profiles').select() — app-level profile row
  *
- * The hook also subscribes to onAuthStateChange so the user state automatically
- * updates on login, logout, and token refresh without a page reload.
- *
- * @returns { user: User | null, loading: boolean }
+ * Subscribes to onAuthStateChange; only re-fetches on SIGNED_IN / SIGNED_OUT
+ * (not on every TOKEN_REFRESHED) to avoid unnecessary DB queries.
  */
 export const useUser = () => {
-  const [user, setUser] = useState<User | null>(null); // State to store the authenticated user's data
-  const [loading, setLoading] = useState(true); // State to indicate if user data is being loaded
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchUserProfile = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !authUser) {
+        setUser(null);
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (profileError || !profile) {
+        setUser(null);
+        return;
+      }
+
+      setUser({
+        id: profile.id,
+        email: authUser.email || '',
+        name: profile.name,
+        age: profile.age,
+        bio: profile.bio,
+        avatarUrl: profile.avatar_url,
+        is_premium: profile.is_premium,
+        onboarding_completed: profile.onboarding_completed,
+        goalTree: [],
+      });
+    } catch (error) {
+      console.error('Unexpected error in useUser:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    /**
-     * @description Fetches the authenticated user's profile from Supabase.
-     * This involves getting the auth user and then their corresponding profile entry.
-     */
-    const fetchUserProfile = async () => {
-      setLoading(true); // Set loading to true at the start of fetch
-      try {
-        // First, get the authentication user from Supabase
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    fetchUserProfile();
 
-        if (authError) {
-          console.error('Error fetching auth user:', authError);
-          setUser(null); // Clear user if authentication fails
-          setLoading(false);
-          return;
-        }
-
-        if (authUser) {
-          // If an authenticated user exists, fetch their detailed profile from the 'profiles' table
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*') // Select all columns from the profile
-            .eq('id', authUser.id) // Match profile by auth user's ID
-            .single(); // Expect a single result
-
-          if (profileError) {
-            console.error('Error fetching user profile:', profileError);
-            setUser(null); // Clear user if profile fetching fails
-            setLoading(false);
-            return;
-          }
-
-          if (profile) {
-            // Construct the User object, combining auth data and profile data
-            const fetchedUser: User = {
-              id: profile.id,
-              email: authUser.email || '', // Fallback for email if not present
-              name: profile.name,
-              age: profile.age,
-              bio: profile.bio,
-              avatarUrl: profile.avatar_url, // Use avatar_url from profile
-              is_premium: profile.is_premium, // Include the premium status
-              goalTree: [], // Goal tree is typically fetched separately if needed in detail
-            };
-            setUser(fetchedUser);
-          } else {
-            setUser(null); // No profile found for authenticated user
-          }
-        } else {
-          setUser(null); // No authenticated user
-        }
-      } catch (error) {
-        console.error('Unexpected error in useUser hook:', error);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      // Only re-fetch on meaningful auth transitions, not silent token refreshes
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        fetchUserProfile();
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
-      } finally {
-        setLoading(false); // Set loading to false once fetching is complete
-      }
-    };
-
-    fetchUserProfile(); // Initial fetch when the component mounts
-
-    // Set up a listener for authentication state changes (login, logout, token refresh)
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        fetchUserProfile(); // Re-fetch profile if authentication state changes (e.g., user logs in)
-      } else {
-        setUser(null); // Clear user if logged out
         setLoading(false);
       }
     });
 
-    // Cleanup function to unsubscribe from the auth listener when the component unmounts
-    return () => {
-      authListener.subscription?.unsubscribe();
-    };
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+    return () => subscription.unsubscribe();
+  }, [fetchUserProfile]);
 
-  return { user, loading }; // Provide the user object and loading state
+  return { user, loading, refetch: fetchUserProfile };
 };

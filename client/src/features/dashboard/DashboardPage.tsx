@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../lib/api';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
@@ -98,7 +99,7 @@ const DashboardPage: React.FC = () => {
     setAiCoachingResponse(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await axios.post(`http://localhost:3001/ai-coaching/request`, {
+      const response = await axios.post(`${API_URL}/ai-coaching/request`, {
         userPrompt: aiCoachingPrompt,
       }, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
@@ -125,9 +126,9 @@ const DashboardPage: React.FC = () => {
       setLoadingContent(true);
       try {
         const [goalsRes, matchesRes, achievementsRes] = await Promise.allSettled([
-          axios.get(`http://localhost:3001/goals/${currentUserId}`),
-          axios.get(`http://localhost:3001/matches/${currentUserId}`),
-          axios.get(`http://localhost:3001/achievements`),
+          axios.get(`${API_URL}/goals/${currentUserId}`),
+          axios.get(`${API_URL}/matches/${currentUserId}`),
+          axios.get(`${API_URL}/achievements`),
         ]);
         if (goalsRes.status === 'fulfilled') setGoalTree(goalsRes.value.data);
         if (matchesRes.status === 'fulfilled') setMatches(matchesRes.value.data.slice(0, 3));
@@ -143,7 +144,7 @@ const DashboardPage: React.FC = () => {
 
   const refreshAchievements = async () => {
     try {
-      const response = await axios.get(`http://localhost:3001/achievements`);
+      const response = await axios.get(`${API_URL}/achievements`);
       setAchievements(response.data);
     } catch (error) {
       console.error('Error refreshing achievements:', error);
@@ -153,7 +154,7 @@ const DashboardPage: React.FC = () => {
   const handleVote = async (achievementId: string, type: 'upvote' | 'downvote') => {
     if (!currentUserId) return;
     try {
-      await axios.post(`http://localhost:3001/achievements/${achievementId}/votes`, { userId: currentUserId, type });
+      await axios.post(`${API_URL}/achievements/${achievementId}/votes`, { userId: currentUserId, type });
       refreshAchievements();
     } catch (error) {
       console.error('Error submitting vote:', error);
@@ -163,7 +164,7 @@ const DashboardPage: React.FC = () => {
   const fetchComments = async (achievementId: string) => {
     setCommentsLoading(true);
     try {
-      const response = await axios.get(`http://localhost:3001/achievements/${achievementId}/comments`);
+      const response = await axios.get(`${API_URL}/achievements/${achievementId}/comments`);
       setComments(response.data);
     } catch (error) {
       setComments([]);
@@ -188,7 +189,7 @@ const DashboardPage: React.FC = () => {
   const handleAddComment = async () => {
     if (!currentUserId || !selectedAchievement || !newCommentText.trim()) return;
     try {
-      await axios.post(`http://localhost:3001/achievements/${selectedAchievement.id}/comments`, {
+      await axios.post(`${API_URL}/achievements/${selectedAchievement.id}/comments`, {
         userId: currentUserId,
         userName: user?.name,
         userAvatarUrl: user?.avatarUrl,

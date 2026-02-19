@@ -15,6 +15,9 @@ import { useUser } from '../../hooks/useUser';
  *      but not on the User model — add it there to activate the guard (Step 12).
  *   4. Otherwise, renders the nested <Outlet /> (the protected page).
  */
+// Routes that a new user is allowed to visit before completing onboarding
+const ONBOARDING_ALLOWED_PATHS = ['/onboarding', '/goal-selection'];
+
 const PrivateRoute: React.FC = () => {
   const { user, loading } = useUser();
   const location = useLocation();
@@ -24,11 +27,17 @@ const PrivateRoute: React.FC = () => {
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Onboarding guard placeholder — see Step 12 in claude_steps.txt for full implementation.
-  // Activate by adding onboarding_completed to the User model and checking it here.
+  // Onboarding guard: redirect new users to onboarding until they complete setup.
+  // Exempt /onboarding and /goal-selection so the flow itself isn't blocked.
+  if (
+    user.onboarding_completed === false &&
+    !ONBOARDING_ALLOWED_PATHS.some((p) => location.pathname.startsWith(p))
+  ) {
+    return <Navigate to="/onboarding" replace />;
+  }
 
   return <Outlet />;
 };

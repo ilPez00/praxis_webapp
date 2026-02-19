@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Container, Box, Typography, Button, CircularProgress, Alert, Stack, Divider } from '@mui/material';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
+import { API_URL } from '../../lib/api';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StarIcon from '@mui/icons-material/Star';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -31,7 +32,7 @@ const UpgradePage: React.FC = () => {
     setLoadingCheckout(true);
     setError(null);
     try {
-      const response = await axios.post('http://localhost:3001/stripe/create-checkout-session', {
+      const response = await axios.post(`${API_URL}/stripe/create-checkout-session`, {
         userId: user.id,
         email: user.email,
       });

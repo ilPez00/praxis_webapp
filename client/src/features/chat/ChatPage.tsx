@@ -46,7 +46,7 @@ const ChatPage: React.FC = () => {
                 const { data: allMessages, error } = await supabase
                     .from('messages')
                     .select('*')
-                    .or(`senderId.eq.${currentUser.id},receiverId.eq.${currentUser.id}`)
+                    .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
                     .order('timestamp', { ascending: false }); // Newest first
 
                 if (error) {
@@ -56,7 +56,7 @@ const ChatPage: React.FC = () => {
                 const convMap = new Map<string, ConversationSummary>();
 
                 for (const message of allMessages || []) {
-                    const otherUserId = message.senderId === currentUser.id ? message.receiverId : message.senderId;
+                    const otherUserId = message.sender_id === currentUser.id ? message.receiver_id : message.sender_id;
 
                     if (!convMap.has(otherUserId)) {
                         // Fetch other user's details
@@ -76,7 +76,7 @@ const ChatPage: React.FC = () => {
                             otherUserId: otherUserId,
                             otherUserName: otherUser?.name || 'Unknown User',
                             lastMessage: message.content,
-                            lastMessageTime: new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            lastMessageTime: new Date(message.timestamp || message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                             unreadCount: Math.floor(Math.random() * 3), // Mock
                         });
                     }

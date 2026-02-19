@@ -42,8 +42,7 @@ const routes: RouteConfig[] = [
   { path: '/matches', element: MatchesPage, private: true },
   { path: '/matches/:id', element: MatchesPage, private: true, param: 'id' },
   { path: '/chat', element: ChatPage, private: true },
-  { path: '/chat/:user1Id/:user2Id', element: ChatPage, private: true, param: 'user1Id' }, // Specific chat room
-  { path: '/chat/:id', element: ChatRoom, private: true, param: 'id' }, // General chat room (might need clarification for usage)
+  { path: '/chat/:user1Id/:user2Id', element: ChatRoom, private: true, param: 'user1Id' },
   { path: '/onboarding', element: OnboardingPage, private: true },
   { path: '/goals/:id', element: GoalTreePage, private: true, param: 'id' },
   { path: '/goal-selection', element: GoalSelectionPage, private: true },

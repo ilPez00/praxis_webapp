@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
@@ -59,7 +60,7 @@ const MatchesPage: React.FC = () => {
       setError(null);
       try {
         // 1. Get the raw match scores from the backend matching engine
-        const matchRes = await axios.get(`http://localhost:3001/matches/${user.id}`);
+        const matchRes = await axios.get(`${API_URL}/matches/${user.id}`);
         const rawMatches: MatchResult[] = matchRes.data;
 
         if (!rawMatches || rawMatches.length === 0) {
@@ -79,7 +80,7 @@ const MatchesPage: React.FC = () => {
             // Also fetch their goal tree to extract domains
             let domains: string[] = [];
             try {
-              const goalRes = await axios.get(`http://localhost:3001/goals/${m.userId}`);
+              const goalRes = await axios.get(`${API_URL}/goals/${m.userId}`);
               const nodes = goalRes.data?.nodes || [];
               const domainSet = new Set<string>(nodes.map((n: any) => n.domain).filter(Boolean));
               domains = Array.from(domainSet);

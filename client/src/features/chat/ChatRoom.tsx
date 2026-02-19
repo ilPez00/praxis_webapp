@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { API_URL } from '../../lib/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import axios from 'axios';
@@ -83,7 +84,7 @@ const ChatRoom: React.FC = () => {
     if (!currentUserId) return;
     const fetchUserGoalTree = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/goals/${currentUserId}`);
+        const response = await axios.get(`${API_URL}/goals/${currentUserId}`);
         setUserGoalTree(response.data);
       } catch (err) {
         console.error('Failed to fetch user goal tree for feedback:', err);
@@ -96,7 +97,7 @@ const ChatRoom: React.FC = () => {
     if (!user2Id) return;
     const fetchReceiverGoalTree = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/goals/${user2Id}`);
+        const response = await axios.get(`${API_URL}/goals/${user2Id}`);
         setReceiverGoalTree(response.data);
       } catch (err) {
         console.error('Failed to fetch receiver goal tree:', err);
@@ -110,7 +111,7 @@ const ChatRoom: React.FC = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/messages/${user1Id}/${user2Id}`);
+        const response = await axios.get(`${API_URL}/messages/${user1Id}/${user2Id}`);
         setMessages(response.data || []);
       } catch (error) {
         console.error('Fetch messages error:', error);
@@ -126,11 +127,11 @@ const ChatRoom: React.FC = () => {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-        filter: `or(senderId.eq.${user1Id},senderId.eq.${user2Id})`,
+        filter: `or(sender_id.eq.${user1Id},sender_id.eq.${user2Id})`,
       }, (payload) => {
         const newMsg = payload.new;
-        if ((newMsg.senderId === user1Id && newMsg.receiverId === user2Id) ||
-            (newMsg.senderId === user2Id && newMsg.receiverId === user1Id)) {
+        if ((newMsg.sender_id === user1Id && newMsg.receiver_id === user2Id) ||
+            (newMsg.sender_id === user2Id && newMsg.receiver_id === user1Id)) {
           setMessages(prev => [...prev, newMsg]);
         }
       })
@@ -148,7 +149,7 @@ const ChatRoom: React.FC = () => {
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentUserId || !user2Id) return;
     try {
-      await axios.post('http://localhost:3001/messages/send', {
+      await axios.post(`${API_URL}/messages/send`, {
         senderId: currentUserId,
         receiverId: user2Id,
         content: newMessage.trim(),
@@ -165,7 +166,7 @@ const ChatRoom: React.FC = () => {
       return;
     }
     try {
-      await axios.post('http://localhost:3001/feedback', {
+      await axios.post(`${API_URL}/feedback`, {
         giverId: currentUserId,
         receiverId: user2Id,
         goalNodeId: selectedGoalNode,
@@ -313,7 +314,7 @@ const ChatRoom: React.FC = () => {
         ) : (
           <Stack spacing={0.75}>
             {messages.map((msg) => {
-              const isMine = msg.senderId === currentUserId;
+              const isMine = (msg.sender_id ?? msg.senderId) === currentUserId;
               return (
                 <Box
                   key={msg.id}
@@ -356,7 +357,7 @@ const ChatRoom: React.FC = () => {
                         fontSize: '0.65rem',
                       }}
                     >
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Typography>
                   </Box>
                 </Box>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { supabase } from '../../lib/supabase';
@@ -112,7 +113,7 @@ const GoalSelectionPage: React.FC = () => {
 
       // Load existing goals if any
       try {
-        const res = await axios.get(`http://localhost:3001/goals/${uid}`);
+        const res = await axios.get(`${API_URL}/goals/${uid}`);
         const tree: GoalTree = res.data;
         setExistingTree(tree);
 
@@ -189,7 +190,7 @@ const GoalSelectionPage: React.FC = () => {
 
       const allNodes = [...nodes, ...validSubGoals];
 
-      await axios.post('http://localhost:3001/goals', {
+      await axios.post(`${API_URL}/goals`, {
         userId: currentUserId,
         nodes: allNodes,
         rootNodes: nodes,

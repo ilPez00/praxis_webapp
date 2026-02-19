@@ -15,7 +15,7 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
   const { data, error } = await supabase
     .from('messages')
     .select('*')
-    .or(`and(senderId.eq.${user1Id},receiverId.eq.${user2Id}),and(senderId.eq.${user2Id},receiverId.eq.${user1Id})`)
+    .or(`and(sender_id.eq.${user1Id},receiver_id.eq.${user2Id}),and(sender_id.eq.${user2Id},receiver_id.eq.${user1Id})`)
     .order('timestamp', { ascending: true });
 
   if (error) {
@@ -36,7 +36,7 @@ export const sendMessage = catchAsync(async (req: Request, res: Response, next: 
   // Insert the new message into the Supabase 'messages' table
   const { data, error } = await supabase
     .from('messages')
-    .insert({ senderId, receiverId, content })
+    .insert({ sender_id: senderId, receiver_id: receiverId, content })
     .select() // Select the newly inserted row
     .single();
 

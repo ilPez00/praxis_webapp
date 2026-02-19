@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../lib/api';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
@@ -74,7 +75,7 @@ const GoalTreePage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`http://localhost:3001/goals/${userId}`);
+        const response = await axios.get(`${API_URL}/goals/${userId}`);
         const goalTree = response.data;
         // goalTree = { id, userId, nodes: GoalNode[], rootNodes: GoalNode[] }
         const allNodes: any[] = goalTree.nodes || [];

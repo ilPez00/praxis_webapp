@@ -15,5 +15,6 @@ export interface User {
   overallGrade?: string;
   totalGoals?: number;
   completionRate?: number;
-  is_premium?: boolean; // New property for premium status
+  is_premium?: boolean;
+  onboarding_completed?: boolean;
 }
