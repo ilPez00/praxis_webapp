@@ -511,5 +511,193 @@ CHECKLIST — TICK OFF AS YOU COMPLETE EACH ITEM
   [ ] 8C  Frontend calls complete-onboarding endpoint at end of onboarding flow
   [ ] 9   recharts and @mui/x-charts installed in client/
   [ ] 10  (Prod) Real webhook endpoint registered in Stripe Dashboard
+  [ ] 11  Backend deployed to Railway (Procfile committed, env vars set)
+  [ ] 12  Frontend deployed to Vercel (REACT_APP_API_URL set to Railway URL)
+  [ ] 13  Demo users seeded via POST /admin/seed-demo-users (ADMIN_SECRET set)
+  [ ] 14  SSH key authorized on GitHub and git push completed
 
 ================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 11 — DEPLOY BACKEND TO RAILWAY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHERE: https://railway.app
+
+Railway detects Node.js apps automatically. The Procfile (already committed)
+tells it to run `node dist/index.js`.
+
+─── 11A. Push your code to GitHub first ────────────────────────────────────────
+
+  1. Add your SSH key to GitHub:
+       → https://github.com/settings/keys → "New SSH key"
+       → Paste the contents of ~/.ssh/id_ed25519.pub
+       → Save
+  2. Push all commits:
+       git push origin main
+
+─── 11B. Create a Railway project ──────────────────────────────────────────────
+
+  1. Go to https://railway.app → "New Project"
+  2. Choose "Deploy from GitHub repo"
+  3. Select your repo: ilPez00/praxis_webapp
+  4. Railway will auto-detect Node.js and start a deployment (it will fail
+     until you add env vars in the next step — that's expected)
+
+─── 11C. Add backend environment variables ─────────────────────────────────────
+  WHERE: Railway Dashboard → your project → "Variables" tab
+
+  Add EACH of these exactly:
+
+    SUPABASE_URL              = https://kuyzjjbeiawnnkkrjsda.supabase.co
+    SUPABASE_SERVICE_ROLE_KEY = <your rotated service role key from Step 1C>
+    GEMINI_API_KEY            = <your Google AI Studio key>
+    STRIPE_SECRET_KEY         = <your rotated Stripe secret key from Step 1A>
+    STRIPE_PRICE_ID           = price_...   ← from Stripe Dashboard
+    STRIPE_WEBHOOK_SECRET     = whsec_...   ← from Step 10 (prod webhook)
+    CLIENT_URL                = https://your-frontend.vercel.app  ← add after Step 12
+    ADMIN_SECRET              = <choose a long random string — keep it secret>
+    NODE_ENV                  = production
+
+  ⚠️  Do NOT set PORT — Railway injects it automatically.
+
+─── 11D. Set the build command ─────────────────────────────────────────────────
+  WHERE: Railway → Settings → Build
+
+  Build command:   npm install && npm run build
+  Start command:   node dist/index.js
+
+  Or Railway reads the Procfile automatically: `web: node dist/index.js`
+
+─── 11E. Get your Railway URL ──────────────────────────────────────────────────
+
+  After a successful deployment:
+    → Railway Dashboard → Deployments → your live URL
+    It will look like: https://praxis-webapp-production.up.railway.app
+
+  Save this URL. You'll need it in Step 12.
+
+─── 11F. Update Stripe webhook endpoint ────────────────────────────────────────
+  WHERE: https://dashboard.stripe.com/test/webhooks
+
+  1. Add a new webhook endpoint:
+       URL: https://your-railway-url.up.railway.app/stripe/webhook
+       Events: checkout.session.completed, customer.subscription.updated,
+               customer.subscription.deleted
+  2. Copy the new signing secret (whsec_...) → update STRIPE_WEBHOOK_SECRET
+     in Railway Variables (this replaces the CLI secret from Step 6C)
+  3. Redeploy (Railway → "Deploy" button, or push a commit)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 12 — DEPLOY FRONTEND TO VERCEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHERE: https://vercel.com
+
+─── 12A. Install Vercel CLI (optional but handy) ───────────────────────────────
+
+    npm install -g vercel
+
+─── 12B. Create a Vercel project ───────────────────────────────────────────────
+
+  Option A (recommended — Vercel dashboard):
+    1. Go to https://vercel.com/new
+    2. Import your GitHub repo (ilPez00/praxis_webapp)
+    3. Set the Root Directory to: client
+       (IMPORTANT — Vercel must build from the client/ folder, not root)
+    4. Framework Preset: Create React App
+    5. Do NOT deploy yet — set env vars first (Step 12C)
+
+  Option B (CLI):
+    cd /home/gio/Praxis/praxis_webapp/client
+    vercel
+    → Follow prompts, set root to client/
+
+─── 12C. Set frontend environment variables ────────────────────────────────────
+  WHERE: Vercel Dashboard → your project → Settings → Environment Variables
+
+  Add EACH of these:
+
+    REACT_APP_SUPABASE_URL          = https://kuyzjjbeiawnnkkrjsda.supabase.co
+    REACT_APP_SUPABASE_ANON_KEY     = <your rotated anon key from Step 1B>
+    REACT_APP_STRIPE_PUBLISHABLE_KEY = pk_test_...  ← from Stripe Dashboard
+    REACT_APP_API_URL               = https://your-railway-url.up.railway.app
+                                      ← replace with your actual Railway URL
+
+  Click "Save" after adding all four.
+
+─── 12D. Deploy ────────────────────────────────────────────────────────────────
+
+  Click "Deploy" in the Vercel dashboard, or:
+    cd /home/gio/Praxis/praxis_webapp/client && vercel --prod
+
+  Your live URL will be: https://praxis-webapp.vercel.app (or similar)
+
+─── 12E. Update Supabase redirect URLs ─────────────────────────────────────────
+  WHERE: Supabase Dashboard → Authentication → URL Configuration
+
+  Add your Vercel URL to Redirect URLs:
+    https://your-app.vercel.app/**
+    https://your-app.vercel.app/dashboard
+    https://your-app.vercel.app/onboarding
+
+─── 12F. Update Railway CLIENT_URL ─────────────────────────────────────────────
+  WHERE: Railway → Variables
+
+  Update:  CLIENT_URL = https://your-app.vercel.app
+
+  This is used by the backend for CORS and Stripe success/cancel redirects.
+  After updating, trigger a redeploy.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 13 — SEED DEMO USERS (run after deployment)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  This seeds 7 realistic demo profiles with goal trees so new users see
+  meaningful matches on day one, not an empty list.
+
+  Requires:
+    - Backend deployed and running (Step 11)
+    - ADMIN_SECRET set in Railway environment variables
+    - Supabase goal_trees table exists (Step 5, Query 4)
+
+─── 13A. Call the seed endpoint ────────────────────────────────────────────────
+
+  Replace <YOUR_ADMIN_SECRET> with the value you set in Railway Variables.
+  Replace <RAILWAY_URL> with your actual Railway backend URL.
+
+  From your terminal:
+
+    curl -X POST https://<RAILWAY_URL>/admin/seed-demo-users \
+      -H "X-Admin-Secret: <YOUR_ADMIN_SECRET>" \
+      -H "Content-Type: application/json"
+
+  Expected response:
+    { "message": "Demo seed complete. 7 created, 0 skipped.", "results": [...] }
+
+  Running it again is safe — it skips users that already exist.
+
+─── 13B. Verify in Supabase ────────────────────────────────────────────────────
+  WHERE: Supabase Dashboard → Table Editor → profiles
+
+  Filter by is_demo = true. You should see 7 rows:
+    Sara Milano, Yuki Tanaka, Priya Sharma, Marco Chen, Lena Müller,
+    Carlos Reyes, Tom Hansen
+
+  Each should have:
+    - name, bio, avatar_url filled in
+    - onboarding_completed = true
+    - is_demo = true
+
+  Also check goal_trees → each demo user should have 3 goal nodes.
+
+─── 13C. Test matching ─────────────────────────────────────────────────────────
+
+  1. Log in as your own test account
+  2. Make sure you have at least one goal set (any domain)
+  3. Navigate to /matches
+  4. You should see real matches (the demo users) with compatibility scores
+
+  If scores are all 0: the domain names may not match exactly between your
+  goal tree and the demo users' goal trees. Check the Domain enum values.
+
+================================================================================
+

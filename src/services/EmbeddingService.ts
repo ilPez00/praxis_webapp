@@ -15,25 +15,35 @@ import logger from '../utils/logger'; // Import the logger
  * storing embeddings in the database if latency/cost becomes a concern.
  */
 export class EmbeddingService {
-  private genAI: GoogleGenerativeAI;
-  private embeddingModel: any; // Type for the embedding model
+  private genAI: GoogleGenerativeAI | null = null;
+  private embeddingModel: any = null; // Type for the embedding model
+
+  /** Whether the Gemini API key was found and the model is ready. */
+  public readonly available: boolean;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not set in environment variables.');
+      logger.warn('GEMINI_API_KEY is not set — embedding-based matching is disabled. Domain-overlap fallback will be used.');
+      this.available = false;
+      return;
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
     // embedding-001: 768-dimensional dense vector, suitable for semantic similarity.
     this.embeddingModel = this.genAI.getGenerativeModel({ model: "embedding-001" });
+    this.available = true;
   }
 
   /**
    * Generates a text embedding for the given text using the Gemini API.
+   * Throws if called when the service is unavailable (check `available` first).
    * @param text The text to embed.
    * @returns A promise that resolves to an array of numbers representing the embedding.
    */
   public async getEmbedding(text: string): Promise<number[]> {
+    if (!this.embeddingModel) {
+      throw new Error('EmbeddingService: Gemini model not available. Check GEMINI_API_KEY.');
+    }
     try {
       const result = await this.embeddingModel.embedContent({
         content: { parts: [{ text }] },
