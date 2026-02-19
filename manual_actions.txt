@@ -134,5 +134,19 @@ Log in to your Stripe dashboard and configure the following:
 *   After creating the webhook endpoint, Stripe will provide a **Webhook Secret**. Note this down and add it to your backend `.env` as `STRIPE_WEBHOOK_SECRET`.
 
 ---
+## 4. Frontend Component Installation
 
+### a) Install framer-motion (for GoalTree animations)
+
+```bash
+cd client && npm install framer-motion
+```
+
+### b) New Files Created for Goal Tree Visualization
+
+*   `client/src/types/goal.ts` (GoalNode interface, Domain enum, etc.)
+*   `client/src/components/GoalTree/GoalTreeComponent.tsx` (main Goal Tree visualization)
+*   `client/src/components/GoalTree/GoalNodeComponent.tsx` (individual Goal Node rendering)
+
+---
 Please complete these manual actions. If you encounter any issues or need further assistance with any of these steps, let me know.
