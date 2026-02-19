@@ -1,15 +1,17 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express'; // Import NextFunction
 import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
 import { GoalTree } from '../models/GoalTree'; // Type definition for GoalTree
 import { GoalNode } from '../models/GoalNode'; // Type definition for GoalNode
 import { Domain } from '../models/Domain'; // Enum for Goal Domain
 import { createAchievementFromGoal } from './achievementController'; // Import function to create achievements from goals
+import logger from '../utils/logger'; // Import the logger
+import { catchAsync, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
 
 /**
  * @description Helper function to fetch user profile details (name and avatar URL).
  * Used for denormalizing user info when creating achievements.
  * @param userId - The ID of the user whose profile to fetch.
- * @returns An object containing user's name and avatarUrl, or default values if not found.
+ * @returns An object containing user's name and avatarUrl.
  */
 const getUserProfileDetails = async (userId: string) => {
   const { data: profile, error } = await supabase
@@ -19,7 +21,8 @@ const getUserProfileDetails = async (userId: string) => {
     .single(); // Expect a single matching profile
 
   if (error) {
-    console.error('Error fetching user profile for achievement:', error);
+    logger.error('Error fetching user profile for achievement:', error);
+    throw new InternalServerError('Failed to fetch user profile details.');
   }
   // Return fetched profile or default values if profile is null or error occurs
   return profile || { name: 'Unknown User', avatar_url: null };
@@ -30,7 +33,7 @@ const getUserProfileDetails = async (userId: string) => {
  * @param req - The Express request object, with userId in params.
  * @param res - The Express response object.
  */
-export const getGoalTree = async (req: Request, res: Response) => {
+export const getGoalTree = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.params; // Extract user ID from request parameters
 
   // Query Supabase for the goal tree associated with the userId
@@ -42,16 +45,17 @@ export const getGoalTree = async (req: Request, res: Response) => {
 
   // Handle errors, excluding 'PGRST116' which indicates no rows found (expected for new users)
   if (error && error.code !== 'PGRST116') {
-    return res.status(500).json({ message: error.message });
+    logger.error('Error fetching goal tree:', error.message);
+    throw new InternalServerError('Failed to fetch goal tree data.');
   }
 
   // Respond with the fetched goal tree or a 404 if not found
   if (data) {
     res.json(data);
   } else {
-    res.status(404).json({ message: 'Goal tree not found' });
+    throw new NotFoundError('Goal tree not found');
   }
-};
+});
 
 /**
  * @description HTTP endpoint to create or update a user's goal tree.
@@ -59,8 +63,28 @@ export const getGoalTree = async (req: Request, res: Response) => {
  * @param req - The Express request object, containing userId, nodes, and rootNodes in the body.
  * @param res - The Express response object.
  */
-export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
-  const { userId, nodes, rootNodes } = req.body; // Extract user ID, all goal nodes, and root nodes
+export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { userId, nodes, rootNodes } = req.body;
+
+  // Fetch user's premium status
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('is_premium')
+    .eq('id', userId)
+    .single();
+
+  if (profileError) {
+    logger.error('Error fetching user profile for premium status:', profileError.message);
+    throw new InternalServerError('Failed to retrieve user premium status.');
+  }
+
+  const isPremium = profile?.is_premium || false;
+  const rootGoalLimit = 3;
+
+  // Enforce root goal limit for non-premium users
+  if (!isPremium && rootNodes.length > rootGoalLimit) {
+    throw new ForbiddenError(`Non-premium users are limited to ${rootGoalLimit} primary goals. Upgrade to premium for unlimited goals.`);
+  }
 
   // --- Achievement Creation Logic (before updating the tree) ---
   let existingNodes: GoalNode[] = [];
@@ -72,7 +96,8 @@ export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
     .single();
 
   if (fetchExistingTreeError && fetchExistingTreeError.code !== 'PGRST116') {
-    console.error('Error fetching existing goal tree for achievement check:', fetchExistingTreeError.message);
+    logger.error('Error fetching existing goal tree for achievement check:', fetchExistingTreeError.message);
+    // Don't throw a critical error here, as a new user won't have an existing tree
   } else if (existingTreeData) {
     existingNodes = existingTreeData.nodes; // Store existing nodes for comparison
   }
@@ -104,7 +129,8 @@ export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
     .single();
 
   if (fetchError && fetchError.code !== 'PGRST116') {
-    return res.status(500).json({ message: fetchError.message });
+    logger.error('Error fetching existing goal tree for update/create:', fetchError.message);
+    throw new InternalServerError('Failed to check for existing goal tree.');
   }
 
   if (existingTree) {
@@ -117,7 +143,8 @@ export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
       .single();
 
     if (error) {
-      return res.status(500).json({ message: error.message });
+      logger.error('Error updating goal tree:', error.message);
+      throw new InternalServerError('Failed to update goal tree.');
     }
     res.json(data); // Respond with the updated goal tree
   } else {
@@ -129,8 +156,9 @@ export const createOrUpdateGoalTree = async (req: Request, res: Response) => {
       .single();
 
     if (error) {
-      return res.status(500).json({ message: error.message });
+      logger.error('Error creating goal tree:', error.message);
+      throw new InternalServerError('Failed to create goal tree.');
     }
     res.status(201).json(data); // Respond with the newly created goal tree
   }
-};
+});

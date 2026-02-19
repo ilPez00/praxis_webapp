@@ -81,7 +81,33 @@ const DashboardPage: React.FC = () => {
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null); // Stores the achievement selected for comments
   const [comments, setComments] = useState<AchievementComment[]>([]); // Stores comments for the selected achievement
   const [newCommentText, setNewCommentText] = useState(''); // State for the new comment input
-  const [commentsLoading, setCommentsLoading] = useState(false); // State to manage comments loading
+  const [aiCoachingResponse, setAiCoachingResponse] = useState<string | null>(null);
+  const [aiCoachingLoading, setAiCoachingLoading] = useState(false);
+  const [aiCoachingPrompt, setAiCoachingPrompt] = useState('');
+
+  /**
+   * @description Handles requesting AI coaching from the backend.
+   * Sends the user's prompt and displays the AI's response.
+   */
+  const requestAiCoaching = async () => {
+    if (!currentUserId || !aiCoachingPrompt.trim()) {
+      alert('Please enter a prompt for AI Coaching.');
+      return;
+    }
+    setAiCoachingLoading(true);
+    setAiCoachingResponse(null); // Clear previous response
+    try {
+      const response = await axios.post(`http://localhost:3001/ai-coaching/request`, {
+        userPrompt: aiCoachingPrompt,
+      });
+      setAiCoachingResponse(response.data.response);
+    } catch (error: any) {
+      console.error('Error requesting AI coaching:', error);
+      setAiCoachingResponse(`Error: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setAiCoachingLoading(false);
+    }
+  };
 
   // Effect to set the current user ID once authentication is resolved
   useEffect(() => {
@@ -280,6 +306,53 @@ const DashboardPage: React.FC = () => {
             ? `${allNodes.length} goals across ${activeDomains} domain${activeDomains !== 1 ? 's' : ''} · ${avgProgress}% average progress`
             : 'Start building your goal tree to find meaningful connections.'}
         </Typography>
+      </Paper>
+
+      {/* AI Coaching Section */}
+      <Paper elevation={3} sx={{ p: 4, mb: 4, bgcolor: theme.palette.background.paper }}>
+        <Typography variant="h5" component="h2" gutterBottom sx={{ color: 'primary.main' }}>
+          AI Coaching
+        </Typography>
+        {user?.is_premium ? (
+          <Box>
+            <TextField
+              fullWidth
+              label="Ask your AI Coach"
+              variant="outlined"
+              multiline
+              rows={3}
+              value={aiCoachingPrompt}
+              onChange={(e) => setAiCoachingPrompt(e.target.value)}
+              sx={{ mb: 2 }}
+              disabled={aiCoachingLoading}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={requestAiCoaching}
+              disabled={aiCoachingLoading || !aiCoachingPrompt.trim()}
+              startIcon={aiCoachingLoading ? <CircularProgress size={20} color="inherit" /> : null}
+            >
+              {aiCoachingLoading ? 'Getting Insights...' : 'Get Coaching'}
+            </Button>
+
+            {aiCoachingResponse && (
+              <Box sx={{ mt: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {aiCoachingResponse}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        ) : (
+          <Alert severity="info" action={
+            <Button color="inherit" size="small" component={RouterLink} to="/upgrade">
+              Upgrade Now
+            </Button>
+          }>
+            AI Coaching is a premium feature. Unlock personalized insights to accelerate your growth!
+          </Alert>
+        )}
       </Paper>
 
       {/* Premium Upgrade Section: Conditionally displayed if the user is not a premium member */}
@@ -497,6 +570,14 @@ const DashboardPage: React.FC = () => {
           >
             Messages
           </Button>
+          {user?.is_premium && (
+            <Button
+              component={RouterLink} to="/analytics" variant="outlined"
+              startIcon={<Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.grey[400] }}>📊</Avatar>}
+            >
+              Advanced Analytics
+            </Button>
+          )}
         </Stack>
       </Paper>
 

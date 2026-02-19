@@ -59,7 +59,7 @@ export class MatchingEngineService {
       // Combine semantic similarity and progress similarity.
       // The progress similarity factor acts as a modifier to the semantic similarity.
       // If goals are semantically very similar, but their progress is far apart, their overall similarity should be reduced.
-      return semanticSimilarity * progressSimilarityFactor;
+      return Math.max(0, semanticSimilarity) * progressSimilarityFactor;
     };
 
     for (const nodeA of userATree.nodes) {

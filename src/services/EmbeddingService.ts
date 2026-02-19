@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import logger from '../utils/logger'; // Import the logger
 
 export class EmbeddingService {
   private genAI: GoogleGenerativeAI;
@@ -27,7 +28,7 @@ export class EmbeddingService {
       });
       return result.embedding.values;
     } catch (error) {
-      console.error('Error generating embedding:', error);
+      logger.error('Error generating embedding:', error);
       throw error;
     }
   }

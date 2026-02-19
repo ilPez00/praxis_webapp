@@ -2,14 +2,10 @@ require('dotenv').config();
 import express from 'express';
 import cors from 'cors';
 
-import authRoutes from './routes/authRoutes';
-import userRoutes from './routes/userRoutes';
-import messageRoutes from './routes/messageRoutes'; // Import message routes
-import goalRoutes from './routes/goalRoutes';
-import matchingRoutes from './routes/matchingRoutes'; // Import matching routes
-import feedbackRoutes from './routes/feedbackRoutes'; // Import feedback routes
-import achievementRoutes from './routes/achievementRoutes'; // Import achievement routes
-import stripeRoutes from './routes/stripeRoutes'; // Import stripe routes
+import aiCoachingRoutes from './routes/aiCoachingRoutes'; // Import AI Coaching routes
+import analyticsRoutes from './routes/analyticsRoutes'; // Import analytics routes
+
+import { notFoundHandler, errorHandler } from './middleware/errorHandler'; // Import error handling middleware
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -25,6 +21,12 @@ app.use('/matches', matchingRoutes); // Use matching routes
 app.use('/feedback', feedbackRoutes); // Use feedback routes
 app.use('/achievements', achievementRoutes); // Use achievement routes
 app.use('/stripe', stripeRoutes); // Use stripe routes
+app.use('/ai-coaching', aiCoachingRoutes); // Use AI Coaching routes
+app.use('/analytics', analyticsRoutes); // Use analytics routes
+
+// Error Handling Middleware - MUST be last
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

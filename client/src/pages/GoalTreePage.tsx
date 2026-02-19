@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useUser } from '../hooks/useUser';
 import axios from 'axios';
 import { GoalTree } from '../models/GoalTree'; // Type definition for GoalTree structure
 import { GoalNode } from '../models/GoalNode'; // Type definition for individual goal nodes
@@ -32,7 +32,12 @@ import DeleteIcon from '@mui/icons-material/Delete'; // Icon for delete action
  * Allows users to add, edit, and delete goals and sub-goals.
  */
 const GoalTreePage: React.FC = () => {
-  const { id } = useParams<{ id: string }>(); // Extract userId from URL parameters
+  const { id } = useParams<{ id: string }>();
+  const { user: authUser } = useUser(); // Get authenticated user and premium status
+
+  const isPremium = authUser?.is_premium;
+  const rootGoalLimit = 3;
+  const hasReachedRootGoalLimit = !isPremium && (goalTree?.rootNodes.length ?? 0) >= rootGoalLimit;
   const [goalTree, setGoalTree] = useState<GoalTree | null>(null); // State to store the fetched goal tree
   const [loading, setLoading] = useState(true); // State to manage overall loading status
   const [error, setError] = useState<string | null>(null); // State to store error messages
@@ -366,10 +371,16 @@ const GoalTreePage: React.FC = () => {
             color="primary"
             onClick={handleAddGoal}
             sx={{ flexShrink: 0 }}
+            disabled={hasReachedRootGoalLimit}
           >
             Add Goal
           </Button>
         </Stack>
+        {hasReachedRootGoalLimit && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Non-premium users are limited to {rootGoalLimit} primary goals. Upgrade to premium for unlimited goals!
+          </Alert>
+        )}
       </Box>
 
       {/* Dialog for editing an existing goal */}
@@ -417,25 +428,31 @@ const GoalTreePage: React.FC = () => {
               fullWidth
               size="small"
             />
-            <TextField
-              label="Progress (%)"
-              variant="outlined"
-              type="number"
-              value={editedProgress}
-              onChange={(e) => setEditedProgress(Math.min(100, Math.max(0, Number(e.target.value))))}
-              fullWidth
-              size="small"
-              inputProps={{ min: 0, max: 100 }}
+            <Typography id="progress-slider" gutterBottom>
+              Progress (%)
+            </Typography>
+            <Slider
+              value={typeof editedProgress === 'number' ? editedProgress : 0}
+              onChange={(_, newValue) => setEditedProgress(newValue as number)}
+              aria-labelledby="progress-slider"
+              valueLabelDisplay="auto"
+              step={1}
+              marks
+              min={0}
+              max={100}
             />
-            <TextField
-              label="Weight"
-              variant="outlined"
-              type="number"
-              value={editedWeight}
-              onChange={(e) => setEditedWeight(Number(e.target.value))}
-              fullWidth
-              size="small"
-              inputProps={{ step: 0.1 }}
+            <Typography id="input-slider" gutterBottom>
+              Weight
+            </Typography>
+            <Slider
+              value={typeof editedWeight === 'number' ? editedWeight : 1.0}
+              onChange={(_, newValue) => setEditedWeight(newValue as number)}
+              aria-labelledby="input-slider"
+              valueLabelDisplay="auto"
+              step={0.1}
+              marks
+              min={0}
+              max={5}
             />
             {/* Multi-select for choosing prerequisite goals */}
             <FormControl fullWidth size="small" variant="outlined">

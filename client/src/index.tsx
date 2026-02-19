@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import AppRouter from './AppRouter'; // Import AppRouter
+import ErrorBoundary from './components/ErrorBoundary'; // Import ErrorBoundary
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
@@ -112,7 +113,9 @@ root.render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppRouter /> {/* Render AppRouter */}
+      <ErrorBoundary>
+        <AppRouter /> {/* Render AppRouter */}
+      </ErrorBoundary>
     </ThemeProvider>
   </React.StrictMode>
 );

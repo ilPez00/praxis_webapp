@@ -1,12 +1,14 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express'; // Import NextFunction
 import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
+import logger from '../utils/logger'; // Import the logger
+import { catchAsync, BadRequestError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
 // import { Message } from '../models/Message'; // Message model type is not directly used after Supabase integration
 
-export const getMessages = async (req: Request, res: Response) => {
+export const getMessages = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { user1Id, user2Id } = req.params as { user1Id: string; user2Id: string };
 
   if (!user1Id || !user2Id) {
-    return res.status(400).json({ message: 'Both user IDs are required.' });
+    throw new BadRequestError('Both user IDs are required.');
   }
 
   // Fetch messages where sender is user1 and receiver is user2 OR sender is user2 and receiver is user1
@@ -17,17 +19,18 @@ export const getMessages = async (req: Request, res: Response) => {
     .order('timestamp', { ascending: true });
 
   if (error) {
-    return res.status(500).json({ message: error.message });
+    logger.error('Supabase error fetching messages:', error.message);
+    throw new InternalServerError('Failed to fetch messages.');
   }
 
   res.status(200).json(data);
-};
+});
 
-export const sendMessage = async (req: Request, res: Response) => {
+export const sendMessage = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { senderId, receiverId, content } = req.body;
 
   if (!senderId || !receiverId || !content) {
-    return res.status(400).json({ message: 'Sender ID, receiver ID, and content are required.' });
+    throw new BadRequestError('Sender ID, receiver ID, and content are required.');
   }
 
   // Insert the new message into the Supabase 'messages' table
@@ -38,8 +41,9 @@ export const sendMessage = async (req: Request, res: Response) => {
     .single();
 
   if (error) {
-    return res.status(500).json({ message: error.message });
+    logger.error('Supabase error sending message:', error.message);
+    throw new InternalServerError('Failed to send message.');
   }
 
   res.status(201).json({ message: 'Message sent successfully.', sentMessage: data });
-};
+});
