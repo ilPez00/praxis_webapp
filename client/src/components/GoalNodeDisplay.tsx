@@ -3,7 +3,6 @@ import { GoalNode } from '../models/GoalNode';
 import {
   Box,
   Typography,
-  Button,
   IconButton,
   Paper,
   Chip,
@@ -12,29 +11,42 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete'; // Import DeleteIcon
-import { Domain } from '../models/Domain'; // Assuming Domain enum is available
+import DeleteIcon from '@mui/icons-material/Delete';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ArrowRightIcon from '@mui/icons-material/ArrowRight';
+import { Domain } from '../models/Domain';
 
 interface GoalNodeDisplayProps {
   node: GoalNode;
   onEdit: (node: GoalNode) => void;
   onAddSubGoal: (parentId: string) => void;
-  onDelete: (nodeId: string) => void; // Add onDelete prop
+  onDelete: (nodeId: string) => void;
+  isCollapsed: boolean;
+  onToggle: (nodeId: string) => void;
+  hasChildren: boolean;
 }
 
 const DOMAIN_COLORS: Record<Domain, string> = {
-  [Domain.CAREER]: '#4CAF50',
-  [Domain.INVESTING]: '#26A69A',
-  [Domain.FITNESS]: '#E57373',
-  [Domain.ACADEMICS]: '#EC407A',
-  [Domain.MENTAL_HEALTH]: '#64B5F6',
-  [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#78909C',
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#9CCC65',
-  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#FFA726',
-  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#AB47BC',
+    [Domain.CAREER]: '#4CAF50',
+    [Domain.INVESTING]: '#26A69A',
+    [Domain.FITNESS]: '#E57373',
+    [Domain.ACADEMICS]: '#EC407A',
+    [Domain.MENTAL_HEALTH]: '#64B5F6',
+    [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#78909C',
+    [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#9CCC65',
+    [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#FFA726',
+    [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#AB47BC',
 };
 
-const GoalNodeDisplay: React.FC<GoalNodeDisplayProps> = ({ node, onEdit, onAddSubGoal, onDelete }) => {
+const GoalNodeDisplay: React.FC<GoalNodeDisplayProps> = ({
+  node,
+  onEdit,
+  onAddSubGoal,
+  onDelete,
+  isCollapsed,
+  onToggle,
+  hasChildren,
+}) => {
   const theme = useTheme();
 
   return (
@@ -51,9 +63,16 @@ const GoalNodeDisplay: React.FC<GoalNodeDisplayProps> = ({ node, onEdit, onAddSu
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6" component="h4" sx={{ color: 'primary.main', flexGrow: 1 }}>
-          {node.name}
-        </Typography>
+        <Stack direction="row" alignItems="center">
+            {hasChildren && (
+                <IconButton size="small" onClick={() => onToggle(node.id)}>
+                    {isCollapsed ? <ArrowRightIcon /> : <ArrowDropDownIcon />}
+                </IconButton>
+            )}
+            <Typography variant="h6" component="h4" sx={{ color: 'primary.main', flexGrow: 1 }}>
+            {node.name}
+            </Typography>
+        </Stack>
         <Stack direction="row" spacing={0.5}>
           <Chip
             label={node.domain}
@@ -94,7 +113,7 @@ const GoalNodeDisplay: React.FC<GoalNodeDisplayProps> = ({ node, onEdit, onAddSu
         <IconButton size="small" onClick={() => onAddSubGoal(node.id)} color="primary">
           <AddIcon fontSize="small" />
         </IconButton>
-        <IconButton size="small" onClick={() => onDelete(node.id)} color="error"> {/* Delete button */}
+        <IconButton size="small" onClick={() => onDelete(node.id)} color="error">
           <DeleteIcon fontSize="small" />
         </IconButton>
       </Stack>
