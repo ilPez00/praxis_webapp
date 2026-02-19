@@ -40,11 +40,20 @@ export function updateWeightFromGrade(goalNode: GoalNode, grade: FeedbackGrade):
     case FeedbackGrade.SUCCEEDED:
       newWeight *= 0.8; // Task was successfully navigated; reduce priority weight as it's becoming easier.
       break;
+    case FeedbackGrade.TRIED_BUT_FAILED:
+      newWeight *= 0.95; // Attempted but failed; slight decrease or neutral.
+      break;
+    case FeedbackGrade.MEDIOCRE:
+      newWeight *= 1.1; // Average performance; slight increase in focus needed.
+      break;
     case FeedbackGrade.DISTRACTED:
       newWeight *= 1.2; // User was distracted; increase priority weight to refocus efforts.
       break;
+    case FeedbackGrade.TOTAL_NOOB:
+      newWeight *= 1.5; // Complete beginner; strongly increase focus and weight.
+      break;
     case FeedbackGrade.LEARNED:
-      newWeight *= 0.9; // Significant learning occurred, making future progress slightly easier.
+      newWeight *= 0.9; // Significant learning occurred, making future progress easier.
       break;
     case FeedbackGrade.ADAPTED:
       newWeight *= 1.05; // User adapted their approach, requiring a slight increase in focus.

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Container, Box, Typography, Button, Paper, CircularProgress, Alert } from '@mui/material';
 import axios from 'axios';
 import { loadStripe } from '@stripe/stripe-js';
-import { useUser } from '../hooks/useUser';
+import { useUser } from '../../hooks/useUser';
 
 // Initialize Stripe.js with the publishable key.
 // This is done outside the component render to ensure it's loaded only once

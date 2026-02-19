@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { useUser } from '../hooks/useUser';
-import { supabase } from '../lib/supabase';
+import { useUser } from '../../hooks/useUser';
+import { supabase } from '../../lib/supabase';
 import { AppBar, Toolbar, Typography, Button, Box, Link } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 

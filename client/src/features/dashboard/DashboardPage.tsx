@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useUser } from '../hooks/useUser';
-import { supabase } from '../lib/supabase';
+import { useUser } from '../../hooks/useUser';
+import { supabase } from '../../lib/supabase';
 import { GoalTree } from '../models/GoalTree';
 import { GoalNode } from '../models/GoalNode';
-import { Domain } from '../models/Domain';
+import { Domain } from '../../models/Domain';
 import { Achievement } from '../models/Achievement'; // Import Achievement model
 import { AchievementComment } from '../models/AchievementComment'; // Import AchievementComment model
 
