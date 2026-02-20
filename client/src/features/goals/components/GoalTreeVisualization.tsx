@@ -106,9 +106,10 @@ function alphaHex(a: number): string {
 interface Props {
   rootNodes: GoalNode[];
   memberSince?: string; // ISO date string — shown in root circle
+  onNodeClick?: (node: GoalNode) => void; // optional: called when any goal node is clicked
 }
 
-const GoalTreeVisualization: React.FC<Props> = ({ rootNodes, memberSince }) => {
+const GoalTreeVisualization: React.FC<Props> = ({ rootNodes, memberSince, onNodeClick }) => {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -279,8 +280,11 @@ const GoalTreeVisualization: React.FC<Props> = ({ rootNodes, memberSince }) => {
           return (
             <g
               key={ln.node.id}
-              style={{ cursor: hasKids ? 'pointer' : 'default' }}
-              onClick={() => hasKids && toggle(ln.node.id)}
+              style={{ cursor: 'pointer' }}
+              onClick={() => {
+                if (onNodeClick) onNodeClick(ln.node);
+                else if (hasKids) toggle(ln.node.id);
+              }}
               onMouseEnter={() => setHovered(ln.node.id)}
               onMouseLeave={() => setHovered(null)}
             >

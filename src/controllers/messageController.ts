@@ -34,23 +34,23 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
 });
 
 export const sendMessage = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { senderId, receiverId, content, goalNodeId } = req.body;
+  const { senderId, receiverId, content, goalNodeId, messageType, mediaUrl, metadata } = req.body;
 
   if (!senderId || !receiverId || !content) {
     throw new BadRequestError('Sender ID, receiver ID, and content are required.');
   }
 
-  // Build the insert payload; goalNodeId is optional
-  const insertPayload: {
-    sender_id: string;
-    receiver_id: string;
-    content: string;
-    goal_node_id?: string;
-  } = { sender_id: senderId, receiver_id: receiverId, content };
+  // Build the insert payload; all extra fields are optional
+  const insertPayload: Record<string, any> = {
+    sender_id: senderId,
+    receiver_id: receiverId,
+    content,
+  };
 
-  if (goalNodeId !== undefined) {
-    insertPayload.goal_node_id = goalNodeId;
-  }
+  if (goalNodeId !== undefined) insertPayload.goal_node_id = goalNodeId;
+  if (messageType !== undefined) insertPayload.message_type = messageType;
+  if (mediaUrl !== undefined) insertPayload.media_url = mediaUrl;
+  if (metadata !== undefined) insertPayload.metadata = metadata;
 
   // Insert the new message into the Supabase 'messages' table
   const { data, error } = await supabase

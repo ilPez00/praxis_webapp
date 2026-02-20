@@ -5,6 +5,7 @@ import axios from 'axios';
 import { supabase } from '../../lib/supabase';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
 import GoalTreeVisualization from './components/GoalTreeVisualization';
+import toast from 'react-hot-toast';
 import {
   Container,
   Typography,
@@ -12,15 +13,20 @@ import {
   Alert,
   Button,
   Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  ListItemButton,
+  Avatar,
 } from '@mui/material';
+import VerifiedIcon from '@mui/icons-material/Verified';
 
-/**
- * Maps a flat array of backend GoalNodes (with parentId) into the hierarchical
- * tree structure expected by GoalTreeComponent (with children arrays).
- * Also converts: name→title, progress 0-1→0-100, domain string→Domain enum.
- */
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
-  // Map each backend node to the frontend shape
   const nodeMap = new Map<string, FrontendGoalNode>();
   for (const n of backendNodes) {
     nodeMap.set(n.id, {
@@ -33,7 +39,6 @@ function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
       children: [],
     });
   }
-
   const roots: FrontendGoalNode[] = [];
   for (const n of backendNodes) {
     const node = nodeMap.get(n.id)!;
@@ -46,10 +51,11 @@ function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   return roots;
 }
 
-/**
- * @description Page component that displays a user's goal tree fetched from the backend.
- * Uses the GoalTreeComponent for hierarchical visualization.
- */
+interface DMPartner {
+  userId: string;
+  name: string;
+}
+
 const GoalTreePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -58,17 +64,24 @@ const GoalTreePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [memberSince, setMemberSince] = useState<string | undefined>(undefined);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [isOwnTree, setIsOwnTree] = useState(true);
+
+  // Claim completion dialog state
+  const [claimNode, setClaimNode] = useState<FrontendGoalNode | null>(null);
+  const [dmPartners, setDmPartners] = useState<DMPartner[]>([]);
+  const [selectedVerifier, setSelectedVerifier] = useState<DMPartner | null>(null);
+  const [submittingClaim, setSubmittingClaim] = useState(false);
 
   useEffect(() => {
     const fetchGoalTree = async () => {
-      // Determine which user's tree to show: URL param or current authenticated user
-      let userId = id;
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!userId) {
-        userId = authUser?.id;
-      }
-      // Capture registration date for the tree root circle
+      let userId = id;
+      if (!userId) userId = authUser?.id;
       if (authUser?.created_at) setMemberSince(authUser.created_at);
+      if (authUser?.id) setCurrentUserId(authUser.id);
+      setIsOwnTree(!id || id === authUser?.id);
+
       if (!userId) {
         setError('Could not determine user ID.');
         setLoading(false);
@@ -80,12 +93,10 @@ const GoalTreePage: React.FC = () => {
       try {
         const response = await axios.get(`${API_URL}/goals/${userId}`);
         const goalTree = response.data;
-        // goalTree = { id, userId, nodes: GoalNode[], rootNodes: GoalNode[] }
         const allNodes: any[] = goalTree.nodes || [];
         setTreeData(buildFrontendTree(allNodes));
       } catch (err: any) {
         if (err.response?.status === 404) {
-          // User has no goals yet — not an error, just empty state
           setTreeData([]);
         } else {
           setError(err.response?.data?.message || 'Failed to load goal tree.');
@@ -94,9 +105,62 @@ const GoalTreePage: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchGoalTree();
   }, [id]);
+
+  // Fetch DM partners (people the user has messaged) for the claim dialog
+  const fetchDMPartners = async (userId: string) => {
+    const { data } = await supabase
+      .from('messages')
+      .select('sender_id, receiver_id')
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .limit(100);
+
+    if (!data) return;
+
+    const partnerIds = new Set<string>();
+    for (const msg of data) {
+      const other = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
+      if (other) partnerIds.add(other);
+    }
+
+    const partners: DMPartner[] = [];
+    for (const pid of Array.from(partnerIds)) {
+      const { data: profile } = await supabase.from('profiles').select('name').eq('id', pid).single();
+      partners.push({ userId: pid, name: profile?.name || pid.slice(0, 8) });
+    }
+    setDmPartners(partners);
+  };
+
+  const handleNodeClick = (node: FrontendGoalNode) => {
+    if (!isOwnTree) return; // Can't claim on someone else's tree
+    if (node.progress >= 100) {
+      toast('This goal is already marked complete!', { icon: '✅' });
+      return;
+    }
+    setClaimNode(node);
+    setSelectedVerifier(null);
+    if (currentUserId) fetchDMPartners(currentUserId);
+  };
+
+  const handleSendClaim = async () => {
+    if (!claimNode || !selectedVerifier || !currentUserId) return;
+    setSubmittingClaim(true);
+    try {
+      await axios.post(`${API_URL}/completions`, {
+        requesterId: currentUserId,
+        verifierId: selectedVerifier.userId,
+        goalNodeId: claimNode.id,
+        goalName: claimNode.title,
+      });
+      toast.success(`Verification request sent to ${selectedVerifier.name}!`);
+      setClaimNode(null);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to send verification request.');
+    } finally {
+      setSubmittingClaim(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -116,9 +180,16 @@ const GoalTreePage: React.FC = () => {
 
   return (
     <Container component="main" maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'primary.main' }}>
-        Your Goal Tree
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        <Typography variant="h4" component="h1" sx={{ color: 'primary.main' }}>
+          {isOwnTree ? 'Your Goal Tree' : 'Goal Tree'}
+        </Typography>
+        {isOwnTree && treeData.length > 0 && (
+          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+            Click any node to request peer verification
+          </Typography>
+        )}
+      </Box>
 
       {treeData.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
@@ -138,8 +209,62 @@ const GoalTreePage: React.FC = () => {
           </Button>
         </Box>
       ) : (
-        <GoalTreeVisualization rootNodes={treeData} memberSince={memberSince} />
+        <GoalTreeVisualization
+          rootNodes={treeData}
+          memberSince={memberSince}
+          onNodeClick={isOwnTree ? handleNodeClick : undefined}
+        />
       )}
+
+      {/* Claim completion dialog */}
+      <Dialog open={!!claimNode} onClose={() => setClaimNode(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <VerifiedIcon sx={{ color: 'primary.main' }} />
+            Request Peer Verification
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            Claiming completion of <strong style={{ color: '#F59E0B' }}>{claimNode?.title}</strong>.
+            Select a partner from your DMs to verify this achievement:
+          </Typography>
+          {dmPartners.length === 0 ? (
+            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No DM partners found. Message someone first to request verification.
+            </Typography>
+          ) : (
+            <List dense>
+              {dmPartners.map((partner) => (
+                <ListItem disablePadding key={partner.userId}>
+                  <ListItemButton
+                    selected={selectedVerifier?.userId === partner.userId}
+                    onClick={() => setSelectedVerifier(partner)}
+                    sx={{ borderRadius: 2, mb: 0.5 }}
+                  >
+                    <ListItemAvatar>
+                      <Avatar sx={{ width: 32, height: 32, fontSize: '0.85rem' }}>
+                        {partner.name.charAt(0)}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText primary={partner.name} />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setClaimNode(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={!selectedVerifier || submittingClaim}
+            onClick={handleSendClaim}
+          >
+            {submittingClaim ? 'Sending…' : 'Send Verification Request'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

@@ -30,6 +30,8 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import ChatIcon from '@mui/icons-material/Chat';
+import GroupsIcon from '@mui/icons-material/Groups';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -128,6 +130,22 @@ const Navbar: React.FC = () => {
                     sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
                   >
                     Matches
+                  </Button>
+                  <Button
+                    color="inherit"
+                    component={RouterLink}
+                    to="/chat"
+                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
+                  >
+                    Chat
+                  </Button>
+                  <Button
+                    color="inherit"
+                    component={RouterLink}
+                    to="/groups"
+                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
+                  >
+                    Groups
                   </Button>
                   <Chip
                     component={RouterLink}
@@ -230,6 +248,18 @@ const Navbar: React.FC = () => {
                 <ListItemButton onClick={() => handleNav('/matches')}>
                   <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><ExploreIcon /></ListItemIcon>
                   <ListItemText primary="Matches" primaryTypographyProps={{ fontWeight: 600 }} />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton onClick={() => handleNav('/chat')}>
+                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><ChatIcon /></ListItemIcon>
+                  <ListItemText primary="Chat" primaryTypographyProps={{ fontWeight: 600 }} />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton onClick={() => handleNav('/groups')}>
+                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><GroupsIcon /></ListItemIcon>
+                  <ListItemText primary="Groups" primaryTypographyProps={{ fontWeight: 600 }} />
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>

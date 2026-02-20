@@ -7,6 +7,7 @@ import axios from 'axios';
 import { FeedbackGrade } from '../../models/FeedbackGrade';
 import { GoalTree } from '../../models/GoalTree';
 import { GoalNode } from '../../models/GoalNode';
+import VideoCall from './VideoCall';
 import {
   Container,
   Box,
@@ -17,8 +18,6 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
-  AppBar,
-  Toolbar,
   IconButton,
   Paper,
   Select,
@@ -28,17 +27,23 @@ import {
   Stack,
   Avatar,
   useTheme,
-  Chip,
   Collapse,
   Dialog,
   DialogTitle,
+  DialogContent,
   DialogActions,
+  CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import VideocamIcon from '@mui/icons-material/Videocam';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import CallIcon from '@mui/icons-material/Call';
 
 const ChatRoom: React.FC = () => {
   const { user1Id, user2Id } = useParams<{ user1Id: string; user2Id: string }>();
@@ -50,6 +55,7 @@ const ChatRoom: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [receiverName, setReceiverName] = useState<string>('Partner');
@@ -62,12 +68,20 @@ const ChatRoom: React.FC = () => {
   const [selectedGrade, setSelectedGrade] = useState<FeedbackGrade>(FeedbackGrade.SUCCEEDED);
   const [feedbackComment, setFeedbackComment] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  // Video call state
+  const [videoCallOpen, setVideoCallOpen] = useState(false);
+  const [isCallInitiator, setIsCallInitiator] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(false);
 
   // Goal-focused chat
   const [searchParams] = useSearchParams();
   const [focusGoalId, setFocusGoalId] = useState(searchParams.get('goalNodeId') || '');
   const [focusGoalName, setFocusGoalName] = useState('');
   const [showGoalPicker, setShowGoalPicker] = useState(false);
+
+  const channelName = [user1Id, user2Id].sort().join('-');
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -97,28 +111,16 @@ const ChatRoom: React.FC = () => {
 
   useEffect(() => {
     if (!currentUserId) return;
-    const fetchUserGoalTree = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/goals/${currentUserId}`);
-        setUserGoalTree(response.data);
-      } catch (err) {
-        console.error('Failed to fetch user goal tree for feedback:', err);
-      }
-    };
-    fetchUserGoalTree();
+    axios.get(`${API_URL}/goals/${currentUserId}`)
+      .then(r => setUserGoalTree(r.data))
+      .catch(() => {});
   }, [currentUserId]);
 
   useEffect(() => {
     if (!user2Id) return;
-    const fetchReceiverGoalTree = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/goals/${user2Id}`);
-        setReceiverGoalTree(response.data);
-      } catch (err) {
-        console.error('Failed to fetch receiver goal tree:', err);
-      }
-    };
-    fetchReceiverGoalTree();
+    axios.get(`${API_URL}/goals/${user2Id}`)
+      .then(r => setReceiverGoalTree(r.data))
+      .catch(() => {});
   }, [user2Id]);
 
   useEffect(() => {
@@ -136,7 +138,6 @@ const ChatRoom: React.FC = () => {
     };
     fetchMessages();
 
-    const channelName = [user1Id, user2Id].sort().join('-');
     channelRef.current = supabase.channel(`chat_${channelName}`, { config: { broadcast: { self: false } } })
       .on('postgres_changes', {
         event: 'INSERT',
@@ -145,18 +146,30 @@ const ChatRoom: React.FC = () => {
         filter: `or(sender_id.eq.${user1Id},sender_id.eq.${user2Id})`,
       }, (payload) => {
         const newMsg = payload.new;
-        if ((newMsg.sender_id === user1Id && newMsg.receiver_id === user2Id) ||
-            (newMsg.sender_id === user2Id && newMsg.receiver_id === user1Id)) {
+        if (
+          (newMsg.sender_id === user1Id && newMsg.receiver_id === user2Id) ||
+          (newMsg.sender_id === user2Id && newMsg.receiver_id === user1Id)
+        ) {
           setMessages(prev => [...prev, newMsg]);
         }
       })
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
-        // Ignore own typing events (self:false already filters, but guard by sender)
         if (payload?.senderId && payload.senderId !== user1Id) {
           setIsPartnerTyping(true);
           if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
           typingTimerRef.current = setTimeout(() => setIsPartnerTyping(false), 3000);
         }
+      })
+      .on('broadcast', { event: 'call-invite' }, ({ payload }) => {
+        // Only show dialog if the invite is from the other user
+        if (payload?.from && payload.from !== currentUserId) {
+          setIncomingCall(true);
+        }
+      })
+      .on('broadcast', { event: 'call-declined' }, () => {
+        setVideoCallOpen(false);
+        setIsCallInitiator(false);
+        toast('Call declined.', { icon: '📵' });
       })
       .subscribe();
 
@@ -169,14 +182,12 @@ const ChatRoom: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Resolve goal name when focusGoalId is set (e.g. from URL param)
   useEffect(() => {
     if (!focusGoalId || !userGoalTree) return;
     const node = userGoalTree.nodes.find((n: GoalNode) => n.id === focusGoalId);
     if (node) setFocusGoalName(node.name);
   }, [focusGoalId, userGoalTree]);
 
-  // Auto-select focus goal in feedback form when it opens
   useEffect(() => {
     if (focusGoalId && showFeedbackForm && !selectedGoalNode) {
       setSelectedGoalNode(focusGoalId);
@@ -196,6 +207,82 @@ const ChatRoom: React.FC = () => {
     } catch (error) {
       console.error('Send message error:', error);
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUserId || !user2Id) return;
+
+    setUploadingFile(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${currentUserId}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat-media')
+        .upload(path, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-media')
+        .getPublicUrl(path);
+
+      const isImage = file.type.startsWith('image/');
+      await axios.post(`${API_URL}/messages/send`, {
+        senderId: currentUserId,
+        receiverId: user2Id,
+        content: isImage ? '📷 Image' : `📎 ${file.name}`,
+        messageType: isImage ? 'image' : 'file',
+        mediaUrl: publicUrl,
+        ...(focusGoalId ? { goalNodeId: focusGoalId } : {}),
+      });
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error('Failed to upload file.');
+    } finally {
+      setUploadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCompletionResponse = async (requestId: string, approved: boolean) => {
+    if (!currentUserId) return;
+    try {
+      await axios.patch(`${API_URL}/completions/${requestId}/respond`, {
+        verifierId: currentUserId,
+        approved,
+      });
+      toast.success(approved ? '✅ Goal verified!' : '❌ Verification declined.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to respond.');
+    }
+  };
+
+  const handleVideoCallClick = () => {
+    if (!currentUserId) return;
+    setIsCallInitiator(true);
+    setVideoCallOpen(true);
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'call-invite',
+      payload: { from: currentUserId },
+    });
+  };
+
+  const handleAcceptCall = () => {
+    setIncomingCall(false);
+    setIsCallInitiator(false);
+    setVideoCallOpen(true);
+  };
+
+  const handleDeclineCall = () => {
+    setIncomingCall(false);
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'call-declined',
+      payload: { from: currentUserId },
+    });
   };
 
   const handleSubmitFeedback = async () => {
@@ -228,6 +315,257 @@ const ChatRoom: React.FC = () => {
     }
   };
 
+  // ── Message renderers ────────────────────────────────────────────────────────
+
+  const renderMessage = (msg: any) => {
+    const isMine = (msg.sender_id ?? msg.senderId) === currentUserId;
+    const msgType: string = msg.message_type ?? 'text';
+
+    // System notification — centered, no bubble
+    if (msgType === 'system') {
+      return (
+        <Box
+          key={msg.id}
+          sx={{ display: 'flex', justifyContent: 'center', py: 0.75 }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.disabled',
+              fontStyle: 'italic',
+              bgcolor: 'rgba(255,255,255,0.04)',
+              px: 2,
+              py: 0.5,
+              borderRadius: 10,
+              textAlign: 'center',
+            }}
+          >
+            {msg.content}
+          </Typography>
+        </Box>
+      );
+    }
+
+    // Completion request card
+    if (msgType === 'completion_request') {
+      const isVerifier = msg.receiver_id === currentUserId;
+      const meta: any = typeof msg.metadata === 'string'
+        ? JSON.parse(msg.metadata)
+        : (msg.metadata ?? {});
+      return (
+        <Box
+          key={msg.id}
+          sx={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', py: 0.5 }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              maxWidth: '78%',
+              p: 2,
+              borderRadius: 3,
+              border: '1px solid rgba(245,158,11,0.3)',
+              bgcolor: 'rgba(245,158,11,0.07)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <VerifiedIcon sx={{ color: 'primary.main', fontSize: 18 }} />
+              <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                Completion Request
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ mb: isVerifier ? 1.5 : 0 }}>
+              Requesting verification of:{' '}
+              <strong>{meta.goalName || 'a goal'}</strong>
+            </Typography>
+            {isVerifier && (
+              <Stack direction="row" spacing={1}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="success"
+                  onClick={() => handleCompletionResponse(meta.requestId, true)}
+                  sx={{ borderRadius: 3, fontSize: '0.75rem', py: 0.5 }}
+                >
+                  ✓ Verify
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  onClick={() => handleCompletionResponse(meta.requestId, false)}
+                  sx={{ borderRadius: 3, fontSize: '0.75rem', py: 0.5 }}
+                >
+                  ✗ Reject
+                </Button>
+              </Stack>
+            )}
+            {!isVerifier && (
+              <Typography variant="caption" color="text.secondary">
+                Waiting for verification…
+              </Typography>
+            )}
+            <Typography
+              variant="caption"
+              sx={{ display: 'block', textAlign: 'right', mt: 1, opacity: 0.5, fontSize: '0.63rem' }}
+            >
+              {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Typography>
+          </Paper>
+        </Box>
+      );
+    }
+
+    // Image message
+    if (msgType === 'image') {
+      return (
+        <Box
+          key={msg.id}
+          sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}
+        >
+          {!isMine && (
+            <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              {receiverName.charAt(0)}
+            </Avatar>
+          )}
+          <Box sx={{ maxWidth: '60%' }}>
+            {!isMine && (
+              <Typography sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>
+                {receiverName}
+              </Typography>
+            )}
+            <Box
+              component="img"
+              src={msg.media_url}
+              alt="shared image"
+              onClick={() => window.open(msg.media_url, '_blank')}
+              sx={{
+                width: '100%',
+                maxWidth: 280,
+                borderRadius: 3,
+                display: 'block',
+                cursor: 'pointer',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                textAlign: isMine ? 'right' : 'left',
+                mt: 0.25,
+                opacity: 0.5,
+                fontSize: '0.63rem',
+              }}
+            >
+              {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Typography>
+          </Box>
+        </Box>
+      );
+    }
+
+    // File message
+    if (msgType === 'file') {
+      return (
+        <Box
+          key={msg.id}
+          sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}
+        >
+          {!isMine && (
+            <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              {receiverName.charAt(0)}
+            </Avatar>
+          )}
+          <Box sx={{ maxWidth: '68%' }}>
+            {!isMine && (
+              <Typography sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>
+                {receiverName}
+              </Typography>
+            )}
+            <Box
+              onClick={() => window.open(msg.media_url, '_blank')}
+              sx={{
+                px: 2,
+                py: 1,
+                borderRadius: 3,
+                bgcolor: isMine ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.07)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                cursor: 'pointer',
+                '&:hover': { opacity: 0.85 },
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{ color: isMine ? 'primary.main' : 'text.primary', display: 'flex', alignItems: 'center', gap: 0.5 }}
+              >
+                📎 {msg.content?.replace('📎 ', '') || 'File'}
+              </Typography>
+            </Box>
+            <Typography
+              variant="caption"
+              sx={{ display: 'block', textAlign: isMine ? 'right' : 'left', mt: 0.25, opacity: 0.5, fontSize: '0.63rem' }}
+            >
+              {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Typography>
+          </Box>
+        </Box>
+      );
+    }
+
+    // Default: text bubble
+    return (
+      <Box
+        key={msg.id}
+        sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}
+      >
+        {!isMine && (
+          <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+            {receiverName.charAt(0)}
+          </Avatar>
+        )}
+        <Box sx={{ maxWidth: '68%' }}>
+          {!isMine && (
+            <Typography sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>
+              {receiverName}
+            </Typography>
+          )}
+          <Box
+            sx={{
+              px: 2,
+              py: 1,
+              borderRadius: isMine ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+              background: isMine
+                ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
+                : 'rgba(255,255,255,0.07)',
+              border: isMine ? 'none' : '1px solid rgba(255,255,255,0.08)',
+              boxShadow: isMine ? '0 2px 12px rgba(245,158,11,0.25)' : 'none',
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ color: isMine ? '#0A0B14' : 'text.primary', wordBreak: 'break-word', fontWeight: isMine ? 500 : 400 }}
+            >
+              {msg.content}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                textAlign: 'right',
+                mt: 0.25,
+                opacity: 0.6,
+                color: isMine ? '#0A0B14' : 'text.secondary',
+                fontSize: '0.63rem',
+              }}
+            >
+              {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+    );
+  };
+
   if (loading || !currentUserId) {
     return (
       <Container sx={{ mt: 4, textAlign: 'center' }}>
@@ -242,297 +580,226 @@ const ChatRoom: React.FC = () => {
 
   return (
     <>
-    <style>{`
-      @keyframes typing-bounce {
-        0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-        30% { transform: translateY(-4px); opacity: 1; }
-      }
-    `}</style>
-    <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-      {/* Chat Header */}
-      <Box
-        sx={{
-          px: 2,
-          py: 1.5,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'rgba(17,24,39,0.8)',
-          backdropFilter: 'blur(20px)',
-        }}
-      >
-        <IconButton edge="start" onClick={() => navigate(-1)} size="small">
-          <ArrowBackIcon />
-        </IconButton>
-        <Avatar sx={{ width: 36, height: 36, fontSize: '0.9rem' }}>
-          {receiverName.charAt(0)}
-        </Avatar>
-        <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-            {receiverName}
-          </Typography>
-          {receiverRootGoalsSummary && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <AccountTreeIcon sx={{ fontSize: 11 }} />
-              {receiverRootGoalsSummary}
-            </Typography>
-          )}
-        </Box>
-        <Button
-          size="small"
-          startIcon={<AccountTreeIcon sx={{ fontSize: '16px !important' }} />}
-          onClick={() => setShowGoalPicker(true)}
-          sx={{
-            color: focusGoalId ? 'primary.main' : 'text.secondary',
-            borderColor: focusGoalId ? 'primary.main' : 'divider',
-            border: '1px solid',
-            borderRadius: 3,
-            mr: 0.5,
-          }}
-        >
-          {focusGoalId ? 'Goal' : 'Focus'}
-        </Button>
-        <Button
-          size="small"
-          startIcon={<StarIcon sx={{ fontSize: '16px !important' }} />}
-          onClick={() => setShowFeedbackForm(!showFeedbackForm)}
-          sx={{
-            color: showFeedbackForm ? 'primary.main' : 'text.secondary',
-            borderColor: showFeedbackForm ? 'primary.main' : 'divider',
-            border: '1px solid',
-            borderRadius: 3,
-          }}
-        >
-          Feedback
-        </Button>
-      </Box>
+      <style>{`
+        @keyframes typing-bounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+          30% { transform: translateY(-4px); opacity: 1; }
+        }
+      `}</style>
+      <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
 
-      {/* Goal focus banner */}
-      {focusGoalId && focusGoalName && (
+        {/* Chat Header */}
         <Box
           sx={{
-            px: 2, py: 0.75,
-            display: 'flex', alignItems: 'center', gap: 1,
-            bgcolor: 'rgba(245,158,11,0.08)',
-            borderBottom: '1px solid rgba(245,158,11,0.2)',
+            px: 2, py: 1.5,
+            display: 'flex', alignItems: 'center', gap: 1.5,
+            borderBottom: '1px solid', borderColor: 'divider',
+            bgcolor: 'rgba(17,24,39,0.8)', backdropFilter: 'blur(20px)',
           }}
         >
-          <AccountTreeIcon sx={{ fontSize: 13, color: 'primary.main' }} />
-          <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600, flexGrow: 1 }}>
-            Collaborating on: {focusGoalName}
-          </Typography>
-          <IconButton
-            size="small"
-            onClick={() => { setFocusGoalId(''); setFocusGoalName(''); }}
-            sx={{ p: 0.25 }}
-          >
-            <CloseIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+          <IconButton edge="start" onClick={() => navigate(-1)} size="small">
+            <ArrowBackIcon />
           </IconButton>
-        </Box>
-      )}
-
-      {/* Feedback form slide-down */}
-      <Collapse in={showFeedbackForm}>
-        <Box
-          sx={{
-            p: 2.5,
-            bgcolor: 'rgba(17,24,39,0.9)',
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Give Feedback
+          <Avatar sx={{ width: 36, height: 36, fontSize: '0.9rem' }}>
+            {receiverName.charAt(0)}
+          </Avatar>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+              {receiverName}
             </Typography>
-            <IconButton size="small" onClick={() => setShowFeedbackForm(false)}>
-              <CloseIcon fontSize="small" />
+            {receiverRootGoalsSummary && (
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <AccountTreeIcon sx={{ fontSize: 11 }} />
+                {receiverRootGoalsSummary}
+              </Typography>
+            )}
+          </Box>
+          <Tooltip title="Focus on goal">
+            <Button
+              size="small"
+              startIcon={<AccountTreeIcon sx={{ fontSize: '16px !important' }} />}
+              onClick={() => setShowGoalPicker(true)}
+              sx={{
+                color: focusGoalId ? 'primary.main' : 'text.secondary',
+                borderColor: focusGoalId ? 'primary.main' : 'divider',
+                border: '1px solid', borderRadius: 3, mr: 0.5,
+              }}
+            >
+              {focusGoalId ? 'Goal' : 'Focus'}
+            </Button>
+          </Tooltip>
+          <Tooltip title="Give feedback">
+            <Button
+              size="small"
+              startIcon={<StarIcon sx={{ fontSize: '16px !important' }} />}
+              onClick={() => setShowFeedbackForm(!showFeedbackForm)}
+              sx={{
+                color: showFeedbackForm ? 'primary.main' : 'text.secondary',
+                borderColor: showFeedbackForm ? 'primary.main' : 'divider',
+                border: '1px solid', borderRadius: 3, mr: 0.5,
+              }}
+            >
+              Feedback
+            </Button>
+          </Tooltip>
+          <Tooltip title="Video call">
+            <IconButton
+              size="small"
+              onClick={handleVideoCallClick}
+              sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+            >
+              <VideocamIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Goal focus banner */}
+        {focusGoalId && focusGoalName && (
+          <Box sx={{ px: 2, py: 0.75, display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'rgba(245,158,11,0.08)', borderBottom: '1px solid rgba(245,158,11,0.2)' }}>
+            <AccountTreeIcon sx={{ fontSize: 13, color: 'primary.main' }} />
+            <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600, flexGrow: 1 }}>
+              Collaborating on: {focusGoalName}
+            </Typography>
+            <IconButton size="small" onClick={() => { setFocusGoalId(''); setFocusGoalName(''); }} sx={{ p: 0.25 }}>
+              <CloseIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
             </IconButton>
           </Box>
-          <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Goal</InputLabel>
-              <Select
-                value={selectedGoalNode}
-                onChange={(e) => setSelectedGoalNode(e.target.value as string)}
-                label="Goal"
-                disabled={!userGoalTree || userGoalTree.nodes.length === 0}
-              >
-                <MenuItem value=""><em>Select a goal</em></MenuItem>
-                {userGoalTree?.nodes.map((node: GoalNode) => (
-                  <MenuItem key={node.id} value={node.id}>{node.name} ({node.domain})</MenuItem>
+        )}
+
+        {/* Feedback form */}
+        <Collapse in={showFeedbackForm}>
+          <Box sx={{ p: 2.5, bgcolor: 'rgba(17,24,39,0.9)', borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Give Feedback</Typography>
+              <IconButton size="small" onClick={() => setShowFeedbackForm(false)}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Goal</InputLabel>
+                <Select
+                  value={selectedGoalNode}
+                  onChange={(e) => setSelectedGoalNode(e.target.value as string)}
+                  label="Goal"
+                  disabled={!userGoalTree || userGoalTree.nodes.length === 0}
+                >
+                  <MenuItem value=""><em>Select a goal</em></MenuItem>
+                  {userGoalTree?.nodes.map((node: GoalNode) => (
+                    <MenuItem key={node.id} value={node.id}>{node.name} ({node.domain})</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>Grade</InputLabel>
+                <Select
+                  value={selectedGrade}
+                  onChange={(e) => setSelectedGrade(e.target.value as FeedbackGrade)}
+                  label="Grade"
+                >
+                  {Object.values(FeedbackGrade).map((grade) => (
+                    <MenuItem key={grade} value={grade}>{grade}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+            <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
+              <TextField
+                size="small"
+                placeholder="Optional comment..."
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+                sx={{ flexGrow: 1 }}
+              />
+              <Button variant="contained" size="small" onClick={handleSubmitFeedback} disabled={submittingFeedback}>
+                {submittingFeedback ? 'Submitting…' : 'Submit'}
+              </Button>
+            </Stack>
+          </Box>
+        </Collapse>
+
+        {/* Messages list */}
+        <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 2, py: 2 }}>
+          {messages.length === 0 ? (
+            <Box sx={{ textAlign: 'center', mt: 6, opacity: 0.5 }}>
+              <Typography color="text.secondary">Say hi to start the conversation!</Typography>
+            </Box>
+          ) : (
+            <Stack spacing={1}>
+              {messages.map((msg) => renderMessage(msg))}
+            </Stack>
+          )}
+
+          {isPartnerTyping && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+              <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                {receiverName.charAt(0)}
+              </Avatar>
+              <Box sx={{ px: 2, py: 0.75, borderRadius: '20px 20px 20px 4px', bgcolor: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {[0, 1, 2].map((i) => (
+                  <Box key={i} sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: 'text.disabled', animation: 'typing-bounce 1.2s infinite', animationDelay: `${i * 0.2}s` }} />
                 ))}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth size="small">
-              <InputLabel>Grade</InputLabel>
-              <Select
-                value={selectedGrade}
-                onChange={(e) => setSelectedGrade(e.target.value as FeedbackGrade)}
-                label="Grade"
+              </Box>
+            </Box>
+          )}
+          <div ref={messagesEndRef} />
+        </Box>
+
+        {/* Input bar */}
+        <Box
+          sx={{
+            px: 2, pt: 1.5, pb: 'max(12px, env(safe-area-inset-bottom))',
+            borderTop: '1px solid', borderColor: 'divider',
+            bgcolor: 'rgba(17,24,39,0.8)', backdropFilter: 'blur(20px)',
+          }}
+        >
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+            onChange={handleFileUpload}
+          />
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Tooltip title="Attach file">
+              <IconButton
+                size="small"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingFile}
+                sx={{ color: 'text.disabled', '&:hover': { color: 'text.secondary' } }}
               >
-                {Object.values(FeedbackGrade).map((grade) => (
-                  <MenuItem key={grade} value={grade}>{grade}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
-          <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
+                {uploadingFile ? <CircularProgress size={18} /> : <AttachFileIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
             <TextField
+              fullWidth
               size="small"
-              placeholder="Optional comment..."
-              value={feedbackComment}
-              onChange={(e) => setFeedbackComment(e.target.value)}
-              sx={{ flexGrow: 1 }}
+              placeholder="Message..."
+              value={newMessage}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                if (channelRef.current && currentUserId) {
+                  channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { senderId: currentUserId } });
+                }
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '20px', bgcolor: 'rgba(255,255,255,0.05)' } }}
             />
-            <Button variant="contained" size="small" onClick={handleSubmitFeedback} disabled={submittingFeedback}>
-              {submittingFeedback ? 'Submitting…' : 'Submit'}
-            </Button>
+            <IconButton
+              onClick={sendMessage}
+              disabled={!newMessage.trim()}
+              sx={{
+                bgcolor: 'primary.main', color: '#0A0B14',
+                '&:hover': { bgcolor: 'primary.light' },
+                '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.08)', color: 'text.disabled' },
+              }}
+            >
+              <SendIcon fontSize="small" />
+            </IconButton>
           </Stack>
         </Box>
-      </Collapse>
-
-      {/* Messages list */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 2, py: 2 }}>
-        {messages.length === 0 ? (
-          <Box sx={{ textAlign: 'center', mt: 6, opacity: 0.5 }}>
-            <Typography color="text.secondary">Say hi to start the conversation!</Typography>
-          </Box>
-        ) : (
-          <Stack spacing={1}>
-            {messages.map((msg) => {
-              const isMine = (msg.sender_id ?? msg.senderId) === currentUserId;
-              return (
-                <Box
-                  key={msg.id}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    gap: 1,
-                    justifyContent: isMine ? 'flex-end' : 'flex-start',
-                  }}
-                >
-                  {/* Partner avatar on the left */}
-                  {!isMine && (
-                    <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                      {receiverName.charAt(0)}
-                    </Avatar>
-                  )}
-                  <Box sx={{ maxWidth: '68%' }}>
-                    {/* Sender name above partner messages */}
-                    {!isMine && (
-                      <Typography sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>
-                        {receiverName}
-                      </Typography>
-                    )}
-                    <Box
-                      sx={{
-                        px: 2,
-                        py: 1,
-                        borderRadius: isMine
-                          ? '20px 20px 4px 20px'
-                          : '20px 20px 20px 4px',
-                        background: isMine
-                          ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
-                          : 'rgba(255,255,255,0.07)',
-                        border: isMine ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                        boxShadow: isMine
-                          ? '0 2px 12px rgba(245,158,11,0.25)'
-                          : 'none',
-                      }}
-                    >
-                      <Typography
-                        variant="body2"
-                        sx={{ color: isMine ? '#0A0B14' : 'text.primary', wordBreak: 'break-word', fontWeight: isMine ? 500 : 400 }}
-                      >
-                        {msg.content}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          display: 'block',
-                          textAlign: 'right',
-                          mt: 0.25,
-                          opacity: 0.6,
-                          color: isMine ? '#0A0B14' : 'text.secondary',
-                          fontSize: '0.63rem',
-                        }}
-                      >
-                        {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              );
-            })}
-          </Stack>
-        )}
-
-        {/* Typing indicator — outside ternary so it always renders when active */}
-        {isPartnerTyping && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-            <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-              {receiverName.charAt(0)}
-            </Avatar>
-            <Box sx={{ px: 2, py: 0.75, borderRadius: '20px 20px 20px 4px', bgcolor: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              {[0, 1, 2].map((i) => (
-                <Box key={i} sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: 'text.disabled', animation: 'typing-bounce 1.2s infinite', animationDelay: `${i * 0.2}s` }} />
-              ))}
-            </Box>
-          </Box>
-        )}
-        <div ref={messagesEndRef} />
       </Box>
-
-      {/* Message input bar — pb accounts for iOS home indicator */}
-      <Box
-        sx={{
-          px: 2,
-          pt: 1.5,
-          pb: 'max(12px, env(safe-area-inset-bottom))',
-          borderTop: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'rgba(17,24,39,0.8)',
-          backdropFilter: 'blur(20px)',
-        }}
-      >
-        <Stack direction="row" spacing={1} alignItems="center">
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Message..."
-            value={newMessage}
-            onChange={(e) => {
-              setNewMessage(e.target.value);
-              if (channelRef.current && currentUserId) {
-                channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { senderId: currentUserId } });
-              }
-            }}
-            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '20px',
-                bgcolor: 'rgba(255,255,255,0.05)',
-              },
-            }}
-          />
-          <IconButton
-            onClick={sendMessage}
-            disabled={!newMessage.trim()}
-            sx={{
-              bgcolor: 'primary.main',
-              color: '#0A0B14',
-              '&:hover': { bgcolor: 'primary.light' },
-              '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.08)', color: 'text.disabled' },
-            }}
-          >
-            <SendIcon fontSize="small" />
-          </IconButton>
-        </Stack>
-      </Box>
-    </Box>
 
       {/* Goal picker dialog */}
       <Dialog open={showGoalPicker} onClose={() => setShowGoalPicker(false)} maxWidth="xs" fullWidth>
@@ -546,10 +813,7 @@ const ChatRoom: React.FC = () => {
           {focusGoalId && (
             <ListItem disablePadding>
               <ListItemButton onClick={() => { setFocusGoalId(''); setFocusGoalName(''); setShowGoalPicker(false); }}>
-                <ListItemText
-                  primary="No focus goal"
-                  primaryTypographyProps={{ fontSize: '0.85rem', color: 'text.secondary' }}
-                />
+                <ListItemText primary="No focus goal" primaryTypographyProps={{ fontSize: '0.85rem', color: 'text.secondary' }} />
               </ListItemButton>
             </ListItem>
           )}
@@ -570,10 +834,7 @@ const ChatRoom: React.FC = () => {
           ))}
           {(!userGoalTree || userGoalTree.nodes.length === 0) && (
             <ListItem>
-              <ListItemText
-                primary="No goals found — build your goal tree first"
-                primaryTypographyProps={{ fontSize: '0.85rem', color: 'text.secondary' }}
-              />
+              <ListItemText primary="No goals found — build your goal tree first" primaryTypographyProps={{ fontSize: '0.85rem', color: 'text.secondary' }} />
             </ListItem>
           )}
         </List>
@@ -581,6 +842,50 @@ const ChatRoom: React.FC = () => {
           <Button size="small" onClick={() => setShowGoalPicker(false)}>Cancel</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Incoming call dialog */}
+      <Dialog open={incomingCall} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, textAlign: 'center' }}>
+          <CallIcon sx={{ color: 'primary.main', mr: 1, verticalAlign: 'middle' }} />
+          Incoming Video Call
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          <Avatar sx={{ width: 64, height: 64, mx: 'auto', mb: 1.5, fontSize: '1.5rem' }}>
+            {receiverName.charAt(0)}
+          </Avatar>
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>{receiverName}</Typography>
+          <Typography variant="body2" color="text.secondary">is calling you…</Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 3 }}>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={handleDeclineCall}
+            sx={{ borderRadius: 3, px: 3 }}
+          >
+            Decline
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleAcceptCall}
+            sx={{ borderRadius: 3, px: 3 }}
+          >
+            Accept
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Video call */}
+      {videoCallOpen && currentUserId && (
+        <VideoCall
+          open={videoCallOpen}
+          onClose={() => { setVideoCallOpen(false); setIsCallInitiator(false); }}
+          channelName={channelName}
+          currentUserId={currentUserId}
+          isInitiator={isCallInitiator}
+        />
+      )}
     </>
   );
 };

@@ -33,7 +33,7 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
  * This should be placed before the global error handler.
  */
 export const notFoundHandler = (req: Request, res: Response, next: NextFunction) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
-  res.status(404);
+  const error: any = new Error(`Not Found - ${req.originalUrl}`);
+  error.statusCode = 404;
   next(error); // Pass the error to the next middleware (errorHandler)
 };

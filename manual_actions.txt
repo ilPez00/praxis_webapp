@@ -8,18 +8,33 @@
 QUICK START — minimum steps to get the app running locally
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-If you just want to run the app locally NOW, do only these 4 things:
+If you just want to run the app locally NOW, do only these 5 things:
 
   Q1. Open: https://supabase.com/dashboard/project/_/settings/api
-      Copy "Project URL" → paste as SUPABASE_URL in praxis_webapp/.env
+      Copy "Project URL"     → paste as SUPABASE_URL in praxis_webapp/.env
       Copy "service_role" key → paste as SUPABASE_SERVICE_ROLE_KEY in praxis_webapp/.env
+      Copy "anon" key        → paste as REACT_APP_SUPABASE_ANON_KEY in client/.env
+      Copy "Project URL"     → paste as REACT_APP_SUPABASE_URL in client/.env
 
-  Q2. Run the SQL in Step 5 of this file to create the profiles + messages tables.
-      (Takes ~2 minutes.)
+  Q2. Open: https://supabase.com/dashboard/project/_/sql/new
+      Run EACH block in Step 5 (Queries 1–9D) one at a time in order.
+      Minimum required for core features:
+        Query 1   → profiles table + handle_new_user trigger  (AUTH)
+        Query 1B  → goal_trees table                          (GOALS)
+        Query 2   → user_subscriptions table                  (STRIPE)
+        Query 3   → premium trigger                           (STRIPE)
+        Query 4   → messages table (full schema)              (CHAT + DMS)
+        Query 5   → goal_tree_edit_count column               (RE-EDIT GATE)
+        Query 9A  → completion_requests table                 (PEER VERIFICATION)
+        Query 9C  → chat_rooms table                          (GROUP CHAT)
+        Query 9D  → chat_room_members table                   (GROUP CHAT)
 
-  Q3. Enable Realtime on the messages table (Step 7).
+  Q3. Enable Realtime on the messages table (Step 5 Query 9F or Step 7).
 
-  Q4. Run:
+  Q4. Create the "chat-media" storage bucket (Step 5 Query 9E).
+      Without this, file/image sending in chat will fail silently.
+
+  Q5. Run:
         chmod +x run_praxis.sh
         ./run_praxis.sh
 
@@ -46,6 +61,12 @@ FULL SETUP CHECKLIST  (tick each box as you complete it)
   [ ] 5Q6 sex + location columns added to profiles (profile editing)
   [ ] 5Q7 streak columns added to profiles (progress streaks)
   [ ] 5Q8 goal_node_id column added to messages (goal-focused chat)
+  [ ] 5Q9 completion_requests table created     → SQL in Step 5 Query 9A
+  [ ] 5Q10 messages upgrade columns             → SQL in Step 5 Query 8B (skip if fresh install)
+  [ ] 5Q11 chat_rooms table created             → SQL in Step 5 Query 9C
+  [ ] 5Q12 chat_room_members table created      → SQL in Step 5 Query 9D
+  [ ] 5Q13 Storage bucket "chat-media" created  → steps in Step 5 Query 9E
+  [ ] 7B  Realtime enabled on messages table    → steps in Step 5 Query 9F
   [ ] 6A  Stripe product "Praxis Premium" created, price_... set in .env
   [ ] 6B  Stripe CLI installed
   [ ] 6C  stripe listen running, whsec_... set in .env
@@ -367,24 +388,50 @@ STEP 5 — SUPABASE SQL (run each query in SQL Editor)
     AFTER INSERT OR UPDATE OR DELETE ON public.user_subscriptions
     FOR EACH ROW EXECUTE FUNCTION public.update_profile_premium_status();
 
-─── Query 4: messages table (real-time chat) ──────────────────────────────────
+─── Query 4: messages table (DM + group chat) ─────────────────────────────────
 
-  CREATE TABLE IF NOT EXISTS messages (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    sender_id UUID REFERENCES auth.users(id),
-    receiver_id UUID REFERENCES auth.users(id),
-    content TEXT NOT NULL,
-    goal_node_id TEXT,
-    timestamp TIMESTAMPTZ DEFAULT now()
+  WHERE: Supabase Dashboard → SQL Editor → New Query
+  WHAT: Creates the unified messages table used for DMs, group chat, media,
+        and peer-verification messages. Includes ALL columns added across sessions.
+        If you already ran an old version of this query, skip to Query 8B instead.
+
+  -- This is the COMPLETE messages table definition (fresh install).
+  -- message_type: 'text' | 'image' | 'file' | 'completion_request' | 'system'
+  -- receiver_id: NULL for group messages (room_id is set instead)
+  -- room_id: NULL for DMs (receiver_id is set instead)
+  CREATE TABLE IF NOT EXISTS public.messages (
+    id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    sender_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    receiver_id  UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    content      TEXT NOT NULL,
+    goal_node_id TEXT,                         -- goal-focused DM context (optional)
+    message_type TEXT DEFAULT 'text',          -- message category (text/image/file/etc.)
+    media_url    TEXT,                         -- public URL for image/file attachments
+    room_id      UUID,                         -- set for group room messages; NULL for DMs
+    metadata     JSONB,                        -- extra data (e.g. requestId for completion_request)
+    timestamp    TIMESTAMPTZ DEFAULT now()
   );
 
-  ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-  DROP POLICY IF EXISTS "Users can read own messages" ON messages;
-  DROP POLICY IF EXISTS "Users can send messages" ON messages;
+  ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+  DROP POLICY IF EXISTS "Users can read own messages" ON public.messages;
+  DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
+  DROP POLICY IF EXISTS "Users can read group messages" ON public.messages;
   CREATE POLICY "Users can read own messages"
-    ON messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+    ON public.messages FOR SELECT
+    USING (
+      auth.uid() = sender_id OR
+      auth.uid() = receiver_id OR
+      room_id IS NOT NULL          -- group messages visible to all authenticated users
+    );
   CREATE POLICY "Users can send messages"
-    ON messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
+    ON public.messages FOR INSERT
+    WITH CHECK (auth.uid() = sender_id);
+
+  -- ✓ SUCCESS: "Success. No rows returned"
+  -- ✓ VERIFY:  SELECT column_name FROM information_schema.columns
+  --              WHERE table_name = 'messages' ORDER BY column_name;
+  --   Expected columns: content, goal_node_id, id, media_url, message_type,
+  --                     metadata, receiver_id, room_id, sender_id, timestamp
 
 ─── Query 5: goal_tree_edit_count column (free re-edit gate) ─────────────────
 
@@ -411,12 +458,170 @@ STEP 5 — SUPABASE SQL (run each query in SQL Editor)
 
   -- ✓ Expected: "Success. No rows returned"
 
-─── Query 8B: goal_node_id column on messages (goal-focused chat) ──────────────
+─── Query 8B: messages upgrade columns (SKIP if you ran the new Query 4) ──────
 
-  ALTER TABLE messages
-    ADD COLUMN IF NOT EXISTS goal_node_id TEXT;
+  WHERE: Supabase Dashboard → SQL Editor → New Query
+  WHAT: Only needed if you ran the OLD version of Query 4 (before Session 15).
+        The new Query 4 already includes these columns. Safe to re-run — IF NOT EXISTS
+        means it won't fail if the columns already exist.
 
-  -- ✓ Expected: "Success. No rows returned"
+  ALTER TABLE public.messages
+    ADD COLUMN IF NOT EXISTS goal_node_id TEXT,
+    ADD COLUMN IF NOT EXISTS message_type TEXT DEFAULT 'text',
+    ADD COLUMN IF NOT EXISTS media_url    TEXT,
+    ADD COLUMN IF NOT EXISTS room_id      UUID,
+    ADD COLUMN IF NOT EXISTS metadata     JSONB;
+
+  -- ✓ SUCCESS: "Success. No rows returned"
+  -- ✓ VERIFY: SELECT column_name FROM information_schema.columns
+  --             WHERE table_name = 'messages' ORDER BY column_name;
+  --   Expected: goal_node_id, media_url, message_type, metadata, room_id all present
+
+─── Query 9A: completion_requests table (peer goal verification) ──────────────
+
+  WHERE: Supabase Dashboard → SQL Editor → New Query
+  WHAT: Enables the peer-verified goal completion flow. When a user clicks a node
+        in their goal tree and picks a DM partner as verifier, this table stores
+        the request. The verifier sees a Verify/Reject card in chat.
+
+  CREATE TABLE IF NOT EXISTS public.completion_requests (
+    id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    requester_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    verifier_id  UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    goal_node_id TEXT NOT NULL,                       -- references a node.id in goal_trees
+    goal_name    TEXT NOT NULL,                       -- denormalized for display in chat
+    status       TEXT NOT NULL DEFAULT 'pending',     -- pending | approved | rejected
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    responded_at TIMESTAMPTZ                          -- set when verifier approves/rejects
+  );
+
+  ALTER TABLE public.completion_requests ENABLE ROW LEVEL SECURITY;
+  DROP POLICY IF EXISTS "Users can see own requests" ON public.completion_requests;
+  DROP POLICY IF EXISTS "Users can create requests" ON public.completion_requests;
+  CREATE POLICY "Users can see own requests"
+    ON public.completion_requests FOR SELECT
+    USING (auth.uid() = requester_id OR auth.uid() = verifier_id);
+  CREATE POLICY "Users can create requests"
+    ON public.completion_requests FOR INSERT
+    WITH CHECK (auth.uid() = requester_id);
+
+  -- ✓ SUCCESS: "Success. No rows returned"
+  -- ✓ VERIFY:  SELECT * FROM public.completion_requests LIMIT 1;
+  --   Expected: Empty result set (no error)
+
+─── Query 9B: messages upgrade — SKIP for fresh installs, see Query 8B ───────
+
+  -- This step is now merged into Query 8B. See that section above.
+  -- (Kept here only as a placeholder to avoid confusion with the checklist numbering.)
+
+─── Query 9C: chat_rooms table (group chats) ──────────────────────────────────
+
+  WHERE: Supabase Dashboard → SQL Editor → New Query
+  WHAT: Stores community chat rooms. Users can create rooms, optionally tied to a
+        goal domain (Career, Fitness, etc.). Rooms are public and discoverable on /groups.
+
+  CREATE TABLE IF NOT EXISTS public.chat_rooms (
+    id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name        TEXT NOT NULL,
+    description TEXT,
+    domain      TEXT,                                  -- optional domain filter (e.g. 'Fitness')
+    creator_id  UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  ALTER TABLE public.chat_rooms ENABLE ROW LEVEL SECURITY;
+  DROP POLICY IF EXISTS "Anyone can read rooms" ON public.chat_rooms;
+  DROP POLICY IF EXISTS "Authenticated users can create rooms" ON public.chat_rooms;
+  CREATE POLICY "Anyone can read rooms"
+    ON public.chat_rooms FOR SELECT USING (true);
+  CREATE POLICY "Authenticated users can create rooms"
+    ON public.chat_rooms FOR INSERT WITH CHECK (auth.uid() = creator_id);
+
+  -- ✓ SUCCESS: "Success. No rows returned"
+  -- ✓ VERIFY:  SELECT * FROM public.chat_rooms LIMIT 1;
+  --   Expected: Empty result set (no error)
+
+─── Query 9D: chat_room_members table ─────────────────────────────────────────
+
+  WHERE: Supabase Dashboard → SQL Editor → New Query
+  WHAT: Join table tracking which users are members of which rooms.
+        MUST run this AFTER Query 9C (chat_rooms must exist first for the FK).
+        The backend uses upsert so re-joining an existing room is idempotent.
+
+  CREATE TABLE IF NOT EXISTS public.chat_room_members (
+    room_id   UUID REFERENCES public.chat_rooms(id) ON DELETE CASCADE,
+    user_id   UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (room_id, user_id)
+  );
+
+  ALTER TABLE public.chat_room_members ENABLE ROW LEVEL SECURITY;
+  DROP POLICY IF EXISTS "Anyone can read members" ON public.chat_room_members;
+  DROP POLICY IF EXISTS "Users can join rooms" ON public.chat_room_members;
+  DROP POLICY IF EXISTS "Users can leave rooms" ON public.chat_room_members;
+  CREATE POLICY "Anyone can read members"
+    ON public.chat_room_members FOR SELECT USING (true);
+  CREATE POLICY "Users can join rooms"
+    ON public.chat_room_members FOR INSERT WITH CHECK (auth.uid() = user_id);
+  CREATE POLICY "Users can leave rooms"
+    ON public.chat_room_members FOR DELETE USING (auth.uid() = user_id);
+
+  -- ✓ SUCCESS: "Success. No rows returned"
+  -- ✓ VERIFY:  SELECT * FROM public.chat_room_members LIMIT 1;
+  --   Expected: Empty result set (no error)
+
+─── Step 9E: Supabase Storage bucket "chat-media" ─────────────────────────────
+
+  WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/storage/buckets
+  WHAT: Creates a public storage bucket so users can send images and files in chat.
+        Files are uploaded from the browser directly to Supabase Storage and the
+        public URL is stored in messages.media_url.
+
+  1. Click "New bucket"
+  2. Name: chat-media   (exact spelling, lowercase, hyphen)
+  3. Toggle "Public bucket" → ON  (files need public URLs)
+  4. Click "Save"
+
+  Then add storage policies so authenticated users can upload:
+  WHERE: Storage → Policies tab → Select "chat-media" → New policy → For full customization
+
+  Run each of these in the SQL editor:
+
+    DROP POLICY IF EXISTS "Authenticated upload" ON storage.objects;
+    CREATE POLICY "Authenticated upload"
+      ON storage.objects FOR INSERT
+      WITH CHECK (bucket_id = 'chat-media' AND auth.role() = 'authenticated');
+
+    DROP POLICY IF EXISTS "Public read" ON storage.objects;
+    CREATE POLICY "Public read"
+      ON storage.objects FOR SELECT
+      USING (bucket_id = 'chat-media');
+
+  ✓ SUCCESS: After uploading a file in ChatRoom, the image appears inline (no broken image).
+  ✗ FAIL symptom: "Failed to upload file." toast → check bucket exists and policies above.
+
+─── Step 9F: Enable Realtime on messages table ─────────────────────────────────
+
+  WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/database/replication
+  WHAT: Enables real-time message delivery via Supabase Realtime.
+        Without this, new messages only appear on page refresh.
+        Both DMs and group chat messages flow through the same messages table.
+
+  1. Click on "supabase_realtime" publication (or "0 tables" link)
+  2. Find "messages" in the table list
+  3. Toggle it ON
+  4. Click "Save"
+
+  Alternative SQL approach (run in SQL Editor):
+    BEGIN;
+    DROP PUBLICATION IF EXISTS supabase_realtime;
+    CREATE PUBLICATION supabase_realtime FOR TABLE
+      public.messages, public.chat_rooms, public.chat_room_members;
+    COMMIT;
+
+  ✓ SUCCESS: Open two browser tabs logged in as different users. Send a message.
+             It appears in the other tab without refreshing.
+  ✗ FAIL symptom: Messages only show after page refresh → Realtime is not enabled.
 
 ─── Query 9: verify all tables + columns exist ────────────────────────────────
 

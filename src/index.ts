@@ -14,6 +14,8 @@ import stripeRoutes from './routes/stripeRoutes';
 import aiCoachingRoutes from './routes/aiCoachingRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import adminRoutes from './routes/adminRoutes';
+import completionRoutes from './routes/completionRoutes';
+import groupRoutes from './routes/groupRoutes';
 
 import { notFoundHandler, errorHandler } from './middleware/errorHandler'; // Import error handling middleware
 
@@ -34,6 +36,8 @@ app.use('/stripe', stripeRoutes); // Use stripe routes
 app.use('/ai-coaching', aiCoachingRoutes); // Use AI Coaching routes
 app.use('/analytics', analyticsRoutes); // Use analytics routes
 app.use('/admin', adminRoutes); // Admin-only endpoints (protected by X-Admin-Secret header)
+app.use('/completions', completionRoutes); // Peer goal-completion verification
+app.use('/groups', groupRoutes); // Group chat rooms
 
 // Error Handling Middleware - MUST be last
 app.use(notFoundHandler);

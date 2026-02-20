@@ -118,9 +118,10 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   // goal_tree_edit_count may be null if the column hasn't been added yet — treat as 0
   const editCount: number = profile?.goal_tree_edit_count ?? 0;
   const rootGoalLimit = 3;
+  const safeRootNodes = rootNodes || [];
 
   // Enforce root goal limit for non-premium users
-  if (!isPremium && rootNodes.length > rootGoalLimit) {
+  if (!isPremium && safeRootNodes.length > rootGoalLimit) {
     throw new ForbiddenError(`Non-premium users are limited to ${rootGoalLimit} primary goals. Upgrade to premium for unlimited goals.`);
   }
 
@@ -187,7 +188,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     // If a tree exists, update it with the new nodes and root nodes
     const { data, error } = await supabase
       .from('goal_trees')
-      .update({ nodes, rootNodes })
+      .update({ nodes, rootNodes: safeRootNodes })
       .eq('userId', userId)
       .select()
       .single();
@@ -216,7 +217,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     // If no tree exists, create a new one
     const { data, error } = await supabase
       .from('goal_trees')
-      .insert([{ userId, nodes, rootNodes }])
+      .insert([{ userId, nodes, rootNodes: safeRootNodes }])
       .select()
       .single();
 

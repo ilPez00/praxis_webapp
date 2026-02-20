@@ -11,7 +11,7 @@ The companion file `manual_actions.txt` contains all required Supabase/Stripe se
 Feel free to delegate tasks to gemini-cli, which you can call by running "gemini" 
 ---
 
-## Project Health (last updated: 2026-02-19 Session 14)
+## Project Health (last updated: 2026-02-20 Session 15)
 
 - Backend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from project root)
 - Frontend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from `client/`)
@@ -69,6 +69,86 @@ Feel free to delegate tasks to gemini-cli, which you can call by running "gemini
 goalController, analyticsController, useUser hook, PrivateRoute
 
 **Phase 5 — Docs:** `claude_steps.txt` created, `manual_actions.txt` updated
+
+---
+
+### Session 15 (cont.) — Claude Code (2026-02-20) — Debug run + SQL migration overhaul
+
+**Bugs found and fixed during debug run:**
+
+1. **`goalController.ts` crash — `rootNodes.length` on undefined**
+   - Trigger: `POST /goals` without `rootNodes` in body → 500 "Cannot read properties of undefined (reading 'length')"
+   - Fix: `const safeRootNodes = rootNodes || []` + use `safeRootNodes` in both limit check and insert/update
+   - File: `src/controllers/goalController.ts` lines 123, 190, 219
+
+2. **`errorHandler.ts` — 404 routes returning HTTP 500**
+   - Trigger: any unmatched route → response body said "Not Found" but HTTP status was 500
+   - Root cause: `notFoundHandler` called `next(error)` but the plain `Error` object had no `.statusCode`, so `errorHandler` fell back to 500
+   - Fix: set `error.statusCode = 404` before calling `next(error)` in `notFoundHandler`
+   - File: `src/middleware/errorHandler.ts`
+
+3. **`messageRoutes.ts` — `POST /messages/send` route missing**
+   - Trigger: ChatRoom sends messages to `POST /messages/send` → 404 (previously masked as 500)
+   - Root cause: backend only had `POST /messages/` (no `/send` suffix) but frontend called `/messages/send`
+   - Fix: added `router.post('/send', sendMessage)` alias
+   - File: `src/routes/messageRoutes.ts`
+
+**Missing Supabase tables discovered:**
+- During API testing, found that `messages`, `completion_requests`, `chat_rooms`, `chat_room_members` do not exist yet in the project database
+- These must be created by running the SQL in manual_actions.txt Step 5
+- Added detailed WHERE/WHAT/SUCCESS to every SQL step
+- QUICK START section now lists all required SQL queries in correct order with feature labels
+
+**`manual_actions.txt` overhaul:**
+- Query 4 (messages): Rewritten to include ALL columns from the start (fresh installs get complete schema)
+  Old version only had: id, sender_id, receiver_id, content, goal_node_id, timestamp
+  New version adds: message_type, media_url, room_id, metadata
+- Query 8B: Rewritten as upgrade-only path for users who ran the old Query 4
+- Query 9A (completion_requests): Added DROP POLICY IF EXISTS guards for idempotency
+- Query 9C (chat_rooms): Added DROP POLICY IF EXISTS guards
+- Query 9D (chat_room_members): Added DROP POLICY IF EXISTS guards; added note to run AFTER 9C
+- Query 9E (chat-media bucket): Added exact dashboard URL, failure symptom, policy DROP guards
+- Query 9F (Realtime): Added alternative SQL approach for enabling publication
+- QUICK START: Expanded to 5 steps; lists every required SQL query by feature name
+- Checklist updated with → pointers to exact SQL step numbers
+
+**TypeScript after fixes:** ✅ 0 errors backend + 0 errors frontend
+
+---
+
+### Session 15 — Claude Code (2026-02-20) — Peer verification, media DMs, video calls, group chats
+
+**Peer-verified goal completion:**
+- `src/controllers/completionController.ts` (NEW): Three endpoints —
+  - `POST /completions`: creates `completion_requests` row + sends `message_type='completion_request'` DM to verifier with metadata `{requestId, goalNodeId, goalName}`
+  - `PATCH /completions/:id/respond`: verifier approves/rejects → updates `goal_trees.nodes` (progress=1.0 on approve) + sends `message_type='system'` DM with result
+  - `GET /completions/pending?userId=xxx`: list pending verifications for a user
+- `src/routes/completionRoutes.ts` (NEW): mounted at `/completions` in `src/index.ts`
+- `GoalTreeVisualization.tsx`: added `onNodeClick?: (node: GoalNode) => void` prop; click calls it instead of always toggling collapse
+- `GoalTreePage.tsx`: full rewrite — claim dialog shows DM partners as selectable verifiers; `handleSendClaim()` POSTs to `/completions`; partners fetched from `messages` table
+- `GoalTreePage.tsx` fix: `for...of Set<string>` → `for...of Array.from(Set)` (TS target compat)
+
+**Media upload in DMs:**
+- `src/controllers/messageController.ts`: extended `sendMessage` to accept `messageType`, `mediaUrl`, `metadata` optional fields
+- `ChatRoom.tsx`: attach button (hidden `<input type="file">`) → uploads to Supabase Storage `chat-media` bucket → sends `message_type='image'|'file'` message with `media_url`
+- Message rendering: `system` = centered gray italic; `completion_request` = amber card with Verify/Reject buttons (verifier only); `image` = inline `<img>`; `file` = clickable file name; `text` = existing bubble
+
+**Video calls in DMs:**
+- `VideoCall.tsx` (NEW): WebRTC peer-to-peer via Supabase Broadcast signaling channel `webrtc_{channelName}`. Flow: receiver sends `call-ready` → initiator creates offer → receiver creates answer → ICE exchange. Mute mic / toggle cam buttons. Full-screen dialog with PiP local video.
+- `ChatRoom.tsx`: videocam icon in header → broadcasts `call-invite` + opens VideoCall as initiator. `call-invite` listener shows incoming call Dialog with Accept/Decline. Decline sends `call-declined` broadcast. `call-ended` broadcast closes VideoCall on both sides.
+
+**Group chats:**
+- `src/controllers/groupController.ts` (NEW): listRooms, createRoom (auto-joins creator), joinRoom, leaveRoom, getRoomMessages, sendRoomMessage, getRoomMembers, getRoom, getJoinedRooms
+- `src/routes/groupRoutes.ts` (NEW): mounted at `/groups` in `src/index.ts` (`/joined` before `/:roomId`)
+- `GroupsPage.tsx` (NEW): tabs All Rooms / My Rooms; room cards with domain color, member count, Join/Enter; Create Room dialog with name+desc+domain
+- `GroupChatRoom.tsx` (NEW): realtime group chat via Supabase postgres_changes filtered by `room_id`; file uploads; member drawer
+- `routes.tsx`: added `/groups` → GroupsPage, `/groups/:roomId` → GroupChatRoom
+- `Navbar.tsx`: added Chat + Groups links (desktop inline + mobile drawer)
+
+**Database migrations added to `manual_actions.txt`:**
+- Steps 5Q9–5Q13: `completion_requests` table (RLS), messages new columns (`message_type`, `media_url`, `room_id`, `metadata`), `chat_rooms` table (RLS), `chat_room_members` table (RLS), Supabase Storage `chat-media` bucket
+
+**TypeScript:** ✅ 0 errors backend + 0 errors frontend
 
 ---
 
@@ -295,8 +375,8 @@ With 5–20 users this is fine, but it fails completely when `GEMINI_API_KEY` is
 ### 🟢 COULD HAVE — Polish / retention
 
 #### Achievement creation from GoalTreePage (Step 10 partial)
-- [ ] Each goal node: add "Mark Complete ✓" button when `progress === 100`
-- [ ] On confirm: `POST /achievements` with `goalNodeId`, `title`, `domain`
+- [x] Peer-verified goal completion: click node → pick verifier from DMs → verifier sees card in chat → Verify button sets goal to 100% ✅
+- [ ] On 100%: auto-create `POST /achievements` with `goalNodeId`, `title`, `domain`
 - [ ] Toast: "🏆 Achievement unlocked!" + redirect to dashboard feed
 - **Commit:** `feat: mark goal complete → auto-create achievement`
 

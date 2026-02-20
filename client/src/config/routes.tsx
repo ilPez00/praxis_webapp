@@ -19,6 +19,8 @@ import ChatRoom from '../features/chat/ChatRoom';
 import UpgradePage from '../features/payments/UpgradePage';
 import IdentityVerificationPage from '../features/identity/IdentityVerificationPage';
 import AnalyticsPage from '../features/analytics/AnalyticsPage';
+import GroupsPage from '../features/groups/GroupsPage';
+import GroupChatRoom from '../features/groups/GroupChatRoom';
 
 interface RouteConfig {
   path: string;
@@ -49,6 +51,8 @@ const routes: RouteConfig[] = [
   { path: '/upgrade', element: UpgradePage, private: true },
   { path: '/verify-identity', element: IdentityVerificationPage, private: true },
   { path: '/analytics', element: AnalyticsPage, private: true },
+  { path: '/groups', element: GroupsPage, private: true },
+  { path: '/groups/:roomId', element: GroupChatRoom, private: true, param: 'roomId' },
 ];
 
 export default routes;
