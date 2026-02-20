@@ -340,3 +340,45 @@ Cleared all build warnings left from Session 19. Production build is now clean.
 2. 🔴 Deploy backend to Railway, frontend to Vercel (manual_actions.txt Steps 11–12)
 3. 🟡 Smoke-test full flow: peer verification, video call, group chat, betting
 4. 🟡 Seed demo users after deploy: `POST /admin/seed-demo-users`
+
+---
+
+## Session 21 (Claude) — Whitepaper
+
+**Date:** 2026-02-20
+
+### Summary
+Wrote and compiled a full investor/technical whitepaper for Praxis in LaTeX.
+
+### Output
+- File: `praxis_whitepaper.tex` + compiled `praxis_whitepaper.pdf` (459 KB, 22 pages)
+
+### Content
+- Dark cover page with amber branding, abstract, full TOC
+- §1 The Problem: goal failure stats (91% fail NY resolutions), loneliness epidemic (1 in 3 lonely weekly), platform failures (dating app burnout 79%, LinkedIn shallow connections)
+- §2 Market Opportunity: TAM tables ($6.8T wellness, $38B personal dev, $11.4B habit apps), SAM analysis, generational tailwinds
+- §3 The Praxis Solution: goal tree design, matching algorithm (full LaTeX equations), weight recalibration table, peer verification protocol, accountability betting (loss aversion thesis)
+- §4 Technical Architecture: stack table, 12 route modules, DB schema, embedding pipeline
+- §5 Competitive Landscape: feature comparison table (Praxis vs Tinder/LinkedIn/Strava/Focusmate/Habitica)
+- §6 Business Model: freemium tiers, 5 revenue streams, unit economics, cost structure at 10K MAU
+- §7 Financial Projections: 5-year MAU/ARR table + pgfplots bar chart, break-even analysis (~5,400 premium users)
+- §8 Investment Thesis: network effect flywheel TikZ diagram, 4 defensibility pillars, "Why Now" section
+- §9 Roadmap: Q1 2026 → Year 3 milestones
+- §10 Risk Factors: cold-start, API dependency, regulation, privacy, incumbents
+- §11 Conclusion + 27 academic/industry citations
+- Appendix A: full API route table; Appendix B: domain colour map
+
+### LaTeX Bugs Fixed During Compilation
+- `\faShieldAlt` (FA4 icon) → replaced with `\faMedal` (valid FA5)
+- `\faSearchengin` (brands icon) → replaced with `\faSearch`
+- `[\centering]` passed as tcolorbox key → removed optional arg (kept `\centering` in body)
+- `\headheight too small` → added `\setlength{\headheight}{22pt}` in preamble
+
+### Market Research Sources Used
+- Global Wellness Institute 2025, Precedence Research, Zion Market Research, ICF 2023, Mordor Intelligence
+- Dr. Gail Matthews (Dominican University) accountability study; ASTD
+- U.S. Surgeon General loneliness advisory 2023; Gallup 2024; Harvard MCC 2024
+- Business of Apps (Strava, dating apps); McKinsey Future of Wellness 2024
+- Forbes Health dating app survey 2024; Radboud University 2024
+- RevenueCat State of Subscription Apps 2025; Statista Digital Wellness ARPU
+- Kahneman & Tversky (1979) prospect theory (betting section)
