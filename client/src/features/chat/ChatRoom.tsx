@@ -53,6 +53,8 @@ const ChatRoom: React.FC = () => {
 
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [receiverName, setReceiverName] = useState<string>('Partner');
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [userGoalTree, setUserGoalTree] = useState<GoalTree | null>(null);
   const [receiverGoalTree, setReceiverGoalTree] = useState<GoalTree | null>(null);
@@ -135,7 +137,7 @@ const ChatRoom: React.FC = () => {
     fetchMessages();
 
     const channelName = [user1Id, user2Id].sort().join('-');
-    channelRef.current = supabase.channel(`chat_${channelName}`)
+    channelRef.current = supabase.channel(`chat_${channelName}`, { config: { broadcast: { self: false } } })
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -146,6 +148,14 @@ const ChatRoom: React.FC = () => {
         if ((newMsg.sender_id === user1Id && newMsg.receiver_id === user2Id) ||
             (newMsg.sender_id === user2Id && newMsg.receiver_id === user1Id)) {
           setMessages(prev => [...prev, newMsg]);
+        }
+      })
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        // Ignore own typing events (self:false already filters, but guard by sender)
+        if (payload?.senderId && payload.senderId !== user1Id) {
+          setIsPartnerTyping(true);
+          if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+          typingTimerRef.current = setTimeout(() => setIsPartnerTyping(false), 3000);
         }
       })
       .subscribe();
@@ -232,6 +242,12 @@ const ChatRoom: React.FC = () => {
 
   return (
     <>
+    <style>{`
+      @keyframes typing-bounce {
+        0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+        30% { transform: translateY(-4px); opacity: 1; }
+      }
+    `}</style>
     <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       {/* Chat Header */}
       <Box
@@ -385,7 +401,7 @@ const ChatRoom: React.FC = () => {
             <Typography color="text.secondary">Say hi to start the conversation!</Typography>
           </Box>
         ) : (
-          <Stack spacing={0.75}>
+          <Stack spacing={1}>
             {messages.map((msg) => {
               const isMine = (msg.sender_id ?? msg.senderId) === currentUserId;
               return (
@@ -393,50 +409,79 @@ const ChatRoom: React.FC = () => {
                   key={msg.id}
                   sx={{
                     display: 'flex',
+                    alignItems: 'flex-end',
+                    gap: 1,
                     justifyContent: isMine ? 'flex-end' : 'flex-start',
                   }}
                 >
-                  <Box
-                    sx={{
-                      maxWidth: '70%',
-                      px: 2,
-                      py: 1,
-                      borderRadius: isMine
-                        ? '20px 20px 4px 20px'
-                        : '20px 20px 20px 4px',
-                      background: isMine
-                        ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
-                        : 'rgba(255,255,255,0.07)',
-                      border: isMine ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                      boxShadow: isMine
-                        ? '0 2px 12px rgba(245,158,11,0.25)'
-                        : 'none',
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      sx={{ color: isMine ? '#0A0B14' : 'text.primary', wordBreak: 'break-word', fontWeight: isMine ? 500 : 400 }}
-                    >
-                      {msg.content}
-                    </Typography>
-                    <Typography
-                      variant="caption"
+                  {/* Partner avatar on the left */}
+                  {!isMine && (
+                    <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                      {receiverName.charAt(0)}
+                    </Avatar>
+                  )}
+                  <Box sx={{ maxWidth: '68%' }}>
+                    {/* Sender name above partner messages */}
+                    {!isMine && (
+                      <Typography sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>
+                        {receiverName}
+                      </Typography>
+                    )}
+                    <Box
                       sx={{
-                        display: 'block',
-                        textAlign: 'right',
-                        mt: 0.25,
-                        opacity: 0.65,
-                        color: isMine ? '#0A0B14' : 'text.secondary',
-                        fontSize: '0.65rem',
+                        px: 2,
+                        py: 1,
+                        borderRadius: isMine
+                          ? '20px 20px 4px 20px'
+                          : '20px 20px 20px 4px',
+                        background: isMine
+                          ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
+                          : 'rgba(255,255,255,0.07)',
+                        border: isMine ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                        boxShadow: isMine
+                          ? '0 2px 12px rgba(245,158,11,0.25)'
+                          : 'none',
                       }}
                     >
-                      {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{ color: isMine ? '#0A0B14' : 'text.primary', wordBreak: 'break-word', fontWeight: isMine ? 500 : 400 }}
+                      >
+                        {msg.content}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: 'block',
+                          textAlign: 'right',
+                          mt: 0.25,
+                          opacity: 0.6,
+                          color: isMine ? '#0A0B14' : 'text.secondary',
+                          fontSize: '0.63rem',
+                        }}
+                      >
+                        {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Typography>
+                    </Box>
                   </Box>
                 </Box>
               );
             })}
           </Stack>
+        )}
+
+        {/* Typing indicator — outside ternary so it always renders when active */}
+        {isPartnerTyping && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+            <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              {receiverName.charAt(0)}
+            </Avatar>
+            <Box sx={{ px: 2, py: 0.75, borderRadius: '20px 20px 20px 4px', bgcolor: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              {[0, 1, 2].map((i) => (
+                <Box key={i} sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: 'text.disabled', animation: 'typing-bounce 1.2s infinite', animationDelay: `${i * 0.2}s` }} />
+              ))}
+            </Box>
+          </Box>
         )}
         <div ref={messagesEndRef} />
       </Box>
@@ -459,7 +504,12 @@ const ChatRoom: React.FC = () => {
             size="small"
             placeholder="Message..."
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              if (channelRef.current && currentUserId) {
+                channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { senderId: currentUserId } });
+              }
+            }}
             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
             sx={{
               '& .MuiOutlinedInput-root': {

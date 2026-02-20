@@ -1,5 +1,5 @@
 Hi Claude. You are building Praxis, as outlined in the whitepaper PDF. This file serves as your memory and development log across sessions. Modify it to set goals, track progress, record architectural decisions, and note anything useful.
-
+You can delegate tasks to gemini. Remember to git commit and andit this file at the end of each session.
 ---
 
 ## Handoff from Gemini
@@ -21,18 +21,29 @@ Previous development (Sessions 1–9) was completed by Gemini CLI. The following
 
 ---
 
-## Session 16 — Claude Code (2026-02-20 cont.) — Overnight sprint continued
+## Session 17 — Claude Code (2026-02-20 cont.) — Phase 1 stability + GoalTree redesign
 
 ### Completed this session:
-- Step 10 — Goal-Focused Chat frontend:
-  - `ChatRoom.tsx`: Focus/Goal button → goal picker dialog, amber focus banner, goalNodeId in sendMessage, auto-select in feedback
-  - `MatchesPage.tsx`: Collab button on high-compatibility (≥60%) real matches
+- **GoalTree SVG visualization** (`GoalTreeVisualization.tsx`):
+  - Bottom-up tree: root circle (member-since date) at base of stem
+  - Each root goal = colored branch in domain color (DOMAIN_COLORS from types/goal.ts)
+  - Sub-goals branch further UP (incremental); siblings spread HORIZONTALLY
+  - Progress arc on each node (strokeDasharray, rotated -90°); fill opacity ∝ progress
+  - Glow ring when ≥75% complete; full glow + solid stroke at 100%
+  - Click node with children to collapse/expand subtree
+  - `GoalTreePage.tsx` now uses GoalTreeVisualization + fetches auth.user.created_at
+- **ChatRoom polish**:
+  - Partner messages: small avatar circle + name label above each bubble
+  - Typing indicator: 3-dot bounce animation via Supabase Broadcast channel
+    - `typing` event broadcast on keypress; auto-clears after 3s silence
+    - `self: false` in channel config so own typing events are ignored
 - TypeScript: 0 errors frontend + backend
 
-### Next to implement:
-- Step 11 — Mutual Grading UX (feedback dialog after session end)
-- Step 12 — AI Coaching improvements (streaming, suggested prompts)
-- Step 1D — General responsive pass (GoalSelection chips, Onboarding stepper)
+### Next priorities (Phase 1 remaining):
+- Phase 1D: responsive pass on GoalSelectionPage + OnboardingPage
+- Phase 2: Real Gemini embeddings for matching (pgvector RPC)
+- Phase 2 cont.: Mutual grading stub in chat/profile
+- Phase 3: Deploy (Railway + Vercel) after user adds env vars
 
 ---
 

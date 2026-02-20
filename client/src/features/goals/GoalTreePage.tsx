@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { supabase } from '../../lib/supabase';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
-import GoalTreeComponent from './components/GoalTreeComponent';
+import GoalTreeVisualization from './components/GoalTreeVisualization';
 import {
   Container,
   Typography,
@@ -57,15 +57,18 @@ const GoalTreePage: React.FC = () => {
   const [treeData, setTreeData] = useState<FrontendGoalNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [memberSince, setMemberSince] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const fetchGoalTree = async () => {
       // Determine which user's tree to show: URL param or current authenticated user
       let userId = id;
+      const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!userId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        userId = user?.id;
+        userId = authUser?.id;
       }
+      // Capture registration date for the tree root circle
+      if (authUser?.created_at) setMemberSince(authUser.created_at);
       if (!userId) {
         setError('Could not determine user ID.');
         setLoading(false);
@@ -135,9 +138,7 @@ const GoalTreePage: React.FC = () => {
           </Button>
         </Box>
       ) : (
-        <Box sx={{ overflowX: 'auto', pb: 2 }}>
-          <GoalTreeComponent data={treeData} />
-        </Box>
+        <GoalTreeVisualization rootNodes={treeData} memberSince={memberSince} />
       )}
     </Container>
   );
