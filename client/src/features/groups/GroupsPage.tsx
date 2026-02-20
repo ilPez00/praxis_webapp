@@ -28,7 +28,6 @@ import {
   Tab,
   CircularProgress,
   Avatar,
-  Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import GroupsIcon from '@mui/icons-material/Groups';

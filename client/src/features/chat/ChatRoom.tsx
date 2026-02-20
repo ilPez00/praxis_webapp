@@ -26,7 +26,7 @@ import {
   InputLabel,
   Stack,
   Avatar,
-  useTheme,
+
   Collapse,
   Dialog,
   DialogTitle,
@@ -49,7 +49,6 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 const ChatRoom: React.FC = () => {
   const { user1Id, user2Id } = useParams<{ user1Id: string; user2Id: string }>();
   const navigate = useNavigate();
-  const theme = useTheme();
 
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -187,6 +186,7 @@ const ChatRoom: React.FC = () => {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user1Id, user2Id]);
 
   useEffect(() => {
@@ -203,6 +203,7 @@ const ChatRoom: React.FC = () => {
     if (focusGoalId && showFeedbackForm && !selectedGoalNode) {
       setSelectedGoalNode(focusGoalId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusGoalId, showFeedbackForm]);
 
   // When both parties have graded, close dialog and celebrate

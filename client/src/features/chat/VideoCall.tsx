@@ -180,6 +180,7 @@ const VideoCall: React.FC<Props> = ({ open, onClose, channelName, currentUserId,
       mounted = false;
       cleanup();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isInitiator]);
 
   const handleEnd = () => {

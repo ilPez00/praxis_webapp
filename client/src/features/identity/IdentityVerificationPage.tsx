@@ -40,8 +40,10 @@ const IdentityVerificationPage: React.FC = () => {
 
     // Cleanup function for video stream
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const video = videoRef.current;
+      if (video && video.srcObject) {
+        const stream = video.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
       }
     };
