@@ -343,6 +343,77 @@ Cleared all build warnings left from Session 19. Production build is now clean.
 
 ---
 
+## Session 22 (Claude) — Android Port
+
+**Date:** 2026-02-20
+
+### Summary
+Ported the missing webapp screens to the Android project (praxis_android),
+extending the existing Kotlin/Compose MVVM app with all major features that
+were live in praxis_webapp but absent on Android.
+
+### New files created (praxis_android)
+
+**Data models:**
+- `data/model/Achievement.kt` — Achievement + AchievementComment data classes
+- `data/model/Group.kt` — Group + GroupMessage data classes
+- `data/model/Bet.kt` — Bet data class + BetStatus enum
+
+**Screens (Jetpack Compose):**
+- `ui/screens/DashboardScreen.kt` — Full dashboard port: welcome banner with
+  streak + points, quick-action chips, AI Coaching card (premium-gated),
+  Core Objectives (root goals), Top Alignments (top 3 matches),
+  Community Achievements feed with upvote + detail dialog
+- `ui/screens/GroupsScreen.kt` — Community rooms: All/My tabs, GroupCard with
+  join/enter, CreateGroupDialog with domain picker, FAB
+- `ui/screens/GroupChatRoomScreen.kt` — Group chat with domain-colour header,
+  local mock messages, send functionality, bubble layout
+- `ui/screens/AnalyticsScreen.kt` — Premium gate, achievement rate card,
+  domain performance bars, feedback grade distribution, community comparison
+- `ui/screens/UpgradeScreen.kt` — Price card ($9.99/mo), feature list,
+  stub upgrade flow that activates premium in ViewModel
+- `ui/screens/IdentityVerificationScreen.kt` — Camera preview stub,
+  2-second simulated face analysis, 4-state status machine
+
+### Modified files
+
+**Data layer:**
+- `data/model/User.kt` — Added `isPremium`, `currentStreak`, `praxisPoints`;
+  `addPrimaryGoal()` now respects `isPremium` flag
+- `data/repository/MockRepository.kt` — Added mock achievements (5),
+  mock groups (5); `getAchievements()`, `getGroups()`, `upvoteAchievement()`,
+  `joinGroup()`, `createGroup()` methods
+
+**ViewModel:**
+- `ui/viewmodel/PraxisViewModel.kt` — New `PraxisUiState` variants:
+  `Main(tab)`, `GroupChat`, `Analytics`, `Upgrade`, `IdentityVerification`;
+  `MainTab` enum (DASHBOARD / GOALS / MATCHES / GROUPS / PROFILE);
+  new StateFlows for achievements, groups, bets;
+  `joinGroup`, `createGroup`, `placeBet`, `cancelBet`, `upvoteAchievement`,
+  `activatePremium`, `markIdentityVerified`, `navigateTo(tab)` etc.
+
+**Navigation:**
+- `MainActivity.kt` — Full rewrite: `PraxisApp()` routes all `PraxisUiState`
+  variants; `MainScaffold()` renders `NavigationBar` with emoji tabs and
+  delegates to the correct screen composable per tab.
+
+### Architecture notes
+- All new screens are pure Compose (no XML)
+- Mock data only — real API calls (Retrofit to praxis_webapp backend) deferred
+- CameraX + ML Kit face detection deferred (IdentityVerificationScreen is a stub)
+- Stripe Android SDK deferred (UpgradeScreen stubs and calls `activatePremium()`)
+- Bottom-nav state survives rotation via `PraxisViewModel` (ViewModel scope)
+
+### Next priorities (Android)
+1. Retrofit layer — replace MockRepository with HTTP calls to Railway backend
+2. Supabase Realtime — WebSocket for ChatScreen and GroupChatRoomScreen
+3. CameraX + ML Kit — complete IdentityVerificationScreen
+4. Stripe Android SDK — complete UpgradeScreen payment flow
+5. Room database — offline-first persistence
+6. Push notifications (FCM)
+
+---
+
 ## Session 21 (Claude) — Whitepaper
 
 **Date:** 2026-02-20
