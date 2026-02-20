@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../../lib/api';
 import toast from 'react-hot-toast';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import axios from 'axios';
 import { FeedbackGrade } from '../../models/FeedbackGrade';
@@ -15,6 +15,8 @@ import {
   Button,
   List,
   ListItem,
+  ListItemButton,
+  ListItemText,
   AppBar,
   Toolbar,
   IconButton,
@@ -28,6 +30,9 @@ import {
   useTheme,
   Chip,
   Collapse,
+  Dialog,
+  DialogTitle,
+  DialogActions,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
@@ -55,6 +60,12 @@ const ChatRoom: React.FC = () => {
   const [selectedGrade, setSelectedGrade] = useState<FeedbackGrade>(FeedbackGrade.SUCCEEDED);
   const [feedbackComment, setFeedbackComment] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
+  // Goal-focused chat
+  const [searchParams] = useSearchParams();
+  const [focusGoalId, setFocusGoalId] = useState(searchParams.get('goalNodeId') || '');
+  const [focusGoalName, setFocusGoalName] = useState('');
+  const [showGoalPicker, setShowGoalPicker] = useState(false);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -148,6 +159,20 @@ const ChatRoom: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Resolve goal name when focusGoalId is set (e.g. from URL param)
+  useEffect(() => {
+    if (!focusGoalId || !userGoalTree) return;
+    const node = userGoalTree.nodes.find((n: GoalNode) => n.id === focusGoalId);
+    if (node) setFocusGoalName(node.name);
+  }, [focusGoalId, userGoalTree]);
+
+  // Auto-select focus goal in feedback form when it opens
+  useEffect(() => {
+    if (focusGoalId && showFeedbackForm && !selectedGoalNode) {
+      setSelectedGoalNode(focusGoalId);
+    }
+  }, [focusGoalId, showFeedbackForm]);
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentUserId || !user2Id) return;
     try {
@@ -155,6 +180,7 @@ const ChatRoom: React.FC = () => {
         senderId: currentUserId,
         receiverId: user2Id,
         content: newMessage.trim(),
+        ...(focusGoalId ? { goalNodeId: focusGoalId } : {}),
       });
       setNewMessage('');
     } catch (error) {
@@ -205,6 +231,7 @@ const ChatRoom: React.FC = () => {
     .join(' · ');
 
   return (
+    <>
     <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       {/* Chat Header */}
       <Box
@@ -239,6 +266,20 @@ const ChatRoom: React.FC = () => {
         </Box>
         <Button
           size="small"
+          startIcon={<AccountTreeIcon sx={{ fontSize: '16px !important' }} />}
+          onClick={() => setShowGoalPicker(true)}
+          sx={{
+            color: focusGoalId ? 'primary.main' : 'text.secondary',
+            borderColor: focusGoalId ? 'primary.main' : 'divider',
+            border: '1px solid',
+            borderRadius: 3,
+            mr: 0.5,
+          }}
+        >
+          {focusGoalId ? 'Goal' : 'Focus'}
+        </Button>
+        <Button
+          size="small"
           startIcon={<StarIcon sx={{ fontSize: '16px !important' }} />}
           onClick={() => setShowFeedbackForm(!showFeedbackForm)}
           sx={{
@@ -251,6 +292,30 @@ const ChatRoom: React.FC = () => {
           Feedback
         </Button>
       </Box>
+
+      {/* Goal focus banner */}
+      {focusGoalId && focusGoalName && (
+        <Box
+          sx={{
+            px: 2, py: 0.75,
+            display: 'flex', alignItems: 'center', gap: 1,
+            bgcolor: 'rgba(245,158,11,0.08)',
+            borderBottom: '1px solid rgba(245,158,11,0.2)',
+          }}
+        >
+          <AccountTreeIcon sx={{ fontSize: 13, color: 'primary.main' }} />
+          <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600, flexGrow: 1 }}>
+            Collaborating on: {focusGoalName}
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => { setFocusGoalId(''); setFocusGoalName(''); }}
+            sx={{ p: 0.25 }}
+          >
+            <CloseIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+          </IconButton>
+        </Box>
+      )}
 
       {/* Feedback form slide-down */}
       <Collapse in={showFeedbackForm}>
@@ -376,11 +441,12 @@ const ChatRoom: React.FC = () => {
         <div ref={messagesEndRef} />
       </Box>
 
-      {/* Message input bar */}
+      {/* Message input bar — pb accounts for iOS home indicator */}
       <Box
         sx={{
           px: 2,
-          py: 1.5,
+          pt: 1.5,
+          pb: 'max(12px, env(safe-area-inset-bottom))',
           borderTop: '1px solid',
           borderColor: 'divider',
           bgcolor: 'rgba(17,24,39,0.8)',
@@ -417,6 +483,55 @@ const ChatRoom: React.FC = () => {
         </Stack>
       </Box>
     </Box>
+
+      {/* Goal picker dialog */}
+      <Dialog open={showGoalPicker} onClose={() => setShowGoalPicker(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontSize: '1rem', fontWeight: 600, pr: 5 }}>
+          Focus this chat on a goal
+          <IconButton size="small" onClick={() => setShowGoalPicker(false)} sx={{ position: 'absolute', right: 8, top: 8 }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <List dense sx={{ pb: 0 }}>
+          {focusGoalId && (
+            <ListItem disablePadding>
+              <ListItemButton onClick={() => { setFocusGoalId(''); setFocusGoalName(''); setShowGoalPicker(false); }}>
+                <ListItemText
+                  primary="No focus goal"
+                  primaryTypographyProps={{ fontSize: '0.85rem', color: 'text.secondary' }}
+                />
+              </ListItemButton>
+            </ListItem>
+          )}
+          {userGoalTree?.nodes.map((node: GoalNode) => (
+            <ListItem disablePadding key={node.id}>
+              <ListItemButton
+                selected={focusGoalId === node.id}
+                onClick={() => { setFocusGoalId(node.id); setFocusGoalName(node.name); setShowGoalPicker(false); }}
+              >
+                <ListItemText
+                  primary={node.name}
+                  secondary={node.domain}
+                  primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 600 }}
+                  secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+          {(!userGoalTree || userGoalTree.nodes.length === 0) && (
+            <ListItem>
+              <ListItemText
+                primary="No goals found — build your goal tree first"
+                primaryTypographyProps={{ fontSize: '0.85rem', color: 'text.secondary' }}
+              />
+            </ListItem>
+          )}
+        </List>
+        <DialogActions>
+          <Button size="small" onClick={() => setShowGoalPicker(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 

@@ -112,7 +112,14 @@ const ProfilePage: React.FC = () => {
       }
       const { data, error: updateError } = await supabase
         .from('profiles')
-        .update({ name: editedName, bio: editedBio, avatar_url: avatarUrl })
+        .update({
+          name: editedName,
+          bio: editedBio,
+          avatar_url: avatarUrl,
+          age: editedAge ? parseInt(editedAge, 10) : null,
+          sex: editedSex || null,
+          location: editedLocation || null,
+        })
         .eq('id', user.id)
         .select()
         .single();
@@ -132,6 +139,9 @@ const ProfilePage: React.FC = () => {
     if (profile) {
       setEditedName(profile.name);
       setEditedBio(profile.bio);
+      setEditedAge(profile.age ? String(profile.age) : '');
+      setEditedSex(profile.sex || '');
+      setEditedLocation(profile.location || '');
       setProfilePhotoPreviewUrl(profile.avatar_url);
       setSelectedAvatarFile(null);
     }
@@ -254,6 +264,44 @@ const ProfilePage: React.FC = () => {
                 fullWidth
                 size="small"
               />
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    label="Age"
+                    type="number"
+                    value={editedAge}
+                    onChange={(e) => setEditedAge(e.target.value)}
+                    fullWidth
+                    size="small"
+                    inputProps={{ min: 18, max: 120 }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    select
+                    label="Sex"
+                    value={editedSex}
+                    onChange={(e) => setEditedSex(e.target.value)}
+                    fullWidth
+                    size="small"
+                  >
+                    <MenuItem value=""><em>Prefer not to say</em></MenuItem>
+                    {SEX_OPTIONS.map((opt) => (
+                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    label="Location"
+                    value={editedLocation}
+                    onChange={(e) => setEditedLocation(e.target.value)}
+                    fullWidth
+                    size="small"
+                    placeholder="City, Country"
+                  />
+                </Grid>
+              </Grid>
               <TextField
                 label="Bio"
                 value={editedBio}
@@ -290,11 +338,25 @@ const ProfilePage: React.FC = () => {
                   />
                 )}
               </Box>
-              {profile.age && (
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Age {profile.age}
-                </Typography>
-              )}
+              <Stack direction="row" spacing={1.5} flexWrap="wrap" sx={{ mb: 1 }}>
+                {profile.age && (
+                  <Typography variant="body2" color="text.secondary">
+                    Age {profile.age}
+                  </Typography>
+                )}
+                {profile.age && (profile.sex || profile.location) && (
+                  <Typography variant="body2" color="text.secondary">·</Typography>
+                )}
+                {profile.sex && (
+                  <Typography variant="body2" color="text.secondary">{profile.sex}</Typography>
+                )}
+                {profile.sex && profile.location && (
+                  <Typography variant="body2" color="text.secondary">·</Typography>
+                )}
+                {profile.location && (
+                  <Typography variant="body2" color="text.secondary">📍 {profile.location}</Typography>
+                )}
+              </Stack>
               <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6 }}>
                 {profile.bio || 'No bio yet.'}
               </Typography>

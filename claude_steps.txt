@@ -21,194 +21,195 @@ Previous development (Sessions 1–9) was completed by Gemini CLI. The following
 
 ---
 
-## Session 10 — Claude Code Takeover (2026-02-19)
+## Session 16 — Claude Code (2026-02-20 cont.) — Overnight sprint continued
 
-**Scope:** Full audit, critical bug fixes, API connection for stub pages, comprehensive dark theme styling overhaul, code commenting, and development roadmap extension.
+### Completed this session:
+- Step 10 — Goal-Focused Chat frontend:
+  - `ChatRoom.tsx`: Focus/Goal button → goal picker dialog, amber focus banner, goalNodeId in sendMessage, auto-select in feedback
+  - `MatchesPage.tsx`: Collab button on high-compatibility (≥60%) real matches
+- TypeScript: 0 errors frontend + backend
 
-### Phase 1 — Critical Bug Fixes (COMPLETED)
-
-1. **Bug 1 — Missing route imports in `src/index.ts`:** Added 8 missing imports:
-   - authRoutes, userRoutes, messageRoutes, goalRoutes, matchingRoutes, feedbackRoutes, achievementRoutes, stripeRoutes
-
-2. **Bug 2 — Missing `src/middleware/authenticateToken.ts`:** Created auth middleware:
-   - Extracts Bearer token from Authorization header
-   - Verifies via `supabase.auth.getUser(token)`
-   - Sets `req.user = { id: user.id }` on success
-   - Returns 401 UnauthorizedError on failure
-   - Also created `src/types/express.d.ts` to extend Request type
-
-3. **Bug 3 — `DashboardPage.tsx` missing commentsLoading state:** Added `const [commentsLoading, setCommentsLoading] = useState(false);`
-
-4. **Bug 4 — `DashboardPage.tsx` wrong import paths:** Fixed `'../models/*'` to `'../../models/*'` for GoalTree, GoalNode, Achievement, AchievementComment
-
-5. **Bug 5 — `DashboardPage.tsx` AI Coaching missing auth header:** Added `supabase.auth.getSession()` + `Authorization: Bearer` header
-
-6. **Bug 6 — `AnalyticsPage.tsx` missing auth headers:** Added auth headers to all 5 analytics axios calls; fixed `useUser` and `supabase` import paths
-
-### Phase 2 — Connect Mock Pages to Real Backend (COMPLETED)
-
-- **GoalTreePage.tsx:** Replaced hardcoded `exampleGoalTreeData` with real `GET /goals/:userId` backend call. Added backend-to-frontend GoalNode mapping (name to title, progress 0-1 to 0-100, flat nodes with parentId to tree with children array). Fixed all import paths.
-
-- **MatchesPage.tsx:** Replaced mock users + fake compatibility with real `GET /matches/:userId` backend. Fetches match scores then loads profiles for display.
-
-### Phase 3 — Comprehensive Styling Overhaul (COMPLETED)
-
-New MUI theme (`client/src/index.tsx`):
-- Dark backgrounds: #0A0B14 (default), #111827 (paper)
-- Primary: amber-gold #F59E0B
-- Secondary: electric violet #8B5CF6
-- Typography: Inter (body) + Plus Jakarta Sans (headings) via Google Fonts
-- Card radius: 16px, glassmorphism style
-- Glow shadows with colored elevation
-
-Created `client/src/components/common/GlassCard.tsx` — reusable glassmorphism card.
-
-Page redesigns: HomePage, Navbar, DashboardPage, GoalTreePage, MatchesPage, ProfilePage, UpgradePage, AnalyticsPage, LoginPage, SignupPage, ChatRoom.
-
-### Phase 4 — Code Review & Comments (COMPLETED)
-
-Added detailed comments to:
-- `src/services/MatchingEngineService.ts` — normalization formula reference (whitepaper §3.3)
-- `src/services/EmbeddingService.ts` — Gemini embedding model + cost note
-- `src/controllers/feedbackController.ts` — weight recalibration table (whitepaper §3.5)
-- `src/controllers/goalController.ts` — achievement auto-creation trigger logic
-- `src/controllers/analyticsController.ts` — getComparisonData placeholder marker
-- `client/src/hooks/useUser.ts` — two-step auth flow explanation
-- `client/src/features/auth/PrivateRoute.tsx` — onboarding guard logic
+### Next to implement:
+- Step 11 — Mutual Grading UX (feedback dialog after session end)
+- Step 12 — AI Coaching improvements (streaming, suggested prompts)
+- Step 1D — General responsive pass (GoalSelection chips, Onboarding stepper)
 
 ---
 
-## Full Development Roadmap
+## Session 15 — Claude Code (2026-02-20) — Plan + Overnight Sprint
 
-### Steps 1–9 (Completed by Gemini)
+### What was fixed this session (continued from Session 14):
+- `supabaseClient.ts`: Changed env var from `SUPABASE_PUBLISHABLE_KEY` → `SUPABASE_SERVICE_ROLE_KEY`
+  (backend was using anon key which can't bypass RLS — was root cause of all goal tree save errors)
+- `goalController.ts`: `select('*')` instead of naming columns (graceful if column missing);
+  `getUserProfileDetails` non-fatal (achievement creation shouldn't block goal tree save)
+- `manual_actions.txt`: Added `goal_trees` table SQL (Query 1B) — was completely missing
+- `ProfilePage.tsx`: Added age, sex, location fields to both edit form and view mode
+- `.env.example`: Updated to use `SUPABASE_SERVICE_ROLE_KEY` with correct format notes
 
-1. General infrastructure, README, initial compilation fixes
-2. Goal Tree visualization and editing (add/update/delete nodes, progress sliders, weight sliders)
-3. User profile enhancements (avatar upload, name/bio edit via Supabase Storage)
-4. Dashboard with community achievements (upvote/downvote/comment)
-5. Stripe payment integration (Checkout, webhooks, is_premium gate)
-6. Code commenting and documentation
-7. GoalTreeComponent with Framer Motion expand/collapse
-8. AI Coaching integration (Gemini generative model, premium-gated)
-9. Advanced Analytics endpoints (premium-gated, placeholder comparison data)
-
----
-
-### Step 10 — Goal-Focused Match Chat (HIGH PRIORITY)
-
-**Goal:** When S_AB exceeds threshold, show "Start Collaboration" button. Opens dedicated ChatRoom pre-populated with shared goal context. Chat is scoped to a specific goalNodeId.
-
-**Tasks:**
-- [ ] Add `goal_node_id` column to `messages` Supabase table (see manual_actions.txt)
-- [ ] Add "Start Collaboration" button to MatchesPage match cards (visible when score > 0.6)
-- [ ] Pass `goalNodeId` as query param when navigating to ChatRoom
-- [ ] ChatRoom: read `goalNodeId` from URL, show goal context banner at top
-- [ ] Backend messageController: store `goalNodeId` in messages row
-- [ ] ChatPage: list active collaborations grouped by goal
-
-**Files:** `src/controllers/messageController.ts`, `client/src/features/chat/ChatRoom.tsx`, `client/src/features/matches/MatchesPage.tsx`
+### Current app state (end of Session 15):
+- ✅ New user can register → onboard → set goal tree → access dashboard
+- ✅ Goal tree compilation works end-to-end with service role key
+- ✅ Profile editing: name, bio, age, sex, location, avatar
+- ✅ One free re-edit gate on goal tree (backend + frontend enforced)
+- ✅ Matches page shows demo profiles with fallback matching
+- ✅ Chat works (real-time with Supabase)
+- ✅ TypeScript: 0 errors backend + frontend
+- ❌ Not deployed (Railway + Vercel steps in manual_actions.txt)
+- ❌ Stripe PRICE_ID not yet set (upgrade flow fails)
+- ❌ Demo users not yet seeded
+- ❌ Mobile layout: Navbar has no hamburger, ChatRoom unsafe for mobile keyboard
 
 ---
 
-### Step 11 — Mutual Grading UI (HIGH PRIORITY)
+## Development Plan (as of 2026-02-20)
 
-**Goal:** After a chat session, prompt both users to grade each other's goal engagement. Backend auto-recalibrates weights when both parties submit.
+### 🔴 PHASE 1 — Mobile Responsiveness (START TONIGHT)
+The most impactful near-term work. Most beta users will be on mobile.
 
-**Tasks:**
-- [ ] Frontend: trigger feedback dialog on chat close or after 15+ messages
-- [ ] Feedback dialog: 8 grade options (FeedbackGrade enum) + optional comment
-- [ ] Auto-fill goalNodeId from chat's shared goal context (Step 10)
-- [ ] Backend: check if mutual feedback submitted; trigger weight recalibration for both
-- [ ] Show "Waiting for partner's feedback" state
+**1A. Navbar hamburger menu** ← START HERE
+- Replace nav links with hamburger IconButton on xs screens
+- Slide-in Drawer with same links + close button
+- Files: `client/src/components/common/Navbar.tsx`
 
-**Files:** `client/src/features/chat/ChatRoom.tsx`, `src/controllers/feedbackController.ts`
+**1B. ChatRoom mobile keyboard fix**
+- Input bar sits above keyboard on mobile: add `paddingBottom: env(safe-area-inset-bottom)`
+  to the fixed-bottom input container
+- File: `client/src/features/chat/ChatRoom.tsx`
 
----
+**1C. GoalTree horizontal scroll**
+- Wrap GoalTreeComponent in `overflowX: 'auto'` container
+- File: `client/src/features/goals/GoalTreePage.tsx`
 
-### Step 12 — Guided Onboarding Interest Tree (HIGH PRIORITY)
-
-**Goal:** Replace InitialGoalSetup.tsx stub with multi-step domain selection flow. Free users limited to 3 primary selections.
-
-**Tasks:**
-- [ ] Multi-step wizard: Step 1 = choose domains (1–9), Step 2 = set sub-goals per domain, Step 3 = set initial progress/weight
-- [ ] Domain selection UI: large cards for each of the 9 life domains with icons
-- [ ] Sub-goal suggestions: pre-populated templates per domain
-- [ ] Free tier: disable 4th+ domain selection with upgrade prompt
-- [ ] On complete: POST /goals to create initial GoalTree, mark onboarding_completed = true
-- [ ] PrivateRoute: redirect to /onboarding if !profile.onboarding_completed
-
-**Files:** `client/src/features/onboarding/OnboardingPage.tsx`, `client/src/features/onboarding/components/InitialGoalSetup.tsx`
+**1D. General responsive pass**
+- Check GoalSelectionPage chip wrapping on small screens
+- Check OnboardingPage stepper labels don't overflow
 
 ---
 
-### Step 13 — Progress Streaks (MEDIUM PRIORITY)
+### 🔴 PHASE 2 — Dashboard Enhancements (TONIGHT)
 
-**Goal:** Track daily activity. Display streak counter in Dashboard with animated flame icon.
+**2A. Top Matches widget**
+- Dashboard already has stats cards; add a "Your Top Matches" section below them
+- Fetch top 3 from `GET /matches/:userId`, show avatar + name + compatibility % + "Message" CTA
+- Backend: `/matches/:userId` already works — just connect it
+- File: `client/src/features/dashboard/DashboardPage.tsx`
 
-**Tasks:**
-- [ ] Supabase: add `last_activity_date DATE` and `current_streak INT DEFAULT 0` to profiles
-- [ ] Backend streak helper: called on any goal update. Increment if last_activity was yesterday, reset if > 1 day ago
-- [ ] Frontend Dashboard: animated streak counter with flame icon in welcome banner
-
-**Files:** `src/controllers/goalController.ts`, `client/src/features/dashboard/DashboardPage.tsx`
-
----
-
-### Step 14 — Community Challenges (MEDIUM PRIORITY)
-
-**Goal:** Shared goal events multiple users can join, creating accountability groups.
-
-**Tasks:**
-- [ ] New Supabase table: `challenges { id, title, domain, deadline, created_by, participant_ids[] }`
-- [ ] New backend routes: POST /challenges, GET /challenges, POST /challenges/:id/join
-- [ ] Dashboard section: "Active Challenges" card
-- [ ] Join challenge: auto-creates group ChatRoom for participants
-- [ ] Challenge completion: system achievement for all finishers
-
-**Files:** New `src/controllers/challengeController.ts`, `src/routes/challengeRoutes.ts`, `src/index.ts`, dashboard
+**2B. Progress Streaks**
+- Backend: after any goal tree save, update `last_activity_date` + `current_streak` on profile
+- Frontend: flame icon + streak count in Dashboard welcome banner
+- SQL migration (add to manual_actions.txt Step 5):
+  ```sql
+  ALTER TABLE profiles
+    ADD COLUMN IF NOT EXISTS last_activity_date DATE,
+    ADD COLUMN IF NOT EXISTS current_streak INT DEFAULT 0;
+  ```
+- Files: `src/controllers/goalController.ts`, `client/src/features/dashboard/DashboardPage.tsx`
 
 ---
 
-### Step 15 — Goal Tree Evolution History (MEDIUM PRIORITY)
+### 🟡 PHASE 3 — Achievement Flow Completion (NEXT SESSION)
 
-**Goal:** Store goal tree snapshots over time. "Your Journey" view with timeline.
+**3A. "Mark Complete" button on GoalTreePage**
+- Each root node with progress = 100 shows a "🏆 Mark Complete" button
+- On confirm: POST /achievements + toast "Achievement unlocked!"
+- File: `client/src/features/goals/GoalTreePage.tsx`
 
-**Tasks:**
-- [ ] New Supabase table: `goal_tree_snapshots { id, user_id, snapshot JSONB, created_at }`
-- [ ] Backend: createOrUpdateGoalTree saves snapshot on every update
-- [ ] Analytics endpoint: GET /analytics/tree-evolution/:userId
-- [ ] Frontend AnalyticsPage: timeline showing weight/progress changes per domain
-- [ ] "Rewind" view: select a past date to see goal tree state (read-only)
+**3B. Achievement detail modal**
+- Click achievement card on Dashboard → modal with full details, comments, votes
+- Currently all interactions are inline; a modal would clean up the feed significantly
+- File: `client/src/features/dashboard/DashboardPage.tsx`
 
-**Files:** `src/controllers/goalController.ts`, `src/controllers/analyticsController.ts`, `client/src/features/analytics/AnalyticsPage.tsx`
+---
+
+### 🔴 PHASE 4 — Deployment (NEEDS USER)
+
+**4A. Railway (backend)**
+- `PORT` already uses `process.env.PORT || 3001` ✅
+- `Procfile` already exists ✅
+- Push to GitHub → connect on railway.app → add all backend env vars
+- Expected URL: `https://praxis-webapp-production.up.railway.app`
+
+**4B. Vercel (frontend)**
+- Set `REACT_APP_API_URL` to Railway URL in Vercel project settings
+- `vercel --prod` from `/client`
+- Expected URL: `https://praxis.vercel.app` or custom domain
+
+**4C. Post-deploy**
+- Update `CLIENT_URL` in Railway env to Vercel URL (for Stripe redirects)
+- Register Stripe production webhook → add `STRIPE_WEBHOOK_SECRET` to Railway
+- Seed demo users: `POST /admin/seed-demo-users` with `X-Admin-Secret` header
+
+---
+
+### 🟡 PHASE 5 — Beta Polish (NEXT WEEK)
+
+**5A. Goal-Focused Match Chat (Step 10) ✅ DONE**
+- "Collab" button on MatchCard for score >= 60% real matches → navigate to chat
+- ChatRoom: "Focus" / "Goal" header button → goal picker dialog (user's own nodes)
+- Goal focus amber banner between header and feedback collapse
+- `sendMessage` includes `goalNodeId` when a focus goal is active
+- Feedback form auto-selects focus goal node when opened
+- `messages` table: `goal_node_id` column (SQL migration Query 8B in manual_actions.txt)
+
+**5B. Mutual Grading UX (Step 11)**
+- Feedback dialog triggered after N messages or "End Session" click
+- Show "Waiting for partner" state; only recalibrate weights when both submit
+
+**5C. AI Coaching improvements**
+- Currently a plain text input + response; add suggested prompts per domain
+- Stream the response instead of waiting for full completion
+
+---
+
+### 🟢 PHASE 6 — Growth Features (POST-BETA)
+
+**6A. Progress Streaks visualization** (animated flame in Navbar)
+**6B. Community Challenges** (shared goal events, group accountability chat)
+**6C. Goal Tree Evolution History** (snapshots, timeline in Analytics)
+**6D. Embedding cache** (Redis or `goal_embeddings` table to avoid repeated Gemini calls)
 
 ---
 
 ## Architectural Notes
 
-- **Auth flow:** Frontend uses anon Supabase client (JWT in browser). Backend API endpoints needing auth use `authenticateToken` middleware with service-role Supabase client to verify JWT.
-- **Gemini Embeddings cost:** Each `getEmbedding()` call = 1 Gemini API request. MatchingEngine calls O(|A.nodes| * |B.nodes|) times per user pair. Cache in Redis or DB for production.
-- **Goal weight normalization (whitepaper §3.3):** S_AB = sum(sim_ij * w_i * w_j) / sum(w_i * w_j) over same-domain node pairs.
-- **Weight recalibration multipliers (whitepaper §3.5):** SUCCEEDED=×0.8, DISTRACTED=×1.2, LEARNED=×0.9, ADAPTED=×1.05, NOT_APPLICABLE=×1.0
+- **Auth flow:** Frontend uses anon Supabase client (JWT in browser). Backend API endpoints
+  needing auth use `authenticateToken` middleware with service-role Supabase client to verify JWT.
+- **Gemini Embeddings cost:** Each `getEmbedding()` call = 1 Gemini API request.
+  MatchingEngine calls O(|A.nodes| × |B.nodes|) times per user pair.
+  Cache in Redis or `goal_embeddings` table for production scale.
+- **Goal weight normalization (whitepaper §3.3):**
+  S_AB = Σ(sim_ij × w_i × w_j) / Σ(w_i × w_j) over same-domain node pairs.
+- **Weight recalibration multipliers (whitepaper §3.5):**
+  SUCCEEDED×0.8 | DISTRACTED×1.2 | LEARNED×0.9 | ADAPTED×1.05 | NOT_APPLICABLE×1.0
 - **Free tier limits:** Max 3 root goals. AI Coaching, Advanced Analytics, unlimited goals = premium only.
-- **Supabase RLS:** All tables should have RLS enabled. Backend uses service-role key (bypasses RLS). Frontend anon key is subject to RLS.
+- **Supabase RLS:** All tables have RLS. Backend uses service-role key (bypasses RLS).
+  Frontend anon key is subject to RLS — always test both user perspectives.
+- **API_URL pattern:** All frontend axios calls use `${API_URL}` from `client/src/lib/api.ts`.
+  Change `REACT_APP_API_URL` in `client/.env` (local) or Vercel env vars (production).
+  Never hardcode `localhost:3001`.
+- **MUI v7 Grid:** Use `<Grid size={{ xs: N, md: M }}>` not `<Grid item xs={N} md={M}>`.
 
 ---
 
 ## Environment Variables Checklist
 
 ### Backend (`/.env`)
+- [x] SUPABASE_URL
+- [x] SUPABASE_SERVICE_ROLE_KEY   ← MUST be service_role, not anon
 - [x] STRIPE_SECRET_KEY
-- [ ] SUPABASE_URL
-- [ ] SUPABASE_SERVICE_ROLE_KEY
-- [ ] GEMINI_API_KEY
-- [ ] CLIENT_URL
-- [ ] STRIPE_PRICE_ID
-- [ ] STRIPE_WEBHOOK_SECRET
+- [x] STRIPE_WEBHOOK_SECRET
+- [ ] STRIPE_PRICE_ID             ← still empty, upgrade flow broken
+- [ ] GEMINI_API_KEY              ← optional; fallback matching works without it
+- [x] CLIENT_URL
+- [x] ADMIN_SECRET
+- [x] PORT
 
 ### Frontend (`/client/.env`)
 - [x] REACT_APP_SUPABASE_URL
 - [x] REACT_APP_SUPABASE_ANON_KEY
 - [x] REACT_APP_STRIPE_PUBLISHABLE_KEY
+- [x] REACT_APP_API_URL
+- [x] GENERATE_SOURCEMAP=false
 
-See `manual_actions.txt` for full setup instructions.
+See `manual_actions.txt` for full Supabase + Stripe setup instructions.

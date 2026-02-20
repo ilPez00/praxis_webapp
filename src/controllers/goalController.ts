@@ -8,6 +8,41 @@ import logger from '../utils/logger'; // Import the logger
 import { catchAsync, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
 
 /**
+ * @description Computes the new streak values based on last activity date.
+ * Rules:
+ *   - If last activity was today: no change (already counted)
+ *   - If last activity was yesterday: increment streak
+ *   - If last activity was > 1 day ago (or never): reset to 1
+ */
+const computeStreakUpdate = (
+  lastActivityDate: string | null | undefined,
+  currentStreak: number
+): { current_streak: number; last_activity_date: string } => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
+
+  if (!lastActivityDate) {
+    return { current_streak: 1, last_activity_date: todayStr };
+  }
+
+  const last = new Date(lastActivityDate);
+  last.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((today.getTime() - last.getTime()) / 86400000);
+
+  if (diffDays === 0) {
+    // Already logged today — keep streak unchanged
+    return { current_streak: currentStreak, last_activity_date: todayStr };
+  } else if (diffDays === 1) {
+    // Consecutive day — extend streak
+    return { current_streak: currentStreak + 1, last_activity_date: todayStr };
+  } else {
+    // Streak broken — reset to 1
+    return { current_streak: 1, last_activity_date: todayStr };
+  }
+};
+
+/**
  * @description Helper function to fetch user profile details (name and avatar URL).
  * Used for denormalizing user info when creating achievements.
  * @param userId - The ID of the user whose profile to fetch.
@@ -162,14 +197,18 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       throw new InternalServerError('Failed to update goal tree.');
     }
 
-    // Increment edit count (best-effort — non-fatal if column not yet added)
+    // Increment edit count + update streak (best-effort — non-fatal if columns missing)
     try {
+      const streakUpdate = computeStreakUpdate(profile?.last_activity_date, profile?.current_streak ?? 0);
       await supabase
         .from('profiles')
-        .update({ goal_tree_edit_count: editCount + 1 })
+        .update({
+          goal_tree_edit_count: editCount + 1,
+          ...streakUpdate,
+        })
         .eq('id', userId);
     } catch (incrementErr) {
-      logger.warn('Could not increment goal_tree_edit_count (column may not exist yet):', incrementErr);
+      logger.warn('Could not update goal_tree_edit_count/streak (columns may not exist yet):', incrementErr);
     }
 
     res.json(data); // Respond with the updated goal tree
@@ -185,6 +224,15 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       logger.error('Error creating goal tree:', error.message);
       throw new InternalServerError('Failed to create goal tree.');
     }
+
+    // Update streak on initial save too (best-effort)
+    try {
+      const streakUpdate = computeStreakUpdate(profile?.last_activity_date, profile?.current_streak ?? 0);
+      await supabase.from('profiles').update(streakUpdate).eq('id', userId);
+    } catch (streakErr) {
+      logger.warn('Could not update streak on initial save:', streakErr);
+    }
+
     res.status(201).json(data); // Respond with the newly created goal tree
   }
 });

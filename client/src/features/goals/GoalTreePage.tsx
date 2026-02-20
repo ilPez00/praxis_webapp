@@ -135,7 +135,9 @@ const GoalTreePage: React.FC = () => {
           </Button>
         </Box>
       ) : (
-        <GoalTreeComponent data={treeData} />
+        <Box sx={{ overflowX: 'auto', pb: 2 }}>
+          <GoalTreeComponent data={treeData} />
+        </Box>
       )}
     </Container>
   );

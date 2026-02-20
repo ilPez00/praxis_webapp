@@ -38,10 +38,14 @@ FULL SETUP CHECKLIST  (tick each box as you complete it)
   [ ] 3   (Optional) Google OAuth configured in Supabase
   [ ] 4   Supabase auth redirect URLs set to include localhost:3000/**
   [ ] 5Q1 profiles table created + handle_new_user trigger installed
+  [ ] 5Q1B goal_trees table created
   [ ] 5Q2 user_subscriptions table created
   [ ] 5Q3 update_profile_premium_status trigger installed
   [ ] 5Q4 messages table created
   [ ] 5Q5 goal_tree_edit_count column added to profiles (free re-edit gate)
+  [ ] 5Q6 sex + location columns added to profiles (profile editing)
+  [ ] 5Q7 streak columns added to profiles (progress streaks)
+  [ ] 5Q8 goal_node_id column added to messages (goal-focused chat)
   [ ] 6A  Stripe product "Praxis Premium" created, price_... set in .env
   [ ] 6B  Stripe CLI installed
   [ ] 6C  stripe listen running, whsec_... set in .env
@@ -296,6 +300,30 @@ STEP 5 — SUPABASE SQL (run each query in SQL Editor)
     WHERE routine_name = 'handle_new_user';
   -- ✓ Expected: 1 row returned
 
+─── Query 1B: goal_trees table ────────────────────────────────────────────────
+
+  -- Stores each user's goal tree (nodes + root nodes) as JSONB.
+  -- One row per user. "userId" kept camelCase to match backend code.
+  CREATE TABLE IF NOT EXISTS public.goal_trees (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "userId"    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    nodes       JSONB NOT NULL DEFAULT '[]',
+    "rootNodes" JSONB NOT NULL DEFAULT '[]',
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
+  );
+
+  -- Enforce one tree per user
+  CREATE UNIQUE INDEX IF NOT EXISTS goal_trees_userid_idx ON public.goal_trees ("userId");
+
+  -- RLS: users manage their own tree; backend uses service_role key so bypasses this
+  ALTER TABLE public.goal_trees ENABLE ROW LEVEL SECURITY;
+  DROP POLICY IF EXISTS "Users can manage own goal tree" ON public.goal_trees;
+  CREATE POLICY "Users can manage own goal tree"
+    ON public.goal_trees FOR ALL USING (auth.uid() = "userId");
+
+  -- ✓ Expected: "Success. No rows returned"
+
 ─── Query 2: user_subscriptions table (Stripe integration) ────────────────────
 
   CREATE TABLE IF NOT EXISTS public.user_subscriptions (
@@ -367,12 +395,41 @@ STEP 5 — SUPABASE SQL (run each query in SQL Editor)
 
   -- ✓ Expected: "Success. No rows returned"
 
-─── Query 6: verify all tables exist ──────────────────────────────────────────
+─── Query 6: sex + location columns (profile editing) ────────────────────────
+
+  ALTER TABLE profiles
+    ADD COLUMN IF NOT EXISTS sex TEXT,
+    ADD COLUMN IF NOT EXISTS location TEXT;
+
+  -- ✓ Expected: "Success. No rows returned"
+
+─── Query 7: streak columns (progress streaks) ────────────────────────────────
+
+  ALTER TABLE profiles
+    ADD COLUMN IF NOT EXISTS current_streak INT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS last_activity_date DATE;
+
+  -- ✓ Expected: "Success. No rows returned"
+
+─── Query 8B: goal_node_id column on messages (goal-focused chat) ──────────────
+
+  ALTER TABLE messages
+    ADD COLUMN IF NOT EXISTS goal_node_id TEXT;
+
+  -- ✓ Expected: "Success. No rows returned"
+
+─── Query 9: verify all tables + columns exist ────────────────────────────────
 
   SELECT table_name FROM information_schema.tables
     WHERE table_schema = 'public'
     ORDER BY table_name;
   -- ✓ Expected: profiles, user_subscriptions, messages (+ any others)
+
+  SELECT column_name FROM information_schema.columns
+    WHERE table_name = 'profiles' ORDER BY column_name;
+  -- ✓ Expected includes: age, avatar_url, bio, email, goal_tree_edit_count,
+  --                      id, is_demo, is_premium, location, name,
+  --                      onboarding_completed, sex
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 6 — STRIPE SETUP

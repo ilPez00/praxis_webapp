@@ -27,6 +27,7 @@ import {
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MessageIcon from '@mui/icons-material/Message';
 import PersonIcon from '@mui/icons-material/Person';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
@@ -134,9 +135,10 @@ interface MatchCardProps {
   match: MatchProfile;
   onMessage: (match: MatchProfile) => void;
   onViewProfile: (match: MatchProfile) => void;
+  onCollaborate: (match: MatchProfile) => void;
 }
 
-const MatchCard: React.FC<MatchCardProps> = ({ match, onMessage, onViewProfile }) => {
+const MatchCard: React.FC<MatchCardProps> = ({ match, onMessage, onViewProfile, onCollaborate }) => {
   const compatPct = Math.round(match.score * 100);
   const color    = compatPct >= 80 ? '#10B981' : compatPct >= 60 ? '#F59E0B' : '#6B7280';
   const glowRgba = compatPct >= 80 ? 'rgba(16,185,129,0.12)' : compatPct >= 60 ? 'rgba(245,158,11,0.12)' : undefined;
@@ -272,6 +274,21 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onMessage, onViewProfile }
         >
           Profile
         </Button>
+        {!match.isDemo && compatPct >= 60 && (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AccountTreeIcon sx={{ fontSize: '0.85rem' }} />}
+            onClick={() => onCollaborate(match)}
+            sx={{
+              flex: '0 0 auto', fontWeight: 600, fontSize: '0.78rem', borderRadius: '10px',
+              borderColor: 'rgba(139,92,246,0.45)', color: '#8B5CF6',
+              '&:hover': { borderColor: '#8B5CF6', bgcolor: 'rgba(139,92,246,0.08)' },
+            }}
+          >
+            Collab
+          </Button>
+        )}
         <Button
           variant="contained"
           fullWidth
@@ -387,6 +404,11 @@ const MatchesPage: React.FC = () => {
       return;
     }
     navigate(`/profile/${match.userId}`);
+  };
+
+  const handleCollaborate = (match: MatchProfile) => {
+    toast.success(`Opening goal-focused chat with ${match.name}!`, { icon: '🎯' });
+    navigate(`/chat/${user!.id}/${match.userId}`);
   };
 
   if (userLoading || loading) {
@@ -523,7 +545,7 @@ const MatchesPage: React.FC = () => {
         <Grid container spacing={3}>
           {allDisplayed.map((match) => (
             <Grid key={match.userId} size={{ xs: 12, sm: 6, md: 4 }}>
-              <MatchCard match={match} onMessage={handleMessage} onViewProfile={handleViewProfile} />
+              <MatchCard match={match} onMessage={handleMessage} onViewProfile={handleViewProfile} onCollaborate={handleCollaborate} />
             </Grid>
           ))}
         </Grid>

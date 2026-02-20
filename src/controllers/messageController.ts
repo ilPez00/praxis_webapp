@@ -12,11 +12,18 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
   }
 
   // Fetch messages where sender is user1 and receiver is user2 OR sender is user2 and receiver is user1
-  const { data, error } = await supabase
+  let query = supabase
     .from('messages')
     .select('*')
     .or(`and(sender_id.eq.${user1Id},receiver_id.eq.${user2Id}),and(sender_id.eq.${user2Id},receiver_id.eq.${user1Id})`)
     .order('timestamp', { ascending: true });
+
+  // Optionally scope to a specific shared goal node
+  if (req.query.goalNodeId) {
+    query = query.eq('goal_node_id', req.query.goalNodeId as string);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     logger.error('Supabase error fetching messages:', error.message);
@@ -27,16 +34,28 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
 });
 
 export const sendMessage = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { senderId, receiverId, content } = req.body;
+  const { senderId, receiverId, content, goalNodeId } = req.body;
 
   if (!senderId || !receiverId || !content) {
     throw new BadRequestError('Sender ID, receiver ID, and content are required.');
   }
 
+  // Build the insert payload; goalNodeId is optional
+  const insertPayload: {
+    sender_id: string;
+    receiver_id: string;
+    content: string;
+    goal_node_id?: string;
+  } = { sender_id: senderId, receiver_id: receiverId, content };
+
+  if (goalNodeId !== undefined) {
+    insertPayload.goal_node_id = goalNodeId;
+  }
+
   // Insert the new message into the Supabase 'messages' table
   const { data, error } = await supabase
     .from('messages')
-    .insert({ sender_id: senderId, receiver_id: receiverId, content })
+    .insert(insertPayload)
     .select() // Select the newly inserted row
     .single();
 

@@ -18,4 +18,6 @@ export interface User {
   is_premium?: boolean;
   onboarding_completed?: boolean;
   goal_tree_edit_count?: number;
+  current_streak?: number;
+  last_activity_date?: string;
 }

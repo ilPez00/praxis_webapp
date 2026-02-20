@@ -47,6 +47,8 @@ export const useUser = () => {
         is_premium: profile.is_premium,
         onboarding_completed: profile.onboarding_completed,
         goal_tree_edit_count: profile.goal_tree_edit_count ?? 0,
+        current_streak: profile.current_streak ?? 0,
+        last_activity_date: profile.last_activity_date ?? undefined,
         goalTree: [],
       });
     } catch (error) {

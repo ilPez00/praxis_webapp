@@ -46,10 +46,16 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ExploreIcon from '@mui/icons-material/Explore';
 import ChatIcon from '@mui/icons-material/Chat';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 
 interface MatchResult {
   userId: string;
   score: number;
+}
+
+interface MatchProfile {
+  name: string;
+  avatar_url: string | null;
 }
 
 const DOMAIN_COLORS: Record<Domain, string> = {
@@ -71,6 +77,7 @@ const DashboardPage: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [goalTree, setGoalTree] = useState<GoalTree | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
+  const [matchProfiles, setMatchProfiles] = useState<Record<string, MatchProfile>>({});
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loadingContent, setLoadingContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -128,8 +135,24 @@ const DashboardPage: React.FC = () => {
           axios.get(`${API_URL}/achievements`),
         ]);
         if (goalsRes.status === 'fulfilled') setGoalTree(goalsRes.value.data);
-        if (matchesRes.status === 'fulfilled') setMatches(matchesRes.value.data.slice(0, 3));
         if (achievementsRes.status === 'fulfilled') setAchievements(achievementsRes.value.data);
+        if (matchesRes.status === 'fulfilled') {
+          const top3: MatchResult[] = matchesRes.value.data.slice(0, 3);
+          setMatches(top3);
+          // Fetch profiles for each match so we can show real names + avatars
+          const profileResults = await Promise.allSettled(
+            top3.map((m) =>
+              supabase.from('profiles').select('name, avatar_url').eq('id', m.userId).single()
+            )
+          );
+          const profileMap: Record<string, MatchProfile> = {};
+          profileResults.forEach((res, i) => {
+            if (res.status === 'fulfilled' && res.value.data) {
+              profileMap[top3[i].userId] = res.value.data as MatchProfile;
+            }
+          });
+          setMatchProfiles(profileMap);
+        }
       } catch (err) {
         setError('Failed to fetch dashboard data.');
       } finally {
@@ -254,17 +277,24 @@ const DashboardPage: React.FC = () => {
                   Your journey continues. You've made significant progress across your goal architecture. 
                   Ready to reach the next milestone?
                 </Typography>
-                <Stack direction="row" spacing={2}>
-                  <Chip 
-                    icon={<TrackChangesIcon sx={{ color: 'primary.main !important' }} />} 
-                    label={`${allNodes.length} Goals`} 
-                    sx={{ bgcolor: 'rgba(245,158,11,0.1)', fontWeight: 700, p: 1 }} 
+                <Stack direction="row" spacing={2} flexWrap="wrap">
+                  <Chip
+                    icon={<TrackChangesIcon sx={{ color: 'primary.main !important' }} />}
+                    label={`${allNodes.length} Goals`}
+                    sx={{ bgcolor: 'rgba(245,158,11,0.1)', fontWeight: 700, p: 1 }}
                   />
-                  <Chip 
-                    icon={<TrendingUpIcon sx={{ color: 'secondary.main !important' }} />} 
-                    label={`${avgProgress}% Avg Progress`} 
-                    sx={{ bgcolor: 'rgba(139,92,246,0.1)', fontWeight: 700, p: 1 }} 
+                  <Chip
+                    icon={<TrendingUpIcon sx={{ color: 'secondary.main !important' }} />}
+                    label={`${avgProgress}% Avg Progress`}
+                    sx={{ bgcolor: 'rgba(139,92,246,0.1)', fontWeight: 700, p: 1 }}
                   />
+                  {(user as any)?.current_streak > 0 && (
+                    <Chip
+                      icon={<LocalFireDepartmentIcon sx={{ color: '#F97316 !important' }} />}
+                      label={`${(user as any).current_streak} day streak`}
+                      sx={{ bgcolor: 'rgba(249,115,22,0.1)', color: '#F97316', fontWeight: 700, p: 1 }}
+                    />
+                  )}
                 </Stack>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { md: 'flex-end', xs: 'flex-start' } }}>
@@ -539,14 +569,17 @@ const DashboardPage: React.FC = () => {
                           }
                         }}
                       >
-                        <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.main', fontWeight: 700 }}>
-                          {match.userId.charAt(0).toUpperCase()}
+                        <Avatar
+                          src={matchProfiles[match.userId]?.avatar_url || undefined}
+                          sx={{ width: 48, height: 48, bgcolor: 'primary.main', fontWeight: 700 }}
+                        >
+                          {(matchProfiles[match.userId]?.name || match.userId).charAt(0).toUpperCase()}
                         </Avatar>
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                            {match.userId.slice(0, 8)}
+                            {matchProfiles[match.userId]?.name || 'Praxis User'}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">Active today</Typography>
+                          <Typography variant="caption" color="text.secondary">Goal-aligned</Typography>
                         </Box>
                         <Box sx={{ 
                           px: 1.5, 
