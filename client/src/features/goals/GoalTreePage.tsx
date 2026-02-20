@@ -89,6 +89,8 @@ const GoalTreePage: React.FC = () => {
   const [placingBet, setPlacingBet] = useState(false);
   const [userBets, setUserBets] = useState<any[]>([]);
   const [praxisPoints, setPraxisPoints] = useState<number | null>(null);
+  // Countdown tick — re-renders every minute so timers stay live
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     const fetchGoalTree = async () => {
@@ -252,6 +254,31 @@ const GoalTreePage: React.FC = () => {
     }
   };
 
+  // Tick every minute so bet countdowns stay live
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const getCountdown = (deadline: string): string => {
+    const diff = new Date(deadline).getTime() - Date.now();
+    if (diff <= 0) return 'Expired';
+    const days = Math.floor(diff / 86_400_000);
+    const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+    const mins = Math.floor((diff % 3_600_000) / 60_000);
+    if (days > 0) return `${days}d ${hours}h left`;
+    if (hours > 0) return `${hours}h ${mins}m left`;
+    return `${mins}m left`;
+  };
+
+  const getCountdownColor = (deadline: string): string => {
+    const diff = new Date(deadline).getTime() - Date.now();
+    if (diff <= 0) return '#ef4444';
+    if (diff < 86_400_000) return '#ef4444';       // < 1 day — red
+    if (diff < 3 * 86_400_000) return '#F59E0B';   // < 3 days — amber
+    return '#10B981';                               // healthy — green
+  };
+
   if (loading) {
     return (
       <Container component="main" maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
@@ -335,12 +362,13 @@ const GoalTreePage: React.FC = () => {
                   display: 'flex', alignItems: 'center', gap: 2,
                 }}
               >
-                <LocalFireDepartmentIcon sx={{ color: '#F59E0B' }} />
+                <LocalFireDepartmentIcon sx={{ color: getCountdownColor(bet.deadline) }} />
                 <Box sx={{ flexGrow: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 700 }}>{bet.goal_name}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Deadline: {new Date(bet.deadline).toLocaleDateString()} · Stake: {bet.stake_points} pts
+                  <Typography variant="caption" sx={{ color: getCountdownColor(bet.deadline), fontWeight: 600 }}>
+                    {getCountdown(bet.deadline)}
                   </Typography>
+                  <Typography variant="caption" color="text.secondary"> · Stake: {bet.stake_points} pts</Typography>
                 </Box>
                 <Button
                   size="small"

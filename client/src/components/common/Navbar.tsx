@@ -22,6 +22,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import BoltIcon from '@mui/icons-material/Bolt';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -147,6 +148,30 @@ const Navbar: React.FC = () => {
                   >
                     Groups
                   </Button>
+                  {(user.current_streak ?? 0) > 0 && (
+                    <Chip
+                      icon={
+                        <LocalFireDepartmentIcon sx={{
+                          color: '#F59E0B !important',
+                          '@keyframes flamePulse': {
+                            '0%':   { transform: 'scale(1)',    filter: 'drop-shadow(0 0 3px #F59E0B)' },
+                            '50%':  { transform: 'scale(1.25)', filter: 'drop-shadow(0 0 8px #F59E0B)' },
+                            '100%': { transform: 'scale(1)',    filter: 'drop-shadow(0 0 3px #F59E0B)' },
+                          },
+                          animation: 'flamePulse 2s ease-in-out infinite',
+                        }} />
+                      }
+                      label={`${user.current_streak}d`}
+                      size="small"
+                      sx={{
+                        bgcolor: 'rgba(245,158,11,0.12)',
+                        border: '1px solid rgba(245,158,11,0.3)',
+                        color: '#F59E0B',
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                      }}
+                    />
+                  )}
                   <Chip
                     component={RouterLink}
                     to={`/profile/${user.id}`}
@@ -229,8 +254,27 @@ const Navbar: React.FC = () => {
               <Avatar src={user.avatarUrl || undefined} sx={{ width: 44, height: 44, border: '2px solid rgba(245,158,11,0.4)' }}>
                 {user.name?.charAt(0).toUpperCase()}
               </Avatar>
-              <Box>
-                <Typography variant="body1" sx={{ fontWeight: 700 }}>{user.name}</Typography>
+              <Box sx={{ flexGrow: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 700 }}>{user.name}</Typography>
+                  {(user.current_streak ?? 0) > 0 && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                      <LocalFireDepartmentIcon sx={{
+                        fontSize: 16,
+                        color: '#F59E0B',
+                        '@keyframes flamePulse': {
+                          '0%':   { transform: 'scale(1)',    filter: 'drop-shadow(0 0 3px #F59E0B)' },
+                          '50%':  { transform: 'scale(1.25)', filter: 'drop-shadow(0 0 8px #F59E0B)' },
+                          '100%': { transform: 'scale(1)',    filter: 'drop-shadow(0 0 3px #F59E0B)' },
+                        },
+                        animation: 'flamePulse 2s ease-in-out infinite',
+                      }} />
+                      <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700 }}>
+                        {user.current_streak}d
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
                 <Typography variant="caption" color="text.secondary">{user.email}</Typography>
               </Box>
             </Box>

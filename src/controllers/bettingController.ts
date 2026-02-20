@@ -122,6 +122,52 @@ export const cancelBet = catchAsync(async (req: Request, res: Response, _next: N
 });
 
 /**
+ * POST /bets/resolve-webhook
+ * Sweeps all active bets whose deadline has passed and marks them 'lost'.
+ * Stake was already deducted on creation, so no further points adjustment is needed.
+ * Intended to be called by a scheduled cron job (e.g. Railway cron, Supabase pg_cron).
+ * Forfeited totals are logged for charity/escrow processing in production.
+ */
+export const resolveExpiredBets = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const now = new Date().toISOString();
+
+  const { data: expiredBets, error } = await supabase
+    .from('bets')
+    .select('*')
+    .eq('status', 'active')
+    .lt('deadline', now);
+
+  if (error) throw new InternalServerError('Failed to fetch expired bets.');
+
+  if (!expiredBets || expiredBets.length === 0) {
+    return res.json({ resolved: 0, message: 'No expired bets found.' });
+  }
+
+  let resolved = 0;
+  let totalForfeited = 0;
+
+  for (const bet of expiredBets) {
+    const { error: updateErr } = await supabase
+      .from('bets')
+      .update({ status: 'lost' })
+      .eq('id', bet.id);
+
+    if (!updateErr) {
+      resolved++;
+      totalForfeited += bet.stake_points;
+      logger.info(`Bet ${bet.id} EXPIRED/LOST for user ${bet.user_id}: ${bet.stake_points} pts forfeited`);
+    }
+  }
+
+  // STUB: in production, route forfeited real-money stakes to charity escrow via Stripe transfer
+  if (totalForfeited > 0) {
+    logger.info(`[CHARITY STUB] ${totalForfeited} pts forfeited across ${resolved} bets — would trigger Stripe transfer to charity escrow in production`);
+  }
+
+  res.json({ resolved, totalForfeited, message: `${resolved} expired bet(s) resolved.` });
+});
+
+/**
  * Internal: called from completionController when a goal is peer-verified as approved.
  * Resolves any active bets on the given goalNodeId for that user as 'won',
  * and awards double the stake_points back as winnings.
