@@ -23,8 +23,13 @@ import {
   ListItemText,
   ListItemButton,
   Avatar,
+  Stack,
+  TextField,
+  Chip,
 } from '@mui/material';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   const nodeMap = new Map<string, FrontendGoalNode>();
@@ -67,11 +72,23 @@ const GoalTreePage: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [isOwnTree, setIsOwnTree] = useState(true);
 
-  // Claim completion dialog state
+  // Peer verification claim dialog state
   const [claimNode, setClaimNode] = useState<FrontendGoalNode | null>(null);
   const [dmPartners, setDmPartners] = useState<DMPartner[]>([]);
   const [selectedVerifier, setSelectedVerifier] = useState<DMPartner | null>(null);
   const [submittingClaim, setSubmittingClaim] = useState(false);
+
+  // Mark Complete (achievement) dialog state
+  const [achieveNode, setAchieveNode] = useState<FrontendGoalNode | null>(null);
+  const [claimingAchievement, setClaimingAchievement] = useState(false);
+
+  // Betting state
+  const [betNode, setBetNode] = useState<FrontendGoalNode | null>(null);
+  const [betDeadline, setBetDeadline] = useState('');
+  const [betStake, setBetStake] = useState(10);
+  const [placingBet, setPlacingBet] = useState(false);
+  const [userBets, setUserBets] = useState<any[]>([]);
+  const [praxisPoints, setPraxisPoints] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchGoalTree = async () => {
@@ -95,6 +112,16 @@ const GoalTreePage: React.FC = () => {
         const goalTree = response.data;
         const allNodes: any[] = goalTree.nodes || [];
         setTreeData(buildFrontendTree(allNodes));
+
+        // Load bets + points for own tree
+        if (!id || id === authUser?.id) {
+          const [betsRes, profileRes] = await Promise.allSettled([
+            axios.get(`${API_URL}/bets/${userId}`),
+            supabase.from('profiles').select('praxis_points').eq('id', userId).single(),
+          ]);
+          if (betsRes.status === 'fulfilled') setUserBets(betsRes.value.data || []);
+          if (profileRes.status === 'fulfilled') setPraxisPoints(profileRes.value.data?.praxis_points ?? null);
+        }
       } catch (err: any) {
         if (err.response?.status === 404) {
           setTreeData([]);
@@ -133,14 +160,77 @@ const GoalTreePage: React.FC = () => {
   };
 
   const handleNodeClick = (node: FrontendGoalNode) => {
-    if (!isOwnTree) return; // Can't claim on someone else's tree
+    if (!isOwnTree) return;
     if (node.progress >= 100) {
-      toast('This goal is already marked complete!', { icon: '✅' });
+      // 100% — offer to post achievement to community feed
+      setAchieveNode(node);
       return;
     }
+    // < 100% — peer verification flow
     setClaimNode(node);
     setSelectedVerifier(null);
     if (currentUserId) fetchDMPartners(currentUserId);
+  };
+
+  const handlePlaceBet = async () => {
+    if (!betNode || !currentUserId || !betDeadline || betStake < 1) return;
+    setPlacingBet(true);
+    try {
+      const res = await axios.post(`${API_URL}/bets`, {
+        userId: currentUserId,
+        goalNodeId: betNode.id,
+        goalName: betNode.title,
+        deadline: new Date(betDeadline).toISOString(),
+        stakePoints: betStake,
+      });
+      setUserBets((prev) => [res.data, ...prev]);
+      setPraxisPoints((p) => (p !== null ? p - betStake : null));
+      toast.success(`Bet placed! ${betStake} Praxis Points at stake.`);
+      setBetNode(null);
+      setBetDeadline('');
+      setBetStake(10);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to place bet.');
+    } finally {
+      setPlacingBet(false);
+    }
+  };
+
+  const handleCancelBet = async (betId: string) => {
+    if (!currentUserId) return;
+    try {
+      const res = await axios.delete(`${API_URL}/bets/${betId}`, { data: { userId: currentUserId } });
+      setUserBets((prev) => prev.filter((b) => b.id !== betId));
+      setPraxisPoints((p) => (p !== null ? p + res.data.refunded : null));
+      toast.success(`Bet cancelled — points refunded.`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to cancel bet.');
+    }
+  };
+
+  const handleClaimAchievement = async () => {
+    if (!achieveNode || !currentUserId) return;
+    setClaimingAchievement(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: profile } = await supabase.from('profiles').select('name, avatar_url').eq('id', currentUserId).single();
+      await axios.post(`${API_URL}/achievements`, {
+        userId: currentUserId,
+        userName: profile?.name || 'Praxis User',
+        userAvatarUrl: profile?.avatar_url || undefined,
+        goalNodeId: achieveNode.id,
+        title: achieveNode.title,
+        description: achieveNode.description,
+        domain: achieveNode.domain,
+      }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+      toast.success('🏆 Achievement posted to the community feed!');
+      setAchieveNode(null);
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to post achievement.');
+    } finally {
+      setClaimingAchievement(false);
+    }
   };
 
   const handleSendClaim = async () => {
@@ -184,11 +274,21 @@ const GoalTreePage: React.FC = () => {
         <Typography variant="h4" component="h1" sx={{ color: 'primary.main' }}>
           {isOwnTree ? 'Your Goal Tree' : 'Goal Tree'}
         </Typography>
-        {isOwnTree && treeData.length > 0 && (
-          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-            Click any node to request peer verification
-          </Typography>
-        )}
+        <Stack direction="row" spacing={1} alignItems="center">
+          {isOwnTree && praxisPoints !== null && (
+            <Chip
+              icon={<LocalFireDepartmentIcon sx={{ color: '#F59E0B !important' }} />}
+              label={`${praxisPoints} pts`}
+              size="small"
+              sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', fontWeight: 700 }}
+            />
+          )}
+          {isOwnTree && treeData.length > 0 && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+              Click node to verify or bet
+            </Typography>
+          )}
+        </Stack>
       </Box>
 
       {treeData.length === 0 ? (
@@ -217,6 +317,76 @@ const GoalTreePage: React.FC = () => {
           />
         </Box>
       )}
+
+      {/* Active bets list */}
+      {isOwnTree && userBets.filter((b) => b.status === 'active').length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'primary.main' }}>
+            Active Bets
+          </Typography>
+          <Stack spacing={1.5}>
+            {userBets.filter((b) => b.status === 'active').map((bet) => (
+              <Box
+                key={bet.id}
+                sx={{
+                  p: 2, borderRadius: 2,
+                  bgcolor: 'rgba(245,158,11,0.06)',
+                  border: '1px solid rgba(245,158,11,0.2)',
+                  display: 'flex', alignItems: 'center', gap: 2,
+                }}
+              >
+                <LocalFireDepartmentIcon sx={{ color: '#F59E0B' }} />
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{bet.goal_name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Deadline: {new Date(bet.deadline).toLocaleDateString()} · Stake: {bet.stake_points} pts
+                  </Typography>
+                </Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  onClick={() => handleCancelBet(bet.id)}
+                  sx={{ borderRadius: 2, flexShrink: 0 }}
+                >
+                  Cancel
+                </Button>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+      )}
+
+      {/* Mark Complete — claim achievement dialog */}
+      <Dialog open={!!achieveNode} onClose={() => setAchieveNode(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <EmojiEventsIcon sx={{ color: '#F59E0B' }} />
+            Post Achievement
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <strong style={{ color: '#F59E0B' }}>{achieveNode?.title}</strong> is 100% complete!
+            Share this win with the Praxis community?
+          </Typography>
+          <Typography variant="caption" color="text.disabled">
+            It will appear in the Global Achievements feed on the Dashboard.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setAchieveNode(null)}>Not now</Button>
+          <Button
+            variant="contained"
+            onClick={handleClaimAchievement}
+            disabled={claimingAchievement}
+            startIcon={<EmojiEventsIcon />}
+            sx={{ background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)' }}
+          >
+            {claimingAchievement ? 'Posting…' : 'Post to Feed'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Claim completion dialog */}
       <Dialog open={!!claimNode} onClose={() => setClaimNode(null)} maxWidth="sm" fullWidth>
@@ -256,14 +426,76 @@ const GoalTreePage: React.FC = () => {
             </List>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => setClaimNode(null)}>Cancel</Button>
+          <Button
+            variant="outlined"
+            startIcon={<LocalFireDepartmentIcon />}
+            onClick={() => { setBetNode(claimNode); setClaimNode(null); }}
+            sx={{ color: '#F59E0B', borderColor: '#F59E0B' }}
+          >
+            Bet Instead
+          </Button>
           <Button
             variant="contained"
             disabled={!selectedVerifier || submittingClaim}
             onClick={handleSendClaim}
           >
             {submittingClaim ? 'Sending…' : 'Send Verification Request'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Betting dialog */}
+      <Dialog open={!!betNode} onClose={() => setBetNode(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <LocalFireDepartmentIcon sx={{ color: '#F59E0B' }} />
+            Bet on this Goal
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Stake Praxis Points on completing{' '}
+            <strong style={{ color: '#F59E0B' }}>{betNode?.title}</strong> by a deadline.
+            Win 2× your stake when peer-verified!
+          </Typography>
+          {praxisPoints !== null && (
+            <Typography variant="caption" sx={{ mb: 2, display: 'block', color: '#F59E0B', fontWeight: 700 }}>
+              Your balance: {praxisPoints} pts
+            </Typography>
+          )}
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              fullWidth
+              size="small"
+              type="date"
+              label="Deadline"
+              InputLabelProps={{ shrink: true }}
+              value={betDeadline}
+              onChange={(e) => setBetDeadline(e.target.value)}
+              inputProps={{ min: new Date().toISOString().slice(0, 10) }}
+            />
+            <TextField
+              fullWidth
+              size="small"
+              type="number"
+              label="Stake (Praxis Points)"
+              value={betStake}
+              onChange={(e) => setBetStake(Math.max(1, parseInt(e.target.value) || 1))}
+              inputProps={{ min: 1, max: praxisPoints ?? 999 }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setBetNode(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handlePlaceBet}
+            disabled={placingBet || !betDeadline || betStake < 1}
+            sx={{ background: 'linear-gradient(135deg, #F59E0B, #EF4444)' }}
+          >
+            {placingBet ? 'Placing…' : `Bet ${betStake} pts`}
           </Button>
         </DialogActions>
       </Dialog>

@@ -16,6 +16,7 @@ import analyticsRoutes from './routes/analyticsRoutes';
 import adminRoutes from './routes/adminRoutes';
 import completionRoutes from './routes/completionRoutes';
 import groupRoutes from './routes/groupRoutes';
+import bettingRoutes from './routes/bettingRoutes';
 
 import { notFoundHandler, errorHandler } from './middleware/errorHandler'; // Import error handling middleware
 
@@ -38,6 +39,7 @@ app.use('/analytics', analyticsRoutes); // Use analytics routes
 app.use('/admin', adminRoutes); // Admin-only endpoints (protected by X-Admin-Secret header)
 app.use('/completions', completionRoutes); // Peer goal-completion verification
 app.use('/groups', groupRoutes); // Group chat rooms
+app.use('/bets', bettingRoutes); // Goal betting (Praxis Points)
 
 // Error Handling Middleware - MUST be last
 app.use(notFoundHandler);

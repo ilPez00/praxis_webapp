@@ -11,6 +11,27 @@ const matchingEngine = new MatchingEngineService();
 export const getMatchesForUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.params;
 
+  // --- Fast path: pgvector RPC (requires goal_embeddings table + GEMINI_API_KEY) ---
+  try {
+    const { data: rpcMatches, error: rpcError } = await supabase.rpc('match_users_by_goals', {
+      query_user_id: userId,
+      match_limit: 20,
+    });
+    if (!rpcError && rpcMatches && rpcMatches.length > 0) {
+      logger.info(`pgvector matched ${rpcMatches.length} users for ${userId}`);
+      return res.json(
+        rpcMatches.map((m: { matched_user_id: string; score: number }) => ({
+          userId: m.matched_user_id,
+          score: Math.min(1, Math.max(0, m.score)),
+        }))
+      );
+    }
+  } catch (_) {
+    // pgvector not available or table missing — fall through to O(n²) approach
+  }
+
+  // --- Slow path: O(n²) goal tree comparison ---
+
   // 1. Fetch the requesting user's goal tree
   const { data: userGoalTree, error: userGoalTreeError } = await supabase
     .from('goal_trees')

@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import logger from '../utils/logger'; // Import the logger
+import logger from '../utils/logger';
+import { supabase } from '../lib/supabaseClient';
 
 /**
  * EmbeddingService wraps the Google Gemini text embedding model for semantic similarity.
@@ -53,6 +54,35 @@ export class EmbeddingService {
     } catch (error) {
       logger.error('Error generating embedding:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Generates embeddings for a list of goal nodes and upserts them into the
+   * `goal_embeddings` table for later use by the pgvector RPC matcher.
+   * Called fire-and-forget from goalController after every goal tree save.
+   * Silently skips if the service is unavailable.
+   */
+  public async generateAndStoreEmbeddings(
+    userId: string,
+    nodes: { id: string; domain: string; name: string; customDetails?: string }[],
+  ): Promise<void> {
+    if (!this.available) return;
+    for (const node of nodes) {
+      const text = `${node.name}. ${node.customDetails || ''}`.trim();
+      try {
+        const embedding = await this.getEmbedding(text);
+        await supabase.from('goal_embeddings').upsert({
+          user_id: userId,
+          goal_node_id: node.id,
+          domain: node.domain,
+          node_name: node.name,
+          embedding,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,goal_node_id' });
+      } catch (err) {
+        logger.error(`Failed to store embedding for node ${node.id}:`, err);
+      }
     }
   }
 

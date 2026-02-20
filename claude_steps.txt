@@ -22,6 +22,60 @@ Previous development (Sessions 1–9) was completed by Gemini CLI. The following
 
 ---
 
+## SSH Key (saved for reference)
+
+Machine: /home/gio (Linux dev box)
+Public key (`~/.ssh/id_ed25519.pub`):
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO1eduMBO+0sGWDfXeqJ51/F2ElVuOEz7HNCTUU6bObY pezzingiovanniantonio@gmail.com
+
+Added to: github.com/settings/keys (title: "Praxis dev machine")
+Remote: git@github.com:ilPez00/praxis_webapp.git (SSH, not HTTPS)
+Status: ✅ Authorized + pushing
+
+---
+
+## Session 19 — Claude Code (2026-02-20 cont.) — Phases 2B/2C/3A/3B/3C
+
+### Completed this session:
+
+**Phase 2B — Gemini embeddings + pgvector RPC:**
+- `EmbeddingService.ts`: Added `generateAndStoreEmbeddings(userId, nodes)` — upserts 768-dim embeddings into `goal_embeddings` table per node
+- `goalController.ts`: Fire-and-forget embedding generation after every goal tree save (when GEMINI_API_KEY is set)
+- `matchingController.ts`: Tries `match_users_by_goals` Supabase RPC first (pgvector cosine); falls back to existing O(n²) tree comparison when RPC returns empty or errors
+- SQL in `manual_actions.txt` Steps 10A–10D: pgvector extension, `goal_embeddings` table, `match_users_by_goals` RPC function
+
+**Phase 2C — Mutual grading stub:**
+- `ChatRoom.tsx`: "End Session" button added to header
+- Auto-trigger grading dialog after user sends 5 messages (one-shot, resets per session)
+- Grading dialog: grade dropdown (all FeedbackGrade values) + goal picker + optional comment + submit
+- After submit: broadcasts `grading-submitted` event; shows "Waiting for partner..." state
+- On receiving partner's `grading-submitted`: toast "Both submitted — weights recalibrated!"
+
+**Phase 3A — Mark Complete button:**
+- `GoalTreePage.tsx`: clicking a 100%-progress node (own tree) now opens "Claim Achievement" dialog
+- Dialog posts to `POST /achievements` and shows toast; no duplicate check (beta stub)
+
+**Phase 3B — Achievement detail modal:**
+- `DashboardPage.tsx`: achievement cards now clickable (replaced comment icon with card click)
+- Enhanced dialog shows: avatar, domain chip, title, description, vote buttons, comment list, comment input
+
+**Phase 3C — Betting stub:**
+- Backend: `bettingController.ts` (createBet, getUserBets, cancelBet) + `bettingRoutes.ts` (POST /bets, GET /bets/:userId, DELETE /bets/:betId)
+- Mounted at `/bets` in `src/index.ts`
+- Bet resolution: in `completionController.respondToCompletionRequest` — on approval, marks active bets on that goal_node_id as 'won' and awards points
+- Frontend: `GoalTreePage.tsx` — "Bet" chip on non-100% own nodes opens betting dialog (deadline, stake)
+- Bets list section below GoalTree shows active bets with countdown + cancel button
+- SQL in `manual_actions.txt` Steps 11A–11B: `bets` table + `praxis_points` column
+
+**TypeScript:** 0 errors frontend + backend
+
+### Next priorities:
+- Phase 1E: Smoke test full flow (user must run the app + demo users)
+- Run SQL Steps 10A–10D (pgvector) + Steps 11A–11B (bets)
+- Deploy Railway + Vercel (manual_actions.txt Steps 11–12)
+
+---
+
 ## Session 18 — Claude Code (2026-02-20 cont.) — Phase 1D + auto-achievement
 
 ### Completed this session:

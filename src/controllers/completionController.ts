@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, BadRequestError, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors';
 import { createAchievementFromGoal } from './achievementController';
+import { resolveBetsOnGoalCompletion } from './bettingController';
 
 /**
  * POST /completions
@@ -91,6 +92,9 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
         .from('goal_trees')
         .update({ nodes: updatedNodes })
         .eq('userId', request.requester_id);
+
+      // Resolve any active bets on this goal (non-fatal)
+      await resolveBetsOnGoalCompletion(request.requester_id, request.goal_node_id);
 
       // Auto-create achievement in the community feed for the completed goal
       const completedNode = (tree.nodes as any[]).find((n: any) => n.id === request.goal_node_id);

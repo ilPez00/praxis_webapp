@@ -1,11 +1,14 @@
-import { Request, Response, NextFunction } from 'express'; // Import NextFunction
-import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
-import { GoalTree } from '../models/GoalTree'; // Type definition for GoalTree
-import { GoalNode } from '../models/GoalNode'; // Type definition for GoalNode
-import { Domain } from '../models/Domain'; // Enum for Goal Domain
-import { createAchievementFromGoal } from './achievementController'; // Import function to create achievements from goals
-import logger from '../utils/logger'; // Import the logger
-import { catchAsync, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
+import { Request, Response, NextFunction } from 'express';
+import { supabase } from '../lib/supabaseClient';
+import { GoalTree } from '../models/GoalTree';
+import { GoalNode } from '../models/GoalNode';
+import { Domain } from '../models/Domain';
+import { createAchievementFromGoal } from './achievementController';
+import { EmbeddingService } from '../services/EmbeddingService';
+import logger from '../utils/logger';
+import { catchAsync, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors';
+
+const embeddingService = new EmbeddingService();
 
 /**
  * @description Computes the new streak values based on last activity date.
@@ -212,6 +215,11 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       logger.warn('Could not update goal_tree_edit_count/streak (columns may not exist yet):', incrementErr);
     }
 
+    // Fire-and-forget: generate + store embeddings for semantic matching
+    embeddingService.generateAndStoreEmbeddings(userId, safeRootNodes).catch((e) =>
+      logger.error('Embedding generation failed (non-fatal):', e)
+    );
+
     res.json(data); // Respond with the updated goal tree
   } else {
     // If no tree exists, create a new one
@@ -233,6 +241,11 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     } catch (streakErr) {
       logger.warn('Could not update streak on initial save:', streakErr);
     }
+
+    // Fire-and-forget: generate + store embeddings for semantic matching
+    embeddingService.generateAndStoreEmbeddings(userId, safeRootNodes).catch((e) =>
+      logger.error('Embedding generation failed (non-fatal):', e)
+    );
 
     res.status(201).json(data); // Respond with the newly created goal tree
   }

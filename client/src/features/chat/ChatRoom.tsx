@@ -44,6 +44,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import CallIcon from '@mui/icons-material/Call';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
 const ChatRoom: React.FC = () => {
   const { user1Id, user2Id } = useParams<{ user1Id: string; user2Id: string }>();
@@ -74,6 +75,13 @@ const ChatRoom: React.FC = () => {
   const [videoCallOpen, setVideoCallOpen] = useState(false);
   const [isCallInitiator, setIsCallInitiator] = useState(false);
   const [incomingCall, setIncomingCall] = useState(false);
+
+  // Mutual grading
+  const [sentMessageCount, setSentMessageCount] = useState(0);
+  const [gradingTriggered, setGradingTriggered] = useState(false);
+  const [showGradingDialog, setShowGradingDialog] = useState(false);
+  const [gradingSubmitted, setGradingSubmitted] = useState(false);
+  const [partnerGradedReceived, setPartnerGradedReceived] = useState(false);
 
   // Goal-focused chat
   const [searchParams] = useSearchParams();
@@ -171,6 +179,9 @@ const ChatRoom: React.FC = () => {
         setIsCallInitiator(false);
         toast('Call declined.', { icon: '📵' });
       })
+      .on('broadcast', { event: 'grading-submitted' }, () => {
+        setPartnerGradedReceived(true);
+      })
       .subscribe();
 
     return () => {
@@ -194,6 +205,14 @@ const ChatRoom: React.FC = () => {
     }
   }, [focusGoalId, showFeedbackForm]);
 
+  // When both parties have graded, close dialog and celebrate
+  useEffect(() => {
+    if (gradingSubmitted && partnerGradedReceived) {
+      setShowGradingDialog(false);
+      toast.success('Both grades submitted — goal weights recalibrated!', { icon: '🤝', duration: 5000 });
+    }
+  }, [gradingSubmitted, partnerGradedReceived]);
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentUserId || !user2Id) return;
     try {
@@ -204,8 +223,45 @@ const ChatRoom: React.FC = () => {
         ...(focusGoalId ? { goalNodeId: focusGoalId } : {}),
       });
       setNewMessage('');
+      const newCount = sentMessageCount + 1;
+      setSentMessageCount(newCount);
+      // Auto-trigger grading dialog after 5 sent messages (one-shot per session)
+      if (newCount >= 5 && !gradingTriggered) {
+        setGradingTriggered(true);
+        setShowGradingDialog(true);
+      }
     } catch (error) {
       console.error('Send message error:', error);
+    }
+  };
+
+  const handleSubmitGrading = async () => {
+    if (!currentUserId || !user2Id || !selectedGoalNode || !selectedGrade) {
+      toast.error('Please select a goal and a grade.');
+      return;
+    }
+    setSubmittingFeedback(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await axios.post(`${API_URL}/feedback`, {
+        giverId: currentUserId,
+        receiverId: user2Id,
+        goalNodeId: selectedGoalNode,
+        grade: selectedGrade,
+        comment: feedbackComment,
+      }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+      // Notify partner via broadcast
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'grading-submitted',
+        payload: { from: currentUserId },
+      });
+      setGradingSubmitted(true);
+      toast.success('Grade submitted!');
+    } catch {
+      toast.error('Failed to submit grade. Please try again.');
+    } finally {
+      setSubmittingFeedback(false);
     }
   };
 
@@ -642,6 +698,21 @@ const ChatRoom: React.FC = () => {
               Feedback
             </Button>
           </Tooltip>
+          <Tooltip title="End session &amp; grade">
+            <Button
+              size="small"
+              startIcon={<EmojiEventsIcon sx={{ fontSize: '16px !important' }} />}
+              onClick={() => setShowGradingDialog(true)}
+              sx={{
+                color: 'text.secondary',
+                borderColor: 'divider',
+                border: '1px solid', borderRadius: 3, mr: 0.5,
+                '&:hover': { color: '#F59E0B', borderColor: '#F59E0B' },
+              }}
+            >
+              Grade
+            </Button>
+          </Tooltip>
           <Tooltip title="Video call">
             <IconButton
               size="small"
@@ -841,6 +912,86 @@ const ChatRoom: React.FC = () => {
         <DialogActions>
           <Button size="small" onClick={() => setShowGoalPicker(false)}>Cancel</Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Mutual grading dialog */}
+      <Dialog open={showGradingDialog} onClose={() => !gradingSubmitted && setShowGradingDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <EmojiEventsIcon sx={{ color: '#F59E0B' }} />
+            Grade this Session
+            <IconButton
+              size="small"
+              onClick={() => setShowGradingDialog(false)}
+              sx={{ ml: 'auto', color: 'text.disabled' }}
+              disabled={gradingSubmitted}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {gradingSubmitted ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <EmojiEventsIcon sx={{ fontSize: 56, color: '#F59E0B', mb: 2 }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Grade submitted!</Typography>
+              <Typography color="text.secondary">
+                {partnerGradedReceived
+                  ? '✅ Both grades in — weights recalibrated!'
+                  : 'Waiting for ' + receiverName + ' to grade…'}
+              </Typography>
+            </Box>
+          ) : (
+            <Stack spacing={2.5} sx={{ mt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                How did <strong>{receiverName}</strong> perform toward their goals this session?
+              </Typography>
+              <FormControl fullWidth size="small">
+                <InputLabel>Their Goal</InputLabel>
+                <Select
+                  label="Their Goal"
+                  value={selectedGoalNode}
+                  onChange={(e) => setSelectedGoalNode(e.target.value)}
+                >
+                  {(receiverGoalTree?.nodes || []).map((n: any) => (
+                    <MenuItem key={n.id} value={n.id}>{n.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>Grade</InputLabel>
+                <Select
+                  label="Grade"
+                  value={selectedGrade}
+                  onChange={(e) => setSelectedGrade(e.target.value as any)}
+                >
+                  {Object.values(FeedbackGrade).map((g) => (
+                    <MenuItem key={g} value={g}>{g}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                fullWidth size="small" multiline rows={2}
+                label="Comment (optional)"
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+              />
+            </Stack>
+          )}
+        </DialogContent>
+        {!gradingSubmitted && (
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setShowGradingDialog(false)}>Skip</Button>
+            <Button
+              variant="contained"
+              onClick={handleSubmitGrading}
+              disabled={submittingFeedback || !selectedGoalNode}
+              sx={{ px: 3 }}
+            >
+              {submittingFeedback ? 'Submitting…' : 'Submit Grade'}
+            </Button>
+          </DialogActions>
+        )}
       </Dialog>
 
       {/* Incoming call dialog */}

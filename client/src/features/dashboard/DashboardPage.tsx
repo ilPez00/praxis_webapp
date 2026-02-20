@@ -611,13 +611,16 @@ const DashboardPage: React.FC = () => {
               <Typography variant="h5" sx={{ fontWeight: 800, mb: 4 }}>Global Achievements</Typography>
               <Stack spacing={3}>
                 {achievements.slice(0, 3).map((achievement) => (
-                  <GlassCard 
+                  <GlassCard
                     key={achievement.id}
-                    sx={{ 
-                      p: 3, 
-                      bgcolor: 'rgba(255,255,255,0.01)', 
+                    onClick={() => handleOpenComments(achievement)}
+                    sx={{
+                      p: 3,
+                      bgcolor: 'rgba(255,255,255,0.01)',
                       border: '1px solid rgba(255,255,255,0.04)',
-                      borderRadius: '20px'
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      '&:hover': { border: '1px solid rgba(245,158,11,0.3)', bgcolor: 'rgba(245,158,11,0.03)' },
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
@@ -676,16 +679,50 @@ const DashboardPage: React.FC = () => {
         </Grid>
       </Container>
 
-      {/* Comments Dialog (Unchanged Logic) */}
+      {/* Achievement Detail Modal */}
       <Dialog open={openCommentsDialog} onClose={handleCloseComments} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          Insights for "{selectedAchievement?.title}"
-          <IconButton
-            onClick={handleCloseComments}
-            sx={{ position: 'absolute', right: 8, top: 8, color: 'text.secondary' }}
-          >
-            <CloseIcon />
-          </IconButton>
+        <DialogTitle sx={{ pb: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+            <Avatar src={selectedAchievement?.userAvatarUrl || undefined} sx={{ width: 48, height: 48 }}>
+              {selectedAchievement?.userName?.charAt(0)}
+            </Avatar>
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                {selectedAchievement?.userName}
+              </Typography>
+              <Chip
+                label={selectedAchievement?.domain}
+                size="small"
+                sx={{
+                  height: 18, fontSize: '0.6rem', fontWeight: 800,
+                  bgcolor: `${DOMAIN_COLORS[selectedAchievement?.domain as Domain]}15`,
+                  color: DOMAIN_COLORS[selectedAchievement?.domain as Domain],
+                }}
+              />
+            </Box>
+            <IconButton onClick={handleCloseComments} size="small" sx={{ color: 'text.secondary' }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 800, mt: 1.5 }}>
+            {selectedAchievement?.title}
+          </Typography>
+          {selectedAchievement?.description && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {selectedAchievement.description}
+            </Typography>
+          )}
+          <Stack direction="row" spacing={2} sx={{ mt: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <IconButton size="small" onClick={() => selectedAchievement && handleVote(selectedAchievement.id, 'upvote')} sx={{ p: 0.5 }}>
+                <ThumbUpIcon fontSize="small" sx={{ color: 'primary.main' }} />
+              </IconButton>
+              <Typography variant="caption" sx={{ fontWeight: 700 }}>{selectedAchievement?.totalUpvotes}</Typography>
+            </Box>
+            <Typography variant="caption" sx={{ alignSelf: 'center', opacity: 0.5 }}>
+              {selectedAchievement && new Date(selectedAchievement.createdAt).toLocaleDateString()}
+            </Typography>
+          </Stack>
         </DialogTitle>
         <DialogContent dividers>
           {commentsLoading ? (

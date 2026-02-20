@@ -45,7 +45,7 @@ If you just want to run the app locally NOW, do only these 5 things:
 FULL SETUP CHECKLIST  (tick each box as you complete it)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  [ ] 0   Push code to GitHub (authorize SSH key, git push)
+  [x] 0   Push code to GitHub (authorize SSH key, git push) ✓ DONE
   [ ] 1A  Stripe secret key rolled / set in .env
   [ ] 1B  Supabase anon key rotated / set in client/.env
   [ ] 1C  Supabase service role key rotated / set in .env
@@ -78,7 +78,10 @@ FULL SETUP CHECKLIST  (tick each box as you complete it)
   [ ] 11  Backend deployed to Railway
   [ ] 12  Frontend deployed to Vercel
   [ ] 13  Demo users seeded via POST /admin/seed-demo-users
-  [ ] 14  SSH key authorized at github.com/settings/keys
+  [x] 14  SSH key authorized at github.com/settings/keys ✓ DONE
+  [ ] 15  pgvector extension + goal_embeddings table + match_users_by_goals RPC → Step 10
+  [ ] 16  bets table + praxis_points column on profiles → Step 11
+  [ ] 17  GEMINI_API_KEY set in .env (required for embedding-based matching)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 0 — PUSH CODE TO GITHUB
@@ -911,6 +914,118 @@ STEP 13 — SEED DEMO USERS (run after Railway is deployed)
     - name, bio, avatar_url filled in
     - onboarding_completed = true
     - is_demo = true
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 10 — PGVECTOR + EMBEDDINGS  (Semantic matching — run after Step 5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHERE: Supabase → SQL Editor → New query
+WHY:   Enables semantic goal matching via stored embeddings instead of O(n²) live calls
+NOTE:  Requires GEMINI_API_KEY in .env — without it the fallback (domain overlap) is used
+
+Run each block separately in order:
+
+─── 10A. Enable pgvector extension ─────────────────────────────────────────────
+
+  CREATE EXTENSION IF NOT EXISTS vector;
+
+  ✓ Success: no error. If it says "already exists" that's fine.
+
+─── 10B. Create goal_embeddings table ───────────────────────────────────────────
+
+  CREATE TABLE IF NOT EXISTS goal_embeddings (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    goal_node_id TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    node_name TEXT NOT NULL,
+    embedding vector(768),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(user_id, goal_node_id)
+  );
+
+  ALTER TABLE goal_embeddings ENABLE ROW LEVEL SECURITY;
+
+  DROP POLICY IF EXISTS "Service role bypass embeddings" ON goal_embeddings;
+  CREATE POLICY "Service role bypass embeddings" ON goal_embeddings USING (true);
+
+  ✓ Success: Table appears in Table Editor.
+
+─── 10C. Create match_users_by_goals RPC ────────────────────────────────────────
+
+  CREATE OR REPLACE FUNCTION match_users_by_goals(
+    query_user_id UUID,
+    match_limit INT DEFAULT 20
+  )
+  RETURNS TABLE(matched_user_id UUID, score FLOAT8)
+  LANGUAGE plpgsql SECURITY DEFINER
+  AS $$
+  BEGIN
+    RETURN QUERY
+    SELECT
+      b.user_id AS matched_user_id,
+      AVG(1.0 - (a.embedding <=> b.embedding))::FLOAT8 AS score
+    FROM goal_embeddings a
+    JOIN goal_embeddings b ON a.domain = b.domain
+    WHERE a.user_id = query_user_id
+      AND b.user_id != query_user_id
+      AND a.embedding IS NOT NULL
+      AND b.embedding IS NOT NULL
+    GROUP BY b.user_id
+    ORDER BY score DESC
+    LIMIT match_limit;
+  END;
+  $$;
+
+  ✓ Success: Function appears in Database → Functions.
+
+─── 10D. Add GEMINI_API_KEY to .env ─────────────────────────────────────────────
+
+  WHERE: praxis_webapp/.env  (and Railway Variables for production)
+
+  Get your API key: https://aistudio.google.com/apikey
+  Add line: GEMINI_API_KEY=AIza...
+
+  ✓ Success: Backend logs "EmbeddingService: ready" instead of the warning.
+  After first goal save, check goal_embeddings table — rows should appear.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 11 — BETS TABLE + PRAXIS POINTS  (Goal betting — run after Step 5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHERE: Supabase → SQL Editor → New query
+WHY:   Adds goal-betting feature: stake Praxis Points on completing goals by a deadline
+
+─── 11A. Add praxis_points to profiles ──────────────────────────────────────────
+
+  ALTER TABLE profiles
+    ADD COLUMN IF NOT EXISTS praxis_points INT DEFAULT 100;
+
+  ✓ Success: Column visible in Table Editor → profiles.
+
+─── 11B. Create bets table ──────────────────────────────────────────────────────
+
+  CREATE TABLE IF NOT EXISTS bets (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    goal_node_id TEXT NOT NULL,
+    goal_name TEXT NOT NULL,
+    deadline TIMESTAMPTZ NOT NULL,
+    stake_points INT DEFAULT 10 CHECK (stake_points >= 1),
+    status TEXT DEFAULT 'active' CHECK (status IN ('active','won','lost','cancelled')),
+    created_at TIMESTAMPTZ DEFAULT now()
+  );
+
+  ALTER TABLE bets ENABLE ROW LEVEL SECURITY;
+
+  DROP POLICY IF EXISTS "Users manage own bets" ON bets;
+  CREATE POLICY "Users manage own bets" ON bets
+    FOR ALL USING (auth.uid() = user_id);
+
+  DROP POLICY IF EXISTS "Service role bypass bets" ON bets;
+  CREATE POLICY "Service role bypass bets" ON bets USING (true);
+
+  ✓ Success: Table appears in Table Editor.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TROUBLESHOOTING
