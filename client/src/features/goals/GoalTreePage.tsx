@@ -209,11 +209,13 @@ const GoalTreePage: React.FC = () => {
           </Button>
         </Box>
       ) : (
-        <GoalTreeVisualization
-          rootNodes={treeData}
-          memberSince={memberSince}
-          onNodeClick={isOwnTree ? handleNodeClick : undefined}
-        />
+        <Box sx={{ overflowX: 'auto', width: '100%' }}>
+          <GoalTreeVisualization
+            rootNodes={treeData}
+            memberSince={memberSince}
+            onNodeClick={isOwnTree ? handleNodeClick : undefined}
+          />
+        </Box>
       )}
 
       {/* Claim completion dialog */}

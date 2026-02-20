@@ -11,7 +11,7 @@ The companion file `manual_actions.txt` contains all required Supabase/Stripe se
 Feel free to delegate tasks to gemini-cli, which you can call by running "gemini" 
 ---
 
-## Project Health (last updated: 2026-02-20 Session 15)
+## Project Health (last updated: 2026-02-20 Session 18)
 
 - Backend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from project root)
 - Frontend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from `client/`)
@@ -365,10 +365,10 @@ With 5–20 users this is fine, but it fails completely when `GEMINI_API_KEY` is
 - [ ] Test: grade a partner → check that their goal weight changes in DB
 
 #### Mobile responsiveness pass
-- [ ] Navbar: add hamburger menu for mobile (collapse nav links into drawer)
-- [ ] ChatRoom: input bar stays above keyboard on iOS (add `env(safe-area-inset-bottom)`)
-- [ ] GoalTreePage: horizontal scroll wrapper for wide tree on small screens
-- **Commit:** `fix: mobile responsiveness — navbar hamburger, chat input, goal tree`
+- [x] Navbar: hamburger menu + Drawer for mobile ✅
+- [x] ChatRoom: `env(safe-area-inset-bottom)` on input bar ✅
+- [x] GoalTreePage: `overflowX: auto` wrapper ✅
+- [x] OnboardingPage: responsive padding/spacing ✅
 
 ---
 
@@ -376,20 +376,17 @@ With 5–20 users this is fine, but it fails completely when `GEMINI_API_KEY` is
 
 #### Achievement creation from GoalTreePage (Step 10 partial)
 - [x] Peer-verified goal completion: click node → pick verifier from DMs → verifier sees card in chat → Verify button sets goal to 100% ✅
-- [ ] On 100%: auto-create `POST /achievements` with `goalNodeId`, `title`, `domain`
-- [ ] Toast: "🏆 Achievement unlocked!" + redirect to dashboard feed
-- **Commit:** `feat: mark goal complete → auto-create achievement`
+- [x] On 100% approval: auto-create achievement via `createAchievementFromGoal()` in `completionController.ts` ✅
+- [ ] Frontend toast "🏆 Achievement unlocked!" after verification approved (future polish)
 
 #### Progress streaks (Step 13)
-- [ ] Supabase: `last_activity_date DATE`, `current_streak INT DEFAULT 0` on profiles
-- [ ] `goalController.ts`: update streak on every goal save
-- [ ] DashboardPage: flame icon + streak count in welcome banner
-- **Commit:** `feat: progress streaks — flame counter on dashboard`
+- [x] Supabase: `last_activity_date DATE`, `current_streak INT DEFAULT 0` on profiles ✅
+- [x] `goalController.ts`: update streak on every goal save ✅
+- [x] DashboardPage: flame icon + streak count in welcome banner ✅
 
 #### Dashboard "Top Matches" widget
-- [ ] Fetch top 3 matches on dashboard load
-- [ ] Show small cards with avatar, name, compatibility %, "Message" CTA
-- **Commit:** `feat: top matches widget on dashboard`
+- [x] Fetch top 3 matches on dashboard load ✅
+- [x] Show cards with avatar, name, compatibility % — "Top Alignments" section ✅
 
 ---
 

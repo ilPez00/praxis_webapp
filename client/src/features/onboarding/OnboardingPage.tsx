@@ -297,8 +297,8 @@ const OnboardingPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ minHeight: '100vh', py: 6, display: 'flex', flexDirection: 'column' }}>
-      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 6 }}>
+    <Container maxWidth="sm" sx={{ minHeight: '100vh', py: { xs: 3, sm: 6 }, display: 'flex', flexDirection: 'column' }}>
+      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: { xs: 3, sm: 6 } }}>
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
@@ -309,7 +309,7 @@ const OnboardingPage: React.FC = () => {
       <Paper
         elevation={0}
         sx={{
-          p: 4,
+          p: { xs: 2, sm: 4 },
           flexGrow: 1,
           borderRadius: '24px',
           bgcolor: 'background.paper',
