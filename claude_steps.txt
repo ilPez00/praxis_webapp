@@ -313,3 +313,30 @@ The most impactful near-term work. Most beta users will be on mobile.
 - [x] GENERATE_SOURCEMAP=false
 
 See `manual_actions.txt` for full Supabase + Stripe setup instructions.
+
+---
+
+## Session 20 (Claude) — Build clean-up
+
+**Date:** 2026-02-20
+
+### Summary
+Cleared all build warnings left from Session 19. Production build is now clean.
+
+### Fixes
+- `client/src/features/chat/ChatRoom.tsx`: Removed stale `useTheme()` call + added `eslint-disable-next-line` on two intentional dep arrays (Supabase channel setup, focusGoalId sync)
+- `client/src/features/chat/VideoCall.tsx`: Added `eslint-disable-next-line` before WebRTC init dep array
+- `client/src/features/groups/GroupChatRoom.tsx`: Removed unused `Button` import
+- `client/src/features/groups/GroupsPage.tsx`: Removed unused `Tooltip` import
+- `client/src/features/identity/IdentityVerificationPage.tsx`: Added `eslint-disable-next-line` for ref capture in cleanup
+
+### Build Status
+- Frontend: ✅ 0 errors, 0 ESLint warnings (441 kB gzip)
+- Backend TS: ✅ 0 errors
+- Pushed to `git@github.com:ilPez00/praxis_webapp.git`
+
+### Next Priorities
+1. 🔴 Run SQL migrations in Supabase (Steps 10A–10D pgvector, 11A–11B bets, 5Q9–5Q13 group chats)
+2. 🔴 Deploy backend to Railway, frontend to Vercel (manual_actions.txt Steps 11–12)
+3. 🟡 Smoke-test full flow: peer verification, video call, group chat, betting
+4. 🟡 Seed demo users after deploy: `POST /admin/seed-demo-users`
