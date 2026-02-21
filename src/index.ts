@@ -26,6 +26,9 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Health check — used by Railway deployment
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/messages', messageRoutes); // Use message routes

@@ -75,7 +75,13 @@ export const getUserBets = catchAsync(async (req: Request, res: Response, _next:
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
-  if (error) throw new InternalServerError('Failed to fetch bets.');
+  if (error) {
+    if (error.message?.includes('schema cache') || error.message?.includes('not found')) {
+      logger.warn('bets table not found — returning empty list. Run migrations/setup.sql.');
+      return res.json([]);
+    }
+    throw new InternalServerError('Failed to fetch bets.');
+  }
   res.json(data || []);
 });
 

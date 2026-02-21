@@ -118,17 +118,21 @@ export const getAchievementById = catchAsync(async (req: Request, res: Response,
  * @param res - The Express response object.
  */
 export const getAchievements = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  // Fetch all achievements from Supabase
   const { data, error } = await supabase
     .from('achievements')
     .select('*')
-    .order('created_at', { ascending: false }); // Order by creation date (newest first)
+    .order('created_at', { ascending: false });
 
+  // Return empty array if table doesn't exist yet (schema cache miss during setup)
   if (error) {
+    if (error.message?.includes('schema cache') || error.message?.includes('not found')) {
+      logger.warn('achievements table not found — returning empty list. Run migrations/setup.sql.');
+      return res.status(200).json([]);
+    }
     handleSupabaseError(error);
   }
 
-  res.status(200).json(data); // Respond with the list of achievements
+  res.status(200).json(data ?? []);
 });
 
 /**

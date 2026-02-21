@@ -26,11 +26,15 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
   const { data, error } = await query;
 
   if (error) {
+    if (error.message?.includes('schema cache') || error.message?.includes('not found')) {
+      logger.warn('messages table not found — returning empty list. Run migrations/setup.sql.');
+      return res.status(200).json([]);
+    }
     logger.error('Supabase error fetching messages:', error.message);
     throw new InternalServerError('Failed to fetch messages.');
   }
 
-  res.status(200).json(data);
+  res.status(200).json(data ?? []);
 });
 
 export const sendMessage = catchAsync(async (req: Request, res: Response, next: NextFunction) => {

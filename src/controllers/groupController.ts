@@ -19,6 +19,10 @@ export const listRooms = catchAsync(async (req: Request, res: Response, next: Ne
 
   const { data, error } = await query;
   if (error) {
+    if (error.message?.includes('schema cache') || error.message?.includes('not found')) {
+      logger.warn('chat_rooms table not found — returning empty list. Run migrations/setup.sql.');
+      return res.json([]);
+    }
     logger.error('Error fetching chat rooms:', error.message);
     throw new InternalServerError('Failed to fetch chat rooms.');
   }

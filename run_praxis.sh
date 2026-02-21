@@ -70,7 +70,7 @@ fi
 echo ""
 info "Backend environment variables:"
 check_var "SUPABASE_URL"              hard "$ROOT/.env"
-check_var "SUPABASE_PUBLISHABLE_KEY"  hard "$ROOT/.env"
+check_var "SUPABASE_SERVICE_ROLE_KEY" hard "$ROOT/.env"
 check_var "STRIPE_SECRET_KEY"         soft "$ROOT/.env"
 check_var "GEMINI_API_KEY"            soft "$ROOT/.env"
 check_var "CLIENT_URL"               soft "$ROOT/.env"

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'; // Import NextFunction
 import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
 import logger from '../utils/logger'; // Import the logger
-import { catchAsync, NotFoundError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
+import { catchAsync, NotFoundError, InternalServerError, BadRequestError } from '../utils/appErrors'; // Import custom errors and catchAsync
 
 /**
  * @description HTTP endpoint to retrieve a user's profile details.
@@ -63,6 +63,21 @@ export const updateUserProfile = catchAsync(async (req: Request, res: Response, 
   }
 
   res.status(200).json({ message: 'User profile updated successfully.', user: data }); // Respond with success message and updated user data
+});
+
+/**
+ * POST /users/complete-onboarding
+ * Marks onboarding_completed = true for the given userId.
+ */
+export const completeOnboarding = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId } = req.body;
+  if (!userId) throw new BadRequestError('userId is required.');
+  const { error } = await supabase
+    .from('profiles')
+    .update({ onboarding_completed: true })
+    .eq('id', userId);
+  if (error) throw new InternalServerError(`Failed to complete onboarding: ${error.message}`);
+  res.status(200).json({ message: 'Onboarding complete.' });
 });
 
 
