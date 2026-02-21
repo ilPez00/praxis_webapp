@@ -45,43 +45,34 @@ If you just want to run the app locally NOW, do only these 5 things:
 FULL SETUP CHECKLIST  (tick each box as you complete it)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  [x] 0   Push code to GitHub (authorize SSH key, git push) ✓ DONE
-  [ ] 1A  Stripe secret key rolled / set in .env
-  [ ] 1B  Supabase anon key rotated / set in client/.env
-  [ ] 1C  Supabase service role key rotated / set in .env
-  [ ] 2   Both .env files fully filled in
-  [ ] 3   (Optional) Google OAuth configured in Supabase
-  [ ] 4   Supabase auth redirect URLs set to include localhost:3000/**
-  [ ] 5Q1 profiles table created + handle_new_user trigger installed
-  [ ] 5Q1B goal_trees table created
-  [ ] 5Q2 user_subscriptions table created
-  [ ] 5Q3 update_profile_premium_status trigger installed
-  [ ] 5Q4 messages table created
-  [ ] 5Q5 goal_tree_edit_count column added to profiles (free re-edit gate)
-  [ ] 5Q6 sex + location columns added to profiles (profile editing)
-  [ ] 5Q7 streak columns added to profiles (progress streaks)
-  [ ] 5Q8 goal_node_id column added to messages (goal-focused chat)
-  [ ] 5Q9 completion_requests table created     → SQL in Step 5 Query 9A
-  [ ] 5Q10 messages upgrade columns             → SQL in Step 5 Query 8B (skip if fresh install)
-  [ ] 5Q11 chat_rooms table created             → SQL in Step 5 Query 9C
-  [ ] 5Q12 chat_room_members table created      → SQL in Step 5 Query 9D
-  [ ] 5Q13 Storage bucket "chat-media" created  → steps in Step 5 Query 9E
-  [ ] 7B  Realtime enabled on messages table    → steps in Step 5 Query 9F
-  [ ] 6A  Stripe product "Praxis Premium" created, price_... set in .env
+  [x] 0   Push code to GitHub ✓ DONE
+  [ ] 1A  Stripe secret key rolled / set in .env          ← MANUAL (Stripe dashboard)
+  [ ] 1B  Supabase anon key rotated / set in client/.env  ← MANUAL (Supabase dashboard)
+  [ ] 1C  Supabase service role key rotated / set in .env ← MANUAL (Supabase dashboard)
+  [x] 2   Both .env files fully filled in ✓ DONE
+  [ ] 3   Google OAuth — credentials exist in google_oauth.txt (DO NOT COMMIT)
+          Paste Client ID+Secret into: Supabase → Auth → Providers → Google
+          Add redirect URI in: Google Cloud Console → OAuth 2.0 Client
+  [ ] 4   Supabase auth redirect URLs set to include localhost:3000/** ← MANUAL
+  [ ] 5   ALL Supabase SQL ← MANUAL — but use the shortcut below:
+          ⚡ SHORTCUT: run the single file migrations/setup.sql in Supabase SQL Editor
+             (covers ALL of 5Q1–5Q13, pgvector, embeddings, bets, challenges)
+  [ ] 5Q13 Storage bucket "chat-media" created → steps in Step 5 Query 9E ← MANUAL
+  [ ] 7B  Realtime enabled on messages table ← MANUAL (Supabase → Database → Replication)
+  [ ] 6A  Stripe product "Praxis Premium" created, price_... set in .env  ← MANUAL
   [ ] 6B  Stripe CLI installed
   [ ] 6C  stripe listen running, whsec_... set in .env
   [ ] 6D  End-to-end payment test passing
-  [ ] 7   Realtime enabled for messages table
-  [ ] 8   completeOnboarding endpoint wired (see Step 8)
-  [ ] 9   recharts + @mui/x-charts installed
-  [ ] 10  (Prod) Stripe webhook registered at production URL
-  [ ] 11  Backend deployed to Railway
-  [ ] 12  Frontend deployed to Vercel
-  [ ] 13  Demo users seeded via POST /admin/seed-demo-users
+  [x] 8   completeOnboarding endpoint wired ✓ DONE (POST /users/complete-onboarding)
+  [x] 9   recharts + @mui/x-charts installed ✓ DONE
+  [ ] 10  (Prod) Stripe webhook registered at production URL ← MANUAL (after Railway deploy)
+  [ ] 11  Backend deployed to Railway  ← MANUAL
+  [ ] 12  Frontend deployed to Vercel  ← MANUAL
+  [ ] 13  Demo users seeded via POST /admin/seed-demo-users ← MANUAL (after Railway deploy)
   [x] 14  SSH key authorized at github.com/settings/keys ✓ DONE
-  [ ] 15  pgvector extension + goal_embeddings table + match_users_by_goals RPC → Step 10
-  [ ] 16  bets table + praxis_points column on profiles → Step 11
-  [ ] 17  GEMINI_API_KEY set in .env (required for embedding-based matching)
+  [x] 15  pgvector + goal_embeddings + match_users_by_goals ✓ DONE (in migrations/setup.sql)
+  [x] 16  bets table + praxis_points column ✓ DONE (in migrations/setup.sql)
+  [x] 17  GEMINI_API_KEY set in .env ✓ DONE
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 0 — PUSH CODE TO GITHUB
