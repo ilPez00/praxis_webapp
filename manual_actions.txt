@@ -1,634 +1,201 @@
 ================================================================================
   PRAXIS — MANUAL ACTIONS REQUIRED
-  Read this file top to bottom. Each step has: WHERE to do it, WHAT to do,
-  and WHAT SUCCESS LOOKS LIKE.
+  Last updated: Session 25 (2026-02-21)
+  Read top to bottom. Each section has: WHERE, WHAT, and SUCCESS CRITERIA.
 ================================================================================
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 QUICK START — minimum steps to get the app running locally
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-If you just want to run the app locally NOW, do only these 5 things:
+Both .env files already have all keys filled in. To run locally:
 
-  Q1. Open: https://supabase.com/dashboard/project/_/settings/api
-      Copy "Project URL"     → paste as SUPABASE_URL in praxis_webapp/.env
-      Copy "service_role" key → paste as SUPABASE_SERVICE_ROLE_KEY in praxis_webapp/.env
-      Copy "anon" key        → paste as REACT_APP_SUPABASE_ANON_KEY in client/.env
-      Copy "Project URL"     → paste as REACT_APP_SUPABASE_URL in client/.env
+  Q1. Rotate keys if not done yet (Steps 1A–1C below) and paste new values
+      into praxis_webapp/.env and praxis_webapp/client/.env.
 
-  Q2. Open: https://supabase.com/dashboard/project/_/sql/new
-      Run EACH block in Step 5 (Queries 1–9D) one at a time in order.
-      Minimum required for core features:
-        Query 1   → profiles table + handle_new_user trigger  (AUTH)
-        Query 1B  → goal_trees table                          (GOALS)
-        Query 2   → user_subscriptions table                  (STRIPE)
-        Query 3   → premium trigger                           (STRIPE)
-        Query 4   → messages table (full schema)              (CHAT + DMS)
-        Query 5   → goal_tree_edit_count column               (RE-EDIT GATE)
-        Query 9A  → completion_requests table                 (PEER VERIFICATION)
-        Query 9C  → chat_rooms table                          (GROUP CHAT)
-        Query 9D  → chat_room_members table                   (GROUP CHAT)
+  Q2. Open: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/sql/new
+      Paste the ENTIRE contents of migrations/setup.sql and click RUN.
+      This creates all tables, columns, triggers, policies, and functions
+      in a single shot. It is idempotent — safe to run multiple times.
 
-  Q3. Enable Realtime on the messages table (Step 5 Query 9F or Step 7).
+  Q3. In Supabase → Database → Replication, enable Realtime on the
+      "messages" table (otherwise chat only updates on page refresh).
 
-  Q4. Create the "chat-media" storage bucket (Step 5 Query 9E).
-      Without this, file/image sending in chat will fail silently.
+  Q4. In Supabase → Storage → New bucket, create "chat-media" (public ON).
+      Then run the two storage policies from Step 5Q13 below.
 
   Q5. Run:
         chmod +x run_praxis.sh
         ./run_praxis.sh
 
-  That's it. Frontend will open at http://localhost:3000.
-  Some features (Stripe, AI coaching) won't work without more setup — see below.
+  Frontend opens at http://localhost:3000.
+  Stripe and AI coaching need additional setup — see steps 6 and beyond.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FULL SETUP CHECKLIST  (tick each box as you complete it)
+FULL SETUP CHECKLIST
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  [x] 0   Push code to GitHub ✓ DONE
-  [ ] 1A  Stripe secret key rolled / set in .env          ← MANUAL (Stripe dashboard)
-  [ ] 1B  Supabase anon key rotated / set in client/.env  ← MANUAL (Supabase dashboard)
-  [ ] 1C  Supabase service role key rotated / set in .env ← MANUAL (Supabase dashboard)
-  [x] 2   Both .env files fully filled in ✓ DONE
-  [ ] 3   Google OAuth — credentials exist in google_oauth.txt (DO NOT COMMIT)
-          Paste Client ID+Secret into: Supabase → Auth → Providers → Google
-          Add redirect URI in: Google Cloud Console → OAuth 2.0 Client
-  [ ] 4   Supabase auth redirect URLs set to include localhost:3000/** ← MANUAL
-  [ ] 5   ALL Supabase SQL ← MANUAL — but use the shortcut below:
-          ⚡ SHORTCUT: run the single file migrations/setup.sql in Supabase SQL Editor
-             (covers ALL of 5Q1–5Q13, pgvector, embeddings, bets, challenges)
-  [ ] 5Q13 Storage bucket "chat-media" created → steps in Step 5 Query 9E ← MANUAL
-  [ ] 7B  Realtime enabled on messages table ← MANUAL (Supabase → Database → Replication)
-  [ ] 6A  Stripe product "Praxis Premium" created, price_... set in .env  ← MANUAL
-  [ ] 6B  Stripe CLI installed
-  [ ] 6C  stripe listen running, whsec_... set in .env
-  [ ] 6D  End-to-end payment test passing
-  [x] 8   completeOnboarding endpoint wired ✓ DONE (POST /users/complete-onboarding)
-  [x] 9   recharts + @mui/x-charts installed ✓ DONE
-  [ ] 10  (Prod) Stripe webhook registered at production URL ← MANUAL (after Railway deploy)
-  [ ] 11  Backend deployed to Railway  ← MANUAL
-  [ ] 12  Frontend deployed to Vercel  ← MANUAL
-  [ ] 13  Demo users seeded via POST /admin/seed-demo-users ← MANUAL (after Railway deploy)
-  [x] 14  SSH key authorized at github.com/settings/keys ✓ DONE
-  [x] 15  pgvector + goal_embeddings + match_users_by_goals ✓ DONE (in migrations/setup.sql)
-  [x] 16  bets table + praxis_points column ✓ DONE (in migrations/setup.sql)
-  [x] 17  GEMINI_API_KEY set in .env ✓ DONE
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 0 — PUSH CODE TO GITHUB
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-The repo is at https://github.com/ilPez00/praxis_webapp.
-There are ~10 commits that haven't been pushed because the SSH key hasn't been
-authorized on GitHub yet.
-
-─── 0A. Authorize your SSH key on GitHub ────────────────────────────────────────
-
-  1. Open a terminal on THIS machine and run:
-       cat ~/.ssh/id_ed25519.pub
-     Copy the entire output (starts with "ssh-ed25519 ...")
-
-  2. Go to: https://github.com/settings/keys
-  3. Click "New SSH key"
-  4. Title: anything (e.g. "dev laptop")
-  5. Key type: Authentication Key
-  6. Paste the key text from step 1
-  7. Click "Add SSH key"
-
-─── 0B. Push all local commits ─────────────────────────────────────────────────
-
-  Run from praxis_webapp/:
-    git push origin main
-
-  Expected output:
-    Enumerating objects: ...
-    To github.com:ilPez00/praxis_webapp.git
-       <old-sha>..<new-sha>  main -> main
-
-  ✓ Success: you'll see "main -> main" at the end with no errors.
+  [x] 0    Code pushed to GitHub ✓ DONE
+  [ ] 1A   Stripe secret key rotated + updated in praxis_webapp/.env
+  [ ] 1B   Supabase anon key rotated + updated in client/.env
+  [ ] 1C   Supabase service role key rotated + updated in praxis_webapp/.env
+  [x] 2    Both .env files fully populated ✓ DONE
+  [ ] 3    Google OAuth → paste creds from google_oauth.txt into Supabase +
+           add redirect URI in Google Cloud Console (see Step 3 below)
+  [ ] 4    Supabase auth redirect URLs include http://localhost:3000/**
+  [ ] 5    Run migrations/setup.sql in Supabase SQL Editor (covers everything)
+  [ ] 5Q13 Create "chat-media" storage bucket + policies (see Step 5Q13 below)
+  [ ] 5RT  Enable Realtime on messages table (Supabase → Database → Replication)
+  [ ] 6A   Stripe "Praxis Premium" product created, STRIPE_PRICE_ID set in .env
+  [ ] 6B   Stripe CLI installed
+  [ ] 6C   stripe listen running, STRIPE_WEBHOOK_SECRET set in .env
+  [ ] 6D   End-to-end test payment passing (card 4242 4242 4242 4242)
+  [x] 8    completeOnboarding endpoint ✓ DONE (POST /users/complete-onboarding)
+  [x] 9    recharts + @mui/x-charts installed ✓ DONE
+  [x] 14   SSH key authorized at github.com/settings/keys ✓ DONE
+  [x] 15   pgvector + goal_embeddings + match_users_by_goals ✓ DONE (in setup.sql)
+  [x] 16   bets table + praxis_points column ✓ DONE (in setup.sql)
+  [x] 17   GEMINI_API_KEY set in .env ✓ DONE
+  [ ] 11   Backend deployed to Railway
+  [ ] 12   Frontend deployed to Vercel
+  [ ] 10   Stripe production webhook registered at Railway URL
+  [ ] 13   Demo users seeded (curl POST /admin/seed-demo-users after Railway deploy)
+  [x] 14   SSH key ✓ DONE
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 1 — ROTATE EXPOSED KEYS  ⚠️  DO THIS BEFORE DEPLOYING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-The Supabase anon key and Stripe publishable key were in committed files.
-Rotate them now so the old ones are invalidated.
+The Supabase anon key and Stripe keys were in committed files at some point.
+Rotate them so the old ones are invalidated.
 
 ─── 1A. Rotate Stripe Secret Key ────────────────────────────────────────────────
   WHERE: https://dashboard.stripe.com/test/apikeys
 
-  1. Find "Secret key" row (starts with sk_test_...)
-  2. Click the "..." menu → "Roll key" → confirm
-  3. Copy the NEW secret key
-  4. Open praxis_webapp/.env
-     Update: STRIPE_SECRET_KEY=sk_test_<new_value>
+  1. "Secret key" row → "..." → "Roll key" → confirm
+  2. Copy the new sk_test_... value
+  3. Update STRIPE_SECRET_KEY in praxis_webapp/.env
 
 ─── 1B. Rotate Supabase Anon Key ────────────────────────────────────────────────
   WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/settings/api
-  (replace "kuyzjjbeiawnnkkrjsda" with YOUR project ID if different)
 
-  1. Under "Project API keys" → find "anon / public"
-  2. Click "Generate new key" → confirm
-  3. Copy the new anon key
-  4. Open praxis_webapp/client/.env
-     Update: REACT_APP_SUPABASE_ANON_KEY=<new_value>
+  1. "anon / public" row → "Generate new key" → confirm
+  2. Copy new value → update REACT_APP_SUPABASE_ANON_KEY in client/.env
 
 ─── 1C. Rotate Supabase Service Role Key ────────────────────────────────────────
-  WHERE: Same page as 1B
+  WHERE: same page as 1B
 
-  1. Find "service_role" row → "Generate new key" → confirm
-  2. Copy the new service role key
-  3. Open praxis_webapp/.env
-     Update: SUPABASE_SERVICE_ROLE_KEY=<new_value>
-
-  ⚠️  The service role key bypasses ALL Row Level Security.
-      NEVER put it in client-side code or commit it to git.
+  1. "service_role" row → "Generate new key" → confirm
+  2. Copy new value → update SUPABASE_SERVICE_ROLE_KEY in praxis_webapp/.env
+  ⚠️  This key bypasses ALL Row Level Security. Never commit it.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 2 — FILL IN BOTH .env FILES
+STEP 2 — .env FILES  (both already populated — verify values after key rotation)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-─── File: praxis_webapp/.env (backend) ─────────────────────────────────────────
+─── praxis_webapp/.env (backend) ────────────────────────────────────────────────
 
-  SUPABASE_URL=https://kuyzjjbeiawnnkkrjsda.supabase.co
-    ← copy from Supabase Dashboard → Project Settings → API → Project URL
+  SUPABASE_URL               = https://kuyzjjbeiawnnkkrjsda.supabase.co
+  SUPABASE_SERVICE_ROLE_KEY  = <service_role key — from Step 1C>
+  STRIPE_SECRET_KEY          = sk_test_... (from Step 1A)
+  STRIPE_WEBHOOK_SECRET      = whsec_... (from Step 6C or 10)
+  STRIPE_PRICE_ID            = price_... (from Step 6A)
+  GEMINI_API_KEY             = AIza... (https://aistudio.google.com/apikey) ✓ SET
+  CLIENT_URL                 = http://localhost:3000  (→ Vercel URL in production)
+  ADMIN_SECRET               = <any long random string>
+  PORT                       = 3001
 
-  SUPABASE_SERVICE_ROLE_KEY=eyJ...
-    ← from Step 1C (or Supabase → Settings → API → service_role)
+─── praxis_webapp/client/.env (frontend) ────────────────────────────────────────
 
-  STRIPE_SECRET_KEY=sk_test_...
-    ← from Step 1A (or https://dashboard.stripe.com/test/apikeys)
-
-  STRIPE_WEBHOOK_SECRET=whsec_...
-    ← from Step 6C (Stripe CLI) or Step 10 (prod webhook)
-
-  STRIPE_PRICE_ID=price_...
-    ← from Step 6A (Stripe Dashboard → Products)
-
-  GEMINI_API_KEY=...
-    ← from https://aistudio.google.com/apikey
-    (if blank, matching falls back to domain-overlap scoring — app still works)
-
-  CLIENT_URL=http://localhost:3000
-    ← change to your Vercel URL when deploying
-
-  ADMIN_SECRET=choose_any_long_random_string_here
-    ← used to protect POST /admin/seed-demo-users
-
-  PORT=3001
-    ← keep as is for local dev; Railway injects its own PORT at runtime
-
-─── File: praxis_webapp/client/.env (frontend) ─────────────────────────────────
-
-  REACT_APP_SUPABASE_URL=https://kuyzjjbeiawnnkkrjsda.supabase.co
-    ← same as backend SUPABASE_URL
-
-  REACT_APP_SUPABASE_ANON_KEY=eyJ...
-    ← from Step 1B (anon/public key — this one IS safe to be public)
-
-  REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_...
-    ← from https://dashboard.stripe.com/test/apikeys → "Publishable key"
-
-  REACT_APP_API_URL=http://localhost:3001
-    ← change to your Railway URL when deploying
-
-  GENERATE_SOURCEMAP=false
-    ← leave as is (suppresses harmless face-api.js build warnings)
-
-  After editing either .env: restart both dev servers.
+  REACT_APP_SUPABASE_URL           = https://kuyzjjbeiawnnkkrjsda.supabase.co
+  REACT_APP_SUPABASE_ANON_KEY      = <anon key — from Step 1B>
+  REACT_APP_STRIPE_PUBLISHABLE_KEY = pk_test_...
+  REACT_APP_API_URL                = http://localhost:3001  (→ Railway URL in prod)
+  GENERATE_SOURCEMAP               = false
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 3 — GOOGLE OAUTH (optional — skip if using email/password only)
+STEP 3 — GOOGLE OAUTH  (optional — skip if using email/password only)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-─── 3A. Google Cloud Console ───────────────────────────────────────────────────
-  WHERE: https://console.cloud.google.com
+Credentials already exist in google_oauth.txt (DO NOT COMMIT THAT FILE).
 
-  1. Create a project named "Praxis"
-  2. Left menu → APIs & Services → OAuth consent screen
-     - User Type: External → Create
-     - Fill: App name = Praxis, your email, developer contact
-     - Scopes: add userinfo.email + userinfo.profile + openid
-     - Test users: add your email
-  3. Left menu → APIs & Services → Credentials
-     → Create Credentials → OAuth 2.0 Client ID
-     - Application type: Web application
-     - Authorized redirect URIs → Add:
-         https://kuyzjjbeiawnnkkrjsda.supabase.co/auth/v1/callback
-     - Click Create → copy Client ID + Client Secret
+─── 3A. Add redirect URI in Google Cloud Console ────────────────────────────────
+  WHERE: https://console.cloud.google.com → APIs & Services → Credentials
+         → select your OAuth 2.0 Client ID → Authorized redirect URIs
 
-─── 3B. Enable in Supabase ─────────────────────────────────────────────────────
+  Add: https://kuyzjjbeiawnnkkrjsda.supabase.co/auth/v1/callback
+  Save.
+
+─── 3B. Enable Google provider in Supabase ──────────────────────────────────────
   WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/auth/providers
 
   1. Scroll to Google → toggle ON
-  2. Paste Client ID and Client Secret from 3A
-  3. Click Save
+  2. Paste Client ID and Client Secret from google_oauth.txt
+  3. Save
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 4 — SUPABASE AUTH REDIRECT URLS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/auth/url-configuration
 
-  1. Site URL:          http://localhost:3000
-  2. Redirect URLs — click "Add URL" for EACH:
-       http://localhost:3000/**
-       http://localhost:3000/dashboard
-       http://localhost:3000/onboarding
-     For production, also add:
-       https://your-vercel-app.vercel.app/**
-  3. Save
+  Site URL:     http://localhost:3000
+  Redirect URLs (add each):
+    http://localhost:3000/**
+    http://localhost:3000/dashboard
+    http://localhost:3000/onboarding
+  For production also add: https://your-vercel-app.vercel.app/**
 
-  Also check: Authentication → Settings → "Enable email confirmations"
-  - For dev/testing: set to OFF so you can sign up without email verification
-  - For production: set to ON
+  Also: Authentication → Settings → "Enable email confirmations" → OFF for dev
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 5 — SUPABASE SQL (run each query in SQL Editor)
+STEP 5 — SUPABASE SQL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/sql/new
 
-  Open a NEW QUERY tab for each block below. Paste → click RUN.
-  ✓ Success: "Success. No rows returned" (for DDL statements)
+  ⚡ SHORTCUT — run ONE file instead of many queries:
+     Open migrations/setup.sql, copy the entire contents, paste into the SQL
+     editor and click RUN. It creates all tables, columns, triggers, RLS
+     policies, pgvector, bets, challenges, and the match_users_by_goals RPC
+     in a single idempotent shot.
 
-─── Query 1: profiles table + handle_new_user trigger ─────────────────────────
+  ✓ Success: "Success. No rows returned" for each statement.
+  Verify: SELECT table_name FROM information_schema.tables
+            WHERE table_schema = 'public' ORDER BY table_name;
+  Expected tables: achievements, achievement_comments, achievement_votes,
+    bets, challenge_participants, challenges, chat_room_members, chat_rooms,
+    completion_requests, feedback, goal_embeddings, goal_trees, messages,
+    profiles, user_subscriptions
 
-  -- Create profiles table (stores name, bio, avatar, premium status, etc.)
-  CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    name TEXT,
-    age INT,
-    bio TEXT,
-    avatar_url TEXT,
-    email TEXT,
-    is_premium BOOLEAN DEFAULT false,
-    onboarding_completed BOOLEAN DEFAULT false,
-    is_demo BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT now()
-  );
-
-  -- Row Level Security
-  ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-  DROP POLICY IF EXISTS "Users can read own profile" ON profiles;
-  DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
-  CREATE POLICY "Users can read own profile" ON profiles
-    FOR SELECT USING (auth.uid() = id);
-  CREATE POLICY "Users can update own profile" ON profiles
-    FOR UPDATE USING (auth.uid() = id);
-
-  -- Allow admin (service role) to read all profiles (for matching engine)
-  DROP POLICY IF EXISTS "Service role can read all profiles" ON profiles;
-  CREATE POLICY "Service role can read all profiles" ON profiles
-    FOR SELECT USING (true);
-
-  -- Auto-create profile row when user signs up (email or Google OAuth)
-  CREATE OR REPLACE FUNCTION public.handle_new_user()
-  RETURNS TRIGGER AS $$
-  BEGIN
-    INSERT INTO public.profiles (id, name, email, avatar_url, onboarding_completed)
-    VALUES (
-      NEW.id,
-      COALESCE(
-        NEW.raw_user_meta_data->>'name',
-        NEW.raw_user_meta_data->>'full_name',
-        split_part(NEW.email, '@', 1)
-      ),
-      NEW.email,
-      COALESCE(
-        NEW.raw_user_meta_data->>'avatar_url',
-        NEW.raw_user_meta_data->>'picture'
-      ),
-      false
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      avatar_url = COALESCE(profiles.avatar_url, EXCLUDED.avatar_url);
-    RETURN NEW;
-  END;
-  $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-  DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-  CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
-  -- Verify it worked:
-  SELECT routine_name FROM information_schema.routines
-    WHERE routine_name = 'handle_new_user';
-  -- ✓ Expected: 1 row returned
-
-─── Query 1B: goal_trees table ────────────────────────────────────────────────
-
-  -- Stores each user's goal tree (nodes + root nodes) as JSONB.
-  -- One row per user. "userId" kept camelCase to match backend code.
-  CREATE TABLE IF NOT EXISTS public.goal_trees (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "userId"    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    nodes       JSONB NOT NULL DEFAULT '[]',
-    "rootNodes" JSONB NOT NULL DEFAULT '[]',
-    created_at  TIMESTAMPTZ DEFAULT now(),
-    updated_at  TIMESTAMPTZ DEFAULT now()
-  );
-
-  -- Enforce one tree per user
-  CREATE UNIQUE INDEX IF NOT EXISTS goal_trees_userid_idx ON public.goal_trees ("userId");
-
-  -- RLS: users manage their own tree; backend uses service_role key so bypasses this
-  ALTER TABLE public.goal_trees ENABLE ROW LEVEL SECURITY;
-  DROP POLICY IF EXISTS "Users can manage own goal tree" ON public.goal_trees;
-  CREATE POLICY "Users can manage own goal tree"
-    ON public.goal_trees FOR ALL USING (auth.uid() = "userId");
-
-  -- ✓ Expected: "Success. No rows returned"
-
-─── Query 2: user_subscriptions table (Stripe integration) ────────────────────
-
-  CREATE TABLE IF NOT EXISTS public.user_subscriptions (
-    id                   TEXT PRIMARY KEY,
-    user_id              UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    status               TEXT NOT NULL,
-    customer_id          TEXT NOT NULL,
-    price_id             TEXT,
-    product_id           TEXT,
-    current_period_start TIMESTAMPTZ,
-    current_period_end   TIMESTAMPTZ,
-    created_at           TIMESTAMPTZ DEFAULT NOW(),
-    updated_at           TIMESTAMPTZ DEFAULT NOW()
-  );
-
-  ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;
-  DROP POLICY IF EXISTS "Users can view own subscription" ON public.user_subscriptions;
-  CREATE POLICY "Users can view own subscription"
-    ON public.user_subscriptions FOR SELECT USING (auth.uid() = user_id);
-
-─── Query 3: update_profile_premium_status trigger ────────────────────────────
-
-  -- Automatically sets is_premium on profile when subscription status changes.
-  CREATE OR REPLACE FUNCTION public.update_profile_premium_status()
-  RETURNS TRIGGER AS $$
-  BEGIN
-    IF (TG_OP = 'DELETE') THEN
-      UPDATE public.profiles SET is_premium = false WHERE id = OLD.user_id;
-      RETURN OLD;
-    ELSIF (NEW.status IN ('active', 'trialing')) THEN
-      UPDATE public.profiles SET is_premium = true WHERE id = NEW.user_id;
-    ELSE
-      UPDATE public.profiles SET is_premium = false WHERE id = NEW.user_id;
-    END IF;
-    RETURN NEW;
-  END;
-  $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-  DROP TRIGGER IF EXISTS on_subscription_change ON public.user_subscriptions;
-  CREATE TRIGGER on_subscription_change
-    AFTER INSERT OR UPDATE OR DELETE ON public.user_subscriptions
-    FOR EACH ROW EXECUTE FUNCTION public.update_profile_premium_status();
-
-─── Query 4: messages table (DM + group chat) ─────────────────────────────────
-
-  WHERE: Supabase Dashboard → SQL Editor → New Query
-  WHAT: Creates the unified messages table used for DMs, group chat, media,
-        and peer-verification messages. Includes ALL columns added across sessions.
-        If you already ran an old version of this query, skip to Query 8B instead.
-
-  -- This is the COMPLETE messages table definition (fresh install).
-  -- message_type: 'text' | 'image' | 'file' | 'completion_request' | 'system'
-  -- receiver_id: NULL for group messages (room_id is set instead)
-  -- room_id: NULL for DMs (receiver_id is set instead)
-  CREATE TABLE IF NOT EXISTS public.messages (
-    id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    sender_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    receiver_id  UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    content      TEXT NOT NULL,
-    goal_node_id TEXT,                         -- goal-focused DM context (optional)
-    message_type TEXT DEFAULT 'text',          -- message category (text/image/file/etc.)
-    media_url    TEXT,                         -- public URL for image/file attachments
-    room_id      UUID,                         -- set for group room messages; NULL for DMs
-    metadata     JSONB,                        -- extra data (e.g. requestId for completion_request)
-    timestamp    TIMESTAMPTZ DEFAULT now()
-  );
-
-  ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-  DROP POLICY IF EXISTS "Users can read own messages" ON public.messages;
-  DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
-  DROP POLICY IF EXISTS "Users can read group messages" ON public.messages;
-  CREATE POLICY "Users can read own messages"
-    ON public.messages FOR SELECT
-    USING (
-      auth.uid() = sender_id OR
-      auth.uid() = receiver_id OR
-      room_id IS NOT NULL          -- group messages visible to all authenticated users
-    );
-  CREATE POLICY "Users can send messages"
-    ON public.messages FOR INSERT
-    WITH CHECK (auth.uid() = sender_id);
-
-  -- ✓ SUCCESS: "Success. No rows returned"
-  -- ✓ VERIFY:  SELECT column_name FROM information_schema.columns
-  --              WHERE table_name = 'messages' ORDER BY column_name;
-  --   Expected columns: content, goal_node_id, id, media_url, message_type,
-  --                     metadata, receiver_id, room_id, sender_id, timestamp
-
-─── Query 5: goal_tree_edit_count column (free re-edit gate) ─────────────────
-
-  -- Tracks how many times a user has re-edited their goal tree after initial setup.
-  -- 0 = free re-edit still available; 1+ = Premium required.
-  ALTER TABLE profiles
-    ADD COLUMN IF NOT EXISTS goal_tree_edit_count INT DEFAULT 0;
-
-  -- ✓ Expected: "Success. No rows returned"
-
-─── Query 6: sex + location columns (profile editing) ────────────────────────
-
-  ALTER TABLE profiles
-    ADD COLUMN IF NOT EXISTS sex TEXT,
-    ADD COLUMN IF NOT EXISTS location TEXT;
-
-  -- ✓ Expected: "Success. No rows returned"
-
-─── Query 7: streak columns (progress streaks) ────────────────────────────────
-
-  ALTER TABLE profiles
-    ADD COLUMN IF NOT EXISTS current_streak INT DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS last_activity_date DATE;
-
-  -- ✓ Expected: "Success. No rows returned"
-
-─── Query 8B: messages upgrade columns (SKIP if you ran the new Query 4) ──────
-
-  WHERE: Supabase Dashboard → SQL Editor → New Query
-  WHAT: Only needed if you ran the OLD version of Query 4 (before Session 15).
-        The new Query 4 already includes these columns. Safe to re-run — IF NOT EXISTS
-        means it won't fail if the columns already exist.
-
-  ALTER TABLE public.messages
-    ADD COLUMN IF NOT EXISTS goal_node_id TEXT,
-    ADD COLUMN IF NOT EXISTS message_type TEXT DEFAULT 'text',
-    ADD COLUMN IF NOT EXISTS media_url    TEXT,
-    ADD COLUMN IF NOT EXISTS room_id      UUID,
-    ADD COLUMN IF NOT EXISTS metadata     JSONB;
-
-  -- ✓ SUCCESS: "Success. No rows returned"
-  -- ✓ VERIFY: SELECT column_name FROM information_schema.columns
-  --             WHERE table_name = 'messages' ORDER BY column_name;
-  --   Expected: goal_node_id, media_url, message_type, metadata, room_id all present
-
-─── Query 9A: completion_requests table (peer goal verification) ──────────────
-
-  WHERE: Supabase Dashboard → SQL Editor → New Query
-  WHAT: Enables the peer-verified goal completion flow. When a user clicks a node
-        in their goal tree and picks a DM partner as verifier, this table stores
-        the request. The verifier sees a Verify/Reject card in chat.
-
-  CREATE TABLE IF NOT EXISTS public.completion_requests (
-    id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    requester_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    verifier_id  UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    goal_node_id TEXT NOT NULL,                       -- references a node.id in goal_trees
-    goal_name    TEXT NOT NULL,                       -- denormalized for display in chat
-    status       TEXT NOT NULL DEFAULT 'pending',     -- pending | approved | rejected
-    created_at   TIMESTAMPTZ DEFAULT NOW(),
-    responded_at TIMESTAMPTZ                          -- set when verifier approves/rejects
-  );
-
-  ALTER TABLE public.completion_requests ENABLE ROW LEVEL SECURITY;
-  DROP POLICY IF EXISTS "Users can see own requests" ON public.completion_requests;
-  DROP POLICY IF EXISTS "Users can create requests" ON public.completion_requests;
-  CREATE POLICY "Users can see own requests"
-    ON public.completion_requests FOR SELECT
-    USING (auth.uid() = requester_id OR auth.uid() = verifier_id);
-  CREATE POLICY "Users can create requests"
-    ON public.completion_requests FOR INSERT
-    WITH CHECK (auth.uid() = requester_id);
-
-  -- ✓ SUCCESS: "Success. No rows returned"
-  -- ✓ VERIFY:  SELECT * FROM public.completion_requests LIMIT 1;
-  --   Expected: Empty result set (no error)
-
-─── Query 9B: messages upgrade — SKIP for fresh installs, see Query 8B ───────
-
-  -- This step is now merged into Query 8B. See that section above.
-  -- (Kept here only as a placeholder to avoid confusion with the checklist numbering.)
-
-─── Query 9C: chat_rooms table (group chats) ──────────────────────────────────
-
-  WHERE: Supabase Dashboard → SQL Editor → New Query
-  WHAT: Stores community chat rooms. Users can create rooms, optionally tied to a
-        goal domain (Career, Fitness, etc.). Rooms are public and discoverable on /groups.
-
-  CREATE TABLE IF NOT EXISTS public.chat_rooms (
-    id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name        TEXT NOT NULL,
-    description TEXT,
-    domain      TEXT,                                  -- optional domain filter (e.g. 'Fitness')
-    creator_id  UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    created_at  TIMESTAMPTZ DEFAULT NOW()
-  );
-
-  ALTER TABLE public.chat_rooms ENABLE ROW LEVEL SECURITY;
-  DROP POLICY IF EXISTS "Anyone can read rooms" ON public.chat_rooms;
-  DROP POLICY IF EXISTS "Authenticated users can create rooms" ON public.chat_rooms;
-  CREATE POLICY "Anyone can read rooms"
-    ON public.chat_rooms FOR SELECT USING (true);
-  CREATE POLICY "Authenticated users can create rooms"
-    ON public.chat_rooms FOR INSERT WITH CHECK (auth.uid() = creator_id);
-
-  -- ✓ SUCCESS: "Success. No rows returned"
-  -- ✓ VERIFY:  SELECT * FROM public.chat_rooms LIMIT 1;
-  --   Expected: Empty result set (no error)
-
-─── Query 9D: chat_room_members table ─────────────────────────────────────────
-
-  WHERE: Supabase Dashboard → SQL Editor → New Query
-  WHAT: Join table tracking which users are members of which rooms.
-        MUST run this AFTER Query 9C (chat_rooms must exist first for the FK).
-        The backend uses upsert so re-joining an existing room is idempotent.
-
-  CREATE TABLE IF NOT EXISTS public.chat_room_members (
-    room_id   UUID REFERENCES public.chat_rooms(id) ON DELETE CASCADE,
-    user_id   UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    joined_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (room_id, user_id)
-  );
-
-  ALTER TABLE public.chat_room_members ENABLE ROW LEVEL SECURITY;
-  DROP POLICY IF EXISTS "Anyone can read members" ON public.chat_room_members;
-  DROP POLICY IF EXISTS "Users can join rooms" ON public.chat_room_members;
-  DROP POLICY IF EXISTS "Users can leave rooms" ON public.chat_room_members;
-  CREATE POLICY "Anyone can read members"
-    ON public.chat_room_members FOR SELECT USING (true);
-  CREATE POLICY "Users can join rooms"
-    ON public.chat_room_members FOR INSERT WITH CHECK (auth.uid() = user_id);
-  CREATE POLICY "Users can leave rooms"
-    ON public.chat_room_members FOR DELETE USING (auth.uid() = user_id);
-
-  -- ✓ SUCCESS: "Success. No rows returned"
-  -- ✓ VERIFY:  SELECT * FROM public.chat_room_members LIMIT 1;
-  --   Expected: Empty result set (no error)
-
-─── Step 9E: Supabase Storage bucket "chat-media" ─────────────────────────────
-
+─── Step 5Q13: Storage bucket "chat-media" ──────────────────────────────────────
   WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/storage/buckets
-  WHAT: Creates a public storage bucket so users can send images and files in chat.
-        Files are uploaded from the browser directly to Supabase Storage and the
-        public URL is stored in messages.media_url.
 
-  1. Click "New bucket"
-  2. Name: chat-media   (exact spelling, lowercase, hyphen)
-  3. Toggle "Public bucket" → ON  (files need public URLs)
-  4. Click "Save"
+  1. "New bucket" → Name: chat-media → Public bucket: ON → Save
+  2. Run in SQL Editor:
+       DROP POLICY IF EXISTS "Authenticated upload" ON storage.objects;
+       CREATE POLICY "Authenticated upload" ON storage.objects FOR INSERT
+         WITH CHECK (bucket_id = 'chat-media' AND auth.role() = 'authenticated');
 
-  Then add storage policies so authenticated users can upload:
-  WHERE: Storage → Policies tab → Select "chat-media" → New policy → For full customization
+       DROP POLICY IF EXISTS "Public read" ON storage.objects;
+       CREATE POLICY "Public read" ON storage.objects FOR SELECT
+         USING (bucket_id = 'chat-media');
 
-  Run each of these in the SQL editor:
-
-    DROP POLICY IF EXISTS "Authenticated upload" ON storage.objects;
-    CREATE POLICY "Authenticated upload"
-      ON storage.objects FOR INSERT
-      WITH CHECK (bucket_id = 'chat-media' AND auth.role() = 'authenticated');
-
-    DROP POLICY IF EXISTS "Public read" ON storage.objects;
-    CREATE POLICY "Public read"
-      ON storage.objects FOR SELECT
-      USING (bucket_id = 'chat-media');
-
-  ✓ SUCCESS: After uploading a file in ChatRoom, the image appears inline (no broken image).
-  ✗ FAIL symptom: "Failed to upload file." toast → check bucket exists and policies above.
-
-─── Step 9F: Enable Realtime on messages table ─────────────────────────────────
-
+─── Step 5RT: Enable Realtime on messages ───────────────────────────────────────
   WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/database/replication
-  WHAT: Enables real-time message delivery via Supabase Realtime.
-        Without this, new messages only appear on page refresh.
-        Both DMs and group chat messages flow through the same messages table.
 
-  1. Click on "supabase_realtime" publication (or "0 tables" link)
-  2. Find "messages" in the table list
-  3. Toggle it ON
-  4. Click "Save"
-
-  Alternative SQL approach (run in SQL Editor):
+  Option A (UI): Click "supabase_realtime" → toggle messages ON → Save
+  Option B (SQL):
     BEGIN;
     DROP PUBLICATION IF EXISTS supabase_realtime;
     CREATE PUBLICATION supabase_realtime FOR TABLE
       public.messages, public.chat_rooms, public.chat_room_members;
     COMMIT;
 
-  ✓ SUCCESS: Open two browser tabs logged in as different users. Send a message.
-             It appears in the other tab without refreshing.
-  ✗ FAIL symptom: Messages only show after page refresh → Realtime is not enabled.
+  ✓ Success: Messages appear live in two browser tabs without refreshing.
 
-─── Query 9: verify all tables + columns exist ────────────────────────────────
-
-  SELECT table_name FROM information_schema.tables
-    WHERE table_schema = 'public'
-    ORDER BY table_name;
-  -- ✓ Expected: profiles, user_subscriptions, messages (+ any others)
-
-  SELECT column_name FROM information_schema.columns
-    WHERE table_name = 'profiles' ORDER BY column_name;
-  -- ✓ Expected includes: age, avatar_url, bio, email, goal_tree_edit_count,
-  --                      id, is_demo, is_premium, location, name,
-  --                      onboarding_completed, sex
+─── Step 5AV: Create "avatars" storage bucket ───────────────────────────────────
+  WHERE: Supabase → Storage → New bucket
+  Name: avatars → Public: ON → Save
+  ✓ Success: Profile photo uploads work on /profile.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 6 — STRIPE SETUP
@@ -637,18 +204,11 @@ STEP 6 — STRIPE SETUP
 ─── 6A. Create "Praxis Premium" product ────────────────────────────────────────
   WHERE: https://dashboard.stripe.com/test/products/create
 
-  1. Name: Praxis Premium
-  2. Pricing model: Recurring
-  3. Price: €9.99/month  (or whatever you decide)
-  4. Click "Save product"
-  5. On the product page, find the "API ID" for the price — looks like:
-       price_1T1s7gI...
-  6. Add to praxis_webapp/.env:
-       STRIPE_PRICE_ID=price_<that_value>
+  1. Name: Praxis Premium → Recurring → €9.99/month → Save
+  2. Copy the price API ID (price_...)
+  3. Add to praxis_webapp/.env: STRIPE_PRICE_ID=price_<value>
 
-─── 6B. Install Stripe CLI ─────────────────────────────────────────────────────
-  WHERE: Your terminal
-
+─── 6B. Install Stripe CLI ──────────────────────────────────────────────────────
   On Linux (Debian/Ubuntu):
     curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public \
       | gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg > /dev/null
@@ -656,400 +216,109 @@ STEP 6 — STRIPE SETUP
       https://packages.stripe.dev/stripe-cli-debian-local stable main" \
       | sudo tee /etc/apt/sources.list.d/stripe.list
     sudo apt update && sudo apt install stripe
-
   Verify: stripe --version
-  ✓ Expected: stripe version X.Y.Z
 
-─── 6C. Forward webhooks for local development ─────────────────────────────────
-  WHERE: Your terminal (run with backend already running)
+─── 6C. Forward webhooks locally ────────────────────────────────────────────────
+  1. stripe login
+  2. stripe listen --forward-to localhost:3001/stripe/webhook
+  3. Copy the whsec_... printed → set STRIPE_WEBHOOK_SECRET in .env → restart backend
 
-  1. Login: stripe login   (opens browser — authorize it)
-  2. Start listener:
-       stripe listen --forward-to localhost:3001/stripe/webhook
-  3. The CLI prints:
-       > Ready! Your webhook signing secret is whsec_abc123...
-  4. Copy that whsec_... value
-  5. Add to praxis_webapp/.env:
-       STRIPE_WEBHOOK_SECRET=whsec_<that_value>
-  6. Restart the backend server
-
-  ⚠️  Keep this terminal open while testing payments.
-      The whsec_ here is different from the production webhook secret.
-
-─── 6D. Test a payment ─────────────────────────────────────────────────────────
-
-  Run all three simultaneously:
-    Terminal 1: npm run dev              (backend, from praxis_webapp/)
+─── 6D. Test a payment ──────────────────────────────────────────────────────────
+  Run simultaneously:
+    Terminal 1: npm run dev              (from praxis_webapp/)
     Terminal 2: stripe listen --forward-to localhost:3001/stripe/webhook
-    Terminal 3: npm start                (frontend, from praxis_webapp/client/)
-
-  In the browser:
-    1. Log in → go to /upgrade
-    2. Click "Get Started Now" → Stripe Checkout opens
-    3. Use test card:
-         Number:  4242 4242 4242 4242
-         Expiry:  12/29  (any future date)
-         CVC:     123    (any 3 digits)
-    4. Click Pay → redirected to /success
-
-  ✓ Success:
-    - Stripe CLI terminal shows: checkout.session.completed
-    - Supabase Table Editor → user_subscriptions: 1 new row, status = 'active'
-    - Supabase Table Editor → profiles: is_premium = true for your user
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 7 — ENABLE REALTIME ON messages TABLE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/database/replication
-
-  1. Click "0 tables" under "supabase_realtime" publication
-  2. Find the "messages" table in the list
-  3. Toggle it ON
-  4. Click "Save"
-
-  ✓ Success: Live chat messages now appear without page refresh.
-
-  Alternative location if the above is different:
-    Dashboard → Database → Replication → enable "messages"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 8 — CREATE avatars STORAGE BUCKET
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/storage/buckets
-
-  1. Click "New bucket"
-  2. Name: avatars
-  3. Public: ON  (toggle to the right)
-  4. Click "Save"
-
-  ✓ Success: Profile photo uploads on /profile will work.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 9 — WIRE THE completeOnboarding ENDPOINT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  The onboarding guard redirects new users to /onboarding until
-  onboarding_completed = true in their profile. This endpoint sets it to true.
-
-─── 9A. Add to userController.ts ───────────────────────────────────────────────
-  FILE: praxis_webapp/src/controllers/userController.ts
-
-  Add at the bottom (before the closing brace, after other exports):
-
-    export const completeOnboarding = catchAsync(async (req, res, _next) => {
-      const { userId } = req.body;
-      if (!userId) throw new BadRequestError('userId is required.');
-      const { error } = await supabase
-        .from('profiles')
-        .update({ onboarding_completed: true })
-        .eq('id', userId);
-      if (error) throw new Error(`Failed: ${error.message}`);
-      res.status(200).json({ message: 'Onboarding complete.' });
-    });
-
-─── 9B. Register in userRoutes.ts ──────────────────────────────────────────────
-  FILE: praxis_webapp/src/routes/userRoutes.ts
-
-  Add import and route:
-    import { completeOnboarding } from '../controllers/userController';
-    router.post('/complete-onboarding', completeOnboarding);
-
-─── 9C. Call it from the frontend ──────────────────────────────────────────────
-  FILE: wherever your onboarding "Finish" button is
-        (likely client/src/features/onboarding/OnboardingPage.tsx or InitialGoalSetup.tsx)
-
-  In the finish handler, after saving goals:
-    await axios.post(`${API_URL}/users/complete-onboarding`, { userId: user.id });
-    navigate('/dashboard');
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 10 — INSTALL OPTIONAL FRONTEND PACKAGES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Run from praxis_webapp/client/:
-    npm install recharts @mui/x-charts
-
-  These are used by AnalyticsPage for charts. The page will show an error
-  without them. Everything else works without this step.
+    Terminal 3: npm start                (from praxis_webapp/client/)
+  Browser: log in → /upgrade → pay with test card 4242 4242 4242 4242 / 12/29 / 123
+  ✓ Success: Stripe CLI shows checkout.session.completed,
+             profiles.is_premium = true in Supabase Table Editor.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 11 — DEPLOY BACKEND TO RAILWAY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   WHERE: https://railway.app
-  REQUIRES: Step 0 complete (code pushed to GitHub)
 
-─── 11A. Create Railway project ─────────────────────────────────────────────────
+  1. New Project → Deploy from GitHub repo → ilPez00/praxis_webapp
+  2. Variables tab — add all keys from praxis_webapp/.env PLUS:
+       NODE_ENV = production
+       CLIENT_URL = https://your-app.vercel.app  (fill in after Step 12)
+     Do NOT set PORT (Railway injects it automatically).
+  3. Build command:  npm install && npm run build
+     Start command:  node dist/index.js
+     (Procfile already has "web: node dist/index.js" — Railway reads it.)
+  4. Deploy. Copy the Railway URL (https://praxis-xxx.up.railway.app).
 
-  1. Sign in to Railway → "New Project"
-  2. "Deploy from GitHub repo"
-  3. Select: ilPez00/praxis_webapp
-  4. Railway will detect Node.js automatically
-
-─── 11B. Set environment variables ─────────────────────────────────────────────
-  WHERE: Railway → your project → Variables tab
-
-  Add EACH of these (copy from your local .env):
-
-    SUPABASE_URL              = https://kuyzjjbeiawnnkkrjsda.supabase.co
-    SUPABASE_SERVICE_ROLE_KEY = <your service role key>
-    GEMINI_API_KEY            = <your Gemini key>
-    STRIPE_SECRET_KEY         = <your Stripe secret key>
-    STRIPE_PRICE_ID           = price_...
-    STRIPE_WEBHOOK_SECRET     = whsec_... (from Step 11D, not the CLI one)
-    CLIENT_URL                = https://your-app.vercel.app  (fill in after Step 12)
-    ADMIN_SECRET              = <same value as local .env>
-    NODE_ENV                  = production
-
-  ⚠️  Do NOT set PORT — Railway sets it automatically.
-
-─── 11C. Configure build settings ──────────────────────────────────────────────
-  WHERE: Railway → Settings → Build
-
-  Build command:  npm install && npm run build
-  Start command:  node dist/index.js
-
-  (The Procfile already says "web: node dist/index.js" — Railway reads this.)
-
-─── 11D. Get your Railway URL + register Stripe webhook ─────────────────────────
-
-  1. After successful deploy: Railway → Deployments → copy the URL
-     Looks like: https://praxis-webapp-production.up.railway.app
-
-  2. Register a production webhook at:
-     https://dashboard.stripe.com/test/webhooks/create
-     - Endpoint URL: https://<your-railway-url>/stripe/webhook
-     - Events: checkout.session.completed, customer.subscription.updated,
-               customer.subscription.deleted
-     - Click "Add endpoint"
-     - Reveal and copy the "Signing secret" (whsec_...)
-
-  3. Update STRIPE_WEBHOOK_SECRET in Railway Variables with the new whsec_
-  4. Click "Redeploy" in Railway
-
-  ✓ Success: Railway dashboard shows "Active" deployment, no errors in logs.
+─── Register Stripe production webhook ──────────────────────────────────────────
+  WHERE: https://dashboard.stripe.com/test/webhooks/create
+  Endpoint URL: https://<railway-url>/stripe/webhook
+  Events: checkout.session.completed, customer.subscription.updated,
+          customer.subscription.deleted
+  Copy the new whsec_... → update STRIPE_WEBHOOK_SECRET in Railway Variables → Redeploy.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 12 — DEPLOY FRONTEND TO VERCEL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   WHERE: https://vercel.com/new
-  REQUIRES: Step 0 (code on GitHub), Step 11 (Railway URL available)
 
-─── 12A. Create project ─────────────────────────────────────────────────────────
+  1. Import ilPez00/praxis_webapp
+  2. Root Directory: client  ← critical
+  3. Framework: Create React App
+  4. Environment variables (Settings → Environment Variables):
+       REACT_APP_SUPABASE_URL           = https://kuyzjjbeiawnnkkrjsda.supabase.co
+       REACT_APP_SUPABASE_ANON_KEY      = <rotated anon key>
+       REACT_APP_STRIPE_PUBLISHABLE_KEY = pk_test_...
+       REACT_APP_API_URL                = https://<railway-url>.up.railway.app
+       GENERATE_SOURCEMAP               = false
+  5. Deploy (~2 min). Your URL: https://praxis-webapp-xxx.vercel.app
 
-  1. "Import Git Repository" → select ilPez00/praxis_webapp
-  2. IMPORTANT: Set "Root Directory" to: client
-     (Vercel must build from the client/ folder, not the root)
-  3. Framework Preset: Create React App (Vercel should detect this)
-  4. Don't deploy yet — set env vars first
-
-─── 12B. Set environment variables ─────────────────────────────────────────────
-  WHERE: Vercel → your project → Settings → Environment Variables
-
-  Add these 5 variables:
-    REACT_APP_SUPABASE_URL          = https://kuyzjjbeiawnnkkrjsda.supabase.co
-    REACT_APP_SUPABASE_ANON_KEY     = <your rotated anon key>
-    REACT_APP_STRIPE_PUBLISHABLE_KEY = pk_test_...
-    REACT_APP_API_URL               = https://<your-railway-url>.up.railway.app
-    GENERATE_SOURCEMAP              = false
-
-  Click "Save" after each, or "Add All" if there's a bulk option.
-
-─── 12C. Deploy ─────────────────────────────────────────────────────────────────
-
-  Click "Deploy". Takes ~2 minutes.
-  Your URL will be: https://praxis-webapp-xxx.vercel.app
-
-─── 12D. Post-deploy updates ────────────────────────────────────────────────────
-
-  1. Update Supabase redirect URLs (Step 4) to include your Vercel URL:
-       https://your-app.vercel.app/**
-
-  2. Update Railway → Variables → CLIENT_URL = https://your-app.vercel.app
-     Then redeploy Railway.
-
-  ✓ Success: Visiting your Vercel URL shows the Praxis login page.
+  Post-deploy:
+    - Add Vercel URL to Supabase auth redirect URLs (Step 4)
+    - Update Railway → Variables → CLIENT_URL = https://your-app.vercel.app → Redeploy
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 13 — SEED DEMO USERS (run after Railway is deployed)
+STEP 13 — SEED DEMO USERS  (run after Railway is live)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  Seeds 7 realistic demo profiles with goal trees so new real users see
-  meaningful matches from day one.
+  curl -X POST https://<RAILWAY_URL>/admin/seed-demo-users \
+    -H "X-Admin-Secret: <ADMIN_SECRET>" \
+    -H "Content-Type: application/json"
 
-─── 13A. Run the seed command ───────────────────────────────────────────────────
-
-  Replace <RAILWAY_URL> and <ADMIN_SECRET> with your actual values:
-
-    curl -X POST https://<RAILWAY_URL>/admin/seed-demo-users \
-      -H "X-Admin-Secret: <ADMIN_SECRET>" \
-      -H "Content-Type: application/json"
-
-  Example:
-    curl -X POST https://praxis-production.up.railway.app/admin/seed-demo-users \
-      -H "X-Admin-Secret: my-super-secret-admin-key" \
-      -H "Content-Type: application/json"
-
-  ✓ Expected response:
-    {"message":"Demo seed complete. 7 created, 0 skipped.","results":[...]}
-
-  Running again is safe — it skips existing users.
-
-─── 13B. Verify in Supabase ────────────────────────────────────────────────────
-  WHERE: Supabase → Table Editor → profiles
-
-  Filter: is_demo = true
-  ✓ Expected: 7 rows (Sara Milano, Yuki Tanaka, Priya Sharma, Marco Chen,
-               Lena Müller, Carlos Reyes, Tom Hansen)
-
-  Each should have:
-    - name, bio, avatar_url filled in
-    - onboarding_completed = true
-    - is_demo = true
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 10 — PGVECTOR + EMBEDDINGS  (Semantic matching — run after Step 5)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-WHERE: Supabase → SQL Editor → New query
-WHY:   Enables semantic goal matching via stored embeddings instead of O(n²) live calls
-NOTE:  Requires GEMINI_API_KEY in .env — without it the fallback (domain overlap) is used
-
-Run each block separately in order:
-
-─── 10A. Enable pgvector extension ─────────────────────────────────────────────
-
-  CREATE EXTENSION IF NOT EXISTS vector;
-
-  ✓ Success: no error. If it says "already exists" that's fine.
-
-─── 10B. Create goal_embeddings table ───────────────────────────────────────────
-
-  CREATE TABLE IF NOT EXISTS goal_embeddings (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    goal_node_id TEXT NOT NULL,
-    domain TEXT NOT NULL,
-    node_name TEXT NOT NULL,
-    embedding vector(768),
-    updated_at TIMESTAMPTZ DEFAULT now(),
-    UNIQUE(user_id, goal_node_id)
-  );
-
-  ALTER TABLE goal_embeddings ENABLE ROW LEVEL SECURITY;
-
-  DROP POLICY IF EXISTS "Service role bypass embeddings" ON goal_embeddings;
-  CREATE POLICY "Service role bypass embeddings" ON goal_embeddings USING (true);
-
-  ✓ Success: Table appears in Table Editor.
-
-─── 10C. Create match_users_by_goals RPC ────────────────────────────────────────
-
-  CREATE OR REPLACE FUNCTION match_users_by_goals(
-    query_user_id UUID,
-    match_limit INT DEFAULT 20
-  )
-  RETURNS TABLE(matched_user_id UUID, score FLOAT8)
-  LANGUAGE plpgsql SECURITY DEFINER
-  AS $$
-  BEGIN
-    RETURN QUERY
-    SELECT
-      b.user_id AS matched_user_id,
-      AVG(1.0 - (a.embedding <=> b.embedding))::FLOAT8 AS score
-    FROM goal_embeddings a
-    JOIN goal_embeddings b ON a.domain = b.domain
-    WHERE a.user_id = query_user_id
-      AND b.user_id != query_user_id
-      AND a.embedding IS NOT NULL
-      AND b.embedding IS NOT NULL
-    GROUP BY b.user_id
-    ORDER BY score DESC
-    LIMIT match_limit;
-  END;
-  $$;
-
-  ✓ Success: Function appears in Database → Functions.
-
-─── 10D. Add GEMINI_API_KEY to .env ─────────────────────────────────────────────
-
-  WHERE: praxis_webapp/.env  (and Railway Variables for production)
-
-  Get your API key: https://aistudio.google.com/apikey
-  Add line: GEMINI_API_KEY=AIza...
-
-  ✓ Success: Backend logs "EmbeddingService: ready" instead of the warning.
-  After first goal save, check goal_embeddings table — rows should appear.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 11 — BETS TABLE + PRAXIS POINTS  (Goal betting — run after Step 5)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-WHERE: Supabase → SQL Editor → New query
-WHY:   Adds goal-betting feature: stake Praxis Points on completing goals by a deadline
-
-─── 11A. Add praxis_points to profiles ──────────────────────────────────────────
-
-  ALTER TABLE profiles
-    ADD COLUMN IF NOT EXISTS praxis_points INT DEFAULT 100;
-
-  ✓ Success: Column visible in Table Editor → profiles.
-
-─── 11B. Create bets table ──────────────────────────────────────────────────────
-
-  CREATE TABLE IF NOT EXISTS bets (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    goal_node_id TEXT NOT NULL,
-    goal_name TEXT NOT NULL,
-    deadline TIMESTAMPTZ NOT NULL,
-    stake_points INT DEFAULT 10 CHECK (stake_points >= 1),
-    status TEXT DEFAULT 'active' CHECK (status IN ('active','won','lost','cancelled')),
-    created_at TIMESTAMPTZ DEFAULT now()
-  );
-
-  ALTER TABLE bets ENABLE ROW LEVEL SECURITY;
-
-  DROP POLICY IF EXISTS "Users manage own bets" ON bets;
-  CREATE POLICY "Users manage own bets" ON bets
-    FOR ALL USING (auth.uid() = user_id);
-
-  DROP POLICY IF EXISTS "Service role bypass bets" ON bets;
-  CREATE POLICY "Service role bypass bets" ON bets USING (true);
-
-  ✓ Success: Table appears in Table Editor.
+  ✓ Expected: {"message":"Demo seed complete. 7 created, 0 skipped.",...}
+  Running again is safe — existing users are skipped.
+  Verify in Supabase → Table Editor → profiles → filter is_demo = true → 7 rows.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TROUBLESHOOTING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  PROBLEM: Backend crashes with "Supabase URL and Service Role Key are required"
-  FIX:     Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to praxis_webapp/.env
-           (see Step 2 for where to find these values)
+  PROBLEM: Backend crashes "Supabase URL and Service Role Key are required"
+  FIX:     SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY missing in .env
 
-  PROBLEM: Frontend shows "NetworkError" or "Failed to fetch" on API calls
-  FIX:     Backend isn't running. Start it: cd praxis_webapp && npm run dev
+  PROBLEM: Frontend shows "NetworkError" or "Failed to fetch"
+  FIX:     Backend isn't running. cd praxis_webapp && npm run dev
 
-  PROBLEM: Chat messages don't appear in real-time
-  FIX:     Enable Realtime on messages table (Step 7)
+  PROBLEM: Chat messages don't appear live
+  FIX:     Enable Realtime on messages table (Step 5RT above)
 
   PROBLEM: Profile photo upload fails
-  FIX:     Create the 'avatars' storage bucket in Supabase (Step 8)
+  FIX:     Create the "avatars" storage bucket (Step 5AV above)
+
+  PROBLEM: File/image sending in chat fails silently
+  FIX:     Create the "chat-media" storage bucket + policies (Step 5Q13 above)
 
   PROBLEM: Stripe Checkout doesn't redirect back correctly
-  FIX:     Check that CLIENT_URL in .env matches where your frontend is running
+  FIX:     CLIENT_URL in .env must match your frontend origin
 
-  PROBLEM: Matches page always shows "0 matches"
-  FIX 1:   Backend GEMINI_API_KEY is missing → matching still works with fallback,
-            but both users need goal trees with at least one overlapping domain
-  FIX 2:   Seed demo users (Step 13) so there's someone to match with
+  PROBLEM: Matches page shows "0 matches"
+  FIX 1:   Seed demo users (Step 13) so there's someone to match with
+  FIX 2:   Both users need a goal tree saved (triggers embedding generation)
 
   PROBLEM: "Invalid or missing admin secret" from seed endpoint
-  FIX:     Set ADMIN_SECRET in .env / Railway Variables and restart server
+  FIX:     ADMIN_SECRET in .env/Railway Variables must match the header value
 
-  PROBLEM: New user gets stuck at /onboarding with no way to complete it
-  FIX:     Wire the complete-onboarding endpoint (Step 9)
+  PROBLEM: User stuck at /onboarding, can't proceed
+  FIX:     Already fixed in code — POST /users/complete-onboarding is wired
 
-  PROBLEM: face-api.js source map warnings in frontend console
-  FIX:     Already fixed — GENERATE_SOURCEMAP=false in client/.env suppresses them
+  PROBLEM: face-api.js source map warnings
+  FIX:     Already fixed — GENERATE_SOURCEMAP=false in client/.env
 
 ================================================================================
