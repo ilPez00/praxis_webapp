@@ -34,6 +34,53 @@ Status: ✅ Authorized + pushing
 
 ---
 
+## Session 23 — Claude Code (2026-02-21) — Android Port Phase 2 + Deployment Configs
+
+### Completed this session:
+
+**Android — Debugging:**
+- `GoalSelectionScreen.kt`: Fixed critical layout bug — replaced nested `LazyColumn`s inside a non-scrollable `Column(fillMaxSize)` with a `Column(verticalScroll)` + `forEach` loops. Removed `Spacer(weight(1f))` (unsupported in scrollable columns). App now proceeds past the goal tree correctly.
+- `PraxisViewModel.kt`: Fixed goal progress not triggering recomposition — changed `user.copy(goalTree = user.goalTree)` to `user.copy(goalTree = user.goalTree.toMutableList())` to force a new list reference and emit from StateFlow.
+
+**Android — Info Pop-ups:**
+- Created `ui/screens/InfoButton.kt` — reusable `InfoButton(title, description)` composable using `AlertDialog`
+- Added `InfoButton` to all 11 screens: Dashboard, GoalSelection, Matches, Groups, GroupChatRoom, Chat, Analytics, Upgrade, IdentityVerification, HomeScreen (Goals tab), Onboarding, Profile
+
+**Android — Styling (match webapp dark amber+violet theme):**
+- `ui/theme/Theme.kt`: Rewrote to always-dark Material3 scheme — amber `#F59E0B` primary, violet `#8B5CF6` secondary, `#0A0B14` deep dark background, `#111827` surface. Removed `isSystemInDarkTheme()` branch.
+- `ui/theme/Color.kt`: Updated all 9 domain colors to exactly match webapp (amber=Career, blue=Investing, red=Fitness, violet=Academics, emerald=Mental Health, pink=Philosophy, purple=Culture/Hobbies, orange=Intimacy/Romance, cyan=Friendship/Social)
+
+**Android — Community Challenges (stub):**
+- `DashboardScreen.kt`: Added section 7 "Community Challenges" with 3 stub cards (Fitness Streak, Read a Book, Meditation) — each has "Coming Soon" chip and disabled "Join" button
+
+**Webapp — Phase 4 Embedding Cache:**
+- `EmbeddingService.ts`: Added `getEmbeddingWithCache(goalNodeId, text)` — reads from `goal_embeddings` table before calling Gemini; upserts on miss. Avoids redundant API calls.
+
+**Webapp — Phase 4 Community Challenges Stub:**
+- `DashboardPage.tsx`: Added Community Challenges section below Achievements with 3 stub challenge cards, "Coming Soon" chip, disabled "Join Challenge" button with LockIcon
+
+**Webapp — Phase 3 Deployment Configs:**
+- Created `client/vercel.json`: CRA deployment config (build command, output dir, SPA rewrites, static cache headers)
+- Created `railway.toml`: Backend deployment config (nixpacks, `node dist/index.js` start, healthcheck at `/health`, restart on failure)
+- Created `README.md`: Private beta instructions, Railway + Vercel deployment guide with env var table, local dev setup, tech stack
+
+**Webapp — Bug fix:**
+- `DashboardPage.tsx`: Fixed hardcoded `"0"` comment count → `"···"` (Achievement model has no `totalComments` field)
+
+**TypeScript:** 0 errors frontend + backend
+
+### Build status:
+- ✅ Android: `./gradlew assembleDebug` — BUILD SUCCESSFUL
+- ✅ Webapp client: `npx tsc --noEmit` — 0 errors
+- ✅ Webapp backend: `npx tsc --noEmit` — 0 errors
+
+### Next priorities:
+- Run SQL for `goal_embeddings` table + pgvector extension if not done (see manual_actions.txt)
+- Deploy: add env vars in Railway dashboard + connect GitHub repo; import `client/` in Vercel
+- Phase 5: Beta user onboarding flow, push notification stubs
+
+---
+
 ## Session 19 — Claude Code (2026-02-20 cont.) — Phases 2B/2C/3A/3B/3C
 
 ### Completed this session:

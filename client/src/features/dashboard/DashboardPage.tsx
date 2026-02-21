@@ -47,6 +47,9 @@ import ExploreIcon from '@mui/icons-material/Explore';
 import ChatIcon from '@mui/icons-material/Chat';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import GroupsIcon from '@mui/icons-material/Groups';
+import LockIcon from '@mui/icons-material/Lock';
 
 interface MatchResult {
   userId: string;
@@ -663,7 +666,7 @@ const DashboardPage: React.FC = () => {
                             <IconButton size="small" onClick={() => handleOpenComments(achievement)} sx={{ p: 0.5 }}>
                               <ChatBubbleOutlineIcon fontSize="small" sx={{ opacity: 0.7 }} />
                             </IconButton>
-                            <Typography variant="caption" sx={{ fontWeight: 700 }}>0</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 700, opacity: 0.5 }}>···</Typography>
                           </Box>
                           <Typography variant="caption" sx={{ ml: 'auto', alignSelf: 'center', opacity: 0.5 }}>
                             {new Date(achievement.createdAt).toLocaleDateString()}
@@ -677,6 +680,61 @@ const DashboardPage: React.FC = () => {
             </GlassCard>
           </Grid>
         </Grid>
+
+        {/* Community Challenges Section */}
+        <Box sx={{ mt: 6 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+            <EmojiEventsIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="h5" sx={{ fontWeight: 800 }}>Community Challenges</Typography>
+            <Chip label="Coming Soon" size="small" sx={{ ml: 1, fontWeight: 700, bgcolor: 'rgba(139,92,246,0.15)', color: '#8B5CF6' }} />
+          </Box>
+          <Grid container spacing={3}>
+            {[
+              { title: '30-Day Fitness Streak', domain: Domain.FITNESS, emoji: '🏋️', participants: 234, daysLeft: 7, description: 'Exercise every day for 30 days. Log at least 30 min of activity daily.' },
+              { title: 'Read One Book This Month', domain: Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS, emoji: '📚', participants: 156, daysLeft: 12, description: 'Finish one book before the month ends. Any genre counts — non-fiction earns bonus points.' },
+              { title: '21-Day Daily Meditation', domain: Domain.MENTAL_HEALTH, emoji: '🧘', participants: 89, daysLeft: 21, description: 'Meditate for at least 10 minutes every day for 21 consecutive days.' },
+            ].map((challenge) => (
+              <Grid key={challenge.title} size={{ xs: 12, md: 4 }}>
+                <GlassCard sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', gap: 2, opacity: 0.8 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Typography variant="h2" sx={{ lineHeight: 1 }}>{challenge.emoji}</Typography>
+                    <Chip
+                      label={challenge.domain.split('_').slice(0, 1).join('')}
+                      size="small"
+                      sx={{
+                        fontWeight: 700, fontSize: '0.6rem',
+                        bgcolor: `${DOMAIN_COLORS[challenge.domain]}15`,
+                        color: DOMAIN_COLORS[challenge.domain],
+                      }}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>{challenge.title}</Typography>
+                    <Typography variant="body2" color="text.secondary">{challenge.description}</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 2, mt: 'auto' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <GroupsIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                      <Typography variant="caption" color="text.secondary">{challenge.participants} joined</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="caption" color="text.secondary">{challenge.daysLeft}d left</Typography>
+                    </Box>
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    disabled
+                    startIcon={<LockIcon />}
+                    sx={{ borderRadius: '10px', fontWeight: 600 }}
+                  >
+                    Join Challenge
+                  </Button>
+                </GlassCard>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       </Container>
 
       {/* Achievement Detail Modal */}

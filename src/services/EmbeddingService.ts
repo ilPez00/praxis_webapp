@@ -58,6 +58,43 @@ export class EmbeddingService {
   }
 
   /**
+   * Returns the stored embedding for a given goal node from the DB cache,
+   * or generates (and stores) a fresh one via Gemini if not found.
+   *
+   * This is the Phase-4 embedding cache: once a goal node's embedding is stored
+   * in the `goal_embeddings` table it is reused on every subsequent match request,
+   * avoiding redundant Gemini API calls and reducing latency + cost.
+   *
+   * @param goalNodeId  The goal node UUID (primary cache key).
+   * @param text        The canonical text to embed (used only on a cache miss).
+   */
+  public async getEmbeddingWithCache(goalNodeId: string, text: string): Promise<number[]> {
+    if (!this.available) {
+      throw new Error('EmbeddingService: not available. Check GEMINI_API_KEY.');
+    }
+    // 1. Try DB cache first
+    const { data } = await supabase
+      .from('goal_embeddings')
+      .select('embedding')
+      .eq('goal_node_id', goalNodeId)
+      .maybeSingle();
+
+    if (data?.embedding) {
+      logger.debug(`Embedding cache HIT for node ${goalNodeId}`);
+      return data.embedding as number[];
+    }
+
+    // 2. Cache miss — call Gemini and persist
+    logger.debug(`Embedding cache MISS for node ${goalNodeId} — calling Gemini`);
+    const embedding = await this.getEmbedding(text);
+    await supabase.from('goal_embeddings').upsert(
+      { goal_node_id: goalNodeId, embedding, node_name: text, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,goal_node_id' }
+    );
+    return embedding;
+  }
+
+  /**
    * Generates embeddings for a list of goal nodes and upserts them into the
    * `goal_embeddings` table for later use by the pgvector RPC matcher.
    * Called fire-and-forget from goalController after every goal tree save.
