@@ -10,6 +10,7 @@ const matchingEngine = new MatchingEngineService();
 
 export const getMatchesForUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.params;
+  const domainFilter = req.query.domain as string | undefined;
 
   // --- Fast path: pgvector RPC (requires goal_embeddings table + GEMINI_API_KEY) ---
   try {
@@ -19,12 +20,17 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
     });
     if (!rpcError && rpcMatches && rpcMatches.length > 0) {
       logger.info(`pgvector matched ${rpcMatches.length} users for ${userId}`);
-      return res.json(
-        rpcMatches.map((m: { matched_user_id: string; score: number }) => ({
-          userId: m.matched_user_id,
-          score: Math.min(1, Math.max(0, m.score)),
-        }))
-      );
+      let results = rpcMatches.map((m: { matched_user_id: string; score: number }) => ({
+        userId: m.matched_user_id,
+        score: Math.min(1, Math.max(0, m.score)),
+        sharedGoals: [] as { domain: string }[],
+      }));
+      if (domainFilter) {
+        results = results.filter((r: { userId: string; score: number; sharedGoals: { domain: string }[] }) =>
+          r.sharedGoals.some((g: { domain: string }) => g.domain === domainFilter)
+        );
+      }
+      return res.json(results.map((r: { userId: string; score: number }) => ({ userId: r.userId, score: r.score })));
     }
   } catch (_) {
     // pgvector not available or table missing — fall through to O(n²) approach
@@ -58,19 +64,29 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
     throw new InternalServerError('Failed to fetch other users\' goal trees.');
   }
 
-  const potentialMatches: { user: string; score: number; goalTree: GoalTree }[] = [];
+  const userNodes: any[] = (userGoalTree as GoalTree).nodes || [];
+
+  const potentialMatches: { user: string; score: number; goalTree: GoalTree; sharedGoals: { domain: string }[] }[] = [];
 
   for (const otherGoalTree of allGoalTrees || []) {
     const score = await matchingEngine.calculateCompatibilityScore(userGoalTree as GoalTree, otherGoalTree as GoalTree);
     if (score > 0) { // Only consider matches with a positive score
-      potentialMatches.push({ user: otherGoalTree.userId, score, goalTree: otherGoalTree as GoalTree });
+      const otherNodes: any[] = (otherGoalTree as GoalTree).nodes || [];
+      const userDomains = new Set(userNodes.map((n: any) => n.domain).filter(Boolean));
+      const sharedGoals = otherNodes
+        .filter((n: any) => n.domain && userDomains.has(n.domain))
+        .map((n: any) => ({ domain: n.domain }));
+      potentialMatches.push({ user: otherGoalTree.userId, score, goalTree: otherGoalTree as GoalTree, sharedGoals });
     }
   }
 
   // Sort by score in descending order
   potentialMatches.sort((a, b) => b.score - a.score);
 
-  // For now, let's just return the user IDs and their scores.
-  // In a real application, you'd probably fetch more user details.
-  res.json(potentialMatches.map(match => ({ userId: match.user, score: match.score })));
+  // Apply domain filter if provided
+  const filtered = domainFilter
+    ? potentialMatches.filter(match => match.sharedGoals.some(g => g.domain === domainFilter))
+    : potentialMatches;
+
+  res.json(filtered.map(match => ({ userId: match.user, score: match.score, sharedGoals: match.sharedGoals })));
 });

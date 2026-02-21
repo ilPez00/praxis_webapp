@@ -80,4 +80,22 @@ export const completeOnboarding = catchAsync(async (req: Request, res: Response,
   res.status(200).json({ message: 'Onboarding complete.' });
 });
 
+/**
+ * POST /users/:id/verify
+ * Records successful client-side identity verification by setting is_verified = true.
+ * No auth required — the face check happened client-side; this just records the result.
+ */
+export const verifyIdentity = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { id } = req.params;
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_verified: true })
+    .eq('id', id);
+  if (error) {
+    logger.error('Supabase error verifying identity:', error.message);
+    throw new InternalServerError('Failed to verify identity.');
+  }
+  res.status(200).json({ message: 'Identity verified.' });
+});
+
 

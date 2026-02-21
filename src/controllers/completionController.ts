@@ -77,11 +77,13 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
   if (updateError) throw new InternalServerError('Failed to update completion request.');
 
   if (approved) {
+    const requesterId = request.requester_id;
+
     // Update the requester's goal tree: set the matching node's progress to 1.0
     const { data: tree } = await supabase
       .from('goal_trees')
       .select('nodes')
-      .eq('userId', request.requester_id)
+      .eq('userId', requesterId)
       .single();
 
     if (tree?.nodes) {
@@ -91,10 +93,28 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
       await supabase
         .from('goal_trees')
         .update({ nodes: updatedNodes })
-        .eq('userId', request.requester_id);
+        .eq('userId', requesterId);
 
       // Resolve any active bets on this goal (non-fatal)
-      await resolveBetsOnGoalCompletion(request.requester_id, request.goal_node_id);
+      const { data: activeBets } = await supabase
+        .from('bets')
+        .select('*')
+        .eq('user_id', requesterId)
+        .eq('goal_node_id', request.goal_node_id)
+        .eq('status', 'active');
+
+      await resolveBetsOnGoalCompletion(requesterId, request.goal_node_id);
+
+      // Award +5 Praxis Points to requester for peer-verified completion
+      const { data: prof } = await supabase.from('profiles').select('praxis_points').eq('id', requesterId).single();
+      if (prof) await supabase.from('profiles').update({ praxis_points: (prof.praxis_points ?? 0) + 5 }).eq('id', requesterId);
+
+      // Award stake points back as bonus for won bets
+      const { data: betProf } = await supabase.from('profiles').select('praxis_points').eq('id', requesterId).single();
+      if (betProf && activeBets?.length) {
+        const totalStake = activeBets.reduce((s: number, b: any) => s + (b.stake_points ?? 0), 0);
+        await supabase.from('profiles').update({ praxis_points: (betProf.praxis_points ?? 0) + totalStake }).eq('id', requesterId);
+      }
 
       // Auto-create achievement in the community feed for the completed goal
       const completedNode = (tree.nodes as any[]).find((n: any) => n.id === request.goal_node_id);
@@ -102,11 +122,11 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
         const { data: requesterProfile } = await supabase
           .from('profiles')
           .select('name, avatar_url')
-          .eq('id', request.requester_id)
+          .eq('id', requesterId)
           .single();
         await createAchievementFromGoal(
           completedNode,
-          request.requester_id,
+          requesterId,
           requesterProfile?.name || 'Praxis User',
           requesterProfile?.avatar_url || undefined,
         );

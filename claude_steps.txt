@@ -34,6 +34,84 @@ Status: ✅ Authorized + pushing
 
 ---
 
+## Further Development Plan (Session 24 — 2026-02-21)
+
+### Audit findings (state at end of Session 23):
+- Android app is a DEMO — uses MockRepository with hardcoded in-memory data; Firebase Auth fires but result is discarded and a mock user is created; NO Supabase, NO API calls
+- Supabase database missing 10 tables + 6 profile columns → run migrations/setup.sql in SQL Editor
+- Webapp fully working: Stripe, Gemini AI coaching, matching engine (pgvector + fallback), bet lifecycle, peer verification both sides
+- Community Challenges = zero code (UI stub only)
+- Identity Verification = POC level on webapp (face-api.js detects any face → marks verified), empty on Android
+- Bet expiry cron = stub (endpoint exists, no actual scheduler wired)
+
+### Phase 5 — Android Networking (CRITICAL)
+Transform Android from demo → real product.
+- 5A: Add Supabase Kotlin SDK (postgrest-kt, auth-kt, realtime-kt + ktor-client-android)
+- 5B: Create SupabaseClient singleton (data/remote/SupabaseClient.kt)
+- 5C: Create SupabaseRepository replacing MockRepository — loadUser, saveGoalTree, loadMatches, loadAchievements, loadGroups
+- 5D: Update PraxisViewModel to inject SupabaseRepository, handle loading/error states
+- 5E: Auth: exchange Firebase Google token for Supabase session via signInWith(Google)
+- 5F: Real-time chat via Supabase Realtime subscription on messages table
+
+### Phase 6 — Deploy & First Real Users
+- 6A: Run migrations/setup.sql in Supabase SQL Editor (2 min, manual)
+- 6B: Deploy backend to Railway — connect GitHub repo, set env vars
+- 6C: Deploy frontend to Vercel — root dir = client/, set REACT_APP_API_URL
+- 6D: Seed demo users via POST /admin/seed-demo-users
+- 6E: Enable Supabase Realtime on messages table
+- 6F: Bet expiry cron — Supabase pg_cron or Railway cron → POST /bets/resolve-webhook
+
+### Phase 7 — Core UX Gaps
+- 7A: Community Challenges — challenges + challenge_participants tables, POST /challenges/:id/join, GET /challenges, wire webapp + Android
+- 7B: Backend identity verification endpoint — POST /users/:id/verify → sets is_verified=true; Android FaceVerificationActivity implementation
+- 7C: Goal completion notifications — Supabase Realtime on completion_requests, toast on approval
+- 7D: Partner search filter — GET /matches/:userId?domain=X, frontend filter chips
+
+### Phase 8 — Monetisation & Retention
+- 8A: Stripe webhook for production — register at Railway URL in Stripe dashboard
+- 8B: Streak system — update current_streak + last_activity_date in goalController on every progress save
+- 8C: Praxis Points economy — award points on: achievement created (+10), peer verification approved (+5), challenge completed (+50)
+- 8D: Push notifications (Android) — FCM token in profiles.fcm_token, push on: new match, message, completion request
+- 8E: Referral system — profiles.referred_by column + /join?ref=<userId> invite link, +50 points both parties
+
+### Phase 9 — Scale & Trust
+- 9A: Rate limiting — express-rate-limit on /matches and /ai-coaching
+- 9B: Content moderation — Gemini safety settings on chat messages + achievement descriptions
+- 9C: Admin dashboard — React page behind ADMIN_SECRET with MAU, matches, bets, revenue
+- 9D: Data export — GET /users/:id/export (GDPR)
+- 9E: Android Play Store — signed release APK, privacy policy, content rating
+
+### Priority Order
+🔴 NOW: 6A (run SQL), 6B–6C (deploy)
+🟠 NEXT: 5A–5F (Android networking — biggest gap)
+🟠 NEXT: 7A (Community Challenges), 7B (verify endpoint), 7D (search filter)
+🟡 SOON: 8A (Stripe prod), 8B (streaks), 8C (points events)
+🟢 LATER: 8D (push notifications), 8E (referrals), 9A–9E (scale/trust)
+
+---
+
+## Session 24 — Claude Code (2026-02-21) — Debug Pass + Networking Start
+
+### Webapp debug fixes (this session):
+- Added GET /health endpoint (required by Railway)
+- Added POST /users/complete-onboarding endpoint
+- Fixed run_praxis.sh: SUPABASE_SERVICE_ROLE_KEY check (was wrong var)
+- achievementController, groupController, messageController, bettingController: graceful empty [] on schema-cache errors
+- Created migrations/setup.sql — single idempotent file for all 10 missing tables + profile columns
+- Added GENERATE_SOURCEMAP=false to client/.env
+
+### Android debug fixes (this session):
+- MainActivity: local val for currentMatchForGrading (smart-cast NPE fix)
+- OnboardingScreen: signInError!! → signInError ?: ""
+- DashboardScreen: user!!.currentStreak → user?.currentStreak ?: 0; Divider → HorizontalDivider
+- ProfileScreen: empty list guard on .average(); Divider → HorizontalDivider; LinearProgressIndicator lambda form
+- gradle.properties: cleaned deprecation warnings
+
+### Started this session (Session 24 implementation):
+See tasks below.
+
+---
+
 ## Session 23 — Claude Code (2026-02-21) — Android Port Phase 2 + Deployment Configs
 
 ### Completed this session:

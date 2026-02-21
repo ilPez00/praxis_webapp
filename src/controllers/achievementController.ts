@@ -50,6 +50,15 @@ export const createAchievementFromGoal = async (
       logger.error('Error creating achievement from goal in Supabase:', error);
       return null;
     }
+
+    // Award +10 Praxis Points for creating an achievement (best-effort)
+    await supabase.from('profiles').select('praxis_points').eq('id', userId).single()
+      .then(({ data }) => {
+        if (data) supabase.from('profiles')
+          .update({ praxis_points: (data.praxis_points ?? 0) + 10 })
+          .eq('id', userId);
+      });
+
     return data[0]; // Return the first (and only) inserted record
   } catch (e) {
     logger.error('Error creating achievement from goal:', e);

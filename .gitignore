@@ -36,3 +36,4 @@ supabase_praxis_client_secret
 .env.development.local
 .env.test.local
 .env.production.local
+google_oauth.txt

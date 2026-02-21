@@ -313,6 +313,18 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onMessage, onViewProfile, 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const PRAXIS_DOMAINS = [
+  'Career',
+  'Investing',
+  'Fitness',
+  'Academics',
+  'Mental Health',
+  'Philosophy',
+  'Culture & Hobbies',
+  'Intimacy & Romance',
+  'Friendship & Social',
+];
+
 const MatchesPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading: userLoading } = useUser();
@@ -322,6 +334,7 @@ const MatchesPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [compatibilityFilter, setCompatibilityFilter] = useState(0);
   const [selectedDomainsFilter, setSelectedDomainsFilter] = useState<string[]>([]);
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
 
   // Convert mock data to MatchProfile shape (used as fallback)
   const demoProfiles: MatchProfile[] = mockMatches.map((m: MockMatch) => ({
@@ -342,7 +355,10 @@ const MatchesPage: React.FC = () => {
     const fetchMatches = async () => {
       setLoading(true);
       try {
-        const matchRes = await axios.get(`${API_URL}/matches/${user.id}`);
+        const url = selectedDomain
+          ? `${API_URL}/matches/${user.id}?domain=${encodeURIComponent(selectedDomain)}`
+          : `${API_URL}/matches/${user.id}`;
+        const matchRes = await axios.get(url);
         const rawMatches: MatchResult[] = matchRes.data ?? [];
 
         if (rawMatches.length === 0) { setRealMatches([]); return; }
@@ -376,7 +392,7 @@ const MatchesPage: React.FC = () => {
       }
     };
     fetchMatches();
-  }, [user, userLoading]);
+  }, [user, userLoading, selectedDomain]);
 
   const applyFilters = (list: MatchProfile[]) =>
     list.filter((m) => {
@@ -446,6 +462,38 @@ const MatchesPage: React.FC = () => {
         >
           Filters {compatibilityFilter > 0 || selectedDomainsFilter.length > 0 ? '·' : ''}
         </Button>
+      </Box>
+
+      {/* ── Domain Filter Chips ──────────────────────────────────────────── */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+        {PRAXIS_DOMAINS.map((domain) => {
+          const isSelected = selectedDomain === domain;
+          return (
+            <Chip
+              key={domain}
+              label={domain}
+              onClick={() => setSelectedDomain(isSelected ? null : domain)}
+              sx={{
+                fontWeight: 600,
+                fontSize: '0.78rem',
+                bgcolor: isSelected ? 'primary.main' : 'rgba(255,255,255,0.05)',
+                color: isSelected ? '#0A0B14' : 'text.secondary',
+                border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                '&:hover': {
+                  bgcolor: isSelected ? 'primary.dark' : 'rgba(255,255,255,0.1)',
+                },
+              }}
+            />
+          );
+        })}
+        {selectedDomain && (
+          <Chip
+            label="Clear"
+            onClick={() => setSelectedDomain(null)}
+            size="small"
+            sx={{ fontWeight: 600, bgcolor: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)' }}
+          />
+        )}
       </Box>
 
       {/* ── Filters ─────────────────────────────────────────────────────── */}

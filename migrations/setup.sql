@@ -356,6 +356,37 @@ CREATE POLICY "Service role bypass bets" ON public.bets
 
 
 -- =============================================================================
+-- 13. challenges
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.challenges (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title       TEXT NOT NULL,
+  description TEXT,
+  domain      TEXT NOT NULL,
+  duration_days INT NOT NULL DEFAULT 30,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.challenges ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read challenges" ON public.challenges;
+CREATE POLICY "Anyone can read challenges" ON public.challenges FOR SELECT USING (true);
+
+-- 14. challenge_participants
+CREATE TABLE IF NOT EXISTS public.challenge_participants (
+  challenge_id UUID REFERENCES public.challenges(id) ON DELETE CASCADE,
+  user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  joined_at    TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (challenge_id, user_id)
+);
+ALTER TABLE public.challenge_participants ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read participants" ON public.challenge_participants;
+DROP POLICY IF EXISTS "Users can join/leave challenges" ON public.challenge_participants;
+CREATE POLICY "Anyone can read participants" ON public.challenge_participants FOR SELECT USING (true);
+CREATE POLICY "Users can join/leave challenges" ON public.challenge_participants
+  FOR ALL USING (auth.uid() = user_id);
+
+
+-- =============================================================================
 -- 12. MATCH_USERS_BY_GOALS — pgvector cosine-similarity matchmaking function
 --
 -- Returns up to `match_limit` users ranked by average embedding similarity
