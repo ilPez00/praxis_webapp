@@ -90,6 +90,50 @@ Transform Android from demo → real product.
 
 ---
 
+## Session 25 — Claude Code (2026-02-21) — Phase 7+8 Features + Android Networking
+
+### Webapp (praxis_webapp)
+**7A — Community Challenges (backend + frontend):**
+- New `src/controllers/challengeController.ts` (listChallenges, joinChallenge, leaveChallenge)
+- New `src/routes/challengeRoutes.ts` mounted at `/challenges`
+- `migrations/setup.sql` extended with `challenges` + `challenge_participants` tables (RLS policies)
+- `DashboardPage.tsx`: fetches live challenges from API, renders dynamically, "Join Challenge" buttons wired
+
+**7B — Identity Verification Endpoint:**
+- `POST /users/:id/verify` → sets `is_verified = true` in profiles
+- Wired in `userRoutes.ts`
+
+**7D — Domain Filter on Matches:**
+- `GET /matches/:userId?domain=X` filters results by shared goal domain
+- `MatchesPage.tsx`: domain filter chips UI, refetches on chip toggle
+
+**8B — Streak Update:** Already fully implemented in `goalController.ts` (confirmed no changes needed)
+
+**8C — Praxis Points Earning Events:**
+- `achievementController.ts`: +10 points on achievement creation
+- `completionController.ts`: +5 points on peer-verified completion, stake refund on bet win
+
+**Safety:** Caught and blocked `google_oauth.txt` (OAuth credentials) from being committed; added to `.gitignore`
+
+### Android (praxis_android)
+**Phase 5 — Full networking layer (Retrofit + OkHttp):**
+- Added dependencies: retrofit2, converter-gson, okhttp3, logging-interceptor, coroutines-android
+- `data/remote/ApiModels.kt` — typed models for all API responses
+- `data/remote/PraxisApi.kt` — Retrofit interface, 8 suspend endpoints
+- `data/remote/RetrofitClient.kt` — singleton, base URL `http://10.0.2.2:3001/`
+- `data/ApiRepository.kt` — maps API → local models, graceful fallback on HTTP error
+- `GoalNode.kt` — added `Domain.fromString()` companion method
+- `PraxisViewModel.kt` — `signInWithFirebaseUid()`, `loadUserData()`, `loadMatchesAndAchievements()`
+- BUILD SUCCESSFUL, 0 errors
+
+### Status after session 25
+✅ DONE: 7B, 7D, 7A backend, 8B, 8C, Phase 5 Android networking
+🔴 STILL PENDING (manual): Run migrations/setup.sql in Supabase, deploy to Railway/Vercel
+🟡 SOON: Wire Firebase UID into signInWithFirebaseUid() call in OnboardingScreen, 7A frontend polish
+🟢 LATER: 8A (Stripe prod), 8D (push notifications), 8E (referrals), 9A–9E (scale/trust)
+
+---
+
 ## Session 24 — Claude Code (2026-02-21) — Debug Pass + Networking Start
 
 ### Webapp debug fixes (this session):
