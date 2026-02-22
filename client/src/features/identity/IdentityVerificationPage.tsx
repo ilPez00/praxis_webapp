@@ -28,8 +28,8 @@ const IdentityVerificationPage: React.FC = () => {
         setLoadingVideo(false);
       });
 
+    const video = videoRef.current;
     return () => {
-      const video = videoRef.current;
       if (video && video.srcObject) {
         const stream = video.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
