@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabaseClient';
 import { Feedback } from '../models/Feedback';
 import { GoalTree } from '../models/GoalTree';
 import { updateWeightFromGrade } from '../models/GoalNode'; // Import the utility function
-import { v4 as uuidv4 } from 'uuid';
 import logger from '../utils/logger'; // Import the logger
 import { catchAsync, BadRequestError, InternalServerError, NotFoundError } from '../utils/appErrors'; // Import custom errors and catchAsync
 
@@ -30,7 +29,7 @@ export const submitFeedback = catchAsync(async (req: Request, res: Response, nex
   }
 
   const newFeedback: Feedback = {
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     giverId,
     receiverId,
     goalNodeId,
