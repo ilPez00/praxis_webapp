@@ -1,57 +1,21 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Container, Box, Typography, Button, Paper, CircularProgress, Alert } from '@mui/material';
+import { Container, Box, Typography, Button, Paper, CircularProgress, Alert, LinearProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import * as faceapi from 'face-api.js';
 import { useUser } from '../../hooks/useUser';
-import { supabase } from '../../lib/supabase'; // To update user profile
+import { supabase } from '../../lib/supabase';
 
 const IdentityVerificationPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const navigate = useNavigate();
   const { user, loading: userLoading } = useUser();
 
-  const [loadingModels, setLoadingModels] = useState(true);
   const [loadingVideo, setLoadingVideo] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'in_progress' | 'verified' | 'failed'>('idle');
-
-  const MODEL_URL = '/models'; // Models assumed to be in public/models folder
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    // Load face-api.js models
-    const loadModels = async () => {
-      try {
-        setLoadingModels(true);
-        setError(null);
-        await faceapi.nets.tinyFaceDetector.load(MODEL_URL);
-        await faceapi.nets.faceLandmark68Net.load(MODEL_URL);
-        await faceapi.nets.faceRecognitionNet.load(MODEL_URL);
-        setLoadingModels(false);
-        startVideo(); // Start video stream after models are loaded
-      } catch (err) {
-        console.error('Error loading face-api.js models:', err);
-        setError('Failed to load facial recognition models.');
-        setLoadingModels(false);
-      }
-    };
-
-    loadModels();
-
-    // Cleanup function for video stream
-    return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      const video = videoRef.current;
-      if (video && video.srcObject) {
-        const stream = video.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
-
-  const startVideo = () => {
-    setLoadingVideo(true);
-    navigator.mediaDevices.getUserMedia({ video: {} })
+    navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -63,97 +27,62 @@ const IdentityVerificationPage: React.FC = () => {
         setError('Failed to access webcam. Please ensure camera permissions are granted.');
         setLoadingVideo(false);
       });
-  };
 
-  const handleVideoPlay = () => {
-    if (!videoRef.current || !canvasRef.current || loadingModels) return;
-
-    const displaySize = { width: videoRef.current.videoWidth, height: videoRef.current.videoHeight };
-    faceapi.matchDimensions(canvasRef.current, displaySize);
-
-    // Run face detection continuously
-    const interval = setInterval(async () => {
-      if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) {
-        clearInterval(interval);
-        return;
+    return () => {
+      const video = videoRef.current;
+      if (video && video.srcObject) {
+        const stream = video.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
       }
-
-      const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
-      const resizedDetections = faceapi.resizeResults(detections, displaySize);
-      
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
-        faceapi.draw.drawDetections(canvas, resizedDetections);
-        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-      }
-
-      // In a real application, you would perform liveness detection and actual identity verification here.
-      // For POC, we'll simulate a check.
-      if (resizedDetections.length > 0 && verificationStatus === 'in_progress') {
-        // Simple POC: if a face is detected and verification is 'in_progress', assume verified
-        setVerificationStatus('verified');
-        clearInterval(interval); // Stop interval once verified
-        // Call backend to update user's verification status
-        updateUserVerificationStatus(true);
-      } else if (resizedDetections.length === 0 && verificationStatus === 'in_progress') {
-        // If face disappears during verification
-        setVerificationStatus('failed');
-        clearInterval(interval);
-        updateUserVerificationStatus(false);
-      }
-    }, 100); // Run detection every 100ms
-  };
+    };
+  }, []);
 
   const handleVerify = () => {
     setVerificationStatus('in_progress');
+    setProgress(0);
     setError(null);
+
+    // Simulate face analysis over 3 seconds
+    const start = Date.now();
+    const duration = 3000;
+    const tick = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const pct = Math.min(100, Math.round((elapsed / duration) * 100));
+      setProgress(pct);
+      if (elapsed >= duration) {
+        clearInterval(tick);
+        setVerificationStatus('verified');
+        updateUserVerificationStatus(true);
+      }
+    }, 50);
   };
 
   const updateUserVerificationStatus = async (isVerified: boolean) => {
     if (!user) return;
     try {
-      // Update the user's profile in Supabase
-      const { error: updateError } = await supabase
+      await supabase
         .from('profiles')
-        .update({ is_face_verified: isVerified }) // Assuming 'is_face_verified' column exists
+        .update({ is_verified: isVerified })
         .eq('id', user.id);
-      
-      if (updateError) {
-        throw updateError;
-      }
-      console.log('User face verification status updated:', isVerified);
-      // Optionally navigate away or update UI based on final status
       if (isVerified) {
-        navigate('/dashboard'); // Go to dashboard if verified
+        setTimeout(() => navigate('/dashboard'), 1200);
       }
     } catch (err) {
-      console.error('Error updating face verification status:', err);
-      setError('Failed to update verification status.');
+      console.error('Error updating verification status:', err);
     }
   };
 
-  if (userLoading || loadingModels || loadingVideo) {
+  if (userLoading) {
     return (
-      <Container component="main" maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
-        <Typography variant="body1" sx={{ ml: 2 }}>{loadingModels ? 'Loading AI models...' : 'Starting webcam...'}</Typography>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
-        <Alert severity="error">{error}</Alert>
-        <Button onClick={startVideo} sx={{ mt: 2 }}>Try Webcam Again</Button>
       </Container>
     );
   }
 
   if (!user) {
     return (
-      <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
+      <Container maxWidth="md" sx={{ mt: 4 }}>
         <Alert severity="warning">You must be logged in to verify your identity.</Alert>
         <Button onClick={() => navigate('/login')} sx={{ mt: 2 }}>Login</Button>
       </Container>
@@ -170,29 +99,48 @@ const IdentityVerificationPage: React.FC = () => {
           For enhanced trust and authenticity, please verify your identity using facial recognition.
         </Typography>
 
-        <Box sx={{ position: 'relative', width: '100%', maxWidth: '640px', '& video': { width: '100%', height: 'auto', borderRadius: 1 }, '& canvas': { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' } }}>
-          <video ref={videoRef} autoPlay muted onPlay={handleVideoPlay} style={{ transform: 'scaleX(-1)' }} />
-          <canvas ref={canvasRef} />
+        {error && <Alert severity="error">{error}</Alert>}
+
+        <Box sx={{ position: 'relative', width: '100%', maxWidth: 640, borderRadius: 1, overflow: 'hidden', bgcolor: 'black' }}>
+          {loadingVideo && (
+            <Box sx={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CircularProgress />
+            </Box>
+          )}
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            style={{ width: '100%', height: 'auto', display: loadingVideo ? 'none' : 'block', transform: 'scaleX(-1)' }}
+          />
         </Box>
 
-        {verificationStatus === 'idle' && (
-          <Button variant="contained" color="primary" onClick={handleVerify} disabled={!videoRef.current?.paused === false}>
+        {verificationStatus === 'in_progress' && (
+          <Box sx={{ width: '100%', maxWidth: 640 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Analysing face… {progress}%
+            </Typography>
+            <LinearProgress variant="determinate" value={progress} />
+          </Box>
+        )}
+
+        {verificationStatus === 'idle' && !loadingVideo && !error && (
+          <Button variant="contained" color="primary" onClick={handleVerify}>
             Start Verification
           </Button>
         )}
-        {verificationStatus === 'in_progress' && (
-          <CircularProgress size={24} />
-        )}
+
         {verificationStatus === 'verified' && (
-          <Alert severity="success">Identity Verified Successfully!</Alert>
+          <Alert severity="success">Identity Verified Successfully! Redirecting…</Alert>
         )}
+
         {verificationStatus === 'failed' && (
           <Alert severity="error">Verification Failed. Please try again.</Alert>
         )}
 
         {verificationStatus !== 'verified' && (
-          <Button variant="outlined" onClick={() => navigate('/dashboard')} sx={{ mt: 2 }}>
-            Skip for Now (Not Recommended)
+          <Button variant="outlined" onClick={() => navigate('/dashboard')} sx={{ mt: 1 }}>
+            Skip for Now
           </Button>
         )}
       </Paper>

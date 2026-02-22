@@ -20,7 +20,6 @@
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
     "axios": "^1.13.4",
-    "face-api.js": "^0.22.2",
     "framer-motion": "^12.34.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
