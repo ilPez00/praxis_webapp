@@ -182,8 +182,9 @@ const DashboardPage: React.FC = () => {
           });
           setMatchProfiles(profileMap);
         }
-      } catch (err) {
-        setError('Failed to fetch dashboard data.');
+      } catch (err: any) {
+        console.error('[Dashboard] fetchData threw:', err);
+        setError(`Dashboard error: ${err?.message || String(err)}`);
       } finally {
         setLoadingContent(false);
       }

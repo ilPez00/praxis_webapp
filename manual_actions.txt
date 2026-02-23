@@ -1,6 +1,6 @@
 ================================================================================
   PRAXIS — MANUAL ACTIONS REQUIRED
-  Last updated: Session 25 (2026-02-21)
+  Last updated: Session 26 (2026-02-23)
   Read top to bottom. Each section has: WHERE, WHAT, and SUCCESS CRITERIA.
 ================================================================================
 
@@ -40,27 +40,28 @@ FULL SETUP CHECKLIST
   [ ] 1B   Supabase anon key rotated + updated in client/.env
   [ ] 1C   Supabase service role key rotated + updated in praxis_webapp/.env
   [x] 2    Both .env files fully populated ✓ DONE
-  [ ] 3    Google OAuth → paste creds from google_oauth.txt into Supabase +
-           add redirect URI in Google Cloud Console (see Step 3 below)
-  [ ] 4    Supabase auth redirect URLs include http://localhost:3000/**
-  [ ] 5    Run migrations/setup.sql in Supabase SQL Editor (covers everything)
+  [x] 3    Google OAuth ✓ DONE — login with Google working on Vercel
+  [x] 4    Supabase auth redirect URLs ✓ DONE — https://praxis-webapp.vercel.app/** added
+  [x] 5    migrations/setup.sql ✓ DONE — goal_trees, chat_rooms, profiles etc. confirmed working
   [ ] 5Q13 Create "chat-media" storage bucket + policies (see Step 5Q13 below)
   [ ] 5RT  Enable Realtime on messages table (Supabase → Database → Replication)
+  [ ] 5AV  Create "avatars" storage bucket — REQUIRED for profile picture upload
   [ ] 6A   Stripe "Praxis Premium" product created, STRIPE_PRICE_ID set in .env
   [ ] 6B   Stripe CLI installed
   [ ] 6C   stripe listen running, STRIPE_WEBHOOK_SECRET set in .env
   [ ] 6D   End-to-end test payment passing (card 4242 4242 4242 4242)
-  [x] 8    completeOnboarding endpoint ✓ DONE (POST /users/complete-onboarding)
+  [x] 8    completeOnboarding endpoint ✓ DONE
   [x] 9    recharts + @mui/x-charts installed ✓ DONE
-  [x] 14   SSH key authorized at github.com/settings/keys ✓ DONE
-  [x] 15   pgvector + goal_embeddings + match_users_by_goals ✓ DONE (in setup.sql)
-  [x] 16   bets table + praxis_points column ✓ DONE (in setup.sql)
-  [x] 17   GEMINI_API_KEY set in .env ✓ DONE
-  [ ] 11   Backend deployed to Railway
-  [ ] 12   Frontend deployed to Vercel
+  [x] 11   Backend deployed to Railway ✓ DONE — https://web-production-646a4.up.railway.app
+  [x] 12   Frontend deployed to Vercel ✓ DONE — https://praxis-webapp.vercel.app
   [ ] 10   Stripe production webhook registered at Railway URL
   [ ] 13   Demo users seeded (curl POST /admin/seed-demo-users after Railway deploy)
   [x] 14   SSH key ✓ DONE
+  [x] 15   pgvector + goal_embeddings + match_users_by_goals ✓ DONE
+  [x] 16   bets table + praxis_points column ✓ DONE
+  [x] 17   GEMINI_API_KEY set in .env ✓ DONE
+  [ ] P1   Dashboard error — root cause unknown, diagnostics added in Session 26
+  [ ] P2   Railway → Variables → CLIENT_URL must be https://praxis-webapp.vercel.app
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 1 — ROTATE EXPOSED KEYS  ⚠️  DO THIS BEFORE DEPLOYING
@@ -301,6 +302,17 @@ TROUBLESHOOTING
 
   PROBLEM: Profile photo upload fails
   FIX:     Create the "avatars" storage bucket (Step 5AV above)
+           Supabase → Storage → New bucket → Name: avatars → Public: ON → Save
+           Then run in SQL Editor:
+             CREATE POLICY "Users can upload their own avatar" ON storage.objects
+               FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars');
+             CREATE POLICY "Avatars are publicly readable" ON storage.objects
+               FOR SELECT TO public USING (bucket_id = 'avatars');
+
+  PROBLEM: Dashboard "Dashboard error: ..." or groups blank after Session 26 deploy
+  FIX:     Open browser DevTools → Console tab → reload the page → copy the full
+           error text starting with "[Dashboard] fetchData threw:" or
+           "[Groups] fetchRooms threw:" and share it — this reveals the root cause.
 
   PROBLEM: File/image sending in chat fails silently
   FIX:     Create the "chat-media" storage bucket + policies (Step 5Q13 above)

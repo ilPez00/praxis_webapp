@@ -73,8 +73,9 @@ const GroupsPage: React.FC = () => {
       setAllRooms(allRes.data || []);
       const joinedData: Room[] = (joinedRes.data || []).map((entry: any) => entry.chat_rooms).filter(Boolean);
       setJoinedRooms(joinedData);
-    } catch (err) {
-      console.error('Failed to load rooms:', err);
+    } catch (err: any) {
+      console.error('[Groups] fetchRooms threw:', err);
+      toast.error(`Groups error: ${err?.response?.data?.message || err?.message || String(err)}`);
     } finally {
       setLoading(false);
     }
