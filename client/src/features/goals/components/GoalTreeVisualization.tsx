@@ -270,10 +270,11 @@ const GoalTreeVisualization: React.FC<Props> = ({ rootNodes, memberSince, onNode
 
           // Truncate label
           const maxChars = ln.depth === 0 ? 20 : 16;
+          const rawTitle = ln.node.title ?? '';
           const label =
-            ln.node.title.length > maxChars
-              ? ln.node.title.slice(0, maxChars - 1) + '…'
-              : ln.node.title;
+            rawTitle.length > maxChars
+              ? rawTitle.slice(0, maxChars - 1) + '…'
+              : rawTitle;
 
           const strokeW = isHov ? 2.5 : ln.depth === 0 ? 2 : 1.5;
 

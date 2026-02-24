@@ -46,6 +46,7 @@ const routes: RouteConfig[] = [
   { path: '/chat', element: ChatPage, private: true },
   { path: '/chat/:user1Id/:user2Id', element: ChatRoom, private: true, param: 'user1Id' },
   { path: '/onboarding', element: OnboardingPage, private: true },
+  { path: '/goals', element: GoalTreePage, private: true },
   { path: '/goals/:id', element: GoalTreePage, private: true, param: 'id' },
   { path: '/goal-selection', element: GoalSelectionPage, private: true },
   { path: '/upgrade', element: UpgradePage, private: true },

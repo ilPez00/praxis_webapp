@@ -174,7 +174,7 @@ const GroupsPage: React.FC = () => {
                 fontSize: '1.2rem',
               }}
             >
-              {room.name.charAt(0).toUpperCase()}
+              {room.name?.charAt(0).toUpperCase() ?? '?'}
             </Avatar>
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
