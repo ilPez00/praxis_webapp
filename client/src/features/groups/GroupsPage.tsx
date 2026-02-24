@@ -84,7 +84,8 @@ const GroupsPage: React.FC = () => {
         setAllRooms([]);
       }
       if (joinedRes.status === 'fulfilled') {
-        const joinedData: Room[] = (joinedRes.value.data || []).map((entry: any) => entry.chat_rooms).filter(Boolean);
+        const raw = Array.isArray(joinedRes.value.data) ? joinedRes.value.data : [];
+        const joinedData: Room[] = raw.map((entry: any) => entry.chat_rooms).filter(Boolean);
         setJoinedRooms(joinedData);
       } else {
         console.error('[Groups] GET /groups/joined failed:', joinedRes.reason);

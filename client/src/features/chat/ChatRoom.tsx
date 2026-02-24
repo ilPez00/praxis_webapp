@@ -195,7 +195,7 @@ const ChatRoom: React.FC = () => {
 
   useEffect(() => {
     if (!focusGoalId || !userGoalTree) return;
-    const node = userGoalTree.nodes.find((n: GoalNode) => n.id === focusGoalId);
+    const node = (userGoalTree.nodes ?? []).find((n: GoalNode) => n.id === focusGoalId);
     if (node) setFocusGoalName(node.name);
   }, [focusGoalId, userGoalTree]);
 
@@ -631,9 +631,9 @@ const ChatRoom: React.FC = () => {
     );
   }
 
-  const receiverRootGoalsSummary = receiverGoalTree?.rootNodes
-    ?.map(node => `${node.name} (${node.domain})`)
-    .join(' · ');
+  const receiverRootGoalsSummary = Array.isArray(receiverGoalTree?.rootNodes) && receiverGoalTree!.rootNodes.length > 0
+    ? receiverGoalTree!.rootNodes.map((node: any) => `${node.name} (${node.domain})`).join(' · ')
+    : undefined;
 
   return (
     <>
@@ -754,10 +754,10 @@ const ChatRoom: React.FC = () => {
                   value={selectedGoalNode}
                   onChange={(e) => setSelectedGoalNode(e.target.value as string)}
                   label="Goal"
-                  disabled={!userGoalTree || userGoalTree.nodes.length === 0}
+                  disabled={!userGoalTree || !(userGoalTree.nodes?.length > 0)}
                 >
                   <MenuItem value=""><em>Select a goal</em></MenuItem>
-                  {userGoalTree?.nodes.map((node: GoalNode) => (
+                  {(userGoalTree?.nodes ?? []).map((node: GoalNode) => (
                     <MenuItem key={node.id} value={node.id}>{node.name} ({node.domain})</MenuItem>
                   ))}
                 </Select>
@@ -889,7 +889,7 @@ const ChatRoom: React.FC = () => {
               </ListItemButton>
             </ListItem>
           )}
-          {userGoalTree?.nodes.map((node: GoalNode) => (
+          {(userGoalTree?.nodes ?? []).map((node: GoalNode) => (
             <ListItem disablePadding key={node.id}>
               <ListItemButton
                 selected={focusGoalId === node.id}
@@ -904,7 +904,7 @@ const ChatRoom: React.FC = () => {
               </ListItemButton>
             </ListItem>
           ))}
-          {(!userGoalTree || userGoalTree.nodes.length === 0) && (
+          {(!userGoalTree || !(userGoalTree.nodes?.length > 0)) && (
             <ListItem>
               <ListItemText primary="No goals found — build your goal tree first" primaryTypographyProps={{ fontSize: '0.85rem', color: 'text.secondary' }} />
             </ListItem>
