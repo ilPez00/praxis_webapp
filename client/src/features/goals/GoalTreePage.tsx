@@ -315,6 +315,16 @@ const GoalTreePage: React.FC = () => {
               Click node to verify or bet
             </Typography>
           )}
+          {isOwnTree && (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => navigate('/goal-selection')}
+              sx={{ borderRadius: '8px', fontSize: '0.8rem' }}
+            >
+              Edit Goals
+            </Button>
+          )}
         </Stack>
       </Box>
 

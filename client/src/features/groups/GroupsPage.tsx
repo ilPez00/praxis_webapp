@@ -66,13 +66,21 @@ const GroupsPage: React.FC = () => {
     if (!user) return;
     setLoading(true);
     try {
-      const [allRes, joinedRes] = await Promise.all([
+      const [allRes, joinedRes] = await Promise.allSettled([
         axios.get(`${API_URL}/groups`),
         axios.get(`${API_URL}/groups/joined?userId=${user.id}`),
       ]);
-      setAllRooms(allRes.data || []);
-      const joinedData: Room[] = (joinedRes.data || []).map((entry: any) => entry.chat_rooms).filter(Boolean);
-      setJoinedRooms(joinedData);
+      if (allRes.status === 'fulfilled') {
+        setAllRooms(allRes.value.data || []);
+      } else {
+        console.error('[Groups] GET /groups failed:', allRes.reason);
+      }
+      if (joinedRes.status === 'fulfilled') {
+        const joinedData: Room[] = (joinedRes.value.data || []).map((entry: any) => entry.chat_rooms).filter(Boolean);
+        setJoinedRooms(joinedData);
+      } else {
+        console.error('[Groups] GET /groups/joined failed:', joinedRes.reason);
+      }
     } catch (err: any) {
       console.error('[Groups] fetchRooms threw:', err);
       toast.error(`Groups error: ${err?.response?.data?.message || err?.message || String(err)}`);

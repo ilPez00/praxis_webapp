@@ -97,42 +97,49 @@ const ProfilePage: React.FC = () => {
 
   const handleSave = async () => {
     if (!user) return;
-    const promise = async () => {
-      setLoading(true);
-      let avatarUrl = profile?.avatar_url;
-      if (selectedAvatarFile) {
-        const fileExt = selectedAvatarFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, selectedAvatarFile, { cacheControl: '3600', upsert: true });
-        if (uploadError) throw uploadError;
+    setLoading(true);
+    let avatarUrl = profile?.avatar_url;
+
+    // Avatar upload is best-effort — profile text fields save even if upload fails
+    if (selectedAvatarFile) {
+      const fileExt = selectedAvatarFile.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, selectedAvatarFile, { cacheControl: '3600', upsert: true });
+      if (uploadError) {
+        const msg = uploadError.message?.toLowerCase().includes('not found')
+          ? 'Photo upload failed: "avatars" bucket missing in Supabase Storage. Other changes will still save.'
+          : `Photo upload failed: ${uploadError.message}. Other changes will still save.`;
+        toast.error(msg);
+      } else {
         const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(uploadData.path);
         avatarUrl = publicUrlData.publicUrl;
       }
-      const { data, error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          name: editedName,
-          bio: editedBio,
-          avatar_url: avatarUrl,
-          age: editedAge ? parseInt(editedAge, 10) : null,
-          sex: editedSex || null,
-          location: editedLocation || null,
-        })
-        .eq('id', user.id)
-        .select()
-        .single();
-      if (updateError) throw updateError;
-      setProfile(data);
-      setIsEditing(false);
-      setLoading(false);
-    };
-    toast.promise(promise(), {
-      loading: 'Saving profile...',
-      success: 'Profile saved!',
-      error: (err) => `Error: ${err.message}`,
-    });
+    }
+
+    const { data, error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        name: editedName,
+        bio: editedBio,
+        avatar_url: avatarUrl,
+        age: editedAge ? parseInt(editedAge, 10) : null,
+        sex: editedSex || null,
+        location: editedLocation || null,
+      })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    setLoading(false);
+    if (updateError) {
+      toast.error(`Failed to save profile: ${updateError.message}`);
+      return;
+    }
+    setProfile(data);
+    setIsEditing(false);
+    toast.success('Profile saved!');
   };
 
   const handleCancel = () => {

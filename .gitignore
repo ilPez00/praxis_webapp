@@ -37,3 +37,15 @@ supabase_praxis_client_secret
 .env.test.local
 .env.production.local
 google_oauth.txt
+.vercel
+
+# LaTeX artifacts
+*.aux
+*.out
+*.toc
+
+# Dev-only files not part of the deployable codebase
+claude/
+business/
+praxis_description.txt
+run_old_praxis.sh

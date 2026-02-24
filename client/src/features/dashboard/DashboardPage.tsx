@@ -134,7 +134,7 @@ const DashboardPage: React.FC = () => {
     const fetchChallenges = async () => {
       try {
         const res = await axios.get(`${API_URL}/challenges`);
-        setChallenges(res.data ?? []);
+        setChallenges(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         // Non-fatal — challenges section is best-effort
         setChallenges([]);
@@ -164,8 +164,11 @@ const DashboardPage: React.FC = () => {
           axios.get(`${API_URL}/achievements`),
         ]);
         if (goalsRes.status === 'fulfilled') setGoalTree(goalsRes.value.data);
-        if (achievementsRes.status === 'fulfilled') setAchievements(achievementsRes.value.data);
-        if (matchesRes.status === 'fulfilled') {
+        if (achievementsRes.status === 'fulfilled') {
+          const adata = achievementsRes.value.data;
+          setAchievements(Array.isArray(adata) ? adata : []);
+        }
+        if (matchesRes.status === 'fulfilled' && Array.isArray(matchesRes.value?.data)) {
           const top3: MatchResult[] = matchesRes.value.data.slice(0, 3);
           setMatches(top3);
           // Fetch profiles for each match so we can show real names + avatars
@@ -269,8 +272,8 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  const rootGoals = goalTree?.rootNodes || [];
-  const allNodes = goalTree?.nodes || [];
+  const rootGoals = Array.isArray(goalTree?.rootNodes) ? goalTree!.rootNodes : [];
+  const allNodes = Array.isArray(goalTree?.nodes) ? goalTree!.nodes : [];
   const hasGoals = rootGoals.length > 0;
   const userName = user?.name || 'Explorer';
   const avgProgress = hasGoals
@@ -504,7 +507,7 @@ const DashboardPage: React.FC = () => {
             <GlassCard sx={{ p: 4, height: '100%' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
                 <Typography variant="h5" sx={{ fontWeight: 800 }}>Core Objectives</Typography>
-                <IconButton component={RouterLink} to={`/goals/${currentUserId}`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
+                <IconButton component={RouterLink} to="/goal-selection" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
                   <EditIcon fontSize="small" />
                 </IconButton>
               </Box>
@@ -542,7 +545,7 @@ const DashboardPage: React.FC = () => {
                         }}
                       />
                       <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary', fontWeight: 600 }}>
-                        {goal.domain.toUpperCase()}
+                        {goal.domain?.toUpperCase() || ''}
                       </Typography>
                     </Box>
                   ))}

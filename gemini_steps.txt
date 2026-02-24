@@ -11,7 +11,7 @@ The companion file `manual_actions.txt` contains all required Supabase/Stripe se
 Feel free to delegate tasks to gemini-cli, which you can call by running "gemini" 
 ---
 
-## Project Health (last updated: 2026-02-20 Session 18)
+## Project Health (last updated: 2026-02-23 Session 27)
 
 - Backend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from project root)
 - Frontend TypeScript: ✅ 0 errors (`npx tsc --noEmit` from `client/`)
@@ -24,6 +24,36 @@ Feel free to delegate tasks to gemini-cli, which you can call by running "gemini
 ---
 
 ## Completed Sessions
+
+### Session 27 — Claude Code (2026-02-23) — Debug pass: dashboard, groups, goal tree, pfp
+
+**Bugs found and fixed:**
+
+1. **Dashboard crash** (`DashboardPage.tsx`):
+   - `matchesRes.value.data.slice(0, 3)` threw when data was non-array → added `Array.isArray(matchesRes.value?.data)` guard
+   - `goal.domain.toUpperCase()` crashed for null domain → changed to `goal.domain?.toUpperCase() || ''`
+
+2. **Dashboard edit icon wrong route** (`DashboardPage.tsx`):
+   - "Core Objectives" edit icon linked to `/goals/:id` (view page) → fixed to `/goal-selection` (edit page)
+
+3. **GoalTreePage missing edit button** (`GoalTreePage.tsx`):
+   - No way to enter edit mode from the goal tree view → added "Edit Goals" button in header that navigates to `/goal-selection`
+
+4. **Groups page `Promise.all` bug** (`GroupsPage.tsx`):
+   - `Promise.all([GET /groups, GET /groups/joined])` — if one call failed, allRooms was never set even if the other call succeeded → replaced with `Promise.allSettled` with per-result handling
+
+5. **Avatar upload blocks all profile saves** (`ProfilePage.tsx`):
+   - If `avatars` bucket doesn't exist, the entire save (including name/bio) was blocked → separated avatar upload (best-effort, shows specific error) from profile fields save (always runs)
+   - Added clear error: "avatars bucket missing in Supabase Storage"
+
+**Manual actions still needed (root causes of some issues):**
+- `[ ] 5AV` Create "avatars" bucket in Supabase → Storage → New bucket → Name: avatars, Public: ON
+- `[ ] P3` Goal tree editing blocked by premium gate → reset with SQL: `UPDATE profiles SET goal_tree_edit_count = 0 WHERE id = '<id>';`
+- `[ ] P4` Same as 5AV — tracked in checklist as P4
+
+**TypeScript:** ✅ 0 errors frontend + backend
+
+---
 
 ### Sessions 1–9 — Gemini CLI (foundation)
 
