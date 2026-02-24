@@ -19,7 +19,13 @@ export const listRooms = catchAsync(async (req: Request, res: Response, next: Ne
 
   const { data, error } = await query;
   if (error) {
-    if (error.message?.includes('schema cache') || error.message?.includes('not found')) {
+    // Gracefully handle missing tables (schema cache / relation not found errors)
+    if (
+      error.message?.includes('schema cache') ||
+      error.message?.includes('not found') ||
+      error.message?.includes('does not exist') ||
+      error.code === '42P01'
+    ) {
       logger.warn('chat_rooms table not found — returning empty list. Run migrations/setup.sql.');
       return res.json([]);
     }
@@ -186,6 +192,16 @@ export const getJoinedRooms = catchAsync(async (req: Request, res: Response, nex
     .select('room_id, joined_at, chat_rooms(*)')
     .eq('user_id', userId as string);
 
-  if (error) throw new InternalServerError('Failed to fetch joined rooms.');
+  if (error) {
+    if (
+      error.message?.includes('schema cache') ||
+      error.message?.includes('does not exist') ||
+      error.code === '42P01'
+    ) {
+      logger.warn('chat_room_members table not found — returning empty joined list.');
+      return res.json([]);
+    }
+    throw new InternalServerError('Failed to fetch joined rooms.');
+  }
   res.json(data || []);
 });

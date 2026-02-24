@@ -94,22 +94,22 @@ const GoalTreePage: React.FC = () => {
 
   useEffect(() => {
     const fetchGoalTree = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      let userId = id;
-      if (!userId) userId = authUser?.id;
-      if (authUser?.created_at) setMemberSince(authUser.created_at);
-      if (authUser?.id) setCurrentUserId(authUser.id);
-      setIsOwnTree(!id || id === authUser?.id);
-
-      if (!userId) {
-        setError('Could not determine user ID.');
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
       setError(null);
       try {
+        const { data: authData } = await supabase.auth.getUser();
+        const authUser = authData?.user;
+        let userId = id;
+        if (!userId) userId = authUser?.id;
+        if (authUser?.created_at) setMemberSince(authUser.created_at);
+        if (authUser?.id) setCurrentUserId(authUser.id);
+        setIsOwnTree(!id || id === authUser?.id);
+
+        if (!userId) {
+          setError('Could not determine user ID.');
+          return;
+        }
+
         const response = await axios.get(`${API_URL}/goals/${userId}`);
         const goalTree = response.data;
         const allNodes: any[] = goalTree.nodes || [];
@@ -128,7 +128,7 @@ const GoalTreePage: React.FC = () => {
         if (err.response?.status === 404) {
           setTreeData([]);
         } else {
-          setError(err.response?.data?.message || 'Failed to load goal tree.');
+          setError(err?.response?.data?.message || err?.message || 'Failed to load goal tree.');
         }
       } finally {
         setLoading(false);

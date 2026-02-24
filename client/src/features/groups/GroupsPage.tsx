@@ -3,7 +3,7 @@ import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { useUser } from '../../hooks/useUser';
+import { supabase } from '../../lib/supabase';
 import { DOMAIN_COLORS, Domain } from '../../types/goal';
 import {
   Container,
@@ -47,7 +47,14 @@ const domainOptions = Object.values(Domain);
 
 const GroupsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useUser();
+
+  // Get userId directly from auth (fast JWT check, no DB round-trip)
+  // This avoids the issue where fetchRooms would get stuck if useUser()'s
+  // profiles query was slow or transiently failing.
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id));
+  }, []);
 
   const [allRooms, setAllRooms] = useState<Room[]>([]);
   const [joinedRooms, setJoinedRooms] = useState<Room[]>([]);
@@ -63,23 +70,25 @@ const GroupsPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
 
   const fetchRooms = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
     setLoading(true);
     try {
       const [allRes, joinedRes] = await Promise.allSettled([
         axios.get(`${API_URL}/groups`),
-        axios.get(`${API_URL}/groups/joined?userId=${user.id}`),
+        axios.get(`${API_URL}/groups/joined?userId=${userId}`),
       ]);
       if (allRes.status === 'fulfilled') {
-        setAllRooms(allRes.value.data || []);
+        setAllRooms(Array.isArray(allRes.value.data) ? allRes.value.data : []);
       } else {
         console.error('[Groups] GET /groups failed:', allRes.reason);
+        setAllRooms([]);
       }
       if (joinedRes.status === 'fulfilled') {
         const joinedData: Room[] = (joinedRes.value.data || []).map((entry: any) => entry.chat_rooms).filter(Boolean);
         setJoinedRooms(joinedData);
       } else {
         console.error('[Groups] GET /groups/joined failed:', joinedRes.reason);
+        setJoinedRooms([]);
       }
     } catch (err: any) {
       console.error('[Groups] fetchRooms threw:', err);
@@ -87,17 +96,17 @@ const GroupsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
 
   const handleJoin = async (roomId: string) => {
-    if (!user) return;
+    if (!userId) return;
     setJoiningRoom(roomId);
     try {
-      await axios.post(`${API_URL}/groups/${roomId}/join`, { userId: user.id });
+      await axios.post(`${API_URL}/groups/${roomId}/join`, { userId });
       toast.success('Joined room!');
       await fetchRooms();
       navigate(`/groups/${roomId}`);
@@ -109,14 +118,14 @@ const GroupsPage: React.FC = () => {
   };
 
   const handleCreateRoom = async () => {
-    if (!roomName.trim() || !user) return;
+    if (!roomName.trim() || !userId) return;
     setCreating(true);
     try {
       const { data } = await axios.post(`${API_URL}/groups`, {
         name: roomName.trim(),
         description: roomDesc.trim() || undefined,
         domain: roomDomain || undefined,
-        creatorId: user.id,
+        creatorId: userId,
       });
       toast.success('Room created!');
       setCreateOpen(false);
