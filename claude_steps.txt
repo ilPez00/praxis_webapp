@@ -1,624 +1,133 @@
 Hi Claude. You are building Praxis, as outlined in the whitepaper PDF. This file serves as your memory and development log across sessions. Modify it to set goals, track progress, record architectural decisions, and note anything useful.
-You can delegate tasks to gemini. Remember to git commit and and edit this file at the end of each session.
+You can delegate tasks to gemini. Remember to git commit and edit this file at the end of each session.
 Never modify this paragraph.
 ---
 
-## Handoff from Gemini
+## Project Health (as of Session 27 — 2026-02-23)
 
-Previous development (Sessions 1–9) was completed by Gemini CLI. The following features were implemented and are considered stable:
-
-- Backend Express server with 10 route modules (auth, users, goals, matches, messages, feedback, achievements, stripe, AI coaching, analytics)
-- Supabase auth + profiles table integration
-- GoalTree CRUD with achievement auto-creation on goal completion
-- Peer feedback submission with dynamic weight recalibration (whitepaper §3.5)
-- MatchingEngineService using Gemini embeddings + cosine similarity (whitepaper §3.3)
-- Stripe Checkout + webhook premium subscription flow
-- AI Coaching via Gemini generative model (premium-gated)
-- Advanced Analytics endpoints (premium-gated)
-- Centralized error handling (appErrors.ts + errorHandler middleware)
-- Winston logging throughout backend
-- GoalTreeComponent visualization with Framer Motion animations
-- Basic DashboardPage with achievements, comments, voting
+- **Backend TypeScript:** ✅ 0 errors (`npx tsc --noEmit`)
+- **Frontend TypeScript:** ✅ 0 errors (`npx tsc --noEmit` from `client/`)
+- **Backend Startup:** ✅ Starts cleanly on port 3001 with Express type augmentation.
+- **Frontend Startup:** ✅ Compiles and runs on port 3000.
+- **Git Status:** `main` — commits ahead of origin, pending push (SSH authorization verify needed).
+- **Deployment:** ❌ Pending (Railway/Vercel — see `manual_actions.txt` Steps 11–12).
 
 ---
 
-## SSH Key (saved for reference)
+## SSH Key (Development Machine)
 
-Machine: /home/gio (Linux dev box)
-Public key (`~/.ssh/id_ed25519.pub`):
+**Machine:** /home/gio (Linux dev box)
+**Public key (`~/.ssh/id_ed25519.pub`):**
   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO1eduMBO+0sGWDfXeqJ51/F2ElVuOEz7HNCTUU6bObY pezzingiovanniantonio@gmail.com
 
-Added to: github.com/settings/keys (title: "Praxis dev machine")
-Remote: git@github.com:ilPez00/praxis_webapp.git (SSH, not HTTPS)
-Status: ✅ Authorized + pushing
+**GitHub Remote:** git@github.com:ilPez00/praxis_webapp.git
+**Status:** Authorized, but ensure agent is running if push fails.
 
 ---
 
-## Further Development Plan (Session 24 — 2026-02-21)
+## Completed Features Summary
 
-### Audit findings (state at end of Session 23):
-- Android app is a DEMO — uses MockRepository with hardcoded in-memory data; Firebase Auth fires but result is discarded and a mock user is created; NO Supabase, NO API calls
-- Supabase database missing 10 tables + 6 profile columns → run migrations/setup.sql in SQL Editor
-- Webapp fully working: Stripe, Gemini AI coaching, matching engine (pgvector + fallback), bet lifecycle, peer verification both sides
-- Community Challenges = zero code (UI stub only)
-- Identity Verification = POC level on webapp (face-api.js detects any face → marks verified), empty on Android
-- Bet expiry cron = stub (endpoint exists, no actual scheduler wired)
-
-### Phase 5 — Android Networking (CRITICAL)
-Transform Android from demo → real product.
-- 5A: Add Supabase Kotlin SDK (postgrest-kt, auth-kt, realtime-kt + ktor-client-android)
-- 5B: Create SupabaseClient singleton (data/remote/SupabaseClient.kt)
-- 5C: Create SupabaseRepository replacing MockRepository — loadUser, saveGoalTree, loadMatches, loadAchievements, loadGroups
-- 5D: Update PraxisViewModel to inject SupabaseRepository, handle loading/error states
-- 5E: Auth: exchange Firebase Google token for Supabase session via signInWith(Google)
-- 5F: Real-time chat via Supabase Realtime subscription on messages table
-
-### Phase 6 — Deploy & First Real Users
-- 6A: Run migrations/setup.sql in Supabase SQL Editor (2 min, manual)
-- 6B: Deploy backend to Railway — connect GitHub repo, set env vars
-- 6C: Deploy frontend to Vercel — root dir = client/, set REACT_APP_API_URL
-- 6D: Seed demo users via POST /admin/seed-demo-users
-- 6E: Enable Supabase Realtime on messages table
-- 6F: Bet expiry cron — Supabase pg_cron or Railway cron → POST /bets/resolve-webhook
-
-### Phase 7 — Core UX Gaps
-- 7A: Community Challenges — challenges + challenge_participants tables, POST /challenges/:id/join, GET /challenges, wire webapp + Android
-- 7B: Backend identity verification endpoint — POST /users/:id/verify → sets is_verified=true; Android FaceVerificationActivity implementation
-- 7C: Goal completion notifications — Supabase Realtime on completion_requests, toast on approval
-- 7D: Partner search filter — GET /matches/:userId?domain=X, frontend filter chips
-
-### Phase 8 — Monetisation & Retention
-- 8A: Stripe webhook for production — register at Railway URL in Stripe dashboard
-- 8B: Streak system — update current_streak + last_activity_date in goalController on every progress save
-- 8C: Praxis Points economy — award points on: achievement created (+10), peer verification approved (+5), challenge completed (+50)
-- 8D: Push notifications (Android) — FCM token in profiles.fcm_token, push on: new match, message, completion request
-- 8E: Referral system — profiles.referred_by column + /join?ref=<userId> invite link, +50 points both parties
-
-### Phase 9 — Scale & Trust
-- 9A: Rate limiting — express-rate-limit on /matches and /ai-coaching
-- 9B: Content moderation — Gemini safety settings on chat messages + achievement descriptions
-- 9C: Admin dashboard — React page behind ADMIN_SECRET with MAU, matches, bets, revenue
-- 9D: Data export — GET /users/:id/export (GDPR)
-- 9E: Android Play Store — signed release APK, privacy policy, content rating
-
-### Priority Order
-🔴 NOW: 6A (run SQL), 6B–6C (deploy)
-🟠 NEXT: 5A–5F (Android networking — biggest gap)
-🟠 NEXT: 7A (Community Challenges), 7B (verify endpoint), 7D (search filter)
-🟡 SOON: 8A (Stripe prod), 8B (streaks), 8C (points events)
-🟢 LATER: 8D (push notifications), 8E (referrals), 9A–9E (scale/trust)
+- **Core Infrastructure:** Express backend, Supabase Auth/DB, central error handling, Winston logging.
+- **Goal Trees:** Hierarchical CRUD, visualization with Framer Motion, achievement auto-creation.
+- **Matching Engine:** Semantic similarity using Gemini embeddings + pgvector (fallback to domain-overlap).
+- **Social & Accountability:** Real-time chat (Supabase), Group chats, Media DMs, Video calls (WebRTC), Peer verification protocol, Peer feedback/weight recalibration.
+- **Monetization:** Stripe Checkout + Webhook flow for Premium gating.
+- **AI & Analytics:** Gemini-powered Coaching, Advanced Analytics (premium-gated).
+- **Android App:** Ported core screens (Compose), full networking layer (Retrofit/OkHttp), MVVM architecture.
 
 ---
 
-## Session 25 — Claude Code (2026-02-21) — Phase 7+8 Features + Android Networking
+## Recent Development (Sessions 24–29)
 
-### Webapp (praxis_webapp)
-**7A — Community Challenges (backend + frontend):**
-- New `src/controllers/challengeController.ts` (listChallenges, joinChallenge, leaveChallenge)
-- New `src/routes/challengeRoutes.ts` mounted at `/challenges`
-- `migrations/setup.sql` extended with `challenges` + `challenge_participants` tables (RLS policies)
-- `DashboardPage.tsx`: fetches live challenges from API, renders dynamically, "Join Challenge" buttons wired
+### Session 29 (2026-02-24) — Null-Safety & Blank Page Fixes (Claude)
 
-**7B — Identity Verification Endpoint:**
-- `POST /users/:id/verify` → sets `is_verified = true` in profiles
-- Wired in `userRoutes.ts`
+**Root causes found and fixed (4 commits: 446a9f1, 23eff4a, fa0cdad):**
 
-**7D — Domain Filter on Matches:**
-- `GET /matches/:userId?domain=X` filters results by shared goal domain
-- `MatchesPage.tsx`: domain filter chips UI, refetches on chip toggle
+1. **`REACT_APP_API_URL` wrong in `client/.env`** — was missing `/api` suffix → all API calls hit wrong endpoint → fixed to `https://web-production-646a4.up.railway.app/api`. NOTE: gitignored, must also set in Vercel dashboard.
+2. **`tsconfig.json`** — `api/index.ts` was outside `rootDir: ./src` but not excluded → TS compile error → added `api` to exclude list.
+3. **DashboardPage** — `Array.isArray()` guards on achievements, rootNodes, nodes, challenges → fixed "e.map is not a function" crash.
+4. **GoalTreePage** — `supabase.auth.getUser()` was outside the try/finally → if it threw, `loading` stayed `true` forever → moved inside single try/catch/finally.
+5. **GroupsPage** — `fetchRooms` depended on `useUser()` resolving (2 Supabase round-trips). Replaced with direct `supabase.auth.getUser()` (fast JWT check). Also added `Array.isArray` guard on joinedRes.value.data.
+6. **groupController.ts** — missing-table check only matched 'schema cache'/'not found' but not Postgres error code `42P01` / 'does not exist' → broadened to catch all schema-missing cases gracefully.
+7. **ChatRoom.tsx** — `userGoalTree.nodes` and `receiverGoalTree.rootNodes` can be null in DB → render-time `.map()`/`.join()`/`.find()` on null values crashed React → blank page. Fixed with `?? []` and `Array.isArray` guards on all 5 crash sites.
 
-**8B — Streak Update:** Already fully implemented in `goalController.ts` (confirmed no changes needed)
+**Outstanding (from debug.txt — Gemini's analysis):**
+- Domain enum mismatch: `types/goal.ts` uses 'Investing', 'Culture, Hobbies & Creative Pursuits', 'Intimacy & Romantic Exploration', 'Friendship & Social Engagement' while `models/Domain.ts` uses different strings with `/` separators. Stored goal data uses models/ values; DOMAIN_COLORS keys use types/ values → wrong/gray colors in visualizations. Non-critical crash-wise.
+- MUI v7 confirmed (^7.3.8) → `<Grid size={{ xs: N }}>` syntax is correct, NOT an issue.
+- Onboarding guard (`onboarding_completed === false`) could redirect all protected routes silently — verify user's `profiles.onboarding_completed` value in Supabase.
 
-**8C — Praxis Points Earning Events:**
-- `achievementController.ts`: +10 points on achievement creation
-- `completionController.ts`: +5 points on peer-verified completion, stake refund on bet win
+**Pending user actions:**
+- Set `REACT_APP_API_URL=https://web-production-646a4.up.railway.app/api` in Vercel dashboard env vars
+- Hard refresh browser after Vercel redeploys (Ctrl+Shift+R)
+- Check Supabase: `SELECT onboarding_completed, goal_tree_edit_count FROM profiles WHERE id = '<your-id>';`
+- Reset edit count if needed: `UPDATE profiles SET goal_tree_edit_count = 0 WHERE id = '<your-id>';`
+- Run SQL migrations 5Q9–5Q13 for peer verification + group chats + media tables
 
-**Safety:** Caught and blocked `google_oauth.txt` (OAuth credentials) from being committed; added to `.gitignore`
+### Session 28 (2026-02-24) — Debug Analysis (Post-Deployment)
+- **Investigated Rendering Issues:** Diagnosed why `/goals/` and `/groups` fail on production.
+- **Identified Onboarding Guard:** Confirmed `PrivateRoute` redirects un-onboarded users, which may look like a failed render.
+- **Null Safety Audit:** Found missing guards for `room.name` and `node.title` that could cause white-screen crashes.
+- **Domain Mismatch:** Discovered `Domain` enum definitions in `types/goal.ts` and `models/Domain.ts` have conflicting string values, causing UI inconsistencies and potential lookup failures.
+- **Grid Syntax Check:** Noted use of `size` prop on standard `Grid` which may require migration to `Grid2` for stability.
 
-### Android (praxis_android)
-**Phase 5 — Full networking layer (Retrofit + OkHttp):**
-- Added dependencies: retrofit2, converter-gson, okhttp3, logging-interceptor, coroutines-android
-- `data/remote/ApiModels.kt` — typed models for all API responses
-- `data/remote/PraxisApi.kt` — Retrofit interface, 8 suspend endpoints
-- `data/remote/RetrofitClient.kt` — singleton, base URL `http://10.0.2.2:3001/`
-- `data/ApiRepository.kt` — maps API → local models, graceful fallback on HTTP error
-- `GoalNode.kt` — added `Domain.fromString()` companion method
-- `PraxisViewModel.kt` — `signInWithFirebaseUid()`, `loadUserData()`, `loadMatchesAndAchievements()`
-- BUILD SUCCESSFUL, 0 errors
+### Session 27 (2026-02-23) — Debug Pass
+- **Fixed Dashboard Crashes:** Added guards for non-array match results and null goal domains.
+- **Navigation Fixes:** Dashboard "Core Objectives" edit icon now correctly links to `/goal-selection`.
+- **GoalTreePage:** Added "Edit Goals" button to header for easier access to edit mode.
+- **GroupsPage:** Replaced `Promise.all` with `Promise.allSettled` to prevent one failed fetch from blocking the whole page.
+- **Profile Robustness:** Separated avatar upload from profile field saving; name/bio saves now work even if the 'avatars' bucket is missing.
 
-### Status after session 25
-✅ DONE: 7B, 7D, 7A backend, 8B, 8C, Phase 5 Android networking
-🔴 STILL PENDING (manual): Run migrations/setup.sql in Supabase, deploy to Railway/Vercel
-🟡 SOON: Wire Firebase UID into signInWithFirebaseUid() call in OnboardingScreen, 7A frontend polish
-🟢 LATER: 8A (Stripe prod), 8D (push notifications), 8E (referrals), 9A–9E (scale/trust)
+### Session 25 (2026-02-21) — Features & Android Networking
+- **Community Challenges:** Implemented backend (list, join, leave) and integrated into Dashboard.
+- **Identity Verification:** Added `POST /users/:id/verify` endpoint.
+- **Android Networking:** Added full Retrofit layer, API models, and repository mapping for real backend communication.
 
----
-
-## Session 24 — Claude Code (2026-02-21) — Debug Pass + Networking Start
-
-### Webapp debug fixes (this session):
-- Added GET /health endpoint (required by Railway)
-- Added POST /users/complete-onboarding endpoint
-- Fixed run_praxis.sh: SUPABASE_SERVICE_ROLE_KEY check (was wrong var)
-- achievementController, groupController, messageController, bettingController: graceful empty [] on schema-cache errors
-- Created migrations/setup.sql — single idempotent file for all 10 missing tables + profile columns
-- Added GENERATE_SOURCEMAP=false to client/.env
-
-### Android debug fixes (this session):
-- MainActivity: local val for currentMatchForGrading (smart-cast NPE fix)
-- OnboardingScreen: signInError!! → signInError ?: ""
-- DashboardScreen: user!!.currentStreak → user?.currentStreak ?: 0; Divider → HorizontalDivider
-- ProfileScreen: empty list guard on .average(); Divider → HorizontalDivider; LinearProgressIndicator lambda form
-- gradle.properties: cleaned deprecation warnings
-
-### Started this session (Session 24 implementation):
-See tasks below.
+### Session 24 (2026-02-21) — Deployment Prep
+- **Railway/Vercel Prep:** Added `/health` endpoint and deployment configs (`vercel.json`, `railway.toml`).
+- **Onboarding:** Fixed `POST /users/complete-onboarding` flow and enforced re-edit gates.
+- **Supabase Overhaul:** Created `migrations/setup.sql` for idempotent table setup.
 
 ---
 
-## Session 23 — Claude Code (2026-02-21) — Android Port Phase 2 + Deployment Configs
+## Active Roadmap
 
-### Completed this session:
+### 🔴 CRITICAL — Deployment & Production Setup
+- [ ] **Database Migration:** Run `migrations/setup.sql` in Supabase SQL Editor.
+- [ ] **Storage Setup:** Create "avatars" and "chat-media" buckets in Supabase (Public: ON).
+- [ ] **Backend Deploy:** Connect repo to Railway, set env vars, bind `$PORT`.
+- [ ] **Frontend Deploy:** Connect `client/` to Vercel, set `REACT_APP_API_URL` to Railway URL.
+- [ ] **Stripe Prod:** Set `STRIPE_PRICE_ID` and register production webhooks.
 
-**Android — Debugging:**
-- `GoalSelectionScreen.kt`: Fixed critical layout bug — replaced nested `LazyColumn`s inside a non-scrollable `Column(fillMaxSize)` with a `Column(verticalScroll)` + `forEach` loops. Removed `Spacer(weight(1f))` (unsupported in scrollable columns). App now proceeds past the goal tree correctly.
-- `PraxisViewModel.kt`: Fixed goal progress not triggering recomposition — changed `user.copy(goalTree = user.goalTree)` to `user.copy(goalTree = user.goalTree.toMutableList())` to force a new list reference and emit from StateFlow.
+### 🟠 HIGH PRIORITY — UX & Stability
+- [ ] **Seed Demo Users:** Run `POST /admin/seed-demo-users` (needs `ADMIN_SECRET`) to populate Match feed.
+- [ ] **Chat Real-time Verification:** Smoke test full DM/Group chat flow in production environment.
+- [ ] **Android Sync:** Finalize Firebase → Supabase session exchange for real auth on Android.
 
-**Android — Info Pop-ups:**
-- Created `ui/screens/InfoButton.kt` — reusable `InfoButton(title, description)` composable using `AlertDialog`
-- Added `InfoButton` to all 11 screens: Dashboard, GoalSelection, Matches, Groups, GroupChatRoom, Chat, Analytics, Upgrade, IdentityVerification, HomeScreen (Goals tab), Onboarding, Profile
-
-**Android — Styling (match webapp dark amber+violet theme):**
-- `ui/theme/Theme.kt`: Rewrote to always-dark Material3 scheme — amber `#F59E0B` primary, violet `#8B5CF6` secondary, `#0A0B14` deep dark background, `#111827` surface. Removed `isSystemInDarkTheme()` branch.
-- `ui/theme/Color.kt`: Updated all 9 domain colors to exactly match webapp (amber=Career, blue=Investing, red=Fitness, violet=Academics, emerald=Mental Health, pink=Philosophy, purple=Culture/Hobbies, orange=Intimacy/Romance, cyan=Friendship/Social)
-
-**Android — Community Challenges (stub):**
-- `DashboardScreen.kt`: Added section 7 "Community Challenges" with 3 stub cards (Fitness Streak, Read a Book, Meditation) — each has "Coming Soon" chip and disabled "Join" button
-
-**Webapp — Phase 4 Embedding Cache:**
-- `EmbeddingService.ts`: Added `getEmbeddingWithCache(goalNodeId, text)` — reads from `goal_embeddings` table before calling Gemini; upserts on miss. Avoids redundant API calls.
-
-**Webapp — Phase 4 Community Challenges Stub:**
-- `DashboardPage.tsx`: Added Community Challenges section below Achievements with 3 stub challenge cards, "Coming Soon" chip, disabled "Join Challenge" button with LockIcon
-
-**Webapp — Phase 3 Deployment Configs:**
-- Created `client/vercel.json`: CRA deployment config (build command, output dir, SPA rewrites, static cache headers)
-- Created `railway.toml`: Backend deployment config (nixpacks, `node dist/index.js` start, healthcheck at `/health`, restart on failure)
-- Created `README.md`: Private beta instructions, Railway + Vercel deployment guide with env var table, local dev setup, tech stack
-
-**Webapp — Bug fix:**
-- `DashboardPage.tsx`: Fixed hardcoded `"0"` comment count → `"···"` (Achievement model has no `totalComments` field)
-
-**TypeScript:** 0 errors frontend + backend
-
-### Build status:
-- ✅ Android: `./gradlew assembleDebug` — BUILD SUCCESSFUL
-- ✅ Webapp client: `npx tsc --noEmit` — 0 errors
-- ✅ Webapp backend: `npx tsc --noEmit` — 0 errors
-
-### Next priorities:
-- Run SQL for `goal_embeddings` table + pgvector extension if not done (see manual_actions.txt)
-- Deploy: add env vars in Railway dashboard + connect GitHub repo; import `client/` in Vercel
-- Phase 5: Beta user onboarding flow, push notification stubs
+### 🟡 MEDIUM PRIORITY — Retention & Economy
+- [ ] **Streaks:** Verify `current_streak` updates on goal saves in production.
+- [ ] **Praxis Points:** Award points for challenge completion and approved verifications.
+- [ ] **Push Notifications:** Wire FCM tokens for Android notifications on matches/messages.
 
 ---
 
-## Session 19 — Claude Code (2026-02-20 cont.) — Phases 2B/2C/3A/3B/3C
+## Environment Variables Reference
 
-### Completed this session:
+### Backend (`/.env`)
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (MUST be service_role)
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`
+- `GEMINI_API_KEY` (for embeddings/coaching)
+- `CLIENT_URL`, `ADMIN_SECRET`, `PORT`
 
-**Phase 2B — Gemini embeddings + pgvector RPC:**
-- `EmbeddingService.ts`: Added `generateAndStoreEmbeddings(userId, nodes)` — upserts 768-dim embeddings into `goal_embeddings` table per node
-- `goalController.ts`: Fire-and-forget embedding generation after every goal tree save (when GEMINI_API_KEY is set)
-- `matchingController.ts`: Tries `match_users_by_goals` Supabase RPC first (pgvector cosine); falls back to existing O(n²) tree comparison when RPC returns empty or errors
-- SQL in `manual_actions.txt` Steps 10A–10D: pgvector extension, `goal_embeddings` table, `match_users_by_goals` RPC function
-
-**Phase 2C — Mutual grading stub:**
-- `ChatRoom.tsx`: "End Session" button added to header
-- Auto-trigger grading dialog after user sends 5 messages (one-shot, resets per session)
-- Grading dialog: grade dropdown (all FeedbackGrade values) + goal picker + optional comment + submit
-- After submit: broadcasts `grading-submitted` event; shows "Waiting for partner..." state
-- On receiving partner's `grading-submitted`: toast "Both submitted — weights recalibrated!"
-
-**Phase 3A — Mark Complete button:**
-- `GoalTreePage.tsx`: clicking a 100%-progress node (own tree) now opens "Claim Achievement" dialog
-- Dialog posts to `POST /achievements` and shows toast; no duplicate check (beta stub)
-
-**Phase 3B — Achievement detail modal:**
-- `DashboardPage.tsx`: achievement cards now clickable (replaced comment icon with card click)
-- Enhanced dialog shows: avatar, domain chip, title, description, vote buttons, comment list, comment input
-
-**Phase 3C — Betting stub:**
-- Backend: `bettingController.ts` (createBet, getUserBets, cancelBet) + `bettingRoutes.ts` (POST /bets, GET /bets/:userId, DELETE /bets/:betId)
-- Mounted at `/bets` in `src/index.ts`
-- Bet resolution: in `completionController.respondToCompletionRequest` — on approval, marks active bets on that goal_node_id as 'won' and awards points
-- Frontend: `GoalTreePage.tsx` — "Bet" chip on non-100% own nodes opens betting dialog (deadline, stake)
-- Bets list section below GoalTree shows active bets with countdown + cancel button
-- SQL in `manual_actions.txt` Steps 11A–11B: `bets` table + `praxis_points` column
-
-**TypeScript:** 0 errors frontend + backend
-
-### Next priorities:
-- Phase 1E: Smoke test full flow (user must run the app + demo users)
-- Run SQL Steps 10A–10D (pgvector) + Steps 11A–11B (bets)
-- Deploy Railway + Vercel (manual_actions.txt Steps 11–12)
-
----
-
-## Session 18 — Claude Code (2026-02-20 cont.) — Phase 1D + auto-achievement
-
-### Completed this session:
-- **GoalTree horizontal scroll** (`GoalTreePage.tsx`):
-  - Wrapped `<GoalTreeVisualization>` in `<Box sx={{ overflowX: 'auto', width: '100%' }}>` so wide trees scroll on mobile
-- **OnboardingPage mobile polish**:
-  - Container `py: { xs: 3, sm: 6 }` — less wasted space on phone
-  - Paper `p: { xs: 2, sm: 4 }` — tighter padding on small screens
-  - Stepper `mb: { xs: 3, sm: 6 }` — reduce gap between stepper and content
-- **Auto-create achievement on peer verification** (`completionController.ts`):
-  - When verifier approves a goal: fetch the completed `GoalNode` + requester's `profiles` row
-  - Call `createAchievementFromGoal()` so the achievement appears in the community feed automatically
-  - Import added: `import { createAchievementFromGoal } from './achievementController'`
-- TypeScript: 0 errors frontend + backend
-
-### Status audit (end of Session 18 — confirmed from code):
-- ✅ 1A Navbar hamburger (Navbar.tsx — `isMobile`, `Drawer`, `MenuIcon`)
-- ✅ 1B ChatRoom mobile keyboard fix (`env(safe-area-inset-bottom)`)
-- ✅ 1C GoalTree horizontal scroll (this session)
-- ✅ 1D OnboardingPage mobile padding (this session)
-- ✅ Dashboard streaks (flame chip, `current_streak`)
-- ✅ Dashboard Top Alignments widget (real backend data)
-- ✅ Matching fallback (domain-overlap when no Gemini key)
-- ✅ Admin demo user seed endpoint (`adminController.ts`)
-- ✅ Auto-create achievement on peer verification (this session)
-
-### Next priorities:
-- Phase 2: Real Gemini embeddings for matching (pgvector RPC in Supabase)
-- Phase 2 cont.: Mutual grading UX (trigger after N messages or "End Session")
-- Phase 3: Deploy (Railway + Vercel) — needs user to add SSH key + env vars
-- Run SQL migrations 5Q9–5Q13 + create `chat-media` Supabase Storage bucket
-
----
-
-## Session 17 — Claude Code (2026-02-20 cont.) — Phase 1 stability + GoalTree redesign
-
-### Completed this session:
-- **GoalTree SVG visualization** (`GoalTreeVisualization.tsx`):
-  - Bottom-up tree: root circle (member-since date) at base of stem
-  - Each root goal = colored branch in domain color (DOMAIN_COLORS from types/goal.ts)
-  - Sub-goals branch further UP (incremental); siblings spread HORIZONTALLY
-  - Progress arc on each node (strokeDasharray, rotated -90°); fill opacity ∝ progress
-  - Glow ring when ≥75% complete; full glow + solid stroke at 100%
-  - Click node with children to collapse/expand subtree
-  - `GoalTreePage.tsx` now uses GoalTreeVisualization + fetches auth.user.created_at
-- **ChatRoom polish**:
-  - Partner messages: small avatar circle + name label above each bubble
-  - Typing indicator: 3-dot bounce animation via Supabase Broadcast channel
-    - `typing` event broadcast on keypress; auto-clears after 3s silence
-    - `self: false` in channel config so own typing events are ignored
-- TypeScript: 0 errors frontend + backend
-
-### Next priorities (Phase 1 remaining):
-- Phase 1D: responsive pass on GoalSelectionPage + OnboardingPage
-- Phase 2: Real Gemini embeddings for matching (pgvector RPC)
-- Phase 2 cont.: Mutual grading stub in chat/profile
-- Phase 3: Deploy (Railway + Vercel) after user adds env vars
-
----
-
-## Session 15 — Claude Code (2026-02-20) — Plan + Overnight Sprint
-
-### What was fixed this session (continued from Session 14):
-- `supabaseClient.ts`: Changed env var from `SUPABASE_PUBLISHABLE_KEY` → `SUPABASE_SERVICE_ROLE_KEY`
-  (backend was using anon key which can't bypass RLS — was root cause of all goal tree save errors)
-- `goalController.ts`: `select('*')` instead of naming columns (graceful if column missing);
-  `getUserProfileDetails` non-fatal (achievement creation shouldn't block goal tree save)
-- `manual_actions.txt`: Added `goal_trees` table SQL (Query 1B) — was completely missing
-- `ProfilePage.tsx`: Added age, sex, location fields to both edit form and view mode
-- `.env.example`: Updated to use `SUPABASE_SERVICE_ROLE_KEY` with correct format notes
-
-### Current app state (end of Session 15):
-- ✅ New user can register → onboard → set goal tree → access dashboard
-- ✅ Goal tree compilation works end-to-end with service role key
-- ✅ Profile editing: name, bio, age, sex, location, avatar
-- ✅ One free re-edit gate on goal tree (backend + frontend enforced)
-- ✅ Matches page shows demo profiles with fallback matching
-- ✅ Chat works (real-time with Supabase)
-- ✅ TypeScript: 0 errors backend + frontend
-- ❌ Not deployed (Railway + Vercel steps in manual_actions.txt)
-- ❌ Stripe PRICE_ID not yet set (upgrade flow fails)
-- ❌ Demo users not yet seeded
-- ❌ Mobile layout: Navbar has no hamburger, ChatRoom unsafe for mobile keyboard
-
----
-
-## Development Plan (as of 2026-02-20)
-
-### 🔴 PHASE 1 — Mobile Responsiveness (START TONIGHT)
-The most impactful near-term work. Most beta users will be on mobile.
-
-**1A. Navbar hamburger menu** ← START HERE
-- Replace nav links with hamburger IconButton on xs screens
-- Slide-in Drawer with same links + close button
-- Files: `client/src/components/common/Navbar.tsx`
-
-**1B. ChatRoom mobile keyboard fix**
-- Input bar sits above keyboard on mobile: add `paddingBottom: env(safe-area-inset-bottom)`
-  to the fixed-bottom input container
-- File: `client/src/features/chat/ChatRoom.tsx`
-
-**1C. GoalTree horizontal scroll**
-- Wrap GoalTreeComponent in `overflowX: 'auto'` container
-- File: `client/src/features/goals/GoalTreePage.tsx`
-
-**1D. General responsive pass**
-- Check GoalSelectionPage chip wrapping on small screens
-- Check OnboardingPage stepper labels don't overflow
-
----
-
-### 🔴 PHASE 2 — Dashboard Enhancements (TONIGHT)
-
-**2A. Top Matches widget**
-- Dashboard already has stats cards; add a "Your Top Matches" section below them
-- Fetch top 3 from `GET /matches/:userId`, show avatar + name + compatibility % + "Message" CTA
-- Backend: `/matches/:userId` already works — just connect it
-- File: `client/src/features/dashboard/DashboardPage.tsx`
-
-**2B. Progress Streaks**
-- Backend: after any goal tree save, update `last_activity_date` + `current_streak` on profile
-- Frontend: flame icon + streak count in Dashboard welcome banner
-- SQL migration (add to manual_actions.txt Step 5):
-  ```sql
-  ALTER TABLE profiles
-    ADD COLUMN IF NOT EXISTS last_activity_date DATE,
-    ADD COLUMN IF NOT EXISTS current_streak INT DEFAULT 0;
-  ```
-- Files: `src/controllers/goalController.ts`, `client/src/features/dashboard/DashboardPage.tsx`
-
----
-
-### 🟡 PHASE 3 — Achievement Flow Completion (NEXT SESSION)
-
-**3A. "Mark Complete" button on GoalTreePage**
-- Each root node with progress = 100 shows a "🏆 Mark Complete" button
-- On confirm: POST /achievements + toast "Achievement unlocked!"
-- File: `client/src/features/goals/GoalTreePage.tsx`
-
-**3B. Achievement detail modal**
-- Click achievement card on Dashboard → modal with full details, comments, votes
-- Currently all interactions are inline; a modal would clean up the feed significantly
-- File: `client/src/features/dashboard/DashboardPage.tsx`
-
----
-
-### 🔴 PHASE 4 — Deployment (NEEDS USER)
-
-**4A. Railway (backend)**
-- `PORT` already uses `process.env.PORT || 3001` ✅
-- `Procfile` already exists ✅
-- Push to GitHub → connect on railway.app → add all backend env vars
-- Expected URL: `https://praxis-webapp-production.up.railway.app`
-
-**4B. Vercel (frontend)**
-- Set `REACT_APP_API_URL` to Railway URL in Vercel project settings
-- `vercel --prod` from `/client`
-- Expected URL: `https://praxis.vercel.app` or custom domain
-
-**4C. Post-deploy**
-- Update `CLIENT_URL` in Railway env to Vercel URL (for Stripe redirects)
-- Register Stripe production webhook → add `STRIPE_WEBHOOK_SECRET` to Railway
-- Seed demo users: `POST /admin/seed-demo-users` with `X-Admin-Secret` header
-
----
-
-### 🟡 PHASE 5 — Beta Polish (NEXT WEEK)
-
-**5A. Goal-Focused Match Chat (Step 10) ✅ DONE**
-- "Collab" button on MatchCard for score >= 60% real matches → navigate to chat
-- ChatRoom: "Focus" / "Goal" header button → goal picker dialog (user's own nodes)
-- Goal focus amber banner between header and feedback collapse
-- `sendMessage` includes `goalNodeId` when a focus goal is active
-- Feedback form auto-selects focus goal node when opened
-- `messages` table: `goal_node_id` column (SQL migration Query 8B in manual_actions.txt)
-
-**5B. Mutual Grading UX (Step 11)**
-- Feedback dialog triggered after N messages or "End Session" click
-- Show "Waiting for partner" state; only recalibrate weights when both submit
-
-**5C. AI Coaching improvements**
-- Currently a plain text input + response; add suggested prompts per domain
-- Stream the response instead of waiting for full completion
-
----
-
-### 🟢 PHASE 6 — Growth Features (POST-BETA)
-
-**6A. Progress Streaks visualization** (animated flame in Navbar)
-**6B. Community Challenges** (shared goal events, group accountability chat)
-**6C. Goal Tree Evolution History** (snapshots, timeline in Analytics)
-**6D. Embedding cache** (Redis or `goal_embeddings` table to avoid repeated Gemini calls)
+### Frontend (`client/.env`)
+- `REACT_APP_SUPABASE_URL`, `REACT_APP_SUPABASE_ANON_KEY`
+- `REACT_APP_STRIPE_PUBLISHABLE_KEY`
+- `REACT_APP_API_URL` (Point to local 3001 or Railway URL)
 
 ---
 
 ## Architectural Notes
 
-- **Auth flow:** Frontend uses anon Supabase client (JWT in browser). Backend API endpoints
-  needing auth use `authenticateToken` middleware with service-role Supabase client to verify JWT.
-- **Gemini Embeddings cost:** Each `getEmbedding()` call = 1 Gemini API request.
-  MatchingEngine calls O(|A.nodes| × |B.nodes|) times per user pair.
-  Cache in Redis or `goal_embeddings` table for production scale.
-- **Goal weight normalization (whitepaper §3.3):**
-  S_AB = Σ(sim_ij × w_i × w_j) / Σ(w_i × w_j) over same-domain node pairs.
-- **Weight recalibration multipliers (whitepaper §3.5):**
-  SUCCEEDED×0.8 | DISTRACTED×1.2 | LEARNED×0.9 | ADAPTED×1.05 | NOT_APPLICABLE×1.0
-- **Free tier limits:** Max 3 root goals. AI Coaching, Advanced Analytics, unlimited goals = premium only.
-- **Supabase RLS:** All tables have RLS. Backend uses service-role key (bypasses RLS).
-  Frontend anon key is subject to RLS — always test both user perspectives.
-- **API_URL pattern:** All frontend axios calls use `${API_URL}` from `client/src/lib/api.ts`.
-  Change `REACT_APP_API_URL` in `client/.env` (local) or Vercel env vars (production).
-  Never hardcode `localhost:3001`.
-- **MUI v7 Grid:** Use `<Grid size={{ xs: N, md: M }}>` not `<Grid item xs={N} md={M}>`.
-
----
-
-## Environment Variables Checklist
-
-### Backend (`/.env`)
-- [x] SUPABASE_URL
-- [x] SUPABASE_SERVICE_ROLE_KEY   ← MUST be service_role, not anon
-- [x] STRIPE_SECRET_KEY
-- [x] STRIPE_WEBHOOK_SECRET
-- [ ] STRIPE_PRICE_ID             ← still empty, upgrade flow broken
-- [ ] GEMINI_API_KEY              ← optional; fallback matching works without it
-- [x] CLIENT_URL
-- [x] ADMIN_SECRET
-- [x] PORT
-
-### Frontend (`/client/.env`)
-- [x] REACT_APP_SUPABASE_URL
-- [x] REACT_APP_SUPABASE_ANON_KEY
-- [x] REACT_APP_STRIPE_PUBLISHABLE_KEY
-- [x] REACT_APP_API_URL
-- [x] GENERATE_SOURCEMAP=false
-
-See `manual_actions.txt` for full Supabase + Stripe setup instructions.
-
----
-
-## Session 20 (Claude) — Build clean-up
-
-**Date:** 2026-02-20
-
-### Summary
-Cleared all build warnings left from Session 19. Production build is now clean.
-
-### Fixes
-- `client/src/features/chat/ChatRoom.tsx`: Removed stale `useTheme()` call + added `eslint-disable-next-line` on two intentional dep arrays (Supabase channel setup, focusGoalId sync)
-- `client/src/features/chat/VideoCall.tsx`: Added `eslint-disable-next-line` before WebRTC init dep array
-- `client/src/features/groups/GroupChatRoom.tsx`: Removed unused `Button` import
-- `client/src/features/groups/GroupsPage.tsx`: Removed unused `Tooltip` import
-- `client/src/features/identity/IdentityVerificationPage.tsx`: Added `eslint-disable-next-line` for ref capture in cleanup
-
-### Build Status
-- Frontend: ✅ 0 errors, 0 ESLint warnings (441 kB gzip)
-- Backend TS: ✅ 0 errors
-- Pushed to `git@github.com:ilPez00/praxis_webapp.git`
-
-### Next Priorities
-1. 🔴 Run SQL migrations in Supabase (Steps 10A–10D pgvector, 11A–11B bets, 5Q9–5Q13 group chats)
-2. 🔴 Deploy backend to Railway, frontend to Vercel (manual_actions.txt Steps 11–12)
-3. 🟡 Smoke-test full flow: peer verification, video call, group chat, betting
-4. 🟡 Seed demo users after deploy: `POST /admin/seed-demo-users`
-
----
-
-## Session 22 (Claude) — Android Port
-
-**Date:** 2026-02-20
-
-### Summary
-Ported the missing webapp screens to the Android project (praxis_android),
-extending the existing Kotlin/Compose MVVM app with all major features that
-were live in praxis_webapp but absent on Android.
-
-### New files created (praxis_android)
-
-**Data models:**
-- `data/model/Achievement.kt` — Achievement + AchievementComment data classes
-- `data/model/Group.kt` — Group + GroupMessage data classes
-- `data/model/Bet.kt` — Bet data class + BetStatus enum
-
-**Screens (Jetpack Compose):**
-- `ui/screens/DashboardScreen.kt` — Full dashboard port: welcome banner with
-  streak + points, quick-action chips, AI Coaching card (premium-gated),
-  Core Objectives (root goals), Top Alignments (top 3 matches),
-  Community Achievements feed with upvote + detail dialog
-- `ui/screens/GroupsScreen.kt` — Community rooms: All/My tabs, GroupCard with
-  join/enter, CreateGroupDialog with domain picker, FAB
-- `ui/screens/GroupChatRoomScreen.kt` — Group chat with domain-colour header,
-  local mock messages, send functionality, bubble layout
-- `ui/screens/AnalyticsScreen.kt` — Premium gate, achievement rate card,
-  domain performance bars, feedback grade distribution, community comparison
-- `ui/screens/UpgradeScreen.kt` — Price card ($9.99/mo), feature list,
-  stub upgrade flow that activates premium in ViewModel
-- `ui/screens/IdentityVerificationScreen.kt` — Camera preview stub,
-  2-second simulated face analysis, 4-state status machine
-
-### Modified files
-
-**Data layer:**
-- `data/model/User.kt` — Added `isPremium`, `currentStreak`, `praxisPoints`;
-  `addPrimaryGoal()` now respects `isPremium` flag
-- `data/repository/MockRepository.kt` — Added mock achievements (5),
-  mock groups (5); `getAchievements()`, `getGroups()`, `upvoteAchievement()`,
-  `joinGroup()`, `createGroup()` methods
-
-**ViewModel:**
-- `ui/viewmodel/PraxisViewModel.kt` — New `PraxisUiState` variants:
-  `Main(tab)`, `GroupChat`, `Analytics`, `Upgrade`, `IdentityVerification`;
-  `MainTab` enum (DASHBOARD / GOALS / MATCHES / GROUPS / PROFILE);
-  new StateFlows for achievements, groups, bets;
-  `joinGroup`, `createGroup`, `placeBet`, `cancelBet`, `upvoteAchievement`,
-  `activatePremium`, `markIdentityVerified`, `navigateTo(tab)` etc.
-
-**Navigation:**
-- `MainActivity.kt` — Full rewrite: `PraxisApp()` routes all `PraxisUiState`
-  variants; `MainScaffold()` renders `NavigationBar` with emoji tabs and
-  delegates to the correct screen composable per tab.
-
-### Architecture notes
-- All new screens are pure Compose (no XML)
-- Mock data only — real API calls (Retrofit to praxis_webapp backend) deferred
-- CameraX + ML Kit face detection deferred (IdentityVerificationScreen is a stub)
-- Stripe Android SDK deferred (UpgradeScreen stubs and calls `activatePremium()`)
-- Bottom-nav state survives rotation via `PraxisViewModel` (ViewModel scope)
-
-### Next priorities (Android)
-1. Retrofit layer — replace MockRepository with HTTP calls to Railway backend
-2. Supabase Realtime — WebSocket for ChatScreen and GroupChatRoomScreen
-3. CameraX + ML Kit — complete IdentityVerificationScreen
-4. Stripe Android SDK — complete UpgradeScreen payment flow
-5. Room database — offline-first persistence
-6. Push notifications (FCM)
-
----
-
-## Session 21 (Claude) — Whitepaper
-
-**Date:** 2026-02-20
-
-### Summary
-Wrote and compiled a full investor/technical whitepaper for Praxis in LaTeX.
-
-### Output
-- File: `praxis_whitepaper.tex` + compiled `praxis_whitepaper.pdf` (459 KB, 22 pages)
-
-### Content
-- Dark cover page with amber branding, abstract, full TOC
-- §1 The Problem: goal failure stats (91% fail NY resolutions), loneliness epidemic (1 in 3 lonely weekly), platform failures (dating app burnout 79%, LinkedIn shallow connections)
-- §2 Market Opportunity: TAM tables ($6.8T wellness, $38B personal dev, $11.4B habit apps), SAM analysis, generational tailwinds
-- §3 The Praxis Solution: goal tree design, matching algorithm (full LaTeX equations), weight recalibration table, peer verification protocol, accountability betting (loss aversion thesis)
-- §4 Technical Architecture: stack table, 12 route modules, DB schema, embedding pipeline
-- §5 Competitive Landscape: feature comparison table (Praxis vs Tinder/LinkedIn/Strava/Focusmate/Habitica)
-- §6 Business Model: freemium tiers, 5 revenue streams, unit economics, cost structure at 10K MAU
-- §7 Financial Projections: 5-year MAU/ARR table + pgfplots bar chart, break-even analysis (~5,400 premium users)
-- §8 Investment Thesis: network effect flywheel TikZ diagram, 4 defensibility pillars, "Why Now" section
-- §9 Roadmap: Q1 2026 → Year 3 milestones
-- §10 Risk Factors: cold-start, API dependency, regulation, privacy, incumbents
-- §11 Conclusion + 27 academic/industry citations
-- Appendix A: full API route table; Appendix B: domain colour map
-
-### LaTeX Bugs Fixed During Compilation
-- `\faShieldAlt` (FA4 icon) → replaced with `\faMedal` (valid FA5)
-- `\faSearchengin` (brands icon) → replaced with `\faSearch`
-- `[\centering]` passed as tcolorbox key → removed optional arg (kept `\centering` in body)
-- `\headheight too small` → added `\setlength{\headheight}{22pt}` in preamble
-
-### Market Research Sources Used
-- Global Wellness Institute 2025, Precedence Research, Zion Market Research, ICF 2023, Mordor Intelligence
-- Dr. Gail Matthews (Dominican University) accountability study; ASTD
-- U.S. Surgeon General loneliness advisory 2023; Gallup 2024; Harvard MCC 2024
-- Business of Apps (Strava, dating apps); McKinsey Future of Wellness 2024
-- Forbes Health dating app survey 2024; Radboud University 2024
-- RevenueCat State of Subscription Apps 2025; Statista Digital Wellness ARPU
-- Kahneman & Tversky (1979) prospect theory (betting section)
+- **Weight Recalibration:** (§3.5 whitepaper) Recalibrates goal node weights based on peer feedback (SUCCEEDED=0.8, DISTRACTED=1.2, etc.).
+- **Matching Algorithm:** (§3.3 whitepaper) Semantic similarity calculation: S_AB = Σ(sim_ij × w_i × w_j) / Σ(w_i × w_j).
+- **Free Tier Limits:** Enforced 3-root-goal limit and one-time free re-edit gate (premium-gated thereafter).
+- **Auth:** Frontend uses Supabase JWT; Backend verifies via `authenticateToken` middleware using service-role key.
