@@ -61,6 +61,11 @@ CREATE POLICY "Users can delete own avatars"
 -- =============================================================================
 
 ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS name                  TEXT,
+  ADD COLUMN IF NOT EXISTS age                   INT,
+  ADD COLUMN IF NOT EXISTS bio                   TEXT,
+  ADD COLUMN IF NOT EXISTS avatar_url            TEXT,
+  ADD COLUMN IF NOT EXISTS is_premium            BOOLEAN DEFAULT false,
   ADD COLUMN IF NOT EXISTS onboarding_completed  BOOLEAN DEFAULT false,
   ADD COLUMN IF NOT EXISTS goal_tree_edit_count  INT DEFAULT 0,
   ADD COLUMN IF NOT EXISTS sex                   TEXT,
