@@ -57,6 +57,27 @@ CREATE POLICY "Users can delete own avatars"
 
 
 -- =============================================================================
+-- 1a. GOAL_TREES — Create if not exists (camelCase columns match backend queries)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.goal_trees (
+  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  "userId"    UUID        REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  nodes       JSONB       NOT NULL DEFAULT '[]',
+  "rootNodes" JSONB       NOT NULL DEFAULT '[]',
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.goal_trees ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own goal tree" ON public.goal_trees;
+CREATE POLICY "Users can manage own goal tree"
+  ON public.goal_trees FOR ALL
+  USING (auth.uid() = "userId");
+
+
+-- =============================================================================
 -- 1. PROFILES — Add missing columns
 -- =============================================================================
 
