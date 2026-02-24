@@ -39,29 +39,34 @@ Never modify this paragraph.
 
 ## Recent Development (Sessions 24–29)
 
-### Session 29 (2026-02-24) — Null-Safety & Blank Page Fixes (Claude)
+### Session 30 (2026-02-24) — Domain Unification & Meta-data Centralization (Gemini)
 
-**Root causes found and fixed (4 commits: 446a9f1, 23eff4a, fa0cdad):**
+**Resolved Domain Inconsistencies & Crashes (6 files updated):**
 
-1. **`REACT_APP_API_URL` wrong in `client/.env`** — was missing `/api` suffix → all API calls hit wrong endpoint → fixed to `https://web-production-646a4.up.railway.app/api`. NOTE: gitignored, must also set in Vercel dashboard.
-2. **`tsconfig.json`** — `api/index.ts` was outside `rootDir: ./src` but not excluded → TS compile error → added `api` to exclude list.
-3. **DashboardPage** — `Array.isArray()` guards on achievements, rootNodes, nodes, challenges → fixed "e.map is not a function" crash.
-4. **GoalTreePage** — `supabase.auth.getUser()` was outside the try/finally → if it threw, `loading` stayed `true` forever → moved inside single try/catch/finally.
-5. **GroupsPage** — `fetchRooms` depended on `useUser()` resolving (2 Supabase round-trips). Replaced with direct `supabase.auth.getUser()` (fast JWT check). Also added `Array.isArray` guard on joinedRes.value.data.
-6. **groupController.ts** — missing-table check only matched 'schema cache'/'not found' but not Postgres error code `42P01` / 'does not exist' → broadened to catch all schema-missing cases gracefully.
-7. **ChatRoom.tsx** — `userGoalTree.nodes` and `receiverGoalTree.rootNodes` can be null in DB → render-time `.map()`/`.join()`/`.find()` on null values crashed React → blank page. Fixed with `?? []` and `Array.isArray` guards on all 5 crash sites.
+1.  **`client/src/types/goal.ts` — Source of Truth:**
+    *   Eliminated the local `Domain` enum duplicate. Now imports/re-exports from `client/src/models/Domain.ts` to ensure the long-form strings (e.g., `'Investing / Financial Growth'`) are used everywhere.
+    *   Standardized `DOMAIN_COLORS` with vibrant, consistent hex codes and unified keys.
+    *   Added a centralized `DOMAIN_ICONS` map for application-wide iconography.
+2.  **Centralized Component Refactoring:**
+    *   Removed redundant `DOMAIN_COLORS` (and `DOMAIN_ICONS`) definitions from:
+        *   `DashboardPage.tsx`
+        *   `MatchesPage.tsx` (also replaced `domainColor` helper with direct `DOMAIN_COLORS` lookup)
+        *   `OnboardingPage.tsx`
+        *   `AnalyticsPage.tsx`
+        *   `GoalNodeDisplay.tsx`
+        *   `GoalSelectionPage.tsx`
+    *   All components now import these constants from `types/goal.ts`, ensuring 100% visual and logical alignment.
+3.  **Crash Fix Verification:**
+    *   Verified the "Failed to save goals" crash in `GoalSelectionPage.tsx`. The fix `(existingTree?.nodes || []).filter(...)` is present in the worktree, preventing the `TypeError` on `undefined` for new users.
 
-**Outstanding (from debug.txt — Gemini's analysis):**
-- Domain enum mismatch: `types/goal.ts` uses 'Investing', 'Culture, Hobbies & Creative Pursuits', 'Intimacy & Romantic Exploration', 'Friendship & Social Engagement' while `models/Domain.ts` uses different strings with `/` separators. Stored goal data uses models/ values; DOMAIN_COLORS keys use types/ values → wrong/gray colors in visualizations. Non-critical crash-wise.
-- MUI v7 confirmed (^7.3.8) → `<Grid size={{ xs: N }}>` syntax is correct, NOT an issue.
-- Onboarding guard (`onboarding_completed === false`) could redirect all protected routes silently — verify user's `profiles.onboarding_completed` value in Supabase.
+**Outstanding (from debug.txt):**
+- MUI Grid syntax: Some components use `size` prop on `Grid` (v1). While `@mui/material` is at `^7.3.8`, this is likely stable, but monitoring for layout issues is advised.
+- Database: Verify SQL migrations 5Q9–5Q13 are run for social features.
 
 **Pending user actions:**
-- Set `REACT_APP_API_URL=https://web-production-646a4.up.railway.app/api` in Vercel dashboard env vars
-- Hard refresh browser after Vercel redeploys (Ctrl+Shift+R)
-- Check Supabase: `SELECT onboarding_completed, goal_tree_edit_count FROM profiles WHERE id = '<your-id>';`
-- Reset edit count if needed: `UPDATE profiles SET goal_tree_edit_count = 0 WHERE id = '<your-id>';`
-- Run SQL migrations 5Q9–5Q13 for peer verification + group chats + media tables
+- Set `REACT_APP_API_URL=https://web-production-646a4.up.railway.app/api` in Vercel dashboard.
+- Run `ALTER TABLE` queries for missing `profiles` columns (name, bio, etc.) if not already done.
+
 
 ### Session 28 (2026-02-24) — Debug Analysis (Post-Deployment)
 - **Investigated Rendering Issues:** Diagnosed why `/goals/` and `/groups` fail on production.

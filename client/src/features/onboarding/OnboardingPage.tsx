@@ -24,21 +24,10 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import { supabase } from '../../lib/supabase';
 import { Domain } from '../../models/Domain';
+import { DOMAIN_COLORS } from '../../types/goal';
 import toast from 'react-hot-toast';
 
 const steps = ['Welcome', 'Profile', 'Interests', 'Finish'];
-
-const DOMAIN_COLORS: Record<Domain, string> = {
-  [Domain.CAREER]: '#007AFF',
-  [Domain.INVESTING]: '#5856D6',
-  [Domain.FITNESS]: '#FF2D55',
-  [Domain.ACADEMICS]: '#AF52DE',
-  [Domain.MENTAL_HEALTH]: '#32ADE6',
-  [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#FF9500',
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#FFCC00',
-  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#FF3B30',
-  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#34C759',
-};
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();

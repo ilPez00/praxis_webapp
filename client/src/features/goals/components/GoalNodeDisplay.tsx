@@ -15,6 +15,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import { Domain } from '../../../models/Domain';
+import { DOMAIN_COLORS } from '../../../types/goal';
 
 interface GoalNodeDisplayProps {
   node: GoalNode;
@@ -25,18 +26,6 @@ interface GoalNodeDisplayProps {
   onToggle: (nodeId: string) => void;
   hasChildren: boolean;
 }
-
-const DOMAIN_COLORS: Record<Domain, string> = {
-    [Domain.CAREER]: '#4CAF50',
-    [Domain.INVESTING]: '#26A69A',
-    [Domain.FITNESS]: '#E57373',
-    [Domain.ACADEMICS]: '#EC407A',
-    [Domain.MENTAL_HEALTH]: '#64B5F6',
-    [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#78909C',
-    [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#9CCC65',
-    [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#FFA726',
-    [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#AB47BC',
-};
 
 const GoalNodeDisplay: React.FC<GoalNodeDisplayProps> = ({
   node,

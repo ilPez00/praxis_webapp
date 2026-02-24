@@ -49,3 +49,10 @@ claude/
 business/
 praxis_description.txt
 run_old_praxis.sh
+
+# Session context
+claude.sh
+debug.txt
+gemini_prompt.txt
+business
+claude_steps.txt

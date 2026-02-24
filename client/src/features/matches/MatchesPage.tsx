@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { Domain } from '../../models/Domain';
+import { DOMAIN_COLORS } from '../../types/goal';
 import toast from 'react-hot-toast';
 import {
   Container,
@@ -53,28 +54,6 @@ interface MatchProfile {
   sharedGoals?: string[];
   progressPace?: string;
   overallProgress?: number; // 0–100
-}
-
-// ─── Domain color mapping ─────────────────────────────────────────────────────
-
-const DOMAIN_COLORS: Record<string, string> = {
-  'Career':                               '#FF9F0A',
-  'Investing / Financial Growth':         '#007AFF',
-  'Investing':                            '#007AFF',
-  'Fitness':                              '#FF3B30',
-  'Academics':                            '#5856D6',
-  'Mental Health':                        '#34C759',
-  'Philosophical Development':            '#FF2D55',
-  'Culture / Hobbies / Creative Pursuits':'#AF52DE',
-  'Culture, Hobbies & Creative Pursuits': '#AF52DE',
-  'Intimacy / Romantic Exploration':      '#636366',
-  'Intimacy & Romantic Exploration':      '#636366',
-  'Friendship / Social Engagement':       '#00C7BE',
-  'Friendship & Social Engagement':       '#00C7BE',
-};
-
-function domainColor(domain: string): string {
-  return DOMAIN_COLORS[domain] ?? '#9CA3AF';
 }
 
 // ─── Compatibility ring (SVG circular arc) ────────────────────────────────────
@@ -241,7 +220,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onMessage, onViewProfile, 
       {match.domains.length > 0 && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 2.5 }}>
           {match.domains.slice(0, 4).map((domain) => {
-            const dc = domainColor(domain);
+            const dc = DOMAIN_COLORS[domain] || '#9CA3AF';
             return (
               <Chip key={domain} label={domain} size="small" sx={{
                 height: 21, fontSize: '0.67rem',
@@ -512,7 +491,7 @@ const MatchesPage: React.FC = () => {
                   {Object.values(Domain).map((domain) => (
                     <MenuItem key={domain} value={domain}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: domainColor(domain) }} />
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: DOMAIN_COLORS[domain] || '#9CA3AF' }} />
                         {domain}
                       </Box>
                     </MenuItem>

@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
 import toast from 'react-hot-toast';
 import { Domain } from '../../models/Domain';
-import { GoalNode } from '../../models/GoalNode';
+import { GoalNode, DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 import { GoalTree } from '../../models/GoalTree';
 import {
   Container,
@@ -23,30 +23,6 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
-
-const DOMAIN_COLORS: Record<Domain, string> = {
-  [Domain.CAREER]: '#4CAF50',
-  [Domain.INVESTING]: '#26A69A',
-  [Domain.FITNESS]: '#E57373',
-  [Domain.ACADEMICS]: '#EC407A',
-  [Domain.MENTAL_HEALTH]: '#64B5F6',
-  [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#78909C',
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#9CCC65',
-  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#FFA726',
-  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#AB47BC',
-};
-
-const DOMAIN_ICONS: Record<Domain, string> = {
-  [Domain.CAREER]: '💼',
-  [Domain.INVESTING]: '📈',
-  [Domain.FITNESS]: '💪',
-  [Domain.ACADEMICS]: '📚',
-  [Domain.MENTAL_HEALTH]: '🧠',
-  [Domain.PHILOSOPHICAL_DEVELOPMENT]: '🔮',
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '🎨',
-  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '❤️',
-  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '🤝',
-};
 
 // Suggested goal categories per domain
 const DOMAIN_CATEGORIES: Record<Domain, string[]> = {
@@ -208,7 +184,7 @@ const GoalSelectionPage: React.FC = () => {
       }));
 
       // Preserve existing sub-goals if we have an existing tree
-      const existingSubGoals = existingTree?.nodes.filter(n => n.parentId) || [];
+      const existingSubGoals = (existingTree?.nodes || []).filter(n => n.parentId);
       // Only keep sub-goals whose parent still exists
       const validSubGoals = existingSubGoals.filter(sub =>
         nodes.some(n => n.id === sub.parentId)

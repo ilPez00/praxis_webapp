@@ -1,16 +1,7 @@
 // client/src/types/goal.ts
+import { Domain } from '../models/Domain';
 
-export enum Domain {
-    CAREER = 'Career',
-    INVESTING = 'Investing',
-    FITNESS = 'Fitness',
-    ACADEMICS = 'Academics',
-    MENTAL_HEALTH = 'Mental Health',
-    PHILOSOPHICAL_DEVELOPMENT = 'Philosophical Development',
-    CULTURE_HOBBIES_CREATIVE_PURSUITS = 'Culture, Hobbies & Creative Pursuits',
-    INTIMACY_ROMANTIC_EXPLORATION = 'Intimacy & Romantic Exploration',
-    FRIENDSHIP_SOCIAL_ENGAGEMENT = 'Friendship & Social Engagement',
-}
+export { Domain };
 
 export interface GoalNode {
     id: string;
@@ -128,14 +119,26 @@ export const generateUniqueId = (): string => {
 
 // Domain color mapping for styling
 export const DOMAIN_COLORS: Record<string, string> = {
-    [Domain.CAREER]: '#FF9F0A', // iOS Orange
-    [Domain.INVESTING]: '#007AFF', // iOS Blue
-    [Domain.FITNESS]: '#FF3B30', // iOS Red
-    [Domain.ACADEMICS]: '#5856D6', // iOS Indigo
-    [Domain.MENTAL_HEALTH]: '#34C759', // iOS Green
-    [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#FF2D55', // iOS Pink
-    [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#AF52DE', // iOS Purple
-    [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#636366', // iOS Gray (Dark)
-    [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#00C7BE', // iOS Teal
-    'defaultDomain': '#CCCCCC', // Default grey for non-domain specific nodes
+    [Domain.CAREER]: '#F59E0B',
+    [Domain.INVESTING]: '#3B82F6',
+    [Domain.FITNESS]: '#EF4444',
+    [Domain.ACADEMICS]: '#8B5CF6',
+    [Domain.MENTAL_HEALTH]: '#10B981',
+    [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#EC4899',
+    [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#A855F7',
+    [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#F97316',
+    [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#06B6D4',
+    'defaultDomain': '#9CA3AF',
+};
+
+export const DOMAIN_ICONS: Record<string, string> = {
+    [Domain.CAREER]: '💼',
+    [Domain.INVESTING]: '📈',
+    [Domain.FITNESS]: '💪',
+    [Domain.ACADEMICS]: '📚',
+    [Domain.MENTAL_HEALTH]: '🧠',
+    [Domain.PHILOSOPHICAL_DEVELOPMENT]: '🔮',
+    [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '🎨',
+    [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '❤️',
+    [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '🤝',
 };

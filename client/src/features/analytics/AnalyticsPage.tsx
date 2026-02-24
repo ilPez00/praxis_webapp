@@ -23,19 +23,7 @@ import FeedbackIcon from '@mui/icons-material/Feedback';
 import InsightsIcon from '@mui/icons-material/Insights';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import LockIcon from '@mui/icons-material/Lock';
-
-// Domain colors matching the app's palette
-const DOMAIN_COLORS: Record<string, string> = {
-  'Career': '#FF9F0A',
-  'Investing': '#007AFF',
-  'Fitness': '#FF3B30',
-  'Academics': '#5856D6',
-  'Mental Health': '#34C759',
-  'Philosophical Development': '#FF2D55',
-  'Culture, Hobbies & Creative Pursuits': '#AF52DE',
-  'Intimacy & Romantic Exploration': '#636366',
-  'Friendship & Social Engagement': '#00C7BE',
-};
+import { DOMAIN_COLORS } from '../../types/goal';
 
 const StatCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode; glowColor?: string }> = ({
   icon, title, children, glowColor,

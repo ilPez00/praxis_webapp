@@ -10,6 +10,7 @@ import { Domain } from '../../models/Domain';
 import { Achievement } from '../../models/Achievement';
 import { AchievementComment } from '../../models/AchievementComment';
 import GlassCard from '../../components/common/GlassCard';
+import { DOMAIN_COLORS } from '../../types/goal';
 
 import {
   Container,
@@ -60,18 +61,6 @@ interface MatchProfile {
   name: string;
   avatar_url: string | null;
 }
-
-const DOMAIN_COLORS: Record<Domain, string> = {
-  [Domain.CAREER]: '#F59E0B',
-  [Domain.INVESTING]: '#3B82F6',
-  [Domain.FITNESS]: '#EF4444',
-  [Domain.ACADEMICS]: '#8B5CF6',
-  [Domain.MENTAL_HEALTH]: '#10B981',
-  [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#EC4899',
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#A855F7',
-  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#F97316',
-  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#06B6D4',
-};
 
 const DashboardPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
