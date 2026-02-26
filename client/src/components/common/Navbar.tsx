@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import {
@@ -20,6 +20,7 @@ import {
   Divider,
   useTheme,
   useMediaQuery,
+  InputBase,
 } from '@mui/material';
 import BoltIcon from '@mui/icons-material/Bolt';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -34,13 +35,36 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ChatIcon from '@mui/icons-material/Chat';
 import GroupsIcon from '@mui/icons-material/Groups';
 import SchoolIcon from '@mui/icons-material/School';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import SearchIcon from '@mui/icons-material/Search';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+
+  // Hide search on profile pages
+  const hideSearch = /^\/profile(\/|$)/.test(location.pathname);
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchValue.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchValue.trim())}&type=all`);
+      setSearchValue('');
+      setDrawerOpen(false);
+    }
+  };
+
+  const handleSearchClick = () => {
+    if (searchValue.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchValue.trim())}&type=all`);
+      setSearchValue('');
+      setDrawerOpen(false);
+    }
+  };
 
   const handleLogout = async () => {
     setDrawerOpen(false);
@@ -157,6 +181,43 @@ const Navbar: React.FC = () => {
                   >
                     Coaching
                   </Button>
+                  <Button
+                    color="inherit"
+                    component={RouterLink}
+                    to="/marketplace"
+                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
+                  >
+                    Marketplace
+                  </Button>
+                  {!hideSearch && (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        bgcolor: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                        px: 1.5,
+                        py: 0.5,
+                        ml: 1,
+                        width: 220,
+                        '&:focus-within': { borderColor: 'primary.main', bgcolor: 'rgba(255,255,255,0.09)' },
+                      }}
+                    >
+                      <SearchIcon
+                        sx={{ color: 'text.secondary', fontSize: 18, mr: 1, cursor: 'pointer' }}
+                        onClick={handleSearchClick}
+                      />
+                      <InputBase
+                        placeholder="Search…"
+                        value={searchValue}
+                        onChange={e => setSearchValue(e.target.value)}
+                        onKeyDown={handleSearch}
+                        inputProps={{ 'aria-label': 'search' }}
+                        sx={{ fontSize: '0.875rem', color: 'text.primary', flex: 1 }}
+                      />
+                    </Box>
+                  )}
                   {(user.current_streak ?? 0) > 0 && (
                     <Chip
                       icon={
@@ -258,6 +319,34 @@ const Navbar: React.FC = () => {
 
         {user ? (
           <>
+            {/* Search in mobile drawer */}
+            {!hideSearch && (
+              <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    bgcolor: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    px: 1.5,
+                    py: 0.5,
+                    '&:focus-within': { borderColor: 'primary.main' },
+                  }}
+                >
+                  <SearchIcon sx={{ color: 'text.secondary', fontSize: 18, mr: 1, cursor: 'pointer' }} onClick={handleSearchClick} />
+                  <InputBase
+                    placeholder="Search…"
+                    value={searchValue}
+                    onChange={e => setSearchValue(e.target.value)}
+                    onKeyDown={handleSearch}
+                    inputProps={{ 'aria-label': 'search' }}
+                    sx={{ fontSize: '0.875rem', color: 'text.primary', flex: 1 }}
+                  />
+                </Box>
+              </Box>
+            )}
+
             {/* User info */}
             <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Avatar src={user.avatarUrl || undefined} sx={{ width: 44, height: 44, border: '2px solid rgba(245,158,11,0.4)' }}>
@@ -319,6 +408,12 @@ const Navbar: React.FC = () => {
                 <ListItemButton onClick={() => handleNav('/coaching')}>
                   <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><SchoolIcon /></ListItemIcon>
                   <ListItemText primary="Coaching" primaryTypographyProps={{ fontWeight: 600 }} />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton onClick={() => handleNav('/marketplace')}>
+                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><StorefrontIcon /></ListItemIcon>
+                  <ListItemText primary="Marketplace" primaryTypographyProps={{ fontWeight: 600 }} />
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>

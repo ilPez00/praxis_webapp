@@ -49,6 +49,10 @@ export const useUser = () => {
         goal_tree_edit_count: profile.goal_tree_edit_count ?? 0,
         current_streak: profile.current_streak ?? 0,
         last_activity_date: profile.last_activity_date ?? undefined,
+        praxis_points: profile.praxis_points ?? 0,
+        streak_shield: profile.streak_shield ?? false,
+        profile_boosted_until: profile.profile_boosted_until ?? undefined,
+        badge: profile.badge ?? undefined,
         goalTree: [],
       });
     } catch (error) {

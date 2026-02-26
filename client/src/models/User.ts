@@ -20,4 +20,8 @@ export interface User {
   goal_tree_edit_count?: number;
   current_streak?: number;
   last_activity_date?: string;
+  praxis_points?: number;
+  streak_shield?: boolean;
+  profile_boosted_until?: string;
+  badge?: string;
 }

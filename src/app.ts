@@ -19,6 +19,8 @@ import groupRoutes from './routes/groupRoutes';
 import bettingRoutes from './routes/bettingRoutes';
 import challengeRoutes from './routes/challengeRoutes';
 import coachRoutes from './routes/coachRoutes';
+import searchRoutes from './routes/searchRoutes';
+import marketplaceRoutes from './routes/marketplaceRoutes';
 
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 
@@ -50,6 +52,8 @@ apiRouter.use('/groups', groupRoutes);
 apiRouter.use('/bets', bettingRoutes);
 apiRouter.use('/challenges', challengeRoutes);
 apiRouter.use('/coaches', coachRoutes);
+apiRouter.use('/search', searchRoutes);
+apiRouter.use('/marketplace', marketplaceRoutes);
 
 app.use('/api', apiRouter);
 

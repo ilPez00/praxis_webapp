@@ -444,11 +444,70 @@ CREATE POLICY "Users can join/leave challenges" ON public.challenge_participants
 
 
 -- =============================================================================
+-- 15. COACH_PROFILES — Profiles for coaches
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.coach_profiles (
+  id            UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id       UUID        REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  bio           TEXT        NOT NULL DEFAULT '',
+  skills        JSONB       NOT NULL DEFAULT '[]',
+  domains       JSONB       NOT NULL DEFAULT '[]',
+  hourly_rate   NUMERIC,
+  is_available  BOOLEAN     NOT NULL DEFAULT true,
+  rating        NUMERIC     NOT NULL DEFAULT 0,
+  total_reviews INT         NOT NULL DEFAULT 0,
+  updated_at    TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.coach_profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read coach_profiles"  ON public.coach_profiles;
+DROP POLICY IF EXISTS "Own coach_profiles insert"   ON public.coach_profiles;
+DROP POLICY IF EXISTS "Own coach_profiles update"   ON public.coach_profiles;
+DROP POLICY IF EXISTS "Own coach_profiles delete"   ON public.coach_profiles;
+
+CREATE POLICY "Public read coach_profiles"  ON public.coach_profiles FOR SELECT USING (true);
+CREATE POLICY "Own coach_profiles insert"   ON public.coach_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Own coach_profiles update"   ON public.coach_profiles FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Own coach_profiles delete"   ON public.coach_profiles FOR DELETE USING (auth.uid() = user_id);
+
+
+-- =============================================================================
+-- 16. PROFILES — Marketplace columns
+-- =============================================================================
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS streak_shield         BOOLEAN     DEFAULT false,
+  ADD COLUMN IF NOT EXISTS profile_boosted_until TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS badge                 TEXT;
+
+
+-- =============================================================================
+-- 17. MARKETPLACE_TRANSACTIONS — Log of point purchases
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.marketplace_transactions (
+  id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    UUID        REFERENCES auth.users(id) ON DELETE CASCADE,
+  item_type  TEXT        NOT NULL,
+  cost       INT         NOT NULL,
+  metadata   JSONB,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.marketplace_transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Own marketplace_transactions" ON public.marketplace_transactions;
+
+CREATE POLICY "Own marketplace_transactions"
+  ON public.marketplace_transactions FOR ALL
+  USING (auth.uid() = user_id);
+
+
+-- =============================================================================
 -- 12. MATCH_USERS_BY_GOALS — pgvector cosine-similarity matchmaking function
---
--- Returns up to `match_limit` users ranked by average embedding similarity
--- across shared goal domains. Requires the goal_embeddings table and the
--- pgvector extension (both created above).
+-- (kept at end for dependency ordering)
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.match_users_by_goals(
