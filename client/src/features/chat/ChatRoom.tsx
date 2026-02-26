@@ -406,9 +406,12 @@ const ChatRoom: React.FC = () => {
     // Completion request card
     if (msgType === 'completion_request') {
       const isVerifier = msg.receiver_id === currentUserId;
-      const meta: any = typeof msg.metadata === 'string'
-        ? JSON.parse(msg.metadata)
-        : (msg.metadata ?? {});
+      let meta: any = {};
+      try {
+        meta = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : (msg.metadata ?? {});
+      } catch {
+        meta = {};
+      }
       return (
         <Box
           key={msg.id}

@@ -449,7 +449,7 @@ CREATE POLICY "Users can join/leave challenges" ON public.challenge_participants
 
 CREATE TABLE IF NOT EXISTS public.coach_profiles (
   id            UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id       UUID        REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  user_id       UUID        REFERENCES public.profiles(id) ON DELETE CASCADE UNIQUE,
   bio           TEXT        NOT NULL DEFAULT '',
   skills        JSONB       NOT NULL DEFAULT '[]',
   domains       JSONB       NOT NULL DEFAULT '[]',
@@ -503,6 +503,20 @@ DROP POLICY IF EXISTS "Own marketplace_transactions" ON public.marketplace_trans
 CREATE POLICY "Own marketplace_transactions"
   ON public.marketplace_transactions FOR ALL
   USING (auth.uid() = user_id);
+
+
+-- =============================================================================
+-- 18. FIX coach_profiles FK — point to public.profiles instead of auth.users
+-- Run this block if you previously ran section 15 (coach_profiles creation).
+-- This allows PostgREST to auto-embed profiles data via the JOIN syntax.
+-- =============================================================================
+
+ALTER TABLE public.coach_profiles
+  DROP CONSTRAINT IF EXISTS coach_profiles_user_id_fkey;
+
+ALTER TABLE public.coach_profiles
+  ADD CONSTRAINT coach_profiles_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
 
 -- =============================================================================

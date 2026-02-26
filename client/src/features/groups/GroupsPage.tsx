@@ -119,7 +119,11 @@ const GroupsPage: React.FC = () => {
   };
 
   const handleCreateRoom = async () => {
-    if (!roomName.trim() || !userId) return;
+    if (!roomName.trim()) return;
+    if (!userId) {
+      toast.error('Not authenticated — please refresh and try again.');
+      return;
+    }
     setCreating(true);
     try {
       const { data } = await axios.post(`${API_URL}/groups`, {
