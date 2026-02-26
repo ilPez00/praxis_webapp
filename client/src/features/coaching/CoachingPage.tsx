@@ -120,7 +120,7 @@ const CoachingPage: React.FC = () => {
       fetchCoaches();
       fetchMyProfile();
     }
-  }, [fetchCoaches, fetchMyProfile]);
+  }, [fetchCoaches, fetchMyProfile, currentUserId]);
 
   const openCreateDialog = () => {
     if (myProfile) {
