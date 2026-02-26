@@ -201,12 +201,9 @@ const GoalSelectionPage: React.FC = () => {
       });
 
       // Mark onboarding complete if this is the first goal tree setup.
-      // This gates the rest of the app behind goal tree completion.
+      // Uses the backend endpoint (service-role key) to bypass RLS on profiles.
       if (!user?.onboarding_completed) {
-        await supabase
-          .from('profiles')
-          .update({ onboarding_completed: true })
-          .eq('id', currentUserId);
+        await axios.post(`${API_URL}/users/complete-onboarding`, { userId: currentUserId });
         await refetch(); // sync useUser cache before navigating to a guarded route
       }
 
