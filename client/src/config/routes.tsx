@@ -21,6 +21,7 @@ import IdentityVerificationPage from '../features/identity/IdentityVerificationP
 import AnalyticsPage from '../features/analytics/AnalyticsPage';
 import GroupsPage from '../features/groups/GroupsPage';
 import GroupChatRoom from '../features/groups/GroupChatRoom';
+import CoachingPage from '../features/coaching/CoachingPage';
 
 interface RouteConfig {
   path: string;
@@ -54,6 +55,7 @@ const routes: RouteConfig[] = [
   { path: '/analytics', element: AnalyticsPage, private: true },
   { path: '/groups', element: GroupsPage, private: true },
   { path: '/groups/:roomId', element: GroupChatRoom, private: true, param: 'roomId' },
+  { path: '/coaching', element: CoachingPage, private: true },
 ];
 
 export default routes;

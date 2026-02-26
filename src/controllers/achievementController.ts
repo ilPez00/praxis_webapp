@@ -411,3 +411,26 @@ export const deleteVote = catchAsync(async (req: Request, res: Response, next: N
 
   res.status(204).send(); // Respond with no content
 });
+
+// ---------------------------------------------------------------------------
+// Video URL
+// PATCH /achievements/:id/video
+// Body: { videoUrl: string }
+// ---------------------------------------------------------------------------
+export const setAchievementVideo = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { id } = req.params;
+  const { videoUrl } = req.body;
+  if (!videoUrl) throw new BadRequestError('videoUrl is required.');
+
+  const { data, error } = await supabase
+    .from('achievements')
+    .update({ video_url: videoUrl })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error);
+  if (!data) throw new NotFoundError('Achievement not found.');
+
+  res.status(200).json(data);
+});

@@ -175,12 +175,14 @@ const GoalSelectionPage: React.FC = () => {
       const nodes: GoalNode[] = selectedGoals.map((g) => ({
         id: g.id,
         domain: g.domain,
+        title: g.customName || g.category,
         name: g.customName || g.category,
         weight: 1.0,
         progress: 0,
         category: g.category,
         customDetails: g.details || undefined,
         parentId: undefined,
+        children: [],
       }));
 
       // Preserve existing sub-goals if we have an existing tree

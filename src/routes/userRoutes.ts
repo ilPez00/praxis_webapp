@@ -4,11 +4,13 @@ import {
   updateUserProfile,
   completeOnboarding,
   verifyIdentity,
+  getLeaderboard,
 } from '../controllers/userController';
 
 const router = Router();
 
 router.post('/complete-onboarding', completeOnboarding);
+router.get('/leaderboard', getLeaderboard);
 router.get('/:id', getUserProfile);
 router.put('/:id', updateUserProfile);
 router.post('/:id/verify', verifyIdentity);

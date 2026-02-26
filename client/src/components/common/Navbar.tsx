@@ -33,6 +33,7 @@ import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ChatIcon from '@mui/icons-material/Chat';
 import GroupsIcon from '@mui/icons-material/Groups';
+import SchoolIcon from '@mui/icons-material/School';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -147,6 +148,14 @@ const Navbar: React.FC = () => {
                     sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
                   >
                     Groups
+                  </Button>
+                  <Button
+                    color="inherit"
+                    component={RouterLink}
+                    to="/coaching"
+                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
+                  >
+                    Coaching
                   </Button>
                   {(user.current_streak ?? 0) > 0 && (
                     <Chip
@@ -304,6 +313,12 @@ const Navbar: React.FC = () => {
                 <ListItemButton onClick={() => handleNav('/groups')}>
                   <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><GroupsIcon /></ListItemIcon>
                   <ListItemText primary="Groups" primaryTypographyProps={{ fontWeight: 600 }} />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton onClick={() => handleNav('/coaching')}>
+                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><SchoolIcon /></ListItemIcon>
+                  <ListItemText primary="Coaching" primaryTypographyProps={{ fontWeight: 600 }} />
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>

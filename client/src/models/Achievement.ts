@@ -10,6 +10,7 @@ export interface Achievement {
   description?: string;
   domain: Domain;
   createdAt: Date;
-  totalUpvotes: number; // Added
-  totalDownvotes: number; // Added
+  totalUpvotes: number;
+  totalDownvotes: number;
+  video_url?: string; // Optional video confirmation URL
 }

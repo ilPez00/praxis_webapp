@@ -51,6 +51,10 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GroupsIcon from '@mui/icons-material/Groups';
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import SchoolIcon from '@mui/icons-material/School';
 
 interface MatchResult {
   userId: string;
@@ -83,6 +87,13 @@ const DashboardPage: React.FC = () => {
 
   // Community challenges state
   const [challenges, setChallenges] = useState<any[]>([]);
+
+  // Leaderboard state
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+
+  // Video dialog state
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   // AI Coaching state
   const [aiCoachingResponse, setAiCoachingResponse] = useState<string | null>(null);
@@ -125,12 +136,26 @@ const DashboardPage: React.FC = () => {
         const res = await axios.get(`${API_URL}/challenges`);
         setChallenges(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
-        // Non-fatal — challenges section is best-effort
         setChallenges([]);
       }
     };
     fetchChallenges();
   }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const fetchLeaderboard = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/users/leaderboard`, {
+          params: { userId: currentUserId },
+        });
+        setLeaderboard(Array.isArray(res.data) ? res.data : []);
+      } catch {
+        setLeaderboard([]);
+      }
+    };
+    fetchLeaderboard();
+  }, [currentUserId]);
 
   const handleJoinChallenge = async (challengeId: string) => {
     if (!currentUserId) return;
@@ -646,7 +671,7 @@ const DashboardPage: React.FC = () => {
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                      <Avatar 
+                      <Avatar
                         src={achievement.userAvatarUrl || undefined}
                         sx={{ width: 44, height: 44, border: '2px solid rgba(255,255,255,0.1)' }}
                       >
@@ -655,17 +680,28 @@ const DashboardPage: React.FC = () => {
                       <Box sx={{ flexGrow: 1 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                           <Typography variant="body1" sx={{ fontWeight: 700 }}>{achievement.userName}</Typography>
-                          <Chip 
-                            label={achievement.domain} 
-                            size="small" 
-                            sx={{ 
-                              height: 20, 
-                              fontSize: '0.65rem', 
-                              fontWeight: 800,
-                              bgcolor: `${DOMAIN_COLORS[achievement.domain]}15`,
-                              color: DOMAIN_COLORS[achievement.domain],
-                            }} 
-                          />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {achievement.video_url && (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); setVideoUrl(achievement.video_url!); setVideoDialogOpen(true); }}
+                                sx={{ p: 0.5, color: '#10B981' }}
+                              >
+                                <PlayCircleOutlineIcon fontSize="small" />
+                              </IconButton>
+                            )}
+                            <Chip
+                              label={achievement.domain}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                bgcolor: `${DOMAIN_COLORS[achievement.domain]}15`,
+                                color: DOMAIN_COLORS[achievement.domain],
+                              }}
+                            />
+                          </Box>
                         </Box>
                         <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 800, mb: 0.5 }}>
                           {achievement.title}
@@ -673,10 +709,10 @@ const DashboardPage: React.FC = () => {
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                           {achievement.description}
                         </Typography>
-                        
+
                         <Stack direction="row" spacing={3}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <IconButton size="small" onClick={() => handleVote(achievement.id, 'upvote')} sx={{ p: 0.5 }}>
+                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleVote(achievement.id, 'upvote'); }} sx={{ p: 0.5 }}>
                               <ThumbUpIcon fontSize="small" sx={{ opacity: 0.7 }} />
                             </IconButton>
                             <Typography variant="caption" sx={{ fontWeight: 700 }}>{achievement.totalUpvotes}</Typography>
@@ -698,7 +734,151 @@ const DashboardPage: React.FC = () => {
               </Stack>
             </GlassCard>
           </Grid>
+
+          {/* Leaderboard Section */}
+          <Grid size={{ xs: 12, md: 5 }}>
+            <GlassCard sx={{ p: 4, height: '100%' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <LeaderboardIcon sx={{ color: 'primary.main' }} />
+                  <Typography variant="h5" sx={{ fontWeight: 800 }}>Top Achievers</Typography>
+                </Box>
+                <Button
+                  component={RouterLink}
+                  to="/matches"
+                  size="small"
+                  variant="text"
+                  color="primary"
+                >
+                  Explore
+                </Button>
+              </Box>
+              <Stack spacing={1.5}>
+                {leaderboard.length > 0 ? leaderboard.map((entry: any, idx: number) => {
+                  const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+                  const isMe = entry.id === currentUserId;
+                  return (
+                    <Box
+                      key={entry.id}
+                      onClick={() => navigate(`/profile/${entry.id}`)}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        p: 1.5,
+                        borderRadius: '14px',
+                        cursor: 'pointer',
+                        bgcolor: isMe ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.02)',
+                        border: isMe ? '1px solid rgba(245,158,11,0.2)' : '1px solid rgba(255,255,255,0.04)',
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                      }}
+                    >
+                      <Typography sx={{ minWidth: 28, fontSize: medal ? '1.2rem' : '0.85rem', fontWeight: 800, color: 'text.disabled', textAlign: 'center' }}>
+                        {medal ?? `#${idx + 1}`}
+                      </Typography>
+                      <Avatar
+                        src={entry.avatar_url || undefined}
+                        sx={{ width: 36, height: 36, border: isMe ? '2px solid rgba(245,158,11,0.5)' : '1px solid rgba(255,255,255,0.1)' }}
+                      >
+                        {(entry.name ?? 'U').charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                            {entry.name ?? 'Praxis User'}
+                          </Typography>
+                          {entry.is_verified && (
+                            <VerifiedIcon sx={{ fontSize: 13, color: '#3B82F6' }} />
+                          )}
+                          {isMe && (
+                            <Chip label="you" size="small" sx={{ height: 16, fontSize: '0.6rem', bgcolor: 'rgba(245,158,11,0.12)', color: 'primary.main' }} />
+                          )}
+                        </Box>
+                        {entry.domains?.length > 0 && (
+                          <Typography variant="caption" color="text.disabled" noWrap>
+                            {entry.domains.slice(0, 2).join(' · ')}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                          {entry.praxis_points ?? 0}
+                        </Typography>
+                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem' }}>
+                          pts
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                }) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                    Loading top achievers...
+                  </Typography>
+                )}
+              </Stack>
+            </GlassCard>
+          </Grid>
+
+          {/* Coaching CTA */}
+          <Grid size={{ xs: 12 }}>
+            <GlassCard
+              sx={{
+                p: 3,
+                background: 'linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(245,158,11,0.08) 100%)',
+                border: '1px solid rgba(139,92,246,0.15)',
+                borderRadius: '20px',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ p: 1.5, borderRadius: '12px', bgcolor: 'rgba(139,92,246,0.15)', color: 'secondary.main' }}>
+                    <SchoolIcon />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800 }}>Coaching Marketplace</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Find a coach aligned with your goals, or share your expertise with others.
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  variant="contained"
+                  component={RouterLink}
+                  to="/coaching"
+                  sx={{ borderRadius: '12px', fontWeight: 700, background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' }}
+                >
+                  Explore Coaches
+                </Button>
+              </Box>
+            </GlassCard>
+          </Grid>
         </Grid>
+
+        {/* Video Confirmation Dialog */}
+        <Dialog
+          open={videoDialogOpen}
+          onClose={() => { setVideoDialogOpen(false); setVideoUrl(null); }}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle sx={{ pb: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>Achievement Video</Typography>
+            <IconButton onClick={() => { setVideoDialogOpen(false); setVideoUrl(null); }} size="small">
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ pt: 2 }}>
+            {videoUrl && (
+              <Box
+                component="video"
+                src={videoUrl}
+                controls
+                autoPlay
+                sx={{ width: '100%', borderRadius: '12px', maxHeight: '60vh' }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Community Challenges Section */}
         <Box sx={{ mt: 6 }}>

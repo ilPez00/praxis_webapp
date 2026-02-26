@@ -12,6 +12,7 @@ import {
   addVoteToAchievement,
   updateVote,
   deleteVote,
+  setAchievementVideo,
 } from '../controllers/achievementController';
 
 const router = express.Router();
@@ -33,5 +34,8 @@ router.delete('/:achievementId/comments/:commentId', deleteComment);
 router.post('/:id/votes', addVoteToAchievement);
 router.put('/:achievementId/votes/:voteId', updateVote);
 router.delete('/:achievementId/votes/:voteId', deleteVote);
+
+// Video route
+router.patch('/:id/video', setAchievementVideo);
 
 export default router;
