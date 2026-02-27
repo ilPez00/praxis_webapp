@@ -123,8 +123,10 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   const rootGoalLimit = 3;
   const safeRootNodes = rootNodes || [];
 
-  // Enforce root goal limit for non-premium users
-  if (!isPremium && safeRootNodes.length > rootGoalLimit) {
+  const isAdmin = profile?.is_admin || false;
+
+  // Enforce root goal limit for non-premium, non-admin users
+  if (!isPremium && !isAdmin && safeRootNodes.length > rootGoalLimit) {
     throw new ForbiddenError(`Non-premium users are limited to ${rootGoalLimit} primary goals. Upgrade to premium for unlimited goals.`);
   }
 
@@ -181,10 +183,10 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   }
 
   if (existingTree) {
-    // Re-edit gate: non-premium users only get one free re-edit after their initial setup.
+    // Re-edit gate: non-premium, non-admin users only get one free re-edit after their initial setup.
     // editCount === 0 → free re-edit (initial setup doesn't count against the limit)
-    // editCount >= 1 → must be premium
-    if (!isPremium && editCount >= 1) {
+    // editCount >= 1 → must be premium or admin
+    if (!isPremium && !isAdmin && editCount >= 1) {
       throw new ForbiddenError('You have used your free goal tree edit. Upgrade to Premium to make further changes.');
     }
 

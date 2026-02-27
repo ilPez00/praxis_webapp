@@ -91,14 +91,14 @@ const GoalSelectionPage: React.FC = () => {
     const isReEdit = user.onboarding_completed === true;
     const editCount = user.goal_tree_edit_count ?? 0;
 
-    if (isReEdit && editCount >= 1 && !user.is_premium) {
+    if (isReEdit && editCount >= 1 && !user.is_premium && !user.is_admin) {
       // Re-edit limit reached — redirect to upgrade
       toast.error("You've used your free goal tree edit. Upgrade to Premium for unlimited changes.");
       navigate('/upgrade');
       return;
     }
 
-    if (isReEdit && editCount === 0) {
+    if (isReEdit && editCount === 0 && !user.is_admin) {
       // Warn: this is the one free re-edit
       toast('✏️ You have 1 free goal tree edit. Future changes will require Premium.', {
         duration: 6000,
