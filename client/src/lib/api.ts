@@ -16,8 +16,8 @@ const getBaseUrl = () => {
       return 'http://localhost:3001/api';
     }
     
-    // In production, we assume the API is co-located at /api on the same domain
-    return `${window.location.origin}/api`;
+    // In production, call Railway directly
+    return 'https://web-production-646a4.up.railway.app/api';
   }
 
   return 'http://localhost:3001/api';
