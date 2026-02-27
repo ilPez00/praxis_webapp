@@ -121,7 +121,7 @@ const GoalTreePage: React.FC = () => {
             axios.get(`${API_URL}/bets/${userId}`),
             supabase.from('profiles').select('praxis_points').eq('id', userId).single(),
           ]);
-          if (betsRes.status === 'fulfilled') setUserBets(betsRes.value.data || []);
+          if (betsRes.status === 'fulfilled') setUserBets(Array.isArray(betsRes.value.data) ? betsRes.value.data : []);
           if (profileRes.status === 'fulfilled') setPraxisPoints(profileRes.value.data?.praxis_points ?? null);
         }
       } catch (err: any) {
