@@ -3,14 +3,22 @@ import { supabase } from '../lib/supabaseClient';
 import { catchAsync, BadRequestError, InternalServerError } from '../utils/appErrors';
 
 const CATALOGUE = [
-  { item_type: 'streak_shield',    label: 'Streak Shield',     cost: 30,  description: 'Protect your streak from breaking for one day.' },
-  { item_type: 'profile_boost',    label: 'Profile Boost 24h', cost: 50,  description: 'Boost your profile visibility for 24 hours.' },
-  { item_type: 'badge_apprentice', label: 'Apprentice Badge',  cost: 20,  description: 'Display the Apprentice badge on your profile.' },
-  { item_type: 'badge_achiever',   label: 'Achiever Badge',    cost: 50,  description: 'Display the Achiever badge on your profile.' },
-  { item_type: 'badge_legend',     label: 'Legend Badge',      cost: 150, description: 'Display the Legend badge on your profile.' },
-  { item_type: 'goal_tree_edit',   label: 'Goal Tree Edit',    cost: 100, description: 'Reset your goal tree edit counter to allow changes.' },
-  { item_type: 'premium_trial',    label: '7-Day Premium',     cost: 250, description: 'Get 7 days of premium access.' },
-  { item_type: 'coaching_session', label: 'Coaching Session',  cost: 0,   description: 'Book a session with a coach (points transfer to coach).' },
+  // Boosts
+  { item_type: 'streak_shield',    label: 'Streak Shield',        cost: 30,  description: 'Protect your streak from breaking for one day.' },
+  { item_type: 'profile_boost',    label: 'Profile Boost — 24h',  cost: 50,  description: 'Boost your profile visibility for 24 hours.' },
+  { item_type: 'profile_boost_7d', label: 'Profile Boost — 7 Days', cost: 200, description: 'Boost your profile to the top of partner matches for a full week.' },
+  // Badges
+  { item_type: 'badge_pioneer',    label: 'Pioneer Badge',        cost: 10,  description: 'Show you were here from the start.' },
+  { item_type: 'badge_apprentice', label: 'Apprentice Badge',     cost: 20,  description: 'Display the Apprentice badge on your profile.' },
+  { item_type: 'badge_achiever',   label: 'Achiever Badge',       cost: 50,  description: 'Display the Achiever badge on your profile.' },
+  { item_type: 'badge_mentor',     label: 'Mentor Badge',         cost: 80,  description: 'For those who guide others toward their goals.' },
+  { item_type: 'badge_legend',     label: 'Legend Badge',         cost: 150, description: 'Display the Legend badge on your profile.' },
+  { item_type: 'badge_visionary',  label: 'Visionary Badge',      cost: 200, description: 'The highest-tier badge on Praxis.' },
+  // Premium
+  { item_type: 'goal_tree_edit',   label: 'Goal Tree Edit',       cost: 100, description: 'Reset your goal tree edit counter to allow changes.' },
+  { item_type: 'premium_trial',    label: '7-Day Premium',        cost: 250, description: 'Get 7 days of premium access.' },
+  // Coaching (variable cost)
+  { item_type: 'coaching_session', label: 'Coaching Session',     cost: 0,   description: 'Book a session with a coach (points transfer to coach).' },
 ];
 
 // GET /marketplace/items
@@ -66,6 +74,15 @@ export const purchase = catchAsync(async (req: Request, res: Response, _next: Ne
       await supabase.from('profiles').update({ profile_boosted_until: until }).eq('id', userId);
       break;
     }
+    case 'profile_boost_7d': {
+      const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from('profiles').update({ profile_boosted_until: until }).eq('id', userId);
+      break;
+    }
+    case 'badge_pioneer': {
+      await supabase.from('profiles').update({ badge: 'Pioneer' }).eq('id', userId);
+      break;
+    }
     case 'badge_apprentice': {
       await supabase.from('profiles').update({ badge: 'Apprentice' }).eq('id', userId);
       break;
@@ -74,8 +91,16 @@ export const purchase = catchAsync(async (req: Request, res: Response, _next: Ne
       await supabase.from('profiles').update({ badge: 'Achiever' }).eq('id', userId);
       break;
     }
+    case 'badge_mentor': {
+      await supabase.from('profiles').update({ badge: 'Mentor' }).eq('id', userId);
+      break;
+    }
     case 'badge_legend': {
       await supabase.from('profiles').update({ badge: 'Legend' }).eq('id', userId);
+      break;
+    }
+    case 'badge_visionary': {
+      await supabase.from('profiles').update({ badge: 'Visionary' }).eq('id', userId);
       break;
     }
     case 'goal_tree_edit': {

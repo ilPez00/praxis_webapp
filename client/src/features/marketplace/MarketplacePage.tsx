@@ -20,9 +20,11 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import StarIcon from '@mui/icons-material/Star';
 import SchoolIcon from '@mui/icons-material/School';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import GroupsIcon from '@mui/icons-material/Groups';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
 import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
-import PostFeed from '../posts/PostFeed';
 
 interface CatalogueItem {
   item_type: string;
@@ -47,31 +49,40 @@ interface CoachProfile {
 }
 
 const itemIcon = (type: string) => {
-  if (type === 'streak_shield')    return <ShieldIcon sx={{ color: '#60A5FA' }} />;
-  if (type === 'profile_boost')    return <RocketLaunchIcon sx={{ color: '#F59E0B' }} />;
-  if (type.startsWith('badge_'))   return <EmojiEventsIcon sx={{ color: '#F59E0B' }} />;
-  if (type === 'goal_tree_edit')   return <AccountTreeIcon sx={{ color: '#34D399' }} />;
-  if (type === 'premium_trial')    return <StarIcon sx={{ color: '#A78BFA' }} />;
-  if (type === 'coaching_session') return <SchoolIcon sx={{ color: '#F59E0B' }} />;
+  if (type === 'streak_shield')     return <ShieldIcon sx={{ color: '#60A5FA' }} />;
+  if (type === 'profile_boost')     return <RocketLaunchIcon sx={{ color: '#F59E0B' }} />;
+  if (type === 'profile_boost_7d')  return <RocketLaunchIcon sx={{ color: '#F97316' }} />;
+  if (type === 'badge_pioneer')     return <WhatshotIcon sx={{ color: '#34D399' }} />;
+  if (type === 'badge_apprentice')  return <EmojiEventsIcon sx={{ color: '#94A3B8' }} />;
+  if (type === 'badge_achiever')    return <EmojiEventsIcon sx={{ color: '#F59E0B' }} />;
+  if (type === 'badge_mentor')      return <GroupsIcon sx={{ color: '#60A5FA' }} />;
+  if (type === 'badge_legend')      return <EmojiEventsIcon sx={{ color: '#F97316' }} />;
+  if (type === 'badge_visionary')   return <AutoAwesomeIcon sx={{ color: '#A78BFA' }} />;
+  if (type === 'goal_tree_edit')    return <AccountTreeIcon sx={{ color: '#34D399' }} />;
+  if (type === 'premium_trial')     return <StarIcon sx={{ color: '#A78BFA' }} />;
+  if (type === 'coaching_session')  return <SchoolIcon sx={{ color: '#F59E0B' }} />;
   return null;
 };
 
 const isOwned = (type: string, user: any): boolean => {
   if (!user) return false;
-  if (type === 'streak_shield'    && user.streak_shield)                              return true;
-  if (type === 'profile_boost'    && user.profile_boosted_until &&
-      new Date(user.profile_boosted_until) > new Date())                              return true;
-  if (type === 'badge_apprentice' && user.badge === 'Apprentice')                    return true;
-  if (type === 'badge_achiever'   && user.badge === 'Achiever')                      return true;
-  if (type === 'badge_legend'     && user.badge === 'Legend')                        return true;
-  if (type === 'premium_trial'    && user.is_premium)                                return true;
+  const boosted = user.profile_boosted_until && new Date(user.profile_boosted_until) > new Date();
+  if (type === 'streak_shield'    && user.streak_shield)                return true;
+  if ((type === 'profile_boost' || type === 'profile_boost_7d') && boosted) return true;
+  if (type === 'badge_pioneer'    && user.badge === 'Pioneer')          return true;
+  if (type === 'badge_apprentice' && user.badge === 'Apprentice')       return true;
+  if (type === 'badge_achiever'   && user.badge === 'Achiever')         return true;
+  if (type === 'badge_mentor'     && user.badge === 'Mentor')           return true;
+  if (type === 'badge_legend'     && user.badge === 'Legend')           return true;
+  if (type === 'badge_visionary'  && user.badge === 'Visionary')        return true;
+  if (type === 'premium_trial'    && user.is_premium)                   return true;
   return false;
 };
 
 const SECTIONS = [
-  { label: 'Boosts',  types: ['streak_shield', 'profile_boost'] },
-  { label: 'Badges',  types: ['badge_apprentice', 'badge_achiever', 'badge_legend'] },
-  { label: 'Skills',  types: ['goal_tree_edit', 'premium_trial'] },
+  { label: 'Boosts',   types: ['streak_shield', 'profile_boost', 'profile_boost_7d'] },
+  { label: 'Badges',   types: ['badge_pioneer', 'badge_apprentice', 'badge_achiever', 'badge_mentor', 'badge_legend', 'badge_visionary'] },
+  { label: 'Premium',  types: ['goal_tree_edit', 'premium_trial'] },
 ];
 
 const MarketplacePage: React.FC = () => {
@@ -162,11 +173,6 @@ const MarketplacePage: React.FC = () => {
           {toast.message}
         </Alert>
       )}
-
-      {/* Marketplace Feed */}
-      <Box sx={{ mb: 4 }}>
-        <PostFeed context="marketplace" />
-      </Box>
 
       {/* Catalogue sections */}
       {SECTIONS.map(section => {
