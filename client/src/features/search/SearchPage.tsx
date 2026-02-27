@@ -220,10 +220,10 @@ const SearchPage: React.FC = () => {
                           <Rating value={c.rating} precision={0.5} size="small" readOnly />
                         </Box>
                         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
-                          {c.domains?.slice(0, 3).map(d => (
+                          {(c.domains ?? []).slice(0, 3).map(d => (
                             <Chip key={d} label={d} size="small" sx={{ fontSize: '0.65rem', height: 20 }} />
                           ))}
-                          {c.skills?.slice(0, 2).map(s => (
+                          {(c.skills ?? []).slice(0, 2).map(s => (
                             <Chip key={s} label={s} size="small" variant="outlined" sx={{ fontSize: '0.65rem', height: 20 }} />
                           ))}
                         </Box>

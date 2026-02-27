@@ -272,7 +272,7 @@ const MarketplacePage: React.FC = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                         <Rating value={coach.rating} precision={0.5} size="small" readOnly />
                         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                          {coach.domains?.slice(0, 3).map(d => (
+                          {(coach.domains ?? []).slice(0, 3).map(d => (
                             <Chip key={d} label={d} size="small" sx={{ fontSize: '0.6rem', height: 18 }} />
                           ))}
                         </Box>

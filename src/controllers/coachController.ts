@@ -30,7 +30,12 @@ export const listCoaches = catchAsync(async (req: Request, res: Response, _next:
     handleSupabaseError(error);
   }
 
-  const coachList = coaches ?? [];
+  const coachList = (coaches ?? []).map((c: any) => ({
+    ...c,
+    bio: c.bio ?? '',
+    skills: Array.isArray(c.skills) ? c.skills : [],
+    domains: Array.isArray(c.domains) ? c.domains : [],
+  }));
 
   if (!userId || coachList.length === 0) return res.status(200).json(coachList);
 

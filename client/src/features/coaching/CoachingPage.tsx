@@ -248,7 +248,7 @@ const CoachingPage: React.FC = () => {
                 Your coaching listing is live
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {myProfile.bio.slice(0, 120)}{myProfile.bio.length > 120 ? '…' : ''}
+                {(myProfile.bio ?? '').slice(0, 120)}{(myProfile.bio ?? '').length > 120 ? '…' : ''}
               </Typography>
             </Box>
             <Chip
@@ -370,9 +370,9 @@ const CoachingPage: React.FC = () => {
                   </Typography>
 
                   {/* Domains */}
-                  {coach.domains.length > 0 && (
+                  {(coach.domains ?? []).length > 0 && (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                      {coach.domains.slice(0, 3).map((d) => (
+                      {(coach.domains ?? []).slice(0, 3).map((d) => (
                         <Chip
                           key={d}
                           label={`${DOMAIN_ICONS[d] ?? ''} ${d}`}
@@ -386,9 +386,9 @@ const CoachingPage: React.FC = () => {
                           }}
                         />
                       ))}
-                      {coach.domains.length > 3 && (
+                      {(coach.domains ?? []).length > 3 && (
                         <Chip
-                          label={`+${coach.domains.length - 3}`}
+                          label={`+${(coach.domains ?? []).length - 3}`}
                           size="small"
                           sx={{ height: 22, fontSize: '0.68rem', bgcolor: 'rgba(255,255,255,0.06)' }}
                         />
@@ -397,9 +397,9 @@ const CoachingPage: React.FC = () => {
                   )}
 
                   {/* Skills */}
-                  {coach.skills.length > 0 && (
+                  {(coach.skills ?? []).length > 0 && (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {coach.skills.slice(0, 4).map((s) => (
+                      {(coach.skills ?? []).slice(0, 4).map((s) => (
                         <Chip
                           key={s}
                           label={s}
