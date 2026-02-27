@@ -186,3 +186,53 @@ export const seedDemoUsers = catchAsync(async (req: Request, res: Response, next
     results,
   });
 });
+
+/**
+ * DELETE /admin/delete-demo-users
+ *
+ * Removes all demo users (is_demo = true) from Supabase Auth and the profiles table.
+ * Cascade deletes handle goal_trees and other related rows automatically.
+ *
+ * Security: requires X-Admin-Secret header matching ADMIN_SECRET env var.
+ */
+export const deleteDemoUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret || req.headers['x-admin-secret'] !== adminSecret) {
+    throw new UnauthorizedError('Invalid or missing admin secret.');
+  }
+
+  // Fetch all demo profile IDs
+  const { data: demoProfiles, error: fetchError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('is_demo', true);
+
+  if (fetchError) {
+    throw new Error(`Failed to fetch demo profiles: ${fetchError.message}`);
+  }
+
+  if (!demoProfiles || demoProfiles.length === 0) {
+    return res.json({ message: 'No demo users found.', deleted: 0 });
+  }
+
+  const results: { id: string; status: 'deleted' | 'error'; error?: string }[] = [];
+
+  for (const profile of demoProfiles) {
+    const { error: deleteError } = await supabase.auth.admin.deleteUser(profile.id);
+    if (deleteError) {
+      logger.error(`Failed to delete demo user ${profile.id}:`, deleteError.message);
+      results.push({ id: profile.id, status: 'error', error: deleteError.message });
+    } else {
+      results.push({ id: profile.id, status: 'deleted' });
+      logger.info(`Deleted demo user: ${profile.id}`);
+    }
+  }
+
+  const deleted = results.filter(r => r.status === 'deleted').length;
+  const failed = results.filter(r => r.status === 'error').length;
+
+  res.json({
+    message: `Demo cleanup complete. ${deleted} deleted, ${failed} failed.`,
+    results,
+  });
+});
