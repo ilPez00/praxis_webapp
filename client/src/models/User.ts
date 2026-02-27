@@ -24,4 +24,5 @@ export interface User {
   streak_shield?: boolean;
   profile_boosted_until?: string;
   badge?: string;
+  is_admin?: boolean;
 }

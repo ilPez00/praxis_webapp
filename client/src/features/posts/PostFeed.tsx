@@ -204,13 +204,24 @@ const PostFeed: React.FC<Props> = ({ context }) => {
 
   const handleDeletePost = async (postId: string) => {
     if (!user) return;
+    const post = posts.find(p => p.id === postId);
+    const isOwn = post?.user_id === user.id;
     setPosts(prev => prev.filter(p => p.id !== postId));
     try {
-      await fetch(`${API_URL}/posts/${postId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
+      if (isOwn) {
+        await fetch(`${API_URL}/posts/${postId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id }),
+        });
+      } else {
+        // Admin delete — bypass ownership check via admin endpoint
+        const { data: { session } } = await supabase.auth.getSession();
+        await fetch(`${API_URL}/admin/posts/${postId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+      }
     } catch (err) {
       console.error('Delete post error:', err);
     }
@@ -406,7 +417,7 @@ const PostFeed: React.FC<Props> = ({ context }) => {
                       {formatRelativeTime(post.created_at)}
                     </Typography>
                   </Box>
-                  {user?.id === post.user_id && (
+                  {(user?.id === post.user_id || user?.is_admin) && (
                     <IconButton size="small" onClick={() => handleDeletePost(post.id)} sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
                       <DeleteOutlineIcon fontSize="small" />
                     </IconButton>

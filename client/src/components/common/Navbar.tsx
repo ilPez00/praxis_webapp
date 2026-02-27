@@ -37,6 +37,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import SchoolIcon from '@mui/icons-material/School';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import SearchIcon from '@mui/icons-material/Search';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -262,6 +263,16 @@ const Navbar: React.FC = () => {
                       '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
                     }}
                   />
+                  {user.is_admin && (
+                    <Button
+                      color="inherit"
+                      component={RouterLink}
+                      to="/admin"
+                      sx={{ color: 'error.main', fontWeight: 700, '&:hover': { bgcolor: 'rgba(239,68,68,0.08)' } }}
+                    >
+                      Admin
+                    </Button>
+                  )}
                   <Button
                     variant="outlined"
                     size="small"
@@ -422,6 +433,14 @@ const Navbar: React.FC = () => {
                   <ListItemText primary="Profile" primaryTypographyProps={{ fontWeight: 600 }} />
                 </ListItemButton>
               </ListItem>
+              {user.is_admin && (
+                <ListItem disablePadding>
+                  <ListItemButton onClick={() => handleNav('/admin')}>
+                    <ListItemIcon sx={{ minWidth: 40, color: 'error.main' }}><AdminPanelSettingsIcon /></ListItemIcon>
+                    <ListItemText primary="Admin" primaryTypographyProps={{ fontWeight: 700, color: 'error.main' }} />
+                  </ListItemButton>
+                </ListItem>
+              )}
             </List>
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mt: 1 }} />

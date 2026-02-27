@@ -53,6 +53,7 @@ export const useUser = () => {
         streak_shield: profile.streak_shield ?? false,
         profile_boosted_until: profile.profile_boosted_until ?? undefined,
         badge: profile.badge ?? undefined,
+        is_admin: profile.is_admin ?? false,
         goalTree: [],
       });
     } catch (error) {

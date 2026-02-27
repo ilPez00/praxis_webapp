@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { useUser } from '../../hooks/useUser';
 import { DOMAIN_COLORS, Domain } from '../../types/goal';
 import {
   Container,
@@ -28,10 +29,12 @@ import {
   Tab,
   CircularProgress,
   Avatar,
+  IconButton,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import GroupsIcon from '@mui/icons-material/Groups';
 import PeopleIcon from '@mui/icons-material/People';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
 interface Room {
   id: string;
@@ -47,6 +50,7 @@ const domainOptions = Object.values(Domain);
 
 const GroupsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user: currentUser } = useUser();
 
   // Get userId directly from auth (fast JWT check, no DB round-trip)
   // This avoids the issue where fetchRooms would get stuck if useUser()'s
@@ -147,6 +151,22 @@ const GroupsPage: React.FC = () => {
     }
   };
 
+  const handleDeleteRoom = async (roomId: string) => {
+    if (!currentUser?.is_admin) return;
+    if (!window.confirm('Permanently delete this room and all its messages?')) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await axios.delete(`${API_URL}/admin/groups/${roomId}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      toast.success('Room deleted.');
+      setAllRooms(prev => prev.filter(r => r.id !== roomId));
+      setJoinedRooms(prev => prev.filter(r => r.id !== roomId));
+    } catch (err) {
+      toast.error('Failed to delete room.');
+    }
+  };
+
   const isJoined = (roomId: string) => joinedRooms.some(r => r.id === roomId);
 
   const RoomCard: React.FC<{ room: Room }> = ({ room }) => {
@@ -224,6 +244,16 @@ const GroupsPage: React.FC = () => {
               {memberCount} {memberCount === 1 ? 'member' : 'members'}
             </Typography>
           </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {currentUser?.is_admin && (
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.id); }}
+                sx={{ color: 'error.main', opacity: 0.7, '&:hover': { opacity: 1 } }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            )}
           <Button
             size="small"
             variant={joined ? 'outlined' : 'contained'}
@@ -245,6 +275,7 @@ const GroupsPage: React.FC = () => {
               'Join'
             )}
           </Button>
+          </Box>
         </CardActions>
       </Card>
     );

@@ -24,6 +24,7 @@ import GroupChatRoom from '../features/groups/GroupChatRoom';
 import CoachingPage from '../features/coaching/CoachingPage';
 import SearchPage from '../features/search/SearchPage';
 import MarketplacePage from '../features/marketplace/MarketplacePage';
+import AdminPage from '../features/admin/AdminPage';
 
 interface RouteConfig {
   path: string;
@@ -60,6 +61,7 @@ const routes: RouteConfig[] = [
   { path: '/coaching', element: CoachingPage, private: true },
   { path: '/search', element: SearchPage, private: true },
   { path: '/marketplace', element: MarketplacePage, private: true },
+  { path: '/admin', element: AdminPage, private: true },
 ];
 
 export default routes;

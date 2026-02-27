@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
-import { catchAsync, UnauthorizedError } from '../utils/appErrors';
+import { catchAsync, UnauthorizedError, BadRequestError, InternalServerError } from '../utils/appErrors';
 import logger from '../utils/logger';
 
 /**
@@ -235,4 +235,72 @@ export const deleteDemoUsers = catchAsync(async (req: Request, res: Response, ne
     message: `Demo cleanup complete. ${deleted} deleted, ${failed} failed.`,
     results,
   });
+});
+
+// ─── JWT-protected admin endpoints (called from the webapp) ──────────────────
+
+/**
+ * GET /admin/users
+ * Returns all users merged from auth + profiles.
+ */
+export const listAllUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+  if (authError) throw new InternalServerError('Failed to fetch auth users.');
+
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name, bio, avatar_url, is_demo, is_admin, is_premium, onboarding_completed, created_at');
+
+  const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+  const merged = authData.users.map(u => ({
+    id: u.id,
+    email: u.email,
+    created_at: u.created_at,
+    ...profileMap.get(u.id),
+  }));
+
+  res.json(merged);
+});
+
+/**
+ * DELETE /admin/users/:id
+ * Hard-deletes any user from Supabase Auth (cascades to profiles + all data).
+ */
+export const adminDeleteUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const id = String(req.params.id);
+  const adminId = req.user?.id;
+  if (id === adminId) throw new BadRequestError('Cannot delete your own admin account.');
+
+  const { error } = await supabase.auth.admin.deleteUser(id);
+  if (error) throw new InternalServerError(`Failed to delete user: ${error.message}`);
+
+  logger.info(`Admin ${adminId} deleted user ${id}`);
+  res.json({ message: 'User deleted.' });
+});
+
+/**
+ * DELETE /admin/posts/:id
+ * Deletes any post regardless of ownership.
+ */
+export const adminDeletePost = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const id = String(req.params.id);
+  const { error } = await supabase.from('posts').delete().eq('id', id);
+  if (error) throw new InternalServerError('Failed to delete post.');
+
+  logger.info(`Admin ${req.user?.id} deleted post ${id}`);
+  res.json({ message: 'Post deleted.' });
+});
+
+/**
+ * DELETE /admin/groups/:id
+ * Deletes any group room and all its members/messages.
+ */
+export const adminDeleteGroup = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const id = String(req.params.id);
+  const { error } = await supabase.from('chat_rooms').delete().eq('id', id);
+  if (error) throw new InternalServerError('Failed to delete group.');
+
+  logger.info(`Admin ${req.user?.id} deleted group ${id}`);
+  res.json({ message: 'Group deleted.' });
 });
