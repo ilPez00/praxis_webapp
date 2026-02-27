@@ -68,6 +68,21 @@ Never modify this paragraph.
 - Run `ALTER TABLE` queries for missing `profiles` columns (name, bio, etc.) if not already done.
 
 
+### Session 29 (2026-02-27) — 405 + 500 Root Cause & Fix
+
+**Root Causes Diagnosed:**
+1. **405 on all POST/PUT/DELETE (Vercel)**: Vercel's rewrite `destination: "/api?_vp=:path*"` does NOT set `req.url` to the rewritten URL inside the function — `req.url` is always `/api`. Express 5 returns 405 because only `apiRouter.get('/')` exists at that path.
+2. **500 on all write operations (Railway)**: `SUPABASE_SERVICE_ROLE_KEY` on Railway is set to the publishable/anon key (`sb_publishable_...`). RLS blocks INSERT/UPDATE; SELECT works because anon policies allow reads.
+
+**Code Fixes Applied:**
+- `api/[...slug].ts` — new catch-all Vercel function. File-system routing preserves `req.url` as full path (`/api/groups`, `/api/posts`). No URL manipulation needed.
+- `api/index.ts` — simplified to just `export default app` (handles only `/api` root)
+- `vercel.json` — removed `/api/:path*` rewrite; kept only `/(.*) → /index.html` for React Router
+
+**Manual Fixes Required (user must do):**
+- **Railway dashboard**: Set `SUPABASE_SERVICE_ROLE_KEY` to the SERVICE ROLE JWT (`eyJhbGci...` long key from Supabase > Settings > API > service_role). NOT the publishable key.
+- **Vercel dashboard**: Delete or correct `REACT_APP_API_URL` (must be `https://web-production-646a4.up.railway.app/api`, no trailing slash). `client/.env` is git-tracked but Vercel dashboard env vars override it.
+
 ### Session 28 (2026-02-24) — Debug Analysis (Post-Deployment)
 - **Investigated Rendering Issues:** Diagnosed why `/goals/` and `/groups` fail on production.
 - **Identified Onboarding Guard:** Confirmed `PrivateRoute` redirects un-onboarded users, which may look like a failed render.
