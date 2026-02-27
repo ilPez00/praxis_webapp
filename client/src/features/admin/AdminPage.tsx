@@ -34,6 +34,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import StarsIcon from '@mui/icons-material/Stars';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
@@ -144,6 +145,24 @@ const AdminPage: React.FC = () => {
     } finally {
       setActing(false);
       setConfirm(null);
+    }
+  };
+
+  const handleGrantPoints = async (userId: string) => {
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/admin/users/${userId}/grant-points`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 999999 }),
+      });
+      if (res.ok) {
+        toast.success('999,999 points granted!');
+      } else {
+        toast.error('Failed to grant points.');
+      }
+    } catch {
+      toast.error('Failed to grant points.');
     }
   };
 
@@ -396,6 +415,11 @@ const AdminPage: React.FC = () => {
                   <TableCell align="right">
                     {u.id !== user.id && (
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                        <Tooltip title="Grant 999,999 points">
+                          <IconButton size="small" onClick={() => handleGrantPoints(u.id)} sx={{ color: 'primary.main', opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                            <StarsIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         {isBanned(u) ? (
                           <Tooltip title="Unban user">
                             <IconButton size="small" onClick={() => handleUnbanUser(u.id)} sx={{ color: 'success.main', opacity: 0.7, '&:hover': { opacity: 1 } }}>

@@ -337,3 +337,22 @@ export const unbanUser = catchAsync(async (req: Request, res: Response, next: Ne
   logger.info(`Admin ${req.user?.id} unbanned user ${id}`);
   res.json({ message: 'User unbanned.' });
 });
+
+/**
+ * POST /admin/users/:id/grant-points
+ * Sets a user's praxis_points to the provided amount (default 999999).
+ */
+export const grantPoints = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const id = String(req.params.id);
+  const amount: number = typeof req.body?.amount === 'number' ? req.body.amount : 999999;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ praxis_points: amount })
+    .eq('id', id);
+
+  if (error) throw new InternalServerError(`Failed to grant points: ${error.message}`);
+
+  logger.info(`Admin ${req.user?.id} set ${amount} points for user ${id}`);
+  res.json({ message: `Set ${amount} praxis points.`, points: amount });
+});
