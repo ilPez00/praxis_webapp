@@ -31,10 +31,10 @@ export const GoalTreeDisplay: React.FC<GoalTreeDisplayProps> = ({ goalTree, onEd
           onDelete={onDelete}
           isCollapsed={isCollapsed}
           onToggle={toggleNode}
-          hasChildren={goalTree.nodes.some(n => n.parentId === node.id)}
+          hasChildren={(goalTree.nodes ?? []).some(n => n.parentId === node.id)}
         />
         {!isCollapsed &&
-          goalTree.nodes
+          (goalTree.nodes ?? [])
             .filter((n) => n.parentId === node.id)
             .map((n) => renderGoalNode(n))}
       </Box>
@@ -43,7 +43,7 @@ export const GoalTreeDisplay: React.FC<GoalTreeDisplayProps> = ({ goalTree, onEd
 
   return (
     <Box sx={{ mt: 4 }}>
-      {goalTree.rootNodes.map((node) => renderGoalNode(node))}
+      {(goalTree.rootNodes ?? []).map((node) => renderGoalNode(node))}
     </Box>
   );
 };
