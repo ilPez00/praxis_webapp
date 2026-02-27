@@ -246,8 +246,8 @@ const ProfilePage: React.FC = () => {
               )}
             </Box>
 
-            {/* Edit / Save buttons — only shown when viewing own profile */}
-            {isOwnProfile && (
+            {/* Edit / Save / Message buttons */}
+            {isOwnProfile ? (
               isEditing ? (
                 <Stack direction="row" spacing={1}>
                   <Button variant="contained" size="small" startIcon={<SaveIcon />} onClick={handleSave}>Save</Button>
@@ -258,6 +258,21 @@ const ProfilePage: React.FC = () => {
                   Edit Profile
                 </Button>
               )
+            ) : (
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => navigate(`/chat/${user?.id}/${paramId}`)}
+                sx={{
+                  bgcolor: 'rgba(245,158,11,0.15)',
+                  border: '1px solid rgba(245,158,11,0.35)',
+                  color: 'primary.main',
+                  fontWeight: 600,
+                  '&:hover': { bgcolor: 'rgba(245,158,11,0.25)' },
+                }}
+              >
+                💬 Message
+              </Button>
             )}
           </Box>
 
