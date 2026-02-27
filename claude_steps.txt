@@ -10,8 +10,8 @@ Never modify this paragraph.
 - **Backend Startup:** ✅ Starts cleanly on port 3001 with Express type augmentation.
 - **Frontend Startup:** ✅ Compiles and runs on port 3000.
 - **Railway Backend:** ✅ All endpoints confirmed working via curl (POST /api/groups, /api/goals, /api/posts → 2xx).
-- **Git Status:** `main` — up to date with origin (commit `6a01e88`).
-- **Deployment:** ⚠️ Vercel proxy fix deployed — awaiting smoke test confirmation.
+- **Git Status:** `main` — up to date with origin (commit `1b07334`).
+- **Deployment:** ✅ WORKING — groups, goals, posts all functional in production.
 
 ---
 
@@ -75,7 +75,8 @@ The frontend bundle falls back to `${window.location.origin}/api` when `REACT_AP
 - `REACT_APP_API_URL` env var is no longer needed (can be removed from Vercel dashboard if set).
 - Railway remains the sole Express runtime.
 
-**Pending verification:** Smoke test groups creation, post feed, and chat after Vercel redeploys.
+**Final fix (commit `1b07334`) — the actual root cause:**
+The real problem was never Vercel routing. `client/src/lib/api.ts` had a production fallback of `${window.location.origin}/api` — so when `REACT_APP_API_URL` wasn't baked into the bundle, every API call hit Vercel (which served `index.html` for GET and 405 for POST). Fix: replaced the fallback with `'https://web-production-646a4.up.railway.app/api'` hardcoded. Frontend now always calls Railway directly in production. **Confirmed working by user.**
 
 ---
 
@@ -155,8 +156,8 @@ The frontend bundle falls back to `${window.location.origin}/api` when `REACT_AP
 - [ ] **Database Migration:** Run `migrations/setup.sql` in Supabase SQL Editor.
 - [ ] **Storage Setup:** Create "avatars" and "chat-media" buckets in Supabase (Public: ON).
 - [x] **Backend Deploy:** Railway running — all endpoints confirmed via curl.
-- [x] **Frontend Deploy:** Vercel deployed — proxy rewrite to Railway in place (no env var needed).
-- [ ] **Smoke Test:** Verify groups creation, post feed, and DM chat work end-to-end in production.
+- [x] **Frontend Deploy:** Vercel deployed — `api.ts` hardcodes Railway URL as production fallback.
+- [x] **Smoke Test:** Groups, posts, goals confirmed working in production by user.
 - [ ] **Stripe Prod:** Set `STRIPE_PRICE_ID` and register production webhooks.
 
 ### 🟠 HIGH PRIORITY — UX & Stability
