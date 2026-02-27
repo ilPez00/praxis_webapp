@@ -106,7 +106,9 @@ const DEMO_USERS = [
  */
 export const seedDemoUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const adminSecret = process.env.ADMIN_SECRET;
-  if (!adminSecret || req.headers['x-admin-secret'] !== adminSecret) {
+  const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
+  const isJwtAdmin = !!req.user?.id; // set by authenticateToken + requireAdmin
+  if (!isSecretAuth && !isJwtAdmin) {
     throw new UnauthorizedError('Invalid or missing admin secret.');
   }
 
@@ -197,7 +199,9 @@ export const seedDemoUsers = catchAsync(async (req: Request, res: Response, next
  */
 export const deleteDemoUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const adminSecret = process.env.ADMIN_SECRET;
-  if (!adminSecret || req.headers['x-admin-secret'] !== adminSecret) {
+  const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
+  const isJwtAdmin = !!req.user?.id;
+  if (!isSecretAuth && !isJwtAdmin) {
     throw new UnauthorizedError('Invalid or missing admin secret.');
   }
 
@@ -303,4 +307,33 @@ export const adminDeleteGroup = catchAsync(async (req: Request, res: Response, n
 
   logger.info(`Admin ${req.user?.id} deleted group ${id}`);
   res.json({ message: 'Group deleted.' });
+});
+
+/**
+ * POST /admin/users/:id/ban
+ * Bans a user for 100 years (effectively permanent). They cannot log in until unbanned.
+ */
+export const banUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const id = String(req.params.id);
+  if (id === req.user?.id) throw new BadRequestError('Cannot ban yourself.');
+
+  const { error } = await supabase.auth.admin.updateUserById(id, { ban_duration: '876000h' });
+  if (error) throw new InternalServerError(`Failed to ban user: ${error.message}`);
+
+  logger.info(`Admin ${req.user?.id} banned user ${id}`);
+  res.json({ message: 'User banned.' });
+});
+
+/**
+ * POST /admin/users/:id/unban
+ * Lifts the ban on a user.
+ */
+export const unbanUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const id = String(req.params.id);
+
+  const { error } = await supabase.auth.admin.updateUserById(id, { ban_duration: 'none' });
+  if (error) throw new InternalServerError(`Failed to unban user: ${error.message}`);
+
+  logger.info(`Admin ${req.user?.id} unbanned user ${id}`);
+  res.json({ message: 'User unbanned.' });
 });
