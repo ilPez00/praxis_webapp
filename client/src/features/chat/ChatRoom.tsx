@@ -136,7 +136,7 @@ const ChatRoom: React.FC = () => {
     const fetchMessages = async () => {
       try {
         const response = await axios.get(`${API_URL}/messages/${user1Id}/${user2Id}`);
-        setMessages(response.data || []);
+        setMessages(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Fetch messages error:', error);
       } finally {
