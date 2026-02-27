@@ -7,6 +7,7 @@ import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { DOMAIN_COLORS, DOMAIN_ICONS, Domain } from '../../types/goal';
 import GlassCard from '../../components/common/GlassCard';
+import PostFeed from '../posts/PostFeed';
 
 import {
   Container,
@@ -266,6 +267,11 @@ const CoachingPage: React.FC = () => {
           </Box>
         </GlassCard>
       )}
+
+      {/* Coaching Feed */}
+      <Box sx={{ mb: 4 }}>
+        <PostFeed context="coaching" />
+      </Box>
 
       {/* Coach grid */}
       {loading ? (

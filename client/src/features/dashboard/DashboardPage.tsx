@@ -10,6 +10,7 @@ import { Domain } from '../../models/Domain';
 import { Achievement } from '../../models/Achievement';
 import { AchievementComment } from '../../models/AchievementComment';
 import GlassCard from '../../components/common/GlassCard';
+import PostFeed from '../posts/PostFeed';
 import { DOMAIN_COLORS } from '../../types/goal';
 
 import {
@@ -398,6 +399,14 @@ const DashboardPage: React.FC = () => {
               </Button>
             ))}
           </GlassCard>
+        </Box>
+
+        {/* Community Feed */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="overline" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+            Community Feed
+          </Typography>
+          <PostFeed context="general" />
         </Box>
 
         {/* Bento Grid Layout */}

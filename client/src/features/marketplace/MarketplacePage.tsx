@@ -22,6 +22,7 @@ import StarIcon from '@mui/icons-material/Star';
 import SchoolIcon from '@mui/icons-material/School';
 import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
+import PostFeed from '../posts/PostFeed';
 
 interface CatalogueItem {
   item_type: string;
@@ -161,6 +162,11 @@ const MarketplacePage: React.FC = () => {
           {toast.message}
         </Alert>
       )}
+
+      {/* Marketplace Feed */}
+      <Box sx={{ mb: 4 }}>
+        <PostFeed context="marketplace" />
+      </Box>
 
       {/* Catalogue sections */}
       {SECTIONS.map(section => {

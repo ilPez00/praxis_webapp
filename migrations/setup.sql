@@ -520,6 +520,62 @@ ALTER TABLE public.coach_profiles
 
 
 -- =============================================================================
+-- 19. POSTS — Community feed (Dashboard / Coaching / Marketplace)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.posts (
+  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id         UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_name       TEXT        NOT NULL,
+  user_avatar_url TEXT,
+  content         TEXT        NOT NULL,
+  media_url       TEXT,
+  media_type      TEXT,
+  context         TEXT        NOT NULL DEFAULT 'general',
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read posts" ON public.posts;
+DROP POLICY IF EXISTS "Own posts insert"      ON public.posts;
+DROP POLICY IF EXISTS "Own posts delete"      ON public.posts;
+CREATE POLICY "Anyone can read posts" ON public.posts FOR SELECT USING (true);
+CREATE POLICY "Own posts insert"      ON public.posts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Own posts delete"      ON public.posts FOR DELETE USING (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS public.post_likes (
+  id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  post_id    UUID        NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES auth.users(id)  ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (post_id, user_id)
+);
+ALTER TABLE public.post_likes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read post_likes" ON public.post_likes;
+DROP POLICY IF EXISTS "Own post_likes insert"      ON public.post_likes;
+DROP POLICY IF EXISTS "Own post_likes delete"      ON public.post_likes;
+CREATE POLICY "Anyone can read post_likes" ON public.post_likes FOR SELECT USING (true);
+CREATE POLICY "Own post_likes insert"      ON public.post_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Own post_likes delete"      ON public.post_likes FOR DELETE USING (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS public.post_comments (
+  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  post_id         UUID        NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
+  user_id         UUID        NOT NULL REFERENCES auth.users(id)  ON DELETE CASCADE,
+  user_name       TEXT        NOT NULL,
+  user_avatar_url TEXT,
+  content         TEXT        NOT NULL,
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.post_comments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read post_comments" ON public.post_comments;
+DROP POLICY IF EXISTS "Own post_comments insert"      ON public.post_comments;
+DROP POLICY IF EXISTS "Own post_comments delete"      ON public.post_comments;
+CREATE POLICY "Anyone can read post_comments" ON public.post_comments FOR SELECT USING (true);
+CREATE POLICY "Own post_comments insert"      ON public.post_comments FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Own post_comments delete"      ON public.post_comments FOR DELETE USING (auth.uid() = user_id);
+
+
+-- =============================================================================
 -- 12. MATCH_USERS_BY_GOALS — pgvector cosine-similarity matchmaking function
 -- (kept at end for dependency ordering)
 -- =============================================================================

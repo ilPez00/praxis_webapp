@@ -21,6 +21,7 @@ import challengeRoutes from './routes/challengeRoutes';
 import coachRoutes from './routes/coachRoutes';
 import searchRoutes from './routes/searchRoutes';
 import marketplaceRoutes from './routes/marketplaceRoutes';
+import postRoutes from './routes/postRoutes';
 
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 
@@ -54,6 +55,7 @@ apiRouter.use('/challenges', challengeRoutes);
 apiRouter.use('/coaches', coachRoutes);
 apiRouter.use('/search', searchRoutes);
 apiRouter.use('/marketplace', marketplaceRoutes);
+apiRouter.use('/posts', postRoutes);
 
 app.use('/api', apiRouter);
 
