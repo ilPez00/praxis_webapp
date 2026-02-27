@@ -3,14 +3,15 @@ You can delegate tasks to gemini. Remember to git commit and edit this file at t
 Never modify this paragraph.
 ---
 
-## Project Health (as of Session 27 — 2026-02-23)
+## Project Health (as of Session 31 — 2026-02-27)
 
 - **Backend TypeScript:** ✅ 0 errors (`npx tsc --noEmit`)
 - **Frontend TypeScript:** ✅ 0 errors (`npx tsc --noEmit` from `client/`)
 - **Backend Startup:** ✅ Starts cleanly on port 3001 with Express type augmentation.
 - **Frontend Startup:** ✅ Compiles and runs on port 3000.
-- **Git Status:** `main` — commits ahead of origin, pending push (SSH authorization verify needed).
-- **Deployment:** ❌ Pending (Railway/Vercel — see `manual_actions.txt` Steps 11–12).
+- **Railway Backend:** ✅ All endpoints confirmed working via curl (POST /api/groups, /api/goals, /api/posts → 2xx).
+- **Git Status:** `main` — up to date with origin (commit `6a01e88`).
+- **Deployment:** ⚠️ Vercel proxy fix deployed — awaiting smoke test confirmation.
 
 ---
 
@@ -37,7 +38,46 @@ Never modify this paragraph.
 
 ---
 
-## Recent Development (Sessions 24–29)
+## Recent Development (Sessions 24–31)
+
+### Session 31 (2026-02-27) — Vercel Routing: Definitive Proxy Fix
+
+**Root Cause (final diagnosis):**
+The frontend bundle falls back to `${window.location.origin}/api` when `REACT_APP_API_URL` is empty at build time — meaning all API calls go to the Vercel domain, not Railway directly. Every previous routing attempt failed because:
+1. `rewrites` with `/(.*) → /index.html` runs AFTER serverless functions but also AFTER static files — Vercel was serving `index.html` for GET and returning 405 for POST (can't POST to a static file).
+2. `routes` with `dest: "/api$1"` pointed back to the local `api/[...slug].ts` serverless function, which ran Express in a cold-start serverless environment with inconsistent behavior.
+3. Even with a proxy `rewrite` to Railway, `api/[...slug].ts` still existed → Vercel matched the serverless function BEFORE evaluating rewrites, so the proxy never ran.
+
+**Confirmed working (curl):** Railway backend handles all methods correctly — `POST /api/groups`, `POST /api/goals`, `POST /api/posts` all return 2xx with real UUIDs.
+
+**Fixes Applied (commits `08dee38`, `6a01e88`):**
+
+1. **`vercel.json`** — switched to proxy `rewrites`:
+   ```json
+   "rewrites": [
+     { "source": "/api/:path*", "destination": "https://web-production-646a4.up.railway.app/api/:path*" },
+     { "source": "/(.*)", "destination": "/index.html" }
+   ]
+   ```
+   `headers` block handles static asset caching separately. This makes Vercel a transparent reverse proxy — no env var needed in the frontend bundle.
+
+2. **Deleted `api/[...slug].ts` and `api/index.ts`** — removed all Vercel serverless functions. Without them, no function can intercept `/api/*` before the proxy rewrite runs.
+
+3. **`client/src/features/chat/ChatRoom.tsx` line 139** — guarded `setMessages` against non-array:
+   ```typescript
+   // Before: setMessages(response.data || []);
+   setMessages(Array.isArray(response.data) ? response.data : []);
+   ```
+   Prevents `I.map is not a function` crash if API returns unexpected data.
+
+**Architecture going forward:**
+- Vercel serves only the static React build + proxies `/api/*` to Railway.
+- `REACT_APP_API_URL` env var is no longer needed (can be removed from Vercel dashboard if set).
+- Railway remains the sole Express runtime.
+
+**Pending verification:** Smoke test groups creation, post feed, and chat after Vercel redeploys.
+
+---
 
 ### Session 30 (2026-02-24) — Domain Unification & Meta-data Centralization (Gemini)
 
@@ -114,8 +154,9 @@ Never modify this paragraph.
 ### 🔴 CRITICAL — Deployment & Production Setup
 - [ ] **Database Migration:** Run `migrations/setup.sql` in Supabase SQL Editor.
 - [ ] **Storage Setup:** Create "avatars" and "chat-media" buckets in Supabase (Public: ON).
-- [ ] **Backend Deploy:** Connect repo to Railway, set env vars, bind `$PORT`.
-- [ ] **Frontend Deploy:** Connect `client/` to Vercel, set `REACT_APP_API_URL` to Railway URL.
+- [x] **Backend Deploy:** Railway running — all endpoints confirmed via curl.
+- [x] **Frontend Deploy:** Vercel deployed — proxy rewrite to Railway in place (no env var needed).
+- [ ] **Smoke Test:** Verify groups creation, post feed, and DM chat work end-to-end in production.
 - [ ] **Stripe Prod:** Set `STRIPE_PRICE_ID` and register production webhooks.
 
 ### 🟠 HIGH PRIORITY — UX & Stability
