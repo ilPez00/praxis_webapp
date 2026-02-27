@@ -21,6 +21,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SendIcon from '@mui/icons-material/Send';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import CloseIcon from '@mui/icons-material/Close';
+import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
@@ -148,7 +149,7 @@ const PostFeed: React.FC<Props> = ({ context }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
-          userName: user.name,
+          userName: user.name || user.email || 'User',
           userAvatarUrl: user.avatarUrl ?? null,
           content: text.trim(),
           mediaUrl,
@@ -157,13 +158,17 @@ const PostFeed: React.FC<Props> = ({ context }) => {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to create post');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to create post');
+      }
       const newPost: Post = await res.json();
       setPosts(prev => [newPost, ...prev]);
       setText('');
       clearFile();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Post submit error:', err);
+      toast.error(err.message || 'Failed to post. Please try again.');
     } finally {
       setSubmitting(false);
     }

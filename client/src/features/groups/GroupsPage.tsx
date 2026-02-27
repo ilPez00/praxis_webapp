@@ -139,8 +139,9 @@ const GroupsPage: React.FC = () => {
       setRoomDomain('');
       await fetchRooms();
       navigate(`/groups/${data.id}`);
-    } catch (err) {
-      toast.error('Failed to create room.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to create room.';
+      toast.error(msg);
     } finally {
       setCreating(false);
     }

@@ -11,6 +11,7 @@ import { Achievement } from '../../models/Achievement';
 import { AchievementComment } from '../../models/AchievementComment';
 import GlassCard from '../../components/common/GlassCard';
 import PostFeed from '../posts/PostFeed';
+import SiteTour from '../../components/common/SiteTour';
 import { DOMAIN_COLORS } from '../../types/goal';
 
 import {
@@ -101,6 +102,9 @@ const DashboardPage: React.FC = () => {
   const [aiCoachingLoading, setAiCoachingLoading] = useState(false);
   const [aiCoachingPrompt, setAiCoachingPrompt] = useState('');
 
+  // Site tour state
+  const [tourOpen, setTourOpen] = useState(false);
+
   const requestAiCoaching = async () => {
     if (!currentUserId || !aiCoachingPrompt.trim()) {
       alert('Please enter a prompt for AI Coaching.');
@@ -157,6 +161,18 @@ const DashboardPage: React.FC = () => {
     };
     fetchLeaderboard();
   }, [currentUserId]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (!localStorage.getItem(`praxis_tour_seen_${user.id}`)) {
+      setTourOpen(true);
+    }
+  }, [user?.id]);
+
+  const handleTourClose = () => {
+    setTourOpen(false);
+    if (user?.id) localStorage.setItem(`praxis_tour_seen_${user.id}`, '1');
+  };
 
   const handleJoinChallenge = async (challengeId: string) => {
     if (!currentUserId) return;
@@ -1039,6 +1055,8 @@ const DashboardPage: React.FC = () => {
           <Button variant="contained" onClick={handleAddComment} endIcon={<SendIcon />}>Post</Button>
         </DialogActions>
       </Dialog>
+
+      <SiteTour open={tourOpen} onClose={handleTourClose} />
     </Box>
   );
 };
