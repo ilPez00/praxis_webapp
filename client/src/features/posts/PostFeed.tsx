@@ -31,6 +31,7 @@ interface Post {
   user_id: string;
   user_name: string;
   user_avatar_url: string | null;
+  title: string | null;
   content: string;
   media_url: string | null;
   media_type: string | null;
@@ -52,7 +53,8 @@ interface PostComment {
 }
 
 interface Props {
-  context: 'general' | 'coaching' | 'marketplace';
+  context: string; // 'general' | 'coaching' | 'marketplace' | roomId UUID
+  isBoard?: boolean; // Reddit-style board mode: shows title field + prominent titles
 }
 
 const formatRelativeTime = (iso: string): string => {
@@ -67,7 +69,7 @@ const formatRelativeTime = (iso: string): string => {
   return new Date(iso).toLocaleDateString();
 };
 
-const PostFeed: React.FC<Props> = ({ context }) => {
+const PostFeed: React.FC<Props> = ({ context, isBoard = false }) => {
   const { user } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,6 +77,7 @@ const PostFeed: React.FC<Props> = ({ context }) => {
   const [loadingPosts, setLoadingPosts] = useState(true);
 
   // Compose state
+  const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
@@ -125,6 +128,7 @@ const PostFeed: React.FC<Props> = ({ context }) => {
 
   const handleSubmit = async () => {
     if (!user || !text.trim()) return;
+    if (isBoard && !title.trim()) return;
     setSubmitting(true);
     try {
       let mediaUrl: string | null = null;
@@ -151,6 +155,7 @@ const PostFeed: React.FC<Props> = ({ context }) => {
           userId: user.id,
           userName: user.name || user.email || 'User',
           userAvatarUrl: user.avatarUrl ?? null,
+          title: isBoard ? title.trim() : null,
           content: text.trim(),
           mediaUrl,
           mediaType,
@@ -164,6 +169,7 @@ const PostFeed: React.FC<Props> = ({ context }) => {
       }
       const newPost: Post = await res.json();
       setPosts(prev => [newPost, ...prev]);
+      setTitle('');
       setText('');
       clearFile();
     } catch (err: any) {
@@ -317,11 +323,29 @@ const PostFeed: React.FC<Props> = ({ context }) => {
                 {user.name?.charAt(0).toUpperCase()}
               </Avatar>
               <Box sx={{ flexGrow: 1 }}>
+                {isBoard && (
+                  <TextField
+                    fullWidth
+                    placeholder="Title *"
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      mb: 1,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '12px',
+                        bgcolor: 'rgba(255,255,255,0.04)',
+                        fontWeight: 600,
+                      },
+                    }}
+                  />
+                )}
                 <TextField
                   fullWidth
                   multiline
                   minRows={2}
-                  placeholder="What's on your mind?"
+                  placeholder={isBoard ? 'Body (optional)' : "What's on your mind?"}
                   value={text}
                   onChange={e => setText(e.target.value)}
                   variant="outlined"
@@ -372,11 +396,11 @@ const PostFeed: React.FC<Props> = ({ context }) => {
                     variant="contained"
                     size="small"
                     endIcon={submitting ? <CircularProgress size={14} color="inherit" /> : <SendIcon />}
-                    disabled={!text.trim() || submitting}
+                    disabled={(isBoard ? !title.trim() : !text.trim()) || submitting}
                     onClick={handleSubmit}
                     sx={{ borderRadius: '8px', fontWeight: 700 }}
                   >
-                    Post
+                    {isBoard ? 'Submit' : 'Post'}
                   </Button>
                 </Box>
               </Box>
@@ -424,10 +448,19 @@ const PostFeed: React.FC<Props> = ({ context }) => {
                   )}
                 </Box>
 
+                {/* Title (board posts) */}
+                {post.title && (
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.3 }}>
+                    {post.title}
+                  </Typography>
+                )}
+
                 {/* Content */}
-                <Typography variant="body2" sx={{ mb: post.media_url ? 1.5 : 0, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                  {post.content}
-                </Typography>
+                {post.content && (
+                  <Typography variant="body2" sx={{ mb: post.media_url ? 1.5 : 0, whiteSpace: 'pre-wrap', lineHeight: 1.6, color: post.title ? 'text.secondary' : 'text.primary' }}>
+                    {post.content}
+                  </Typography>
+                )}
 
                 {/* Media */}
                 {post.media_url && post.media_type === 'image' && (

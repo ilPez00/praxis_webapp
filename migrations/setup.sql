@@ -546,12 +546,15 @@ CREATE TABLE IF NOT EXISTS public.posts (
   user_id         UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   user_name       TEXT        NOT NULL,
   user_avatar_url TEXT,
+  title           TEXT,
   content         TEXT        NOT NULL,
   media_url       TEXT,
   media_type      TEXT,
   context         TEXT        NOT NULL DEFAULT 'general',
   created_at      TIMESTAMPTZ DEFAULT now()
 );
+-- Add title column for Reddit-style board posts (idempotent)
+ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Anyone can read posts" ON public.posts;
 DROP POLICY IF EXISTS "Own posts insert"      ON public.posts;

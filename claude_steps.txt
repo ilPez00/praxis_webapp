@@ -150,6 +150,36 @@ The real problem was never Vercel routing. `client/src/lib/api.ts` had a product
 
 ---
 
+### Session 32 (2026-03-01) — Goal Metadata + Reddit-Style Groups
+
+**Goal fields (mandatory description + metrics):**
+- `client/src/types/goal.ts`: Added `completionMetric?` and `targetDate?` to `GoalNode` interface.
+- `client/src/features/goals/GoalSelectionPage.tsx`:
+  - `SelectedGoal` interface: renamed `details` → `description` (required), added `completionMetric` (required), `targetDate` (optional date).
+  - Compose UI: "Description *" + "Success Metric *" (both required, show inline error when empty) + "Target Date" date picker.
+  - `handleSave`: validation gate — toasts error if any goal is missing description or completionMetric.
+  - New fields stored in JSONB node payload (`completionMetric`, `targetDate`). `customDetails` carries `description`.
+  - Existing tree load: maps `node.completionMetric` and `node.targetDate` back into edit form.
+
+**Groups → Reddit-style topic boards:**
+- `client/src/features/groups/GroupChatRoom.tsx`: Full rewrite as `GroupBoard`.
+  - Tab 0 "Posts": `<PostFeed context={roomId} isBoard />` — shows room description banner then post feed.
+  - Tab 1 "Chat": original real-time group chat UI (unchanged logic).
+  - Header shows member count inline.
+- `client/src/features/posts/PostFeed.tsx`:
+  - Added `isBoard?: boolean` prop; `context` type widened from union to `string`.
+  - In board mode: compose shows "Title *" field (required) above body; "Submit" replaces "Post".
+  - `Post` interface: added `title: string | null`.
+  - Post card: renders `post.title` as bold heading above body text when present.
+- `src/controllers/postController.ts`:
+  - `createPost`: accepts `title` in body, stores in DB.
+  - `getPosts`: explicit column select now includes `title`.
+- `migrations/setup.sql`: Added `ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS title TEXT;`.
+
+**Manual action required:** Run `migrations/setup.sql` (or just the ALTER TABLE line) in Supabase SQL Editor to add the `title` column to the `posts` table.
+
+---
+
 ## Active Roadmap
 
 ### 🔴 CRITICAL — Deployment & Production Setup

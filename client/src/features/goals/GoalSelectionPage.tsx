@@ -71,7 +71,9 @@ interface SelectedGoal {
   domain: Domain;
   category: string;
   customName: string;
-  details: string;
+  description: string;      // required — what this goal is about
+  completionMetric: string; // required — what does success look like?
+  targetDate: string;       // optional — ISO date string
 }
 
 const GoalSelectionPage: React.FC = () => {
@@ -121,12 +123,14 @@ const GoalSelectionPage: React.FC = () => {
 
         // Convert existing root nodes into selected goals for editing
         if (tree.rootNodes && tree.rootNodes.length > 0) {
-          const converted: SelectedGoal[] = tree.rootNodes.map((node) => ({
+          const converted: SelectedGoal[] = tree.rootNodes.map((node: any) => ({
             id: node.id,
             domain: node.domain,
             category: node.category || node.name,
             customName: node.name,
-            details: node.customDetails || '',
+            description: node.customDetails || '',
+            completionMetric: node.completionMetric || '',
+            targetDate: node.targetDate || '',
           }));
           setSelectedGoals(converted);
         }
@@ -149,7 +153,9 @@ const GoalSelectionPage: React.FC = () => {
       domain,
       category,
       customName: category,
-      details: '',
+      description: '',
+      completionMetric: '',
+      targetDate: '',
     };
 
     setSelectedGoals([...selectedGoals, newGoal]);
@@ -160,7 +166,7 @@ const GoalSelectionPage: React.FC = () => {
     setSelectedGoals(selectedGoals.filter(g => g.id !== goalId));
   };
 
-  const handleUpdateGoal = (goalId: string, field: 'customName' | 'details', value: string) => {
+  const handleUpdateGoal = (goalId: string, field: 'customName' | 'description' | 'completionMetric' | 'targetDate', value: string) => {
     setSelectedGoals(selectedGoals.map(g =>
       g.id === goalId ? { ...g, [field]: value } : g
     ));
@@ -168,6 +174,14 @@ const GoalSelectionPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!currentUserId || selectedGoals.length === 0) return;
+
+    // Validate required fields
+    const invalid = selectedGoals.find(g => !g.description.trim() || !g.completionMetric.trim());
+    if (invalid) {
+      toast.error(`Fill in description and success metric for "${invalid.customName || invalid.category}".`);
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -180,7 +194,9 @@ const GoalSelectionPage: React.FC = () => {
         weight: 1.0,
         progress: 0,
         category: g.category,
-        customDetails: g.details || undefined,
+        customDetails: g.description || undefined,
+        completionMetric: g.completionMetric || undefined,
+        targetDate: g.targetDate || undefined,
         parentId: undefined,
         children: [],
       }));
@@ -281,13 +297,44 @@ const GoalSelectionPage: React.FC = () => {
                   />
                   <TextField
                     fullWidth
+                    required
                     variant="outlined"
                     margin="dense"
-                    label="Details (optional)"
+                    label="Description *"
+                    placeholder="What is this goal about?"
                     multiline
                     rows={2}
-                    value={goal.details}
-                    onChange={(e) => handleUpdateGoal(goal.id, 'details', e.target.value)}
+                    value={goal.description}
+                    onChange={(e) => handleUpdateGoal(goal.id, 'description', e.target.value)}
+                    error={!goal.description.trim()}
+                    helperText={!goal.description.trim() ? 'Required' : ''}
+                    sx={{ mb: 1 }}
+                  />
+                  <TextField
+                    fullWidth
+                    required
+                    variant="outlined"
+                    margin="dense"
+                    label="Success Metric *"
+                    placeholder="How will you know when this goal is complete?"
+                    multiline
+                    rows={2}
+                    value={goal.completionMetric}
+                    onChange={(e) => handleUpdateGoal(goal.id, 'completionMetric', e.target.value)}
+                    error={!goal.completionMetric.trim()}
+                    helperText={!goal.completionMetric.trim() ? 'Required' : ''}
+                    sx={{ mb: 1 }}
+                  />
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    margin="dense"
+                    label="Target Date"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    value={goal.targetDate}
+                    onChange={(e) => handleUpdateGoal(goal.id, 'targetDate', e.target.value)}
+                    inputProps={{ min: new Date().toISOString().slice(0, 10) }}
                   />
                 </Box>
               </Paper>

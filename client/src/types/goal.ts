@@ -7,6 +7,8 @@ export interface GoalNode {
     id: string;
     title: string;
     description?: string;
+    completionMetric?: string; // What does success look like?
+    targetDate?: string;       // ISO date string deadline
     weight: number; // 0-100, importance percentage within parent
     progress: number; // 0-100, completion percentage
     children: GoalNode[];
