@@ -31,7 +31,12 @@ app.use(cors());
 app.use(express.json());
 
 // Health check — used by Railway deployment
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  // Detect if anon/publishable key is being used instead of service role key
+  const keyType = key.startsWith('sb_') ? 'anon_publishable_WRONG' : key.startsWith('eyJ') ? 'service_role_ok' : 'missing';
+  res.json({ status: 'ok', supabase_key_type: keyType });
+});
 
 // API routes prefix
 const apiRouter = express.Router();

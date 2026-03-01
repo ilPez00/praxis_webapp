@@ -150,14 +150,18 @@ const ChatRoom: React.FC = () => {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-        filter: `or(sender_id.eq.${user1Id},sender_id.eq.${user2Id})`,
+        filter: `receiver_id=eq.${user1Id}`,
       }, (payload) => {
         const newMsg = payload.new;
         if (
           (newMsg.sender_id === user1Id && newMsg.receiver_id === user2Id) ||
           (newMsg.sender_id === user2Id && newMsg.receiver_id === user1Id)
         ) {
-          setMessages(prev => [...prev, newMsg]);
+          setMessages(prev => {
+            // Deduplicate: skip if we already have this message (e.g. added optimistically)
+            if (prev.some(m => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
         }
       })
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
@@ -216,14 +220,30 @@ const ChatRoom: React.FC = () => {
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentUserId || !user2Id) return;
+    const content = newMessage.trim();
+    // Optimistic update — add message to state immediately so sender sees it right away
+    const optimisticMsg = {
+      id: `optimistic-${Date.now()}`,
+      sender_id: currentUserId,
+      receiver_id: user2Id,
+      content,
+      timestamp: new Date().toISOString(),
+      message_type: 'text',
+      goal_node_id: focusGoalId || null,
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    setNewMessage('');
     try {
-      await axios.post(`${API_URL}/messages/send`, {
+      const response = await axios.post(`${API_URL}/messages/send`, {
         senderId: currentUserId,
         receiverId: user2Id,
-        content: newMessage.trim(),
+        content,
         ...(focusGoalId ? { goalNodeId: focusGoalId } : {}),
       });
-      setNewMessage('');
+      // Replace optimistic message with real one from server
+      if (response.data?.sentMessage) {
+        setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? response.data.sentMessage : m));
+      }
       const newCount = sentMessageCount + 1;
       setSentMessageCount(newCount);
       // Auto-trigger grading dialog after 5 sent messages (one-shot per session)
@@ -233,6 +253,10 @@ const ChatRoom: React.FC = () => {
       }
     } catch (error) {
       console.error('Send message error:', error);
+      // Remove optimistic message and restore input on failure
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      setNewMessage(content);
+      toast.error('Failed to send message. Please try again.');
     }
   };
 
