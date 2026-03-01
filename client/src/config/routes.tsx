@@ -22,6 +22,7 @@ import AnalyticsPage from '../features/analytics/AnalyticsPage';
 import GroupsPage from '../features/groups/GroupsPage';
 import GroupChatRoom from '../features/groups/GroupChatRoom';
 import CoachingPage from '../features/coaching/CoachingPage';
+import AICoachPage from '../features/coaching/AICoachPage';
 import SearchPage from '../features/search/SearchPage';
 import MarketplacePage from '../features/marketplace/MarketplacePage';
 import AdminPage from '../features/admin/AdminPage';
@@ -59,6 +60,7 @@ const routes: RouteConfig[] = [
   { path: '/groups', element: GroupsPage, private: true },
   { path: '/groups/:roomId', element: GroupChatRoom, private: true, param: 'roomId' },
   { path: '/coaching', element: CoachingPage, private: true },
+  { path: '/ai-coach', element: AICoachPage, private: true },
   { path: '/search', element: SearchPage, private: true },
   { path: '/marketplace', element: MarketplacePage, private: true },
   { path: '/admin', element: AdminPage, private: true },

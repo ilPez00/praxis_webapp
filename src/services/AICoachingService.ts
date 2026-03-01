@@ -1,103 +1,191 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import logger from '../utils/logger'; // Import the logger
+import logger from '../utils/logger';
 
-/**
- * @class AICoachingService
- * @description Encapsulates interactions with the Google Gemini API for AI coaching functionalities.
- * This service is responsible for generating personalized insights and guidance based on user data.
- */
+export interface GoalContext {
+  name: string;
+  domain: string;
+  progress: number; // 0-100
+  description?: string;
+  completionMetric?: string;
+  targetDate?: string;
+}
+
+export interface NetworkContact {
+  name: string;
+  domains: string[];
+}
+
+export interface BoardContext {
+  name: string;
+  domain?: string;
+  description?: string;
+}
+
+export interface CoachingContext {
+  userName: string;
+  bio?: string;
+  streak: number;
+  praxisPoints: number;
+  goals: GoalContext[];
+  recentFeedback: Array<{ grade: string; comment?: string; giverName: string; goalName: string }>;
+  achievements: Array<{ goalName: string; date: string }>;
+  network: NetworkContact[];
+  boards: BoardContext[];
+}
+
+/** Structured coaching report returned from generateFullReport */
+export interface CoachingReport {
+  motivation: string;
+  strategy: Array<{
+    goal: string;
+    domain: string;
+    progress: number;
+    insight: string;
+    steps: string[];
+  }>;
+  network: string;
+}
+
 export class AICoachingService {
   private genAI: GoogleGenerativeAI;
-  private readonly GEMINI_MODEL: string = 'gemini-pro'; // Or 'gemini-1.5-flash' depending on needs
+  private readonly MODEL = 'gemini-1.5-flash';
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not set in environment variables.');
-    }
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not set in environment variables.');
     this.genAI = new GoogleGenerativeAI(apiKey);
   }
 
   /**
-   * @description Generates a coaching response based on a user's prompt and provided context.
-   * @param userPrompt - The specific question or request from the user.
-   * @param context - Additional data about the user's goals, progress, feedback, etc., to inform the AI.
-   * @returns A promise that resolves to the AI's coaching response (text).
+   * Generates a full structured coaching report (motivation + per-goal strategy + network leverage).
+   * Returns a parsed CoachingReport object.
    */
-  public async generateCoachingResponse(userPrompt: string, context: any): Promise<string> {
+  public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: this.GEMINI_MODEL });
+      const model = this.genAI.getGenerativeModel({
+        model: this.MODEL,
+        generationConfig: { responseMimeType: 'application/json' },
+      });
 
-      // Construct a comprehensive prompt for the Gemini model.
-      // This prompt engineering is crucial for getting relevant and helpful responses.
-      const fullPrompt = this.constructCoachingPrompt(userPrompt, context);
+      const prompt = this.buildReportPrompt(context);
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
 
-      const result = await model.generateContent(fullPrompt);
-      const response = result.response;
-      const text = response.text();
-      return text;
+      const parsed = JSON.parse(text) as CoachingReport;
+      return parsed;
     } catch (error) {
-      logger.error('Error generating AI coaching response:', error);
-      throw new Error('Failed to generate AI coaching response.');
+      logger.error('Error generating coaching report:', error);
+      throw new Error('Failed to generate coaching report.');
     }
   }
 
   /**
-   * @description Constructs the prompt for the Gemini API, combining user input with structured context.
-   * This is a critical method for guiding the AI's response.
-   * @param userPrompt - The direct question or request from the user.
-   * @param context - An object containing relevant user data (goals, progress, feedback).
-   * @returns A string representing the full prompt for the Gemini model.
+   * Generates a conversational follow-up response to a user's question.
+   * Returns plain text.
    */
-  private constructCoachingPrompt(userPrompt: string, context: any): string {
-    let prompt = `You are an AI life and career coach named Praxis AI. Your goal is to provide insightful, supportive, and actionable guidance to users based on their personal development goals. Always maintain a positive, encouraging, and constructive tone. When providing advice, suggest concrete actions or perspectives.`;
-
-    if (context.userName) {
-      prompt += `
-
-User's Name: ${context.userName}.`;
+  public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
+    try {
+      const model = this.genAI.getGenerativeModel({ model: this.MODEL });
+      const prompt = this.buildFollowUpPrompt(userPrompt, context);
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (error) {
+      logger.error('Error generating coaching response:', error);
+      throw new Error('Failed to generate coaching response.');
     }
+  }
 
-    if (context.goals && context.goals.length > 0) {
-      prompt += `
+  // ---------------------------------------------------------------------------
+  // Prompt builders
+  // ---------------------------------------------------------------------------
 
-User's Goals Overview:`;
-      context.goals.forEach((goal: any) => {
-        prompt += `
-- Goal: "${goal.name}" (Domain: ${goal.domain}, Progress: ${Math.round(goal.progress * 100)}%, Weight: ${goal.weight.toFixed(1)}). Details: ${goal.customDetails || 'No specific details.'}`;
-        if (goal.prerequisiteGoalNames && goal.prerequisiteGoalNames.length > 0) {
-            prompt += ` Prerequisites: ${goal.prerequisiteGoalNames.join(', ')}.`;
-        }
-      });
+  private buildReportPrompt(ctx: CoachingContext): string {
+    const goalsText = ctx.goals.length === 0
+      ? 'No goals set yet.'
+      : ctx.goals.map(g => {
+          let line = `- "${g.name}" (${g.domain}, ${g.progress}% complete)`;
+          if (g.description) line += `. Description: ${g.description}`;
+          if (g.completionMetric) line += `. Success metric: ${g.completionMetric}`;
+          if (g.targetDate) line += `. Target date: ${g.targetDate}`;
+          return line;
+        }).join('\n');
+
+    const feedbackText = ctx.recentFeedback.length === 0
+      ? 'No recent feedback.'
+      : ctx.recentFeedback.map(f =>
+          `- On "${f.goalName}": grade="${f.grade}" from ${f.giverName}${f.comment ? ` — "${f.comment}"` : ''}`
+        ).join('\n');
+
+    const achievementsText = ctx.achievements.length === 0
+      ? 'No completed achievements yet.'
+      : ctx.achievements.map(a => `- Completed "${a.goalName}" on ${a.date}`).join('\n');
+
+    const networkText = ctx.network.length === 0
+      ? 'No network connections yet.'
+      : ctx.network.map(n => `- ${n.name} (domains: ${n.domains.join(', ') || 'unknown'})`).join('\n');
+
+    const boardsText = ctx.boards.length === 0
+      ? 'Not a member of any community boards yet.'
+      : ctx.boards.map(b => `- "${b.name}"${b.domain ? ` [${b.domain}]` : ''}${b.description ? `: ${b.description}` : ''}`).join('\n');
+
+    return `You are Praxis AI, an elite performance coach. You deeply understand human psychology, goal achievement, and social accountability. Analyse all data about this user and generate a comprehensive coaching report in the exact JSON schema below.
+
+## User Profile
+Name: ${ctx.userName}
+${ctx.bio ? `Bio: ${ctx.bio}` : ''}
+Current streak: ${ctx.streak} days
+Praxis Points: ${ctx.praxisPoints}
+
+## Goals
+${goalsText}
+
+## Recent Peer Feedback
+${feedbackText}
+
+## Achievements
+${achievementsText}
+
+## Network Connections (users they have collaborated with)
+${networkText}
+
+## Community Boards (boards they have joined)
+${boardsText}
+
+## Instructions
+Return ONLY valid JSON matching this schema (no markdown, no extra text):
+{
+  "motivation": "<2-3 sentences of personalised, specific, and energising motivational message referencing their actual goals, streak, and achievements>",
+  "strategy": [
+    {
+      "goal": "<exact goal name>",
+      "domain": "<domain>",
+      "progress": <number 0-100>,
+      "insight": "<1 sentence specific insight about their current progress on this goal>",
+      "steps": ["<concrete action step 1>", "<concrete action step 2>", "<concrete action step 3>"]
     }
+  ],
+  "network": "<2-3 sentences on how ${ctx.userName} should specifically leverage their network connections and community boards to accelerate progress — be specific about which connections or boards are most relevant and what actions to take>"
+}
 
-    if (context.recentFeedback && context.recentFeedback.length > 0) {
-      prompt += `
+Generate the strategy array with one entry per goal. Make every piece of advice concrete, actionable, and personalised to this specific user's data.`;
+  }
 
-Recent Feedback Received:`;
-      context.recentFeedback.forEach((feedback: any) => {
-        prompt += `
-- On goal "${feedback.goalName}", received "${feedback.grade}" from ${feedback.giverName}. Comment: "${feedback.comment || 'N/A'}".`;
-      });
-    }
+  private buildFollowUpPrompt(userPrompt: string, ctx: CoachingContext): string {
+    const goalsSummary = ctx.goals
+      .map(g => `${g.name} (${g.domain}, ${g.progress}% done)`)
+      .join('; ') || 'none';
 
-    if (context.achievements && context.achievements.length > 0) {
-        prompt += `
+    const networkSummary = ctx.network.map(n => n.name).join(', ') || 'none';
+    const boardsSummary = ctx.boards.map(b => b.name).join(', ') || 'none';
 
-User's Achievements:`;
-        context.achievements.forEach((achievement: any) => {
-            prompt += `
-- Completed "${achievement.goalName}" on ${new Date(achievement.createdAt).toLocaleDateString()}.`;
-        });
-    }
+    return `You are Praxis AI, an elite performance coach. The user is ${ctx.userName} (${ctx.streak}-day streak, ${ctx.praxisPoints} Praxis Points).
 
-    prompt += `
+Their goals: ${goalsSummary}
+Their network: ${networkSummary}
+Their boards: ${boardsSummary}
 
-User's Request: ${userPrompt}`;
-    prompt += `
+The user asks: "${userPrompt}"
 
-Based on this information, please provide a personalized coaching response. Focus on actionable advice, encouragement, and insights related to their goals and progress.`;
-
-    return prompt;
+Respond concisely (2-4 sentences) with specific, actionable coaching advice personalised to their situation. Reference their actual goals or connections where relevant.`;
   }
 }

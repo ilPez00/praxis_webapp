@@ -1,128 +1,199 @@
-import { Request, Response, NextFunction } from 'express'; // Import NextFunction
-import { AICoachingService } from '../services/AICoachingService';
-import { supabase } from '../lib/supabaseClient'; // Assuming supabase client is configured
-import logger from '../utils/logger'; // Import the logger
-import { catchAsync, UnauthorizedError, ForbiddenError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
+import { Request, Response, NextFunction } from 'express';
+import { AICoachingService, CoachingContext } from '../services/AICoachingService';
+import { supabase } from '../lib/supabaseClient';
+import logger from '../utils/logger';
+import { catchAsync, UnauthorizedError, InternalServerError } from '../utils/appErrors';
 
 const aiCoachingService = new AICoachingService();
 
-/**
- * @description Retrieves all goal nodes for a specific user.
- * @param userId The ID of the user.
- * @returns An array of GoalNode objects.
- */
-async function getUserGoalNodes(userId: string): Promise<any[]> {
-  const { data, error } = await supabase
-    .from('goal_trees')
-    .select('nodes')
-    .eq('userId', userId)
-    .single();
+// ---------------------------------------------------------------------------
+// Context builder — gathers everything Gemini needs about the user
+// ---------------------------------------------------------------------------
 
-  if (error && error.code !== 'PGRST116') {
-    logger.error('Error fetching user goal nodes:', error.message);
-    // In a catchAsync context, it's better to throw an error that the errorHandler can catch
-    throw new InternalServerError('Failed to fetch user goal nodes for AI coaching.');
-  }
-  return data?.nodes || [];
-}
+async function buildContext(userId: string): Promise<CoachingContext> {
+  const [profileRes, goalTreeRes, feedbackRes, achievementsRes, boardMembershipsRes, dmPartnersRes] =
+    await Promise.allSettled([
+      // 1. Profile
+      supabase
+        .from('profiles')
+        .select('name, bio, current_streak, praxis_points')
+        .eq('id', userId)
+        .single(),
 
-/**
- * @description Retrieves a user's recent feedback as a receiver.
- * @param userId The ID of the user.
- * @returns An array of feedback objects.
- */
-async function getUserRecentFeedback(userId: string): Promise<any[]> {
-  // Fetch feedback where the user is the receiver
-  const { data, error } = await supabase
-    .from('feedback')
-    .select('*, giver:giverId(name), goal:goalNodeId(name)') // Join to get giver's name and goal name
-    .eq('receiverId', userId)
-    .order('createdAt', { ascending: false })
-    .limit(5); // Limit to 5 recent feedback items
+      // 2. Goal tree
+      supabase
+        .from('goal_trees')
+        .select('nodes')
+        .eq('userId', userId)
+        .single(),
 
-  if (error) {
-    logger.error('Error fetching user feedback:', error.message);
-    throw new InternalServerError('Failed to fetch user feedback for AI coaching.');
-  }
+      // 3. Recent feedback (received by this user)
+      supabase
+        .from('feedback')
+        .select('grade, comment, giverId')
+        .eq('receiverId', userId)
+        .order('createdAt', { ascending: false })
+        .limit(5),
 
-  // Map to a more friendly format for the AI prompt
-  return data.map(fb => ({
-    grade: fb.grade,
-    comment: fb.comment,
-    giverName: (fb.giver as any)?.name || 'Anonymous',
-    goalName: (fb.goal as any)?.name || 'Unknown Goal',
-  }));
-}
-
-/**
- * @description Retrieves a user's recent achievements.
- * @param userId The ID of the user.
- * @returns An array of achievement objects.
- */
-async function getUserAchievements(userId: string): Promise<any[]> {
-    const { data, error } = await supabase
+      // 4. Achievements
+      supabase
         .from('achievements')
-        .select('*, goal:goal_id(name)')
+        .select('title, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(5); // Limit to 5 recent achievements
+        .limit(5),
 
-    if (error) {
-        logger.error('Error fetching user achievements:', error.message);
-        throw new InternalServerError('Failed to fetch user achievements for AI coaching.');
-    }
-    return data.map(ach => ({
-        goalName: (ach.goal as any)?.name || 'Unknown Goal',
-        createdAt: ach.created_at,
+      // 5. Joined community boards
+      supabase
+        .from('chat_room_members')
+        .select('chat_rooms(name, domain, description)')
+        .eq('user_id', userId),
+
+      // 6. DM conversation partner IDs (people they've messaged)
+      supabase
+        .from('messages')
+        .select('sender_id, receiver_id')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .is('room_id', null) // DMs only, not group messages
+        .limit(100),
+    ]);
+
+  // --- Profile ---
+  const profile = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
+  const userName = profile?.name || 'User';
+  const bio = profile?.bio || undefined;
+  const streak = profile?.current_streak ?? 0;
+  const praxisPoints = profile?.praxis_points ?? 0;
+
+  // --- Goals ---
+  const rawNodes: any[] = goalTreeRes.status === 'fulfilled'
+    ? (goalTreeRes.value.data?.nodes ?? [])
+    : [];
+
+  const goals = rawNodes.map((n: any) => ({
+    name: n.name || n.title || 'Unnamed goal',
+    domain: n.domain || 'General',
+    progress: Math.round((n.progress ?? 0) * (n.progress <= 1 ? 100 : 1)), // normalise 0-1 or 0-100
+    description: n.customDetails || undefined,
+    completionMetric: n.completionMetric || undefined,
+    targetDate: n.targetDate || undefined,
+  }));
+
+  // --- Feedback ---
+  const rawFeedback: any[] = feedbackRes.status === 'fulfilled' ? (feedbackRes.value.data ?? []) : [];
+  const recentFeedback = rawFeedback.map((fb: any) => ({
+    grade: fb.grade,
+    comment: fb.comment || undefined,
+    giverName: 'Peer', // avoid extra join; giver name is secondary info
+    goalName: 'Goal',
+  }));
+
+  // --- Achievements ---
+  const rawAchievements: any[] = achievementsRes.status === 'fulfilled'
+    ? (achievementsRes.value.data ?? [])
+    : [];
+
+  const achievements = rawAchievements.map((a: any) => ({
+    goalName: a.title || 'Achievement',
+    date: a.created_at ? new Date(a.created_at).toLocaleDateString() : 'recently',
+  }));
+
+  // --- Boards ---
+  const rawBoardMemberships: any[] = boardMembershipsRes.status === 'fulfilled'
+    ? (boardMembershipsRes.value.data ?? [])
+    : [];
+
+  const boards = rawBoardMemberships
+    .map((m: any) => m.chat_rooms)
+    .filter(Boolean)
+    .map((r: any) => ({
+      name: r.name || 'Unnamed board',
+      domain: r.domain || undefined,
+      description: r.description || undefined,
     }));
+
+  // --- Network: resolve DM partner IDs → profiles + goal domains ---
+  let network: CoachingContext['network'] = [];
+
+  if (dmPartnersRes.status === 'fulfilled') {
+    const msgs: any[] = dmPartnersRes.value.data ?? [];
+    const partnerIdSet = new Set<string>();
+    for (const m of msgs) {
+      const other = m.sender_id === userId ? m.receiver_id : m.sender_id;
+      if (other) partnerIdSet.add(other);
+    }
+    const partnerIds = Array.from(partnerIdSet).slice(0, 10); // cap at 10 contacts
+
+    if (partnerIds.length > 0) {
+      const [partnerProfilesRes, partnerTreesRes] = await Promise.allSettled([
+        supabase.from('profiles').select('id, name').in('id', partnerIds),
+        supabase.from('goal_trees').select('userId, nodes').in('userId', partnerIds),
+      ]);
+
+      const partnerProfiles: any[] =
+        partnerProfilesRes.status === 'fulfilled' ? (partnerProfilesRes.value.data ?? []) : [];
+      const partnerTrees: any[] =
+        partnerTreesRes.status === 'fulfilled' ? (partnerTreesRes.value.data ?? []) : [];
+
+      // Build a domain list per partner from their root goal nodes
+      const domainsByUser = new Map<string, string[]>();
+      for (const tree of partnerTrees) {
+        const domains = (tree.nodes ?? [])
+          .filter((n: any) => !n.parentId)
+          .map((n: any) => n.domain)
+          .filter(Boolean);
+        domainsByUser.set(tree.userId, Array.from(new Set(domains)));
+      }
+
+      network = partnerProfiles.map((p: any) => ({
+        name: p.name || 'A connection',
+        domains: domainsByUser.get(p.id) ?? [],
+      }));
+    }
+  }
+
+  return { userName, bio, streak, praxisPoints, goals, recentFeedback, achievements, network, boards };
 }
 
+// ---------------------------------------------------------------------------
+// POST /ai-coaching/report — auto-generated full coaching report
+// ---------------------------------------------------------------------------
 
-/**
- * @description Handles requests for AI coaching.
- * Requires the user to be authenticated and premium.
- * @param req - The Express request object, with user ID from authentication and userPrompt in body.
- * @param res - The Express response object.
- */
-export const requestCoaching = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+export const requestReport = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('User ID not found.');
+
+  logger.info(`[AI Coach] Generating full report for user ${userId}`);
+
+  try {
+    const context = await buildContext(userId);
+    const report = await aiCoachingService.generateFullReport(context);
+    res.json(report);
+  } catch (err: any) {
+    logger.error('[AI Coach] Report generation failed:', err.message);
+    throw new InternalServerError(err.message || 'Failed to generate coaching report.');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /ai-coaching/request — follow-up conversational question
+// ---------------------------------------------------------------------------
+
+export const requestCoaching = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userPrompt } = req.body;
-  const userId = req.user?.id; // Assuming user ID is attached to req.user by authentication middleware
+  const userId = req.user?.id;
 
-  if (!userId) {
-    throw new UnauthorizedError('User ID not found.');
+  if (!userId) throw new UnauthorizedError('User ID not found.');
+  if (!userPrompt?.trim()) {
+    return res.status(400).json({ message: 'userPrompt is required.' });
   }
 
-  // Check if user is premium
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('is_premium, name')
-    .eq('id', userId)
-    .single();
-
-  if (profileError) {
-    logger.error('Error fetching user profile for premium check:', profileError.message);
-    throw new InternalServerError('Failed to retrieve user premium status.');
+  try {
+    const context = await buildContext(userId);
+    const response = await aiCoachingService.generateCoachingResponse(userPrompt.trim(), context);
+    res.json({ response });
+  } catch (err: any) {
+    logger.error('[AI Coach] Follow-up generation failed:', err.message);
+    throw new InternalServerError(err.message || 'Failed to generate coaching response.');
   }
-
-  if (!profile?.is_premium) {
-    throw new ForbiddenError('AI Coaching is a premium feature. Please upgrade your account.');
-  }
-
-  // Gather context data for the AI coach
-  const userName = profile.name;
-  const goals = await getUserGoalNodes(userId);
-  const recentFeedback = await getUserRecentFeedback(userId);
-  const achievements = await getUserAchievements(userId);
-
-
-  const context = {
-    userName,
-    goals,
-    recentFeedback,
-    achievements,
-  };
-
-  // Generate response using AICoachingService
-  const aiResponse = await aiCoachingService.generateCoachingResponse(userPrompt, context);
-  res.json({ response: aiResponse });
 });
