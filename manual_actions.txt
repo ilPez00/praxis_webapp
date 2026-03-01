@@ -63,6 +63,8 @@ FULL SETUP CHECKLIST
   [ ] P5   Run SQL for coach_profiles + achievement video_url (see Step P5 below)
   [x] P1   Dashboard bugs fixed in Session 27 — see bugs fixed list below
   [ ] P2   Railway → Variables → CLIENT_URL must be https://praxis-webapp.vercel.app
+  [ ] P6   Railway → Variables → NODE_ENV must be "production" (lowercase!) — currently "PRODUCTION"
+  [ ] P7   Railway → Variables → ADMIN_SECRET must be a random string, NOT the anon key (security issue)
   [ ] P3   Goal tree editing: if blocked by premium gate, reset edit count in Supabase SQL:
              UPDATE profiles SET goal_tree_edit_count = 0 WHERE id = '<your-user-id>';
   [ ] P4   Avatar bucket: create "avatars" bucket in Supabase Storage → New bucket → Public ON
@@ -197,8 +199,37 @@ STEP 5 — SUPABASE SQL
             WHERE table_schema = 'public' ORDER BY table_name;
   Expected tables: achievements, achievement_comments, achievement_votes,
     bets, challenge_participants, challenges, chat_room_members, chat_rooms,
-    completion_requests, feedback, goal_embeddings, goal_trees, messages,
+    coach_profiles, completion_requests, feedback, goal_embeddings, goal_trees,
+    marketplace_transactions, messages, post_comments, post_likes, posts,
     profiles, user_subscriptions
+
+─── Step 5TG: handle_new_user trigger (profile auto-create on signup) ───────────
+  WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/sql/new
+
+  WHAT: Creates profile rows automatically when users sign up via Supabase Auth.
+        Without this, POST /api/goals returns 500 for new users (no profile row).
+
+    CREATE OR REPLACE FUNCTION public.handle_new_user()
+    RETURNS trigger AS $$
+    BEGIN
+      INSERT INTO public.profiles (id)
+      VALUES (new.id)
+      ON CONFLICT (id) DO NOTHING;
+      RETURN new;
+    END;
+    $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+    CREATE TRIGGER on_auth_user_created
+      AFTER INSERT ON auth.users
+      FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+    -- Backfill profile rows for users who signed up before the trigger existed:
+    INSERT INTO public.profiles (id)
+    SELECT id FROM auth.users
+    ON CONFLICT (id) DO NOTHING;
+
+  SUCCESS: "Success. No rows returned" (or small row count for backfill).
 
 ─── Step 5Q13: Storage bucket "chat-media" ──────────────────────────────────────
   WHERE: https://supabase.com/dashboard/project/kuyzjjbeiawnnkkrjsda/storage/buckets

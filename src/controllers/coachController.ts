@@ -23,7 +23,7 @@ export const listCoaches = catchAsync(async (req: Request, res: Response, _next:
     .order('rating', { ascending: false });
 
   if (error) {
-    if (error.message?.includes('schema cache') || error.message?.includes('not found')) {
+    if (error.message?.includes('schema cache') || error.message?.includes('not found') || error.code === '42P01') {
       logger.warn('coach_profiles table not found — returning empty list.');
       return res.status(200).json([]);
     }

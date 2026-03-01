@@ -112,7 +112,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     .eq('id', userId)
     .single();
 
-  if (profileError) {
+  if (profileError && profileError.code !== 'PGRST116') {
     logger.error('Error fetching user profile for premium status:', profileError.message);
     throw new InternalServerError('Failed to retrieve user premium status.');
   }

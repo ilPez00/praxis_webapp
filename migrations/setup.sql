@@ -69,6 +69,10 @@ CREATE TABLE IF NOT EXISTS public.goal_trees (
   updated_at  TIMESTAMPTZ DEFAULT now()
 );
 
+-- Add columns that may be missing if goal_trees was created before setup.sql existed
+ALTER TABLE public.goal_trees ADD COLUMN IF NOT EXISTS "rootNodes" JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE public.goal_trees ADD COLUMN IF NOT EXISTS updated_at  TIMESTAMPTZ DEFAULT now();
+
 ALTER TABLE public.goal_trees ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can manage own goal tree" ON public.goal_trees;
@@ -115,6 +119,13 @@ CREATE TABLE IF NOT EXISTS public.messages (
   metadata     JSONB,
   timestamp    TIMESTAMPTZ DEFAULT now()
 );
+
+-- Add columns that may be missing if messages was created before these were added
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS goal_node_id TEXT;
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS message_type TEXT DEFAULT 'text';
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS media_url    TEXT;
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS room_id      UUID;
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS metadata     JSONB;
 
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
@@ -175,6 +186,10 @@ CREATE TABLE IF NOT EXISTS public.chat_rooms (
   creator_id  UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add columns that may be missing if chat_rooms was created before these were added
+ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS domain      TEXT;
 
 ALTER TABLE public.chat_rooms ENABLE ROW LEVEL SECURITY;
 
