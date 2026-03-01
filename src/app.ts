@@ -23,6 +23,7 @@ import searchRoutes from './routes/searchRoutes';
 import marketplaceRoutes from './routes/marketplaceRoutes';
 import postRoutes from './routes/postRoutes';
 
+import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -31,11 +32,24 @@ app.use(cors());
 app.use(express.json());
 
 // Health check — used by Railway deployment
-app.get('/health', (_req, res) => {
+app.get('/health', async (_req, res) => {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-  // Detect if anon/publishable key is being used instead of service role key
   const keyType = key.startsWith('sb_') ? 'anon_publishable_WRONG' : key.startsWith('eyJ') ? 'service_role_ok' : 'missing';
-  res.json({ status: 'ok', supabase_key_type: keyType });
+  // Test an actual write to catch service-role key / RLS issues
+  const testId = '00000000-0000-0000-0000-000000000001';
+  const { error: writeErr } = await supabase
+    .from('messages')
+    .insert({ sender_id: testId, receiver_id: testId, content: '__health_check__' })
+    .select()
+    .single();
+  // Immediately delete it (best-effort)
+  await supabase.from('messages').delete().eq('content', '__health_check__');
+  const writeOk = !writeErr || writeErr.code === '23503'; // 23503 = FK violation (user doesn't exist) = key is fine
+  res.json({
+    status: 'ok',
+    supabase_key_type: keyType,
+    write_test: writeOk ? 'ok' : writeErr?.message,
+  });
 });
 
 // API routes prefix

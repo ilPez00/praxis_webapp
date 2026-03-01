@@ -18,7 +18,7 @@ export const listCoaches = catchAsync(async (req: Request, res: Response, _next:
 
   const { data: coaches, error } = await supabase
     .from('coach_profiles')
-    .select('*, profiles(id, name, avatar_url, is_verified, is_premium)')
+    .select('*, profiles(id, name, avatar_url, is_premium)')
     .eq('is_available', true)
     .order('rating', { ascending: false });
 
@@ -82,7 +82,7 @@ export const getCoachByUserId = catchAsync(async (req: Request, res: Response, _
 
   const { data, error } = await supabase
     .from('coach_profiles')
-    .select('*, profiles(id, name, avatar_url, is_verified, is_premium)')
+    .select('*, profiles(id, name, avatar_url, is_premium)')
     .eq('user_id', userId)
     .single();
 

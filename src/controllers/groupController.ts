@@ -152,16 +152,32 @@ export const sendRoomMessage = catchAsync(async (req: Request, res: Response, ne
 export const getRoomMembers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { roomId } = req.params;
 
-  const { data, error } = await supabase
+  // Fetch member rows first (no join — chat_room_members has no direct FK to profiles)
+  const { data: members, error } = await supabase
     .from('chat_room_members')
-    .select('user_id, joined_at, profiles(name, avatar_url)')
+    .select('user_id, joined_at')
     .eq('room_id', roomId);
 
   if (error) {
     logger.error('Error fetching room members:', error.message);
     throw new InternalServerError('Failed to fetch room members.');
   }
-  res.json(data || []);
+  if (!members || members.length === 0) return res.json([]);
+
+  // Fetch profiles for all member user IDs
+  const userIds = members.map((m: any) => m.user_id);
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name, avatar_url')
+    .in('id', userIds);
+
+  const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+  const result = members.map((m: any) => ({
+    ...m,
+    profiles: profileMap.get(m.user_id) || null,
+  }));
+
+  res.json(result);
 });
 
 /**
