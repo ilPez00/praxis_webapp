@@ -26,7 +26,7 @@ export const search = catchAsync(async (req: Request, res: Response, _next: Next
   if (type === 'all' || type === 'coaches') {
     const { data: allCoaches } = await supabase
       .from('coach_profiles')
-      .select('*, profiles(id, name, avatar_url, is_verified, is_premium)')
+      .select('*, profiles(id, name, avatar_url, is_premium)')
       .eq('is_available', true)
       .limit(50);
 

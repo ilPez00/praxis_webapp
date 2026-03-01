@@ -93,7 +93,10 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS location              TEXT,
   ADD COLUMN IF NOT EXISTS current_streak        INT DEFAULT 0,
   ADD COLUMN IF NOT EXISTS last_activity_date    DATE,
-  ADD COLUMN IF NOT EXISTS praxis_points         INT DEFAULT 100;
+  ADD COLUMN IF NOT EXISTS praxis_points         INT DEFAULT 100,
+  ADD COLUMN IF NOT EXISTS is_verified           BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS is_admin              BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS is_banned             BOOLEAN DEFAULT false;
 
 
 -- =============================================================================
