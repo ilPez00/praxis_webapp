@@ -32,7 +32,7 @@ import {
   IconButton,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import GroupsIcon from '@mui/icons-material/Groups';
+import ForumIcon from '@mui/icons-material/Forum';
 import PeopleIcon from '@mui/icons-material/People';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
@@ -48,13 +48,10 @@ interface Room {
 
 const domainOptions = Object.values(Domain);
 
-const GroupsPage: React.FC = () => {
+const BoardsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user: currentUser } = useUser();
 
-  // Get userId directly from auth (fast JWT check, no DB round-trip)
-  // This avoids the issue where fetchRooms would get stuck if useUser()'s
-  // profiles query was slow or transiently failing.
   const [userId, setUserId] = useState<string | undefined>(undefined);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id));
@@ -66,7 +63,6 @@ const GroupsPage: React.FC = () => {
   const [tab, setTab] = useState(0);
   const [joiningRoom, setJoiningRoom] = useState<string | null>(null);
 
-  // Create room dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [roomName, setRoomName] = useState('');
   const [roomDesc, setRoomDesc] = useState('');
@@ -78,26 +74,26 @@ const GroupsPage: React.FC = () => {
     setLoading(true);
     try {
       const [allRes, joinedRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/groups?type=group`),
+        axios.get(`${API_URL}/groups?type=board`),
         axios.get(`${API_URL}/groups/joined?userId=${userId}`),
       ]);
       if (allRes.status === 'fulfilled') {
         setAllRooms(Array.isArray(allRes.value.data) ? allRes.value.data : []);
       } else {
-        console.error('[Groups] GET /groups failed:', allRes.reason);
         setAllRooms([]);
       }
       if (joinedRes.status === 'fulfilled') {
         const raw = Array.isArray(joinedRes.value.data) ? joinedRes.value.data : [];
-        const joinedData: Room[] = raw.map((entry: any) => entry.chat_rooms).filter(Boolean);
+        // Filter joined rooms to only show boards
+        const joinedData: Room[] = raw
+          .map((entry: any) => entry.chat_rooms)
+          .filter((r: any) => r && (!r.type || r.type === 'board'));
         setJoinedRooms(joinedData);
       } else {
-        console.error('[Groups] GET /groups/joined failed:', joinedRes.reason);
         setJoinedRooms([]);
       }
     } catch (err: any) {
-      console.error('[Groups] fetchRooms threw:', err);
-      toast.error(`Groups error: ${err?.response?.data?.message || err?.message || String(err)}`);
+      toast.error(`Boards error: ${err?.response?.data?.message || err?.message || String(err)}`);
     } finally {
       setLoading(false);
     }
@@ -112,11 +108,11 @@ const GroupsPage: React.FC = () => {
     setJoiningRoom(roomId);
     try {
       await axios.post(`${API_URL}/groups/${roomId}/join`, { userId });
-      toast.success('Joined room!');
+      toast.success('Joined board!');
       await fetchRooms();
-      navigate(`/groups/${roomId}`);
+      navigate(`/boards/${roomId}`);
     } catch (err) {
-      toast.error('Failed to join room.');
+      toast.error('Failed to join board.');
     } finally {
       setJoiningRoom(null);
     }
@@ -134,18 +130,18 @@ const GroupsPage: React.FC = () => {
         name: roomName.trim(),
         description: roomDesc.trim() || undefined,
         domain: roomDomain || undefined,
-        type: 'group',
+        type: 'board',
         creatorId: userId,
       });
-      toast.success('Room created!');
+      toast.success('Board created!');
       setCreateOpen(false);
       setRoomName('');
       setRoomDesc('');
       setRoomDomain('');
       await fetchRooms();
-      navigate(`/groups/${data.id}`);
+      navigate(`/boards/${data.id}`);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to create room.';
+      const msg = err?.response?.data?.message || err?.message || 'Failed to create board.';
       toast.error(msg);
     } finally {
       setCreating(false);
@@ -154,17 +150,17 @@ const GroupsPage: React.FC = () => {
 
   const handleDeleteRoom = async (roomId: string) => {
     if (!currentUser?.is_admin) return;
-    if (!window.confirm('Permanently delete this room and all its messages?')) return;
+    if (!window.confirm('Permanently delete this board and all its posts?')) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       await axios.delete(`${API_URL}/admin/groups/${roomId}`, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      toast.success('Room deleted.');
+      toast.success('Board deleted.');
       setAllRooms(prev => prev.filter(r => r.id !== roomId));
       setJoinedRooms(prev => prev.filter(r => r.id !== roomId));
     } catch (err) {
-      toast.error('Failed to delete room.');
+      toast.error('Failed to delete board.');
     }
   };
 
@@ -210,14 +206,7 @@ const GroupsPage: React.FC = () => {
                 <Chip
                   label={room.domain}
                   size="small"
-                  sx={{
-                    mt: 0.5,
-                    height: 20,
-                    fontSize: '0.7rem',
-                    bgcolor: `${color}22`,
-                    color,
-                    border: `1px solid ${color}44`,
-                  }}
+                  sx={{ mt: 0.5, height: 20, fontSize: '0.7rem', bgcolor: `${color}22`, color, border: `1px solid ${color}44` }}
                 />
               )}
             </Box>
@@ -226,13 +215,7 @@ const GroupsPage: React.FC = () => {
             <Typography
               variant="body2"
               color="text.secondary"
-              sx={{
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                lineHeight: 1.5,
-              }}
+              sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.5 }}
             >
               {room.description}
             </Typography>
@@ -255,27 +238,21 @@ const GroupsPage: React.FC = () => {
                 <DeleteOutlineIcon fontSize="small" />
               </IconButton>
             )}
-          <Button
-            size="small"
-            variant={joined ? 'outlined' : 'contained'}
-            onClick={() => joined ? navigate(`/groups/${room.id}`) : handleJoin(room.id)}
-            disabled={joiningRoom === room.id}
-            sx={{
-              borderRadius: 3,
-              fontSize: '0.78rem',
-              ...(joined
-                ? { borderColor: color, color, '&:hover': { borderColor: color, bgcolor: `${color}11` } }
-                : { bgcolor: color, color: '#fff', '&:hover': { bgcolor: color, opacity: 0.9 } }),
-            }}
-          >
-            {joiningRoom === room.id ? (
-              <CircularProgress size={14} sx={{ color: 'inherit' }} />
-            ) : joined ? (
-              'Enter'
-            ) : (
-              'Join'
-            )}
-          </Button>
+            <Button
+              size="small"
+              variant={joined ? 'outlined' : 'contained'}
+              onClick={() => joined ? navigate(`/boards/${room.id}`) : handleJoin(room.id)}
+              disabled={joiningRoom === room.id}
+              sx={{
+                borderRadius: 3,
+                fontSize: '0.78rem',
+                ...(joined
+                  ? { borderColor: color, color, '&:hover': { borderColor: color, bgcolor: `${color}11` } }
+                  : { bgcolor: color, color: '#fff', '&:hover': { bgcolor: color, opacity: 0.9 } }),
+              }}
+            >
+              {joiningRoom === room.id ? <CircularProgress size={14} sx={{ color: 'inherit' }} /> : joined ? 'Enter' : 'Join'}
+            </Button>
           </Box>
         </CardActions>
       </Card>
@@ -286,14 +263,13 @@ const GroupsPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, pb: 6 }}>
-      {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary' }}>
-            Group Chats
+            Boards
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Real-time group conversations
+            Community topic boards — posts, discussions and resources
           </Typography>
         </Box>
         <Button
@@ -302,11 +278,10 @@ const GroupsPage: React.FC = () => {
           onClick={() => setCreateOpen(true)}
           sx={{ borderRadius: 3, fontWeight: 700 }}
         >
-          Create Group
+          Create Board
         </Button>
       </Box>
 
-      {/* Tabs */}
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
@@ -316,29 +291,26 @@ const GroupsPage: React.FC = () => {
           '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontSize: '0.95rem' },
         }}
       >
-        <Tab label="All Rooms" icon={<GroupsIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
+        <Tab label="All Boards" icon={<ForumIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
         <Tab
-          label={`My Rooms${joinedRooms.length > 0 ? ` (${joinedRooms.length})` : ''}`}
+          label={`My Boards${joinedRooms.length > 0 ? ` (${joinedRooms.length})` : ''}`}
           icon={<PeopleIcon sx={{ fontSize: 18 }} />}
           iconPosition="start"
         />
       </Tabs>
 
-      {/* Room grid */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
         </Box>
       ) : displayedRooms.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 10 }}>
-          <GroupsIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
+          <ForumIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
           <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 600 }}>
-            {tab === 0 ? 'No rooms yet' : 'No joined rooms'}
+            {tab === 0 ? 'No boards yet' : 'No joined boards'}
           </Typography>
           <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
-            {tab === 0
-              ? 'Be the first to create a community room!'
-              : 'Join a room from the "All Rooms" tab.'}
+            {tab === 0 ? 'Be the first to create a topic board!' : 'Join a board from the "All Boards" tab.'}
           </Typography>
         </Box>
       ) : (
@@ -351,18 +323,17 @@ const GroupsPage: React.FC = () => {
         </Grid>
       )}
 
-      {/* Create Room Dialog */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <GroupsIcon sx={{ color: 'primary.main' }} />
-            Create a Group Chat
+            <ForumIcon sx={{ color: 'primary.main' }} />
+            Create a Board
           </Box>
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <TextField
-              label="Room name"
+              label="Board name"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               fullWidth
@@ -387,7 +358,7 @@ const GroupsPage: React.FC = () => {
                 onChange={(e) => setRoomDomain(e.target.value as string)}
                 label="Domain (optional)"
               >
-                <MenuItem value=""><em>None — general room</em></MenuItem>
+                <MenuItem value=""><em>None — general board</em></MenuItem>
                 {domainOptions.map((d) => (
                   <MenuItem key={d} value={d}>{d}</MenuItem>
                 ))}
@@ -403,7 +374,7 @@ const GroupsPage: React.FC = () => {
             disabled={!roomName.trim() || creating}
             sx={{ borderRadius: 3 }}
           >
-            {creating ? <CircularProgress size={18} /> : 'Create Room'}
+            {creating ? <CircularProgress size={18} /> : 'Create Board'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -411,4 +382,4 @@ const GroupsPage: React.FC = () => {
   );
 };
 
-export default GroupsPage;
+export default BoardsPage;

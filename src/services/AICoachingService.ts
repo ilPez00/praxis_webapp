@@ -48,7 +48,7 @@ export interface CoachingReport {
 
 export class AICoachingService {
   private genAI: GoogleGenerativeAI;
-  private readonly MODEL = 'gemini-1.5-flash';
+  private readonly MODEL = 'gemini-flash-lite-latest';
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;

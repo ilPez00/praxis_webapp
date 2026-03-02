@@ -25,7 +25,7 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .from('goal_trees')
         .select('nodes')
         .eq('userId', userId)
-        .single(),
+        .maybeSingle(),
 
       // 3. Recent feedback (received by this user)
       supabase

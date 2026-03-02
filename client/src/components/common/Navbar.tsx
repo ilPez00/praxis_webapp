@@ -162,18 +162,10 @@ const Navbar: React.FC = () => {
                   <Button
                     color="inherit"
                     component={RouterLink}
-                    to="/chat"
+                    to="/communication"
                     sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
                   >
-                    Chat
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/groups"
-                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
-                  >
-                    Groups
+                    Communication
                   </Button>
                   <Button
                     color="inherit"
@@ -414,15 +406,9 @@ const Navbar: React.FC = () => {
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNav('/chat')}>
+                <ListItemButton onClick={() => handleNav('/communication')}>
                   <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><ChatIcon /></ListItemIcon>
-                  <ListItemText primary="Chat" primaryTypographyProps={{ fontWeight: 600 }} />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNav('/groups')}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><GroupsIcon /></ListItemIcon>
-                  <ListItemText primary="Groups" primaryTypographyProps={{ fontWeight: 600 }} />
+                  <ListItemText primary="Communication" primaryTypographyProps={{ fontWeight: 600 }} />
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>

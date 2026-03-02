@@ -191,7 +191,7 @@ const GroupChatRoom: React.FC = () => {
           bgcolor: 'rgba(17,24,39,0.8)', backdropFilter: 'blur(20px)',
           flexShrink: 0,
         }}>
-          <IconButton edge="start" onClick={() => navigate('/groups')} size="small">
+          <IconButton edge="start" onClick={() => navigate('/boards')} size="small">
             <ArrowBackIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>

@@ -190,6 +190,8 @@ CREATE TABLE IF NOT EXISTS public.chat_rooms (
 -- Add columns that may be missing if chat_rooms was created before these were added
 ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS domain      TEXT;
+ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS type        TEXT DEFAULT 'board';
+UPDATE public.chat_rooms SET type = 'board' WHERE type IS NULL;
 
 ALTER TABLE public.chat_rooms ENABLE ROW LEVEL SECURITY;
 

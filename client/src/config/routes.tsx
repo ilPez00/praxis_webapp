@@ -20,7 +20,10 @@ import UpgradePage from '../features/payments/UpgradePage';
 import IdentityVerificationPage from '../features/identity/IdentityVerificationPage';
 import AnalyticsPage from '../features/analytics/AnalyticsPage';
 import GroupsPage from '../features/groups/GroupsPage';
+import GroupRoom from '../features/groups/GroupRoom';
 import GroupChatRoom from '../features/groups/GroupChatRoom';
+import BoardsPage from '../features/groups/BoardsPage';
+import CommunicationPage from '../features/communication/CommunicationPage';
 import CoachingPage from '../features/coaching/CoachingPage';
 import AICoachPage from '../features/coaching/AICoachPage';
 import SearchPage from '../features/search/SearchPage';
@@ -57,8 +60,11 @@ const routes: RouteConfig[] = [
   { path: '/upgrade', element: UpgradePage, private: true },
   { path: '/verify-identity', element: IdentityVerificationPage, private: true },
   { path: '/analytics', element: AnalyticsPage, private: true },
+  { path: '/communication', element: CommunicationPage, private: true },
   { path: '/groups', element: GroupsPage, private: true },
-  { path: '/groups/:roomId', element: GroupChatRoom, private: true, param: 'roomId' },
+  { path: '/groups/:roomId', element: GroupRoom, private: true, param: 'roomId' },
+  { path: '/boards', element: BoardsPage, private: true },
+  { path: '/boards/:roomId', element: GroupChatRoom, private: true, param: 'roomId' },
   { path: '/coaching', element: CoachingPage, private: true },
   { path: '/ai-coach', element: AICoachPage, private: true },
   { path: '/search', element: SearchPage, private: true },

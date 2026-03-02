@@ -17,6 +17,10 @@ export const listRooms = catchAsync(async (req: Request, res: Response, next: Ne
     query = query.eq('domain', req.query.domain as string);
   }
 
+  if (req.query.type) {
+    query = query.eq('type', req.query.type as string);
+  }
+
   const { data, error } = await query;
   if (error) {
     // Gracefully handle missing tables (schema cache / relation not found errors)
@@ -39,12 +43,12 @@ export const listRooms = catchAsync(async (req: Request, res: Response, next: Ne
  * POST /groups — create a new chat room; creator is auto-joined.
  */
 export const createRoom = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { name, description, domain, creatorId } = req.body;
+  const { name, description, domain, type, creatorId } = req.body;
   if (!name || !creatorId) throw new BadRequestError('name and creatorId are required.');
 
   const { data: room, error } = await supabase
     .from('chat_rooms')
-    .insert({ name, description: description || null, domain: domain || null, creator_id: creatorId })
+    .insert({ name, description: description || null, domain: domain || null, type: type || 'board', creator_id: creatorId })
     .select()
     .single();
 
