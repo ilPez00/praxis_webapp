@@ -180,6 +180,31 @@ The real problem was never Vercel routing. `client/src/lib/api.ts` had a product
 
 ---
 
+---
+
+### Session 33 (2026-03-02) — GitHub Wiki + GitHub Pages
+
+**GitHub Wiki:**
+- Created `wiki/` directory with 6 pages: Home, Getting-Started, Architecture, API-Reference, Database-Schema, Deployment, Features, Contributing
+- To publish: clone `https://github.com/ilPez00/praxis_webapp.wiki.git`, copy files from `wiki/`, push
+
+**GitHub Pages:**
+- `client/package.json`: `"homepage": "."` (relative paths — works on both Vercel and GitHub Pages), added `predeploy` + `deploy` scripts, installed `gh-pages` as devDep
+- `client/public/404.html`: SPA routing redirect trick (`segmentCount=1` for `/praxis_webapp`)
+- `client/public/index.html`: URL restore script that prepends `basePath` (`l.pathname.replace(/\/$/, '')`) so full URL including base is restored correctly
+- `client/src/AppRouter.tsx`: dynamic `basename` — `"/praxis_webapp"` on `ilpez00.github.io`, `""` elsewhere
+- Build confirmed: `"hosted at ./"` relative paths, TypeScript 0 errors
+
+**Deploy command:**
+```bash
+cd client && npm run deploy
+# Then: GitHub repo Settings → Pages → Source → gh-pages branch
+```
+
+**Live at:** `https://ilpez00.github.io/praxis_webapp`
+
+---
+
 ## Active Roadmap
 
 ### 🔴 CRITICAL — Deployment & Production Setup

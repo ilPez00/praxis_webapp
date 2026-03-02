@@ -6,9 +6,15 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import routes from './config/routes';
 
+// On GitHub Pages the app is served at /praxis_webapp, so React Router needs
+// that as a basename. On Vercel / local dev it runs at the root.
+const basename = window.location.hostname === 'ilpez00.github.io'
+  ? '/praxis_webapp'
+  : '';
+
 const AppRouter: React.FC = () => {
   return (
-    <Router>
+    <Router basename={basename}>
       <Navbar />
       <Toaster position="top-right" />
       <ErrorBoundary>
