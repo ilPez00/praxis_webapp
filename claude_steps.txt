@@ -205,6 +205,111 @@ cd client && npm run deploy
 
 ---
 
+## Product Strategy — Monetization & Retention
+
+### 💰 Monetization Model
+
+**Tier 1 — Free**
+- Limited active goals (max 5)
+- Basic goal tracking & check-ins
+- Limited AI matches per month
+
+**Tier 2 — Pro**
+- Unlimited goals
+- Advanced analytics on progress
+- Unlimited AI-assisted matching
+- Personalized AI coaching (Master Roshi, unlimited sessions)
+
+**Tier 3 — Premium / Team**
+- Group accountability rooms
+- Team reporting & metrics
+- Custom matching algorithms
+- Admin dashboards
+
+**Stripe is already wired in.** Priority: enforce gates consistently server-side. Single source of truth for tier → features mapping. Gate Master Roshi behind Pro (costs real API money). Gate goal tree nodes (Free = 5 max, Pro = unlimited — half-done with edit count gate).
+
+**Paid Matching Credits** — alternative to subscription: 1 credit = 1 AI-matched accountability session. Bulk discounts. Only viable if matching feels scarce and high-value.
+
+**AI Premium Insights (add-ons or Pro tier)**
+- Personalized AI check-in summaries
+- NLP sentiment tracking over goals/time
+- AI-generated weekly progress reviews
+
+**Coaching Marketplace Commission** — platform takes % on coach bookings. Complex (needs Stripe Connect). Build marketplace UI first, add payments once supply-side exists.
+
+**Corporate / Team Licensing** — sell to companies. Admin dashboards, engagement reporting, private matching within org. Highest ACV, needs sales motion. Offer "Contact us" CTA until 10+ individual Pro users.
+
+**Skip for now:** virtual goods/badges, Notion/Slack integrations, NLP sentiment (needs data volume).
+
+**Priority order:** 1) enforce Pro gates → 2) gate Master Roshi → 3) coaching marketplace commission → 4) matching credits → 5) corporate licensing.
+
+---
+
+### 🧠 Engagement & Retention Design (Hooked Model)
+
+**Goal: make Praxis as compulsive as Instagram for goal-oriented people.**
+
+#### Triggers
+- "Your accountability partner just checked in."
+- "You're 1 day away from losing your streak."
+- "3 people matched your goal profile."
+- "You haven't updated your goal in 48 hours."
+- → Push notifications + email nudges. Streak warnings. Light FOMO around partner responsiveness.
+
+#### Fast, Frictionless Actions
+Micro-actions must be < 3 seconds:
+- Check in (1 click)
+- Send accountability nudge
+- Mark task complete
+- React to partner update
+- If it feels like work, it won't be habitual.
+
+#### Variable Rewards (the core hook)
+Uncertainty = dopamine. Don't guarantee the reward every time:
+- Unexpected partner messages
+- Random AI insights from Master Roshi
+- Surprise streak boosts
+- Weekly "compatibility score" changes
+- Unlockable accountability types
+
+#### Investment / Lock-in
+The more history, the harder it is to leave:
+- Long progress histories with visual streak graphs
+- Partner relationship strength tracking
+- Goal evolution over time
+- The data IS the product — users don't want to lose it
+
+---
+
+### 🎮 Specific Addictive Mechanics to Build
+
+**Social Streaks** — don't just show "7 day streak", show "You and Alex have a 7-day mutual accountability streak." Breaking it hurts both people. Emotional = sticky.
+
+**Social Status Layers**
+- Commitment score, Reliability score, Discipline percentile
+- "You're in the top 12% of consistent users."
+- Elite accountability tiers
+- Status is addictive.
+
+**Dynamic Progress Visualization**
+- Growing progress bars, animated weekly summaries
+- AI narrative recap: "This week you showed exceptional consistency."
+- Gamified dashboards increase return visits.
+
+**AI as Parasocial Companion (Master Roshi)**
+- Daily messages: "You've been slipping.", "Today matters.", "You're outperforming 82% of users."
+- The AI becomes a presence, not a tool.
+
+**Micro-Drama Between Partners**
+- Response timers
+- "Seen but not checked in"
+- Gentle call-outs
+- Rematch tension
+- Weekly compatibility scoring
+- Light social pressure = very sticky.
+
+---
+
 ## Active Roadmap
 
 ### 🔴 CRITICAL — Deployment & Production Setup
