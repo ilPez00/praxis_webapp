@@ -21,6 +21,8 @@ import {
   useTheme,
   useMediaQuery,
   InputBase,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import BoltIcon from '@mui/icons-material/Bolt';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -37,6 +39,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -46,8 +49,8 @@ const Navbar: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
+  const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Hide search on profile pages
   const hideSearch = /^\/profile(\/|$)/.test(location.pathname);
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -67,12 +70,14 @@ const Navbar: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    setProfileMenuAnchor(null);
     setDrawerOpen(false);
     await supabase.auth.signOut();
     navigate('/');
   };
 
   const handleNav = (path: string) => {
+    setProfileMenuAnchor(null);
     setDrawerOpen(false);
     navigate(path);
   };
@@ -86,7 +91,7 @@ const Navbar: React.FC = () => {
         alignItems: 'center',
         gap: 0.75,
         textDecoration: 'none',
-        flexGrow: 1,
+        mr: 3,
       }}
     >
       <Box
@@ -112,11 +117,7 @@ const Navbar: React.FC = () => {
           color: 'text.primary',
         }}
       >
-        PR
-        <Box component="span" sx={{ color: 'primary.main' }}>
-          A
-        </Box>
-        XIS
+        PR<Box component="span" sx={{ color: 'primary.main' }}>A</Box>XIS
       </Typography>
     </Box>
   );
@@ -128,76 +129,75 @@ const Navbar: React.FC = () => {
           {Logo}
 
           {isMobile ? (
-            /* ── Mobile: hamburger ── */
+            <Box sx={{ flexGrow: 1 }} />
+          ) : (
+            /* ── Desktop: primary nav links (3 only) ── */
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexGrow: 1 }}>
+              {user && (
+                <>
+                  {[
+                    { label: 'Dashboard', to: '/dashboard' },
+                    { label: 'Matches', to: '/matches' },
+                    { label: 'Chat', to: '/communication' },
+                  ].map(({ label, to }) => {
+                    const active = location.pathname.startsWith(to);
+                    return (
+                      <Button
+                        key={label}
+                        component={RouterLink}
+                        to={to}
+                        sx={{
+                          color: active ? 'text.primary' : 'text.secondary',
+                          fontWeight: active ? 700 : 500,
+                          borderRadius: '8px',
+                          px: 1.5,
+                          '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' },
+                        }}
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
+                </>
+              )}
+            </Box>
+          )}
+
+          {/* ── Right side ── */}
+          {isMobile ? (
             <IconButton
               onClick={() => setDrawerOpen(true)}
-              sx={{ color: 'text.primary', ml: 1 }}
+              sx={{ color: 'text.primary' }}
               aria-label="open menu"
             >
               <MenuIcon />
             </IconButton>
           ) : (
-            /* ── Desktop: inline nav ── */
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {user ? (
                 <>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/dashboard"
-                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
-                  >
-                    Dashboard
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/matches"
-                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
-                  >
-                    Matches
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/communication"
-                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
-                  >
-                    Communication
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/coaching"
-                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
-                  >
-                    Coaching
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/marketplace"
-                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
-                  >
-                    Marketplace
-                  </Button>
+                  {/* Search */}
                   {!hideSearch && (
                     <Box
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        bgcolor: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        bgcolor: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.08)',
                         borderRadius: '8px',
                         px: 1.5,
                         py: 0.5,
-                        ml: 1,
-                        width: 220,
-                        '&:focus-within': { borderColor: 'primary.main', bgcolor: 'rgba(255,255,255,0.09)' },
+                        width: 200,
+                        transition: 'all 0.2s ease',
+                        '&:focus-within': {
+                          borderColor: 'primary.main',
+                          bgcolor: 'rgba(255,255,255,0.08)',
+                          width: 240,
+                        },
                       }}
                     >
                       <SearchIcon
-                        sx={{ color: 'text.secondary', fontSize: 18, mr: 1, cursor: 'pointer' }}
+                        sx={{ color: 'text.secondary', fontSize: 16, mr: 1, cursor: 'pointer', flexShrink: 0 }}
                         onClick={handleSearchClick}
                       />
                       <InputBase
@@ -206,10 +206,12 @@ const Navbar: React.FC = () => {
                         onChange={e => setSearchValue(e.target.value)}
                         onKeyDown={handleSearch}
                         inputProps={{ 'aria-label': 'search' }}
-                        sx={{ fontSize: '0.875rem', color: 'text.primary', flex: 1 }}
+                        sx={{ fontSize: '0.8125rem', color: 'text.primary', flex: 1 }}
                       />
                     </Box>
                   )}
+
+                  {/* Streak chip */}
                   {(user.current_streak ?? 0) > 0 && (
                     <Chip
                       icon={
@@ -226,60 +228,99 @@ const Navbar: React.FC = () => {
                       label={`${user.current_streak}d`}
                       size="small"
                       sx={{
-                        bgcolor: 'rgba(245,158,11,0.12)',
-                        border: '1px solid rgba(245,158,11,0.3)',
+                        bgcolor: 'rgba(245,158,11,0.1)',
+                        border: '1px solid rgba(245,158,11,0.25)',
                         color: '#F59E0B',
                         fontWeight: 700,
                         fontSize: '0.75rem',
                       }}
                     />
                   )}
-                  <Chip
-                    component={RouterLink}
-                    to={`/profile/${user.id}`}
-                    avatar={
-                      <Avatar src={user.avatarUrl || undefined} sx={{ width: 28, height: 28 }}>
-                        {user.name?.charAt(0).toUpperCase()}
-                      </Avatar>
-                    }
-                    label={user.name?.split(' ')[0] || 'Profile'}
-                    clickable
-                    sx={{
-                      ml: 1,
-                      px: 0.5,
-                      bgcolor: 'rgba(255,255,255,0.07)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      color: 'text.primary',
-                      fontWeight: 600,
-                      '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
-                    }}
-                  />
-                  {user.is_admin && (
-                    <Button
-                      color="inherit"
-                      component={RouterLink}
-                      to="/admin"
-                      sx={{ color: 'error.main', fontWeight: 700, '&:hover': { bgcolor: 'rgba(239,68,68,0.08)' } }}
-                    >
-                      Admin
-                    </Button>
-                  )}
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={handleLogout}
-                    sx={{ ml: 1, borderColor: 'rgba(255,255,255,0.15)', color: 'text.secondary' }}
+
+                  {/* Profile avatar — opens dropdown */}
+                  <IconButton
+                    onClick={(e) => setProfileMenuAnchor(e.currentTarget)}
+                    sx={{ p: 0.5 }}
+                    aria-label="account menu"
                   >
-                    Logout
-                  </Button>
+                    <Avatar
+                      src={user.avatarUrl || undefined}
+                      sx={{
+                        width: 34,
+                        height: 34,
+                        border: '2px solid rgba(245,158,11,0.35)',
+                        fontSize: '0.875rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {user.name?.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </IconButton>
+
+                  {/* Profile dropdown menu */}
+                  <Menu
+                    anchorEl={profileMenuAnchor}
+                    open={Boolean(profileMenuAnchor)}
+                    onClose={() => setProfileMenuAnchor(null)}
+                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                    slotProps={{
+                      paper: {
+                        sx: {
+                          mt: 1,
+                          minWidth: 200,
+                          bgcolor: '#1F2937',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          borderRadius: '14px',
+                          overflow: 'hidden',
+                        },
+                      },
+                    }}
+                  >
+                    {/* User info header */}
+                    <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{user.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">{user.email}</Typography>
+                    </Box>
+
+                    <MenuItem onClick={() => handleNav(`/profile/${user.id}`)} sx={{ gap: 1.5, py: 1.25 }}>
+                      <AccountCircleIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">My Profile</Typography>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleNav('/analytics')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <BarChartIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Analytics</Typography>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleNav('/coaching')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <SchoolIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Coaching</Typography>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleNav('/marketplace')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <StorefrontIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Marketplace</Typography>
+                    </MenuItem>
+
+                    {user.is_admin && (
+                      <MenuItem onClick={() => handleNav('/admin')} sx={{ gap: 1.5, py: 1.25 }}>
+                        <AdminPanelSettingsIcon fontSize="small" sx={{ color: 'error.main' }} />
+                        <Typography variant="body2" color="error.main" fontWeight={700}>Admin</Typography>
+                      </MenuItem>
+                    )}
+
+                    <Divider sx={{ my: 0.5, borderColor: 'rgba(255,255,255,0.06)' }} />
+
+                    <MenuItem onClick={handleLogout} sx={{ gap: 1.5, py: 1.25 }}>
+                      <LogoutIcon fontSize="small" sx={{ color: 'error.main' }} />
+                      <Typography variant="body2" color="error.main">Sign out</Typography>
+                    </MenuItem>
+                  </Menu>
                 </>
               ) : (
                 <>
                   <Button
-                    color="inherit"
                     component={RouterLink}
                     to="/login"
-                    sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
+                    sx={{ color: 'text.secondary', fontWeight: 500, '&:hover': { color: 'text.primary' } }}
                   >
                     Login
                   </Button>
@@ -287,7 +328,7 @@ const Navbar: React.FC = () => {
                     variant="contained"
                     component={RouterLink}
                     to="/signup"
-                    sx={{ ml: 1 }}
+                    sx={{ ml: 0.5 }}
                   >
                     Get Started
                   </Button>
@@ -311,7 +352,6 @@ const Navbar: React.FC = () => {
           },
         }}
       >
-        {/* Drawer header */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <Typography variant="h6" sx={{ fontWeight: 800, color: 'primary.main' }}>Menu</Typography>
           <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: 'text.secondary' }}>
@@ -321,7 +361,6 @@ const Navbar: React.FC = () => {
 
         {user ? (
           <>
-            {/* Search in mobile drawer */}
             {!hideSearch && (
               <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <Box
@@ -349,7 +388,6 @@ const Navbar: React.FC = () => {
               </Box>
             )}
 
-            {/* User info */}
             <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Avatar src={user.avatarUrl || undefined} sx={{ width: 44, height: 44, border: '2px solid rgba(245,158,11,0.4)' }}>
                 {user.name?.charAt(0).toUpperCase()}
@@ -382,42 +420,22 @@ const Navbar: React.FC = () => {
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
 
             <List disablePadding>
-              <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNav('/dashboard')}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><DashboardIcon /></ListItemIcon>
-                  <ListItemText primary="Dashboard" primaryTypographyProps={{ fontWeight: 600 }} />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNav('/matches')}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><ExploreIcon /></ListItemIcon>
-                  <ListItemText primary="Matches" primaryTypographyProps={{ fontWeight: 600 }} />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNav('/communication')}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><ChatIcon /></ListItemIcon>
-                  <ListItemText primary="Communication" primaryTypographyProps={{ fontWeight: 600 }} />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNav('/coaching')}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><SchoolIcon /></ListItemIcon>
-                  <ListItemText primary="Coaching" primaryTypographyProps={{ fontWeight: 600 }} />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNav('/marketplace')}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><StorefrontIcon /></ListItemIcon>
-                  <ListItemText primary="Marketplace" primaryTypographyProps={{ fontWeight: 600 }} />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNav(`/profile/${user.id}`)}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><AccountCircleIcon /></ListItemIcon>
-                  <ListItemText primary="Profile" primaryTypographyProps={{ fontWeight: 600 }} />
-                </ListItemButton>
-              </ListItem>
+              {[
+                { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
+                { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
+                { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
+                { label: 'Coaching', to: '/coaching', icon: <SchoolIcon /> },
+                { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
+                { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },
+                { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon /> },
+              ].map(({ label, to, icon }) => (
+                <ListItem key={label} disablePadding>
+                  <ListItemButton onClick={() => handleNav(to)}>
+                    <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>{icon}</ListItemIcon>
+                    <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9375rem' }} />
+                  </ListItemButton>
+                </ListItem>
+              ))}
               {user.is_admin && (
                 <ListItem disablePadding>
                   <ListItemButton onClick={() => handleNav('/admin')}>
@@ -434,7 +452,7 @@ const Navbar: React.FC = () => {
               <ListItem disablePadding>
                 <ListItemButton onClick={handleLogout}>
                   <ListItemIcon sx={{ minWidth: 40, color: 'error.main' }}><LogoutIcon /></ListItemIcon>
-                  <ListItemText primary="Logout" primaryTypographyProps={{ fontWeight: 600, color: 'error.main' }} />
+                  <ListItemText primary="Sign out" primaryTypographyProps={{ fontWeight: 600, color: 'error.main' }} />
                 </ListItemButton>
               </ListItem>
             </List>

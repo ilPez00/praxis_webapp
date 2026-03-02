@@ -52,6 +52,7 @@ import ExploreIcon from '@mui/icons-material/Explore';
 import ChatIcon from '@mui/icons-material/Chat';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GroupsIcon from '@mui/icons-material/Groups';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
@@ -330,7 +331,7 @@ const DashboardPage: React.FC = () => {
             <Grid container alignItems="center" spacing={3}>
               <Grid size={{ xs: 12, md: 8 }}>
                 <Typography variant="h3" sx={{ fontWeight: 900, mb: 1.5, letterSpacing: '-0.03em' }}>
-                  Greetings, {' '}
+                  Hey,{' '}
                   <Box component="span" sx={{
                     background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)',
                     backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
@@ -339,8 +340,9 @@ const DashboardPage: React.FC = () => {
                   </Box>
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, mb: 3 }}>
-                  Your journey continues. You've made significant progress across your goal architecture. 
-                  Ready to reach the next milestone?
+                  {hasGoals
+                    ? `You're tracking ${allNodes.length} goal${allNodes.length !== 1 ? 's' : ''} at ${avgProgress}% average progress. Keep the momentum going.`
+                    : 'Set up your goal tree to start matching with driven people who share your ambitions.'}
                 </Typography>
                 <Stack direction="row" spacing={2} flexWrap="wrap">
                   <Chip
@@ -390,10 +392,10 @@ const DashboardPage: React.FC = () => {
             }}
           >
             {[
-              { label: 'Profile', to: `/profile/${currentUserId}`, icon: <AccountCircleIcon /> },
               { label: 'Goal Tree', to: `/goals/${currentUserId}`, icon: <TrackChangesIcon /> },
               { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
-              { label: 'Chat', to: '/chat', icon: <ChatIcon /> },
+              { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
+              { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },
             ].map((action) => (
               <Button
                 key={action.label}
@@ -416,14 +418,6 @@ const DashboardPage: React.FC = () => {
               </Button>
             ))}
           </GlassCard>
-        </Box>
-
-        {/* Community Feed */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="overline" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-            Community Feed
-          </Typography>
-          <PostFeed context="general" />
         </Box>
 
         {/* Bento Grid Layout */}
@@ -969,6 +963,14 @@ const DashboardPage: React.FC = () => {
               </Grid>
             )}
           </Grid>
+        </Box>
+
+        {/* Community Feed */}
+        <Box sx={{ mt: 6 }}>
+          <Typography variant="overline" color="text.secondary" sx={{ mb: 2, display: 'block', letterSpacing: '0.1em' }}>
+            Community Feed
+          </Typography>
+          <PostFeed context="general" />
         </Box>
       </Container>
 
