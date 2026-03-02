@@ -7,6 +7,22 @@ import { catchAsync, UnauthorizedError, InternalServerError } from '../utils/app
 const aiCoachingService = new AICoachingService();
 
 // ---------------------------------------------------------------------------
+// Rate limiter for background brief generation (in-memory, resets on deploy)
+// ---------------------------------------------------------------------------
+
+const briefCooldowns = new Map<string, number>();
+const BRIEF_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
+async function generateAndStoreBrief(userId: string): Promise<void> {
+  const context = await buildContext(userId);
+  const report = await aiCoachingService.generateFullReport(context);
+  await supabase
+    .from('coaching_briefs')
+    .upsert({ user_id: userId, brief: report, generated_at: new Date().toISOString() });
+  logger.info(`[AI Coach] Brief stored for user ${userId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Context builder — gathers everything Gemini needs about the user
 // ---------------------------------------------------------------------------
 
@@ -173,6 +189,49 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
     logger.error('[AI Coach] Report generation failed:', err.message);
     throw new InternalServerError(err.message || 'Failed to generate coaching report.');
   }
+});
+
+// ---------------------------------------------------------------------------
+// GET /ai-coaching/brief — return cached brief (instant, no generation)
+// ---------------------------------------------------------------------------
+
+export const getBrief = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const { data } = await supabase
+    .from('coaching_briefs')
+    .select('brief, generated_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  res.json(data ?? null);
+});
+
+// ---------------------------------------------------------------------------
+// POST /ai-coaching/trigger — kick off a background brief update (rate limited)
+// ---------------------------------------------------------------------------
+
+export const triggerBriefUpdate = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const now = Date.now();
+  const last = briefCooldowns.get(userId) ?? 0;
+  const remaining = BRIEF_COOLDOWN_MS - (now - last);
+
+  if (remaining > 0) {
+    return res.json({ queued: false, cooldownSeconds: Math.ceil(remaining / 1000) });
+  }
+
+  briefCooldowns.set(userId, now);
+
+  // Fire-and-forget — client doesn't wait for this
+  generateAndStoreBrief(userId).catch(err =>
+    logger.warn(`[AI Coach] Background brief failed for ${userId}:`, err.message)
+  );
+
+  res.json({ queued: true });
 });
 
 // ---------------------------------------------------------------------------

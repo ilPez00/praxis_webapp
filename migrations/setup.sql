@@ -645,7 +645,30 @@ CREATE POLICY "Own tracker_entries delete" ON public.tracker_entries FOR DELETE 
 
 
 -- =============================================================================
--- 13. MATCH_USERS_BY_GOALS — pgvector cosine-similarity matchmaking function
+-- 13. COACHING_BRIEFS — cached Master Roshi analysis per user
+-- One row per user, upserted on each background generation.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.coaching_briefs (
+  user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  brief        JSONB NOT NULL,
+  generated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.coaching_briefs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Own coaching_briefs select" ON public.coaching_briefs;
+DROP POLICY IF EXISTS "Own coaching_briefs upsert" ON public.coaching_briefs;
+
+CREATE POLICY "Own coaching_briefs select" ON public.coaching_briefs FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Own coaching_briefs upsert" ON public.coaching_briefs FOR ALL  USING (auth.uid() = user_id);
+
+-- NOTE: Enable Realtime for this table in the Supabase dashboard
+-- (Table Editor → coaching_briefs → Realtime toggle ON)
+
+
+-- =============================================================================
+-- 14. MATCH_USERS_BY_GOALS — pgvector cosine-similarity matchmaking function
 -- (kept at end for dependency ordering)
 -- =============================================================================
 

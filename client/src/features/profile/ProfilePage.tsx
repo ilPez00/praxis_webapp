@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import TrackerSection from '../trackers/TrackerSection';
+import { API_URL } from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
 import {
   Container,
@@ -242,6 +243,14 @@ const ProfilePage: React.FC = () => {
     setProfile(data);
     setIsEditing(false);
     toast.success('Profile saved!');
+    // Fire-and-forget Roshi brief refresh (rate-limited on backend)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.access_token) return;
+      fetch(`${API_URL}/ai-coaching/trigger`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      }).catch(() => {});
+    });
   };
 
   const handleCancel = () => {

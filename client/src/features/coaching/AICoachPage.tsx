@@ -1,16 +1,15 @@
 /**
- * AICoachPage — Praxis AI Performance Coach
+ * AICoachPage — Master Roshi AI coaching interface.
  *
- * On load: calls POST /ai-coaching/report to auto-generate a personalised
- * coaching report with three sections:
- *   1. Motivation   — personalised energising message
- *   2. Strategy     — per-goal action plan with concrete steps
- *   3. Network      — how to leverage matches and community boards
+ * Load order:
+ *  1. GET /ai-coaching/brief   — instant cached brief (no spinner if exists)
+ *  2. POST /ai-coaching/trigger — fire-and-forget background refresh (rate-limited 30 min)
+ *  3. Supabase realtime on coaching_briefs — auto-updates UI when background job completes
  *
- * Below the report: a follow-up Q&A chat powered by POST /ai-coaching/request.
+ * If no cached brief exists, falls back to generating one inline via POST /report.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { DOMAIN_COLORS } from '../../types/goal';
@@ -58,10 +57,34 @@ interface ChatMessage {
   text: string;
 }
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return {
+    'Content-Type': 'application/json',
+    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+  };
+}
+
+function formatAge(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 2) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// ── component ─────────────────────────────────────────────────────────────────
+
 const AICoachPage: React.FC = () => {
   const [report, setReport] = useState<CoachingReport | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [loadingReport, setLoadingReport] = useState(true);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState('');
@@ -69,39 +92,115 @@ const AICoachPage: React.FC = () => {
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchReport = async () => {
+  // ── load cached brief ─────────────────────────────────────────────────────
+
+  const loadCachedBrief = useCallback(async () => {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/ai-coaching/brief`, { headers });
+    if (!res.ok) return null;
+    return res.json() as Promise<{ brief: CoachingReport; generated_at: string } | null>;
+  }, []);
+
+  // ── generate fresh brief (inline, blocking) ───────────────────────────────
+
+  const generateBrief = useCallback(async () => {
     setLoadingReport(true);
     setReportError(null);
-    setReport(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API_URL}/ai-coaching/report`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-      });
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/ai-coaching/report`, { method: 'POST', headers });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || `Error ${res.status}`);
       }
       const data: CoachingReport = await res.json();
       setReport(data);
+      setGeneratedAt(new Date().toISOString());
     } catch (err: any) {
       setReportError(err.message || 'Failed to generate coaching report.');
     } finally {
       setLoadingReport(false);
     }
+  }, []);
+
+  // ── fire background trigger (rate-limited on backend) ────────────────────
+
+  const triggerBackgroundUpdate = useCallback(async () => {
+    try {
+      const headers = await getAuthHeaders();
+      await fetch(`${API_URL}/ai-coaching/trigger`, { method: 'POST', headers });
+    } catch {
+      // silently ignore — non-critical
+    }
+  }, []);
+
+  // ── manual refresh button ─────────────────────────────────────────────────
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await generateBrief();
+    setRefreshing(false);
   };
 
+  // ── initialise ────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    fetchReport();
+    let cancelled = false;
+
+    (async () => {
+      // 1. Try cache first — instant display
+      const cached = await loadCachedBrief();
+      if (!cancelled && cached) {
+        setReport(cached.brief);
+        setGeneratedAt(cached.generated_at);
+        setLoadingReport(false);
+        // 2. Kick off background refresh in parallel
+        triggerBackgroundUpdate();
+        return;
+      }
+
+      // 3. No cache — generate inline
+      if (!cancelled) await generateBrief();
+    })();
+
+    return () => { cancelled = true; };
+  }, [loadCachedBrief, generateBrief, triggerBackgroundUpdate]);
+
+  // ── Supabase realtime — auto-refresh when background job finishes ─────────
+
+  useEffect(() => {
+    let userId: string | null = null;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      userId = session?.user?.id ?? null;
+      if (!userId) return;
+
+      const channel = supabase
+        .channel('coaching_briefs_updates')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'coaching_briefs', filter: `user_id=eq.${userId}` },
+          (payload) => {
+            const row = payload.new as { brief: CoachingReport; generated_at: string } | null;
+            if (row?.brief) {
+              setReport(row.brief);
+              setGeneratedAt(row.generated_at);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    });
   }, []);
+
+  // ── chat scroll ───────────────────────────────────────────────────────────
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat]);
+
+  // ── follow-up Q&A ─────────────────────────────────────────────────────────
 
   const handleAsk = async () => {
     const q = question.trim();
@@ -110,13 +209,10 @@ const AICoachPage: React.FC = () => {
     setAsking(true);
     setChat(prev => [...prev, { role: 'user', text: q }]);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const headers = await getAuthHeaders();
       const res = await fetch(`${API_URL}/ai-coaching/request`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
+        headers,
         body: JSON.stringify({ userPrompt: q }),
       });
       if (!res.ok) {
@@ -126,13 +222,13 @@ const AICoachPage: React.FC = () => {
       const { response } = await res.json();
       setChat(prev => [...prev, { role: 'coach', text: response }]);
     } catch (err: any) {
-      setChat(prev => [...prev, { role: 'coach', text: `Sorry, I couldn't process that: ${err.message}` }]);
+      setChat(prev => [...prev, { role: 'coach', text: `Sorry, something went wrong: ${err.message}` }]);
     } finally {
       setAsking(false);
     }
   };
 
-  // ── UI helpers ──────────────────────────────────────────────────────────────
+  // ── UI helpers ────────────────────────────────────────────────────────────
 
   const SectionHeader: React.FC<{ icon: React.ReactNode; label: string; color?: string }> = ({ icon, label, color = 'primary.main' }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
@@ -141,7 +237,7 @@ const AICoachPage: React.FC = () => {
     </Box>
   );
 
-  // ── Loading ─────────────────────────────────────────────────────────────────
+  // ── loading ───────────────────────────────────────────────────────────────
 
   if (loadingReport) {
     return (
@@ -159,7 +255,7 @@ const AICoachPage: React.FC = () => {
           </Avatar>
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Master Roshi is thinking…</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Praxis AI is reviewing your goals, progress, network and boards.
+            Reviewing your goals, progress, and network.
           </Typography>
           <LinearProgress sx={{ borderRadius: 2, height: 6, maxWidth: 320, mx: 'auto' }} />
         </Box>
@@ -171,51 +267,65 @@ const AICoachPage: React.FC = () => {
     return (
       <Container maxWidth="md" sx={{ mt: 6 }}>
         <Alert severity="error" sx={{ mb: 2 }}>{reportError}</Alert>
-        <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchReport}>Retry</Button>
+        <Button variant="contained" startIcon={<RefreshIcon />} onClick={handleRefresh}>Retry</Button>
       </Container>
     );
   }
 
   if (!report) return null;
 
+  // ── render ────────────────────────────────────────────────────────────────
+
   return (
     <Container maxWidth="md" sx={{ mt: 4, pb: 8 }}>
+
       {/* Page header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Avatar sx={{
-              width: 48, height: 48,
-              background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
-              border: '2px solid rgba(245,158,11,0.45)',
-              fontSize: '1.5rem',
-            }}>
+            width: 48, height: 48,
+            background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
+            border: '2px solid rgba(245,158,11,0.45)',
+            fontSize: '1.5rem',
+          }}>
             🥋
           </Avatar>
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>Master Roshi</Typography>
-            <Typography variant="caption" color="text.secondary">Your personal performance master</Typography>
+            {generatedAt && (
+              <Typography variant="caption" color="text.disabled">
+                Updated {formatAge(generatedAt)} · auto-refreshes when you post or edit your profile
+              </Typography>
+            )}
           </Box>
         </Box>
-        <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={fetchReport} sx={{ borderRadius: '10px' }}>
-          Regenerate
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={refreshing ? <CircularProgress size={14} /> : <RefreshIcon />}
+          onClick={handleRefresh}
+          disabled={refreshing}
+          sx={{ borderRadius: '10px' }}
+        >
+          Refresh
         </Button>
       </Box>
 
       <Stack spacing={3}>
 
-        {/* ── Section 1: Motivation ─────────────────────────────────────── */}
+        {/* ── Section 1: Motivation ──────────────────────────────────── */}
         <Box sx={{
           p: 3, borderRadius: 3,
           background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(139,92,246,0.06) 100%)',
           border: '1px solid rgba(245,158,11,0.2)',
         }}>
-          <SectionHeader icon={<Box sx={{ fontSize: '1.1rem' }}>🥋</Box>} label="Master Roshi's Brief" />
-          <Typography variant="body1" sx={{ lineHeight: 1.8, fontStyle: 'italic', color: 'text.primary' }}>
-            "{report.motivation}"
+          <SectionHeader icon={<Box sx={{ fontSize: '1.1rem' }}>🥋</Box>} label="Roshi's Take" />
+          <Typography variant="body1" sx={{ lineHeight: 1.9, color: 'text.primary' }}>
+            {report.motivation}
           </Typography>
         </Box>
 
-        {/* ── Section 2: Strategy per goal ─────────────────────────────── */}
+        {/* ── Section 2: Strategy per goal ──────────────────────────── */}
         <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <SectionHeader icon={<FlagIcon />} label="Goal Strategy" color="#10B981" />
           <Stack spacing={1.5}>
@@ -272,12 +382,14 @@ const AICoachPage: React.FC = () => {
               );
             })}
             {(report.strategy ?? []).length === 0 && (
-              <Typography variant="body2" color="text.secondary">No goals found — set up your goal tree to get personalised strategy.</Typography>
+              <Typography variant="body2" color="text.secondary">
+                No goals yet — set up your goal tree and Roshi will map a strategy for each one.
+              </Typography>
             )}
           </Stack>
         </Box>
 
-        {/* ── Section 3: Network leverage ───────────────────────────────── */}
+        {/* ── Section 3: Network leverage ──────────────────────────── */}
         <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <SectionHeader icon={<PeopleIcon />} label="Network Leverage" color="#8B5CF6" />
           <Typography variant="body1" sx={{ lineHeight: 1.8, color: 'text.primary' }}>
@@ -285,11 +397,10 @@ const AICoachPage: React.FC = () => {
           </Typography>
         </Box>
 
-        {/* ── Follow-up Q&A ─────────────────────────────────────────────── */}
+        {/* ── Follow-up Q&A ────────────────────────────────────────── */}
         <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <SectionHeader icon={<Box sx={{ fontSize: '1rem' }}>🥋</Box>} label="Ask Master Roshi" />
+          <SectionHeader icon={<Box sx={{ fontSize: '1rem' }}>🥋</Box>} label="Ask Roshi" />
 
-          {/* Chat history */}
           {chat.length > 0 && (
             <Stack spacing={1.5} sx={{ mb: 2 }}>
               {chat.map((msg, i) => {
@@ -310,7 +421,7 @@ const AICoachPage: React.FC = () => {
                         : 'rgba(255,255,255,0.06)',
                       border: isUser ? 'none' : '1px solid rgba(255,255,255,0.08)',
                     }}>
-                      <Typography variant="body2" sx={{ color: isUser ? '#0A0B14' : 'text.primary', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      <Typography variant="body2" sx={{ color: isUser ? '#0A0B14' : 'text.primary', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                         {msg.text}
                       </Typography>
                     </Box>
@@ -331,18 +442,17 @@ const AICoachPage: React.FC = () => {
             </Stack>
           )}
 
-          {/* Suggested prompts (shown before first message) */}
           {chat.length === 0 && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="caption" color="text.disabled" sx={{ mb: 1, display: 'block' }}>
-                Suggested questions
+                Ask anything — planning, strategy, accountability, mindset
               </Typography>
-              <Stack direction="row" flexWrap="wrap" spacing={1}>
+              <Stack direction="row" flexWrap="wrap" spacing={1} useFlexGap>
                 {[
-                  'Which goal should I focus on this week?',
-                  'How do I stay consistent?',
-                  'Who in my network can help with my top goal?',
-                  'What is blocking my progress?',
+                  'Plan my week around my top goal',
+                  'What should I focus on first?',
+                  'How do I build a better routine?',
+                  'Who in my network can help me?',
                 ].map(q => (
                   <Chip
                     key={q}
@@ -358,13 +468,12 @@ const AICoachPage: React.FC = () => {
 
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 2 }} />
 
-          {/* Input */}
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
             <TextField
               fullWidth
               multiline
               maxRows={4}
-              placeholder="Ask your AI coach anything…"
+              placeholder="Ask Roshi anything…"
               value={question}
               onChange={e => setQuestion(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(); } }}
