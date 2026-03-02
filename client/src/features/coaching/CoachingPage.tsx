@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Box, Tabs, Tab, Container } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SchoolIcon from '@mui/icons-material/School';
 import AICoachPage from './AICoachPage';
 import CoachingMarketplace from './CoachingMarketplace';
@@ -29,7 +28,7 @@ const CoachingPage: React.FC = () => {
               '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontSize: '0.95rem', minHeight: 52 },
             }}
           >
-            <Tab label="AI Coach" icon={<AutoAwesomeIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
+            <Tab label="Master Roshi" icon={<Box sx={{ fontSize: '1rem', lineHeight: 1 }}>🥋</Box>} iconPosition="start" />
             <Tab label="Coaching Marketplace" icon={<SchoolIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
           </Tabs>
         </Container>

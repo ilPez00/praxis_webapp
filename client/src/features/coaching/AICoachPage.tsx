@@ -32,7 +32,6 @@ import {
   AccordionDetails,
   Divider,
 } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SendIcon from '@mui/icons-material/Send';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -148,11 +147,17 @@ const AICoachPage: React.FC = () => {
     return (
       <Container maxWidth="md" sx={{ mt: 6, textAlign: 'center' }}>
         <Box sx={{ mb: 3 }}>
-          <AutoAwesomeIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2, display: 'block', mx: 'auto',
-            '@keyframes pulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.4 } },
+          <Avatar sx={{
+            width: 64, height: 64, mx: 'auto', mb: 2,
+            background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
+            border: '3px solid rgba(245,158,11,0.5)',
+            fontSize: '2rem',
+            '@keyframes pulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.5 } },
             animation: 'pulse 2s ease-in-out infinite',
-          }} />
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Analysing your data…</Typography>
+          }}>
+            🥋
+          </Avatar>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Master Roshi is thinking…</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Praxis AI is reviewing your goals, progress, network and boards.
           </Typography>
@@ -178,12 +183,17 @@ const AICoachPage: React.FC = () => {
       {/* Page header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box sx={{ p: 1.5, borderRadius: '12px', background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(139,92,246,0.15))', border: '1px solid rgba(245,158,11,0.3)' }}>
-            <AutoAwesomeIcon sx={{ color: 'primary.main' }} />
-          </Box>
+          <Avatar sx={{
+              width: 48, height: 48,
+              background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
+              border: '2px solid rgba(245,158,11,0.45)',
+              fontSize: '1.5rem',
+            }}>
+            🥋
+          </Avatar>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>AI Performance Coach</Typography>
-            <Typography variant="caption" color="text.secondary">Powered by Gemini · personalised to your profile</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>Master Roshi</Typography>
+            <Typography variant="caption" color="text.secondary">Your personal performance master</Typography>
           </Box>
         </Box>
         <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={fetchReport} sx={{ borderRadius: '10px' }}>
@@ -199,7 +209,7 @@ const AICoachPage: React.FC = () => {
           background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(139,92,246,0.06) 100%)',
           border: '1px solid rgba(245,158,11,0.2)',
         }}>
-          <SectionHeader icon={<AutoAwesomeIcon />} label="Your Coaching Brief" />
+          <SectionHeader icon={<Box sx={{ fontSize: '1.1rem' }}>🥋</Box>} label="Master Roshi's Brief" />
           <Typography variant="body1" sx={{ lineHeight: 1.8, fontStyle: 'italic', color: 'text.primary' }}>
             "{report.motivation}"
           </Typography>
@@ -277,7 +287,7 @@ const AICoachPage: React.FC = () => {
 
         {/* ── Follow-up Q&A ─────────────────────────────────────────────── */}
         <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <SectionHeader icon={<AutoAwesomeIcon sx={{ fontSize: 20 }} />} label="Ask Your Coach" />
+          <SectionHeader icon={<Box sx={{ fontSize: '1rem' }}>🥋</Box>} label="Ask Master Roshi" />
 
           {/* Chat history */}
           {chat.length > 0 && (
@@ -287,8 +297,8 @@ const AICoachPage: React.FC = () => {
                 return (
                   <Box key={i} sx={{ display: 'flex', gap: 1.5, justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
                     {!isUser && (
-                      <Avatar sx={{ width: 32, height: 32, background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)', fontSize: '0.8rem' }}>
-                        <AutoAwesomeIcon sx={{ fontSize: 16 }} />
+                      <Avatar sx={{ width: 32, height: 32, background: 'linear-gradient(135deg, #78350F, #92400E)', border: '1px solid rgba(245,158,11,0.4)', fontSize: '1rem' }}>
+                        🥋
                       </Avatar>
                     )}
                     <Box sx={{
@@ -309,8 +319,8 @@ const AICoachPage: React.FC = () => {
               })}
               {asking && (
                 <Box sx={{ display: 'flex', gap: 1.5 }}>
-                  <Avatar sx={{ width: 32, height: 32, background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)' }}>
-                    <AutoAwesomeIcon sx={{ fontSize: 16 }} />
+                  <Avatar sx={{ width: 32, height: 32, background: 'linear-gradient(135deg, #78350F, #92400E)', border: '1px solid rgba(245,158,11,0.4)', fontSize: '1rem' }}>
+                    🥋
                   </Avatar>
                   <Box sx={{ px: 2, py: 1.5, borderRadius: '16px 16px 16px 4px', bgcolor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <CircularProgress size={16} sx={{ color: 'primary.main' }} />

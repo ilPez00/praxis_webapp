@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { knowledgeBase } from './KnowledgeBaseService';
 import logger from '../utils/logger';
 
 export interface GoalContext {
@@ -46,6 +47,9 @@ export interface CoachingReport {
   network: string;
 }
 
+// Master Roshi's identity — injected into every prompt
+const MASTER_ROSHI_IDENTITY = `You are Master Roshi — a legendary, centuries-old coach: wise, direct, tough but deeply caring. You have the weathered experience of a martial arts grandmaster and the analytical mind of a peak-performance strategist. Your advice draws from both timeless philosophy and the hard-won lessons of the books in your library. You do not flatter. You do not hedge. You give the user exactly what they need to hear — concrete, actionable, personalised guidance rooted in proven frameworks (habit formation, antifragility, monopoly thinking, and more). Speak with authority and warmth in equal measure.`;
+
 export class AICoachingService {
   private genAI: GoogleGenerativeAI;
   private readonly MODEL = 'gemini-flash-lite-latest';
@@ -54,6 +58,11 @@ export class AICoachingService {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is not set in environment variables.');
     this.genAI = new GoogleGenerativeAI(apiKey);
+    // Kick off PDF loading in the background — first request may be slightly
+    // slower if it arrives before loading completes
+    knowledgeBase.load().catch(err =>
+      logger.warn('[AICoachingService] Knowledge base load failed:', err.message)
+    );
   }
 
   /**
@@ -61,6 +70,8 @@ export class AICoachingService {
    * Returns a parsed CoachingReport object.
    */
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
+    // Ensure books are loaded before generating
+    await knowledgeBase.load();
     try {
       const model = this.genAI.getGenerativeModel({
         model: this.MODEL,
@@ -84,6 +95,7 @@ export class AICoachingService {
    * Returns plain text.
    */
   public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
+    await knowledgeBase.load();
     try {
       const model = this.genAI.getGenerativeModel({ model: this.MODEL });
       const prompt = this.buildFollowUpPrompt(userPrompt, context);
@@ -128,9 +140,15 @@ export class AICoachingService {
       ? 'Not a member of any community boards yet.'
       : ctx.boards.map(b => `- "${b.name}"${b.domain ? ` [${b.domain}]` : ''}${b.description ? `: ${b.description}` : ''}`).join('\n');
 
-    return `You are Praxis AI, an elite performance coach. You deeply understand human psychology, goal achievement, and social accountability. Analyse all data about this user and generate a comprehensive coaching report in the exact JSON schema below.
+    const knowledgeContext = knowledgeBase.getContext();
 
-## User Profile
+    return `${MASTER_ROSHI_IDENTITY}
+
+${knowledgeContext}
+
+---
+
+## Student Profile
 Name: ${ctx.userName}
 ${ctx.bio ? `Bio: ${ctx.bio}` : ''}
 Current streak: ${ctx.streak} days
@@ -145,29 +163,33 @@ ${feedbackText}
 ## Achievements
 ${achievementsText}
 
-## Network Connections (users they have collaborated with)
+## Network Connections
 ${networkText}
 
-## Community Boards (boards they have joined)
+## Community Boards
 ${boardsText}
 
+---
+
 ## Instructions
+You are Master Roshi delivering a coaching report. Draw on your library where relevant — cite specific frameworks (e.g. habit stacking from Atomic Habits, the barbell strategy from Antifragile, contrarian thinking from Zero to One) when they directly apply to this student's goals. Keep advice concrete and personal.
+
 Return ONLY valid JSON matching this schema (no markdown, no extra text):
 {
-  "motivation": "<2-3 sentences of personalised, specific, and energising motivational message referencing their actual goals, streak, and achievements>",
+  "motivation": "<2-3 sentences of personalised, energising message from Master Roshi — reference their actual goals, streak, achievements, and a relevant principle from the library>",
   "strategy": [
     {
       "goal": "<exact goal name>",
       "domain": "<domain>",
       "progress": <number 0-100>,
-      "insight": "<1 sentence specific insight about their current progress on this goal>",
+      "insight": "<1 sentence specific insight about their current progress — reference a book principle if relevant>",
       "steps": ["<concrete action step 1>", "<concrete action step 2>", "<concrete action step 3>"]
     }
   ],
-  "network": "<2-3 sentences on how ${ctx.userName} should specifically leverage their network connections and community boards to accelerate progress — be specific about which connections or boards are most relevant and what actions to take>"
+  "network": "<2-3 sentences on how ${ctx.userName} should leverage their network and community boards — be specific about which connections or boards are most relevant and what actions to take>"
 }
 
-Generate the strategy array with one entry per goal. Make every piece of advice concrete, actionable, and personalised to this specific user's data.`;
+Generate one strategy entry per goal. Every insight and step must be concrete, actionable, and drawn from this student's actual data and your library.`;
   }
 
   private buildFollowUpPrompt(userPrompt: string, ctx: CoachingContext): string {
@@ -177,15 +199,24 @@ Generate the strategy array with one entry per goal. Make every piece of advice 
 
     const networkSummary = ctx.network.map(n => n.name).join(', ') || 'none';
     const boardsSummary = ctx.boards.map(b => b.name).join(', ') || 'none';
+    const knowledgeContext = knowledgeBase.getContext();
 
-    return `You are Praxis AI, an elite performance coach. The user is ${ctx.userName} (${ctx.streak}-day streak, ${ctx.praxisPoints} Praxis Points).
+    return `${MASTER_ROSHI_IDENTITY}
 
-Their goals: ${goalsSummary}
-Their network: ${networkSummary}
-Their boards: ${boardsSummary}
+${knowledgeContext}
 
-The user asks: "${userPrompt}"
+---
 
-Respond concisely (2-4 sentences) with specific, actionable coaching advice personalised to their situation. Reference their actual goals or connections where relevant.`;
+## Student: ${ctx.userName}
+Streak: ${ctx.streak} days | Praxis Points: ${ctx.praxisPoints}
+Goals: ${goalsSummary}
+Network: ${networkSummary}
+Boards: ${boardsSummary}
+
+---
+
+The student asks: "${userPrompt}"
+
+Respond as Master Roshi — 2-4 sentences, direct and actionable. Reference their specific goals or a principle from your library if it directly applies. No flattery, no filler.`;
   }
 }
