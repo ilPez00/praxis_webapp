@@ -47,53 +47,6 @@ interface TrackerSectionProps {
   userId: string;
 }
 
-// ─── Log Entry Dialog ────────────────────────────────────────────────────────
-
-function LogEntryDialog({
-  tracker,
-  open,
-  onClose,
-  onSaved,
-  userId,
-}: {
-  tracker: TrackerType;
-  open: boolean;
-  onClose: () => void;
-  onSaved: () => void;
-  userId: string;
-}) {
-  const [fields, setFields] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) setFields({});
-  }, [open]);
-
-  const handleSave = async (trackerId: string) => {
-    // Validate required fields
-    const missing = tracker.fields
-      .filter(f => !f.optional && !fields[f.key]?.trim())
-      .map(f => f.label);
-    if (missing.length > 0) {
-      toast.error(`Fill in: ${missing.join(', ')}`);
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase.from('tracker_entries').insert({
-      tracker_id: trackerId,
-      user_id: userId,
-      data: fields,
-    });
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Logged!');
-    onSaved();
-    onClose();
-  };
-
-  return null; // rendered from TrackerSection with tracker id injected
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
