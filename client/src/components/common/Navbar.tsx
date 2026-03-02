@@ -34,7 +34,6 @@ import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ChatIcon from '@mui/icons-material/Chat';
 import SchoolIcon from '@mui/icons-material/School';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -165,15 +164,6 @@ const Navbar: React.FC = () => {
                     sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
                   >
                     Communication
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/ai-coach"
-                    startIcon={<AutoAwesomeIcon sx={{ fontSize: '16px !important' }} />}
-                    sx={{ color: 'primary.main', fontWeight: 700, '&:hover': { color: 'primary.light', bgcolor: 'rgba(245,158,11,0.08)' } }}
-                  >
-                    AI Coach
                   </Button>
                   <Button
                     color="inherit"
@@ -408,12 +398,6 @@ const Navbar: React.FC = () => {
                 <ListItemButton onClick={() => handleNav('/communication')}>
                   <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><ChatIcon /></ListItemIcon>
                   <ListItemText primary="Communication" primaryTypographyProps={{ fontWeight: 600 }} />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNav('/ai-coach')}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}><AutoAwesomeIcon /></ListItemIcon>
-                  <ListItemText primary="AI Coach" primaryTypographyProps={{ fontWeight: 700, color: 'primary.main' }} />
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>
