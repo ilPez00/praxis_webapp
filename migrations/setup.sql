@@ -100,7 +100,12 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS praxis_points         INT DEFAULT 100,
   ADD COLUMN IF NOT EXISTS is_verified           BOOLEAN DEFAULT false,
   ADD COLUMN IF NOT EXISTS is_admin              BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS is_banned             BOOLEAN DEFAULT false;
+  ADD COLUMN IF NOT EXISTS is_banned             BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS social_instagram      TEXT,
+  ADD COLUMN IF NOT EXISTS social_twitter        TEXT,
+  ADD COLUMN IF NOT EXISTS social_linkedin       TEXT,
+  ADD COLUMN IF NOT EXISTS social_whatsapp       TEXT,
+  ADD COLUMN IF NOT EXISTS social_telegram       TEXT;
 
 
 -- =============================================================================
