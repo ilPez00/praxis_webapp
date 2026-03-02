@@ -310,6 +310,18 @@ The more history, the harder it is to leave:
 
 ---
 
+## 90-Day Product Strategy
+
+Full document: `PRODUCT_STRATEGY.md`
+
+**Month 1 (core retention):** check-in system, mutual streaks, streak-at-risk notifications, reliability score, status tiers
+**Month 2 (monetization):** Pro/Elite tier enforcement via `requireTier()` middleware, Stripe webhooks, upgrade modal triggers
+**Month 3 (identity deepening):** AI weekly narrative (Gemini), status badges, analytics dashboard, A/B testing
+
+Engineering priority: checkins endpoint → streak notification → requireTier middleware → Stripe webhooks → reliability cron → narrative generation
+
+---
+
 ## Active Roadmap
 
 ### 🔴 CRITICAL — Deployment & Production Setup
