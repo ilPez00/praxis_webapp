@@ -2,6 +2,7 @@
   "installCommand": "npm install && npm install --prefix client",
   "buildCommand": "npm run build --prefix client",
   "outputDirectory": "client/build",
+  "ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" = \"gh-pages\" ]",
   "headers": [
     {
       "source": "/static/(.*)",
