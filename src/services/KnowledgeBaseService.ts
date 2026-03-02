@@ -10,10 +10,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../utils/logger';
 
-// pdf-parse is a CommonJS module
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfParse = require('pdf-parse');
-
 interface BookExcerpt {
   title: string;
   text: string;
@@ -45,6 +41,17 @@ class KnowledgeBaseService {
   }
 
   private async _parse(): Promise<void> {
+    // Lazy-require pdf-parse so a missing DOM polyfill (Node < 20 / no canvas)
+    // only causes graceful degradation rather than a startup crash.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    let pdfParse: ((buf: Buffer, opts?: any) => Promise<any>) | null = null;
+    try {
+      pdfParse = require('pdf-parse');
+    } catch (err: any) {
+      logger.warn(`[KnowledgeBase] pdf-parse unavailable (${err.message}) — AI coach will work without book knowledge`);
+      return;
+    }
+
     const sourcesDir = path.resolve(process.cwd(), 'sources');
 
     if (!fs.existsSync(sourcesDir)) {
@@ -60,7 +67,7 @@ class KnowledgeBaseService {
       }
       try {
         const buffer = fs.readFileSync(filePath);
-        const data = await pdfParse(buffer, { max: MAX_PAGES });
+        const data = await pdfParse!(buffer, { max: MAX_PAGES });
         const text = (data.text as string)
           .replace(/\n{3,}/g, '\n\n') // collapse excessive blank lines
           .trim()

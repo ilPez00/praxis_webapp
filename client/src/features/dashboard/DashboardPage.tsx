@@ -11,6 +11,7 @@ import { Achievement } from '../../models/Achievement';
 import { AchievementComment } from '../../models/AchievementComment';
 import GlassCard from '../../components/common/GlassCard';
 import PostFeed from '../posts/PostFeed';
+import TrackerWidget from '../trackers/TrackerWidget';
 import SiteTour from '../../components/common/SiteTour';
 import { DOMAIN_COLORS } from '../../types/goal';
 
@@ -845,6 +846,12 @@ const DashboardPage: React.FC = () => {
           </Grid>
 
           {/* Coaching CTA */}
+          {currentUserId && (
+            <Grid size={{ xs: 12, md: 5 }}>
+              <TrackerWidget userId={currentUserId} />
+            </Grid>
+          )}
+
           <Grid size={{ xs: 12 }}>
             <GlassCard
               sx={{

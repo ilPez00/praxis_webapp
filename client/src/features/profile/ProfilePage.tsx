@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
+import TrackerSection from '../trackers/TrackerSection';
 import GlassCard from '../../components/common/GlassCard';
 import {
   Container,
@@ -489,6 +490,13 @@ const ProfilePage: React.FC = () => {
           )}
         </Box>
       </GlassCard>
+
+      {/* Trackers — own profile only */}
+      {isOwnProfile && (
+        <GlassCard glowColor="rgba(245,158,11,0.08)" sx={{ p: 3 }}>
+          <TrackerSection userId={user!.id} />
+        </GlassCard>
+      )}
 
       {/* Goal Tree shortcut */}
       <GlassCard glowColor="rgba(139,92,246,0.12)" sx={{ p: 3 }}>

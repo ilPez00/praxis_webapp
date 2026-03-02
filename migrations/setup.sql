@@ -604,7 +604,48 @@ CREATE POLICY "Own post_comments delete"      ON public.post_comments FOR DELETE
 
 
 -- =============================================================================
--- 12. MATCH_USERS_BY_GOALS — pgvector cosine-similarity matchmaking function
+-- 12. TRACKERS + TRACKER_ENTRIES — custom activity tracking
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.trackers (
+  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  type       TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (user_id, type)
+);
+
+ALTER TABLE public.trackers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Own trackers select" ON public.trackers;
+DROP POLICY IF EXISTS "Own trackers insert" ON public.trackers;
+DROP POLICY IF EXISTS "Own trackers delete" ON public.trackers;
+
+CREATE POLICY "Own trackers select" ON public.trackers FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Own trackers insert" ON public.trackers FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Own trackers delete" ON public.trackers FOR DELETE USING (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS public.tracker_entries (
+  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  tracker_id UUID REFERENCES public.trackers(id) ON DELETE CASCADE NOT NULL,
+  user_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  data       JSONB NOT NULL DEFAULT '{}',
+  logged_at  TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.tracker_entries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Own tracker_entries select" ON public.tracker_entries;
+DROP POLICY IF EXISTS "Own tracker_entries insert" ON public.tracker_entries;
+DROP POLICY IF EXISTS "Own tracker_entries delete" ON public.tracker_entries;
+
+CREATE POLICY "Own tracker_entries select" ON public.tracker_entries FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Own tracker_entries insert" ON public.tracker_entries FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Own tracker_entries delete" ON public.tracker_entries FOR DELETE USING (auth.uid() = user_id);
+
+
+-- =============================================================================
+-- 13. MATCH_USERS_BY_GOALS — pgvector cosine-similarity matchmaking function
 -- (kept at end for dependency ordering)
 -- =============================================================================
 
