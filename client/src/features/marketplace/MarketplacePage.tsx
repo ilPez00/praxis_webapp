@@ -13,6 +13,8 @@ import {
   Alert,
   Divider,
   Stack,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import ShieldIcon from '@mui/icons-material/Shield';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
@@ -24,9 +26,11 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import GroupsIcon from '@mui/icons-material/Groups';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import DiamondIcon from '@mui/icons-material/Diamond';
+import CasinoIcon from '@mui/icons-material/Casino';
 import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
+import BettingPage from '../betting/BettingPage';
 
 interface CatalogueItem {
   item_type: string;
@@ -90,6 +94,7 @@ const SECTIONS = [
 const MarketplacePage: React.FC = () => {
   const { user, refetch } = useUser();
   const navigate = useNavigate();
+  const [tab, setTab] = useState(0);
   const [catalogue, setCatalogue] = useState<CatalogueItem[]>([]);
   const [coaches, setCoaches] = useState<CoachProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,7 +152,7 @@ const MarketplacePage: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', px: { xs: 2, md: 3 }, py: 4 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 800 }}>Marketplace</Typography>
           <Typography variant="body2" color="text.secondary">Spend your Praxis Points on boosts, badges, and more.</Typography>
@@ -168,14 +173,22 @@ const MarketplacePage: React.FC = () => {
       </Box>
 
       {toast && (
-        <Alert
-          severity={toast.type}
-          onClose={() => setToast(null)}
-          sx={{ mb: 3 }}
-        >
+        <Alert severity={toast.type} onClose={() => setToast(null)} sx={{ mb: 3 }}>
           {toast.message}
         </Alert>
       )}
+
+      {/* Tabs */}
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <Tab icon={<CasinoIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Betting" />
+        <Tab label="Shop" />
+      </Tabs>
+
+      {/* ── Tab 0: Betting ── */}
+      {tab === 0 && <BettingPage />}
+
+      {/* ── Tab 1: Shop ── */}
+      {tab === 1 && <>
 
       {/* Pro upgrade banner */}
       {user && !user.is_premium && (
@@ -359,6 +372,7 @@ const MarketplacePage: React.FC = () => {
           </Stack>
         </Box>
       )}
+      </>}
     </Box>
   );
 };
