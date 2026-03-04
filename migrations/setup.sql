@@ -707,9 +707,11 @@ CREATE TABLE IF NOT EXISTS public.checkins (
   id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id       UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   checked_in_at TIMESTAMPTZ DEFAULT now(),
-  streak_day    INT NOT NULL DEFAULT 1,
-  UNIQUE(user_id, (DATE(checked_in_at AT TIME ZONE 'UTC')))
+  streak_day    INT NOT NULL DEFAULT 1
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS checkins_user_day_idx
+  ON public.checkins (user_id, DATE(checked_in_at AT TIME ZONE 'UTC'));
 
 ALTER TABLE public.checkins ENABLE ROW LEVEL SECURITY;
 
