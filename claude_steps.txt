@@ -501,13 +501,30 @@ Engineering priority: checkins endpoint → streak notification → requireTier 
 - Dashboard: "Full Leaderboard" link, streak flame in mini-leaderboard entries
 - Navbar: Leaderboard link (desktop + mobile)
 
-### Next Priorities (Session 36)
+## Session 36 (2026-03-04) — Points Economy + Services Marketplace + @username (commit 55c3cad)
+
+### Implemented:
+- Points economy (from claude_steps.txt first task):
+  - checkinController: streak multiplier (+20/+40/+60 on top of +10 check-in = 30–70 PP/day)
+  - goalController: +50×weight PP per newly-completed goal node (normalized 0–1 weight)
+  - pointsController + pointsRoutes: GET /points/catalogue|balance, POST /points/spend
+    Catalogue: boost_visibility/150, goal_slot/200, coaching_session/500, super_match/300, custom_icon/100, skip_grading/80, bet_stake/50
+- Services marketplace: servicesController + servicesRoutes (CRUD), ServicesPage.tsx (Browse+My Listings tabs)
+- DB migrations: profiles.username VARCHAR(30) UNIQUE, services table (type/price_currency/tags/RLS)
+- @username at registration: OnboardingPage with format+uniqueness validation → stores to profiles.username
+- useUser.ts: maps username + reliability_score from profile row
+- Navbar: ⚡ PP chip (purple), @username in profile dropdown, Services link
+- Dashboard curated leaderboard: useMemo ranks by praxis_points × (1 + compatibilityScore)
+- ProfilePage social links: strip leading @ from Instagram/X/LinkedIn/Telegram buildUrl
+
+## Session 37 — Next Priorities
 
 🔴 Phase 1 — Beta Readiness
-- [ ] Achievement detail modal (click achievement → rich modal with full description + comments)
-- [ ] "Waiting for partner" state on GoalTree nodes with pending completion_request
-- [ ] Mutual grading refinements (show "Waiting for X to grade you back" in ChatRoom)
+- [ ] Run DB migrations in Supabase: username col + services table + checkins + reliability_score + posts.title
+- [ ] Verify SUPABASE_SERVICE_ROLE_KEY on Railway is the correct service_role key
 - [ ] Seed demo users: POST /admin/seed-demo-users to populate Match feed
+- [ ] Achievement detail modal (click achievement → rich modal)
+- [ ] WhatsApp-style groups: member list panel, online/last-seen, join/leave, group description
 
 🟠 Phase 2 — Viral Hooks
 - [ ] "Challenge a friend" one-tap share: share bet/challenge via link
@@ -515,6 +532,4 @@ Engineering priority: checkins endpoint → streak notification → requireTier 
 - [ ] Social streaks: mutual streak counter between accountability partners
 
 🟡 Phase 3 — Production / Stability
-- [ ] Run DB migrations in Supabase: checkins table + reliability_score + posts.title
-- [ ] Verify SUPABASE_SERVICE_ROLE_KEY on Railway is the correct service_role key
 - [ ] Stripe prod: STRIPE_PRICE_ID + register webhook
