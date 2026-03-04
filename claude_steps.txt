@@ -548,15 +548,39 @@ Engineering priority: checkins endpoint → streak notification → requireTier 
 - Navbar + routes.tsx: /words "Goal Language" link (TextFieldsIcon)
 - Commit: 019f2ab
 
-### Webapp Optimization (in progress — see below)
+### Webapp Optimization (commit 2512489):
+- routes.tsx: React.lazy() for all 25 private routes (~70% initial bundle reduction)
+- AppRouter.tsx: Suspense + PageLoader fallback
+- ChatPage: N+1 profile loop → single .in() batch query
+- DashboardPage: 3 parallel .single() → 1 .in() batch query
+- migrations/setup.sql: 7 new indexes (messages, posts, achievements, chat_room_members)
 
-## Session 39 — Next Priorities
+## Session 39 (2026-03-04) — Nav Cleanup + Dashboard Restructure
+
+### Implemented:
+- Navbar: removed Goal Language + Coaching links (both desktop + mobile)
+- AdminPage: "Goal Language" button in header → /words
+- ServicesPage: added Coaching tab (tab 1, embeds CoachingPage); My Listings shifts to tab 2
+- MarketplacePage: Pro upgrade banner (gradient card) for non-premium users → /upgrade
+- MarketplacePage: moved Betting in as tab 0; existing shop content is tab 1 "Shop"
+- Navbar: removed Goal Staking / CasinoIcon
+- Dashboard removed: AI Performance Coach, Core Objectives, Global Achievements,
+  Coaching Marketplace CTA, Video dialog, Achievement comments modal
+- Dashboard new order: Trackers (full) → Top Alignments + Best Examples → Challenges → Feed
+- "Top Achievers" renamed to "Best Examples"
+- Removed ~550 lines of dead code + all unused state/handlers/imports from DashboardPage
+
+## Session 40 — Next Priorities
+
+🔴 Immediate (next session):
+- [ ] Cancelled bets refund only 90% of stake (10% house fee) — backend betsController cancel handler
+- [ ] Events page in Chat: calendar-style event creation + RSVP (new route /events, linked from /communication)
 
 🔴 Phase 1 — Beta Readiness
 - [ ] Run DB migrations in Supabase: bets table + username col + services + checkins + reliability_score
+  + 7 new performance indexes (migrations/setup.sql section 20)
 - [ ] Verify SUPABASE_SERVICE_ROLE_KEY on Railway is the correct service_role key
 - [ ] Seed demo users: POST /admin/seed-demo-users to populate Match feed
-- [ ] Achievement detail modal (click achievement → rich modal)
 
 🟠 Phase 2 — Viral Hooks
 - [ ] "Challenge a friend" one-tap share: share bet/challenge via link
