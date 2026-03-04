@@ -7,8 +7,6 @@ import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { GoalTree } from '../../models/GoalTree';
 import { Domain } from '../../models/Domain';
-import { Achievement } from '../../models/Achievement';
-import { AchievementComment } from '../../models/AchievementComment';
 import GlassCard from '../../components/common/GlassCard';
 import PostFeed from '../posts/PostFeed';
 import TrackerWidget from '../trackers/TrackerWidget';
@@ -28,26 +26,8 @@ import {
   Avatar,
   Chip,
   IconButton,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Divider,
-  LinearProgress,
   Grid,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import SendIcon from '@mui/icons-material/Send';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
-import CloseIcon from '@mui/icons-material/Close';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import StarIcon from '@mui/icons-material/Star';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ExploreIcon from '@mui/icons-material/Explore';
@@ -59,8 +39,6 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GroupsIcon from '@mui/icons-material/Groups';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
-import SchoolIcon from '@mui/icons-material/School';
 
 interface MatchResult {
   userId: string;
@@ -82,16 +60,8 @@ const DashboardPage: React.FC = () => {
   const [goalTree, setGoalTree] = useState<GoalTree | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [matchProfiles, setMatchProfiles] = useState<Record<string, MatchProfile>>({});
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loadingContent, setLoadingContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Comments dialog state
-  const [openCommentsDialog, setOpenCommentsDialog] = useState(false);
-  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
-  const [comments, setComments] = useState<AchievementComment[]>([]);
-  const [newCommentText, setNewCommentText] = useState('');
-  const [commentsLoading, setCommentsLoading] = useState(false);
 
   // Community challenges state
   const [challenges, setChallenges] = useState<any[]>([]);
@@ -100,39 +70,8 @@ const DashboardPage: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [allMatchScores, setAllMatchScores] = useState<Record<string, number>>({});
 
-  // Video dialog state
-  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-
-  // AI Coaching state
-  const [aiCoachingResponse, setAiCoachingResponse] = useState<string | null>(null);
-  const [aiCoachingLoading, setAiCoachingLoading] = useState(false);
-  const [aiCoachingPrompt, setAiCoachingPrompt] = useState('');
-
   // Site tour state
   const [tourOpen, setTourOpen] = useState(false);
-
-  const requestAiCoaching = async () => {
-    if (!currentUserId || !aiCoachingPrompt.trim()) {
-      alert('Please enter a prompt for AI Coaching.');
-      return;
-    }
-    setAiCoachingLoading(true);
-    setAiCoachingResponse(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await axios.post(`${API_URL}/ai-coaching/request`, {
-        userPrompt: aiCoachingPrompt,
-      }, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      setAiCoachingResponse(response.data.response);
-    } catch (error: any) {
-      setAiCoachingResponse(`Error: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setAiCoachingLoading(false);
-    }
-  };
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -207,16 +146,11 @@ const DashboardPage: React.FC = () => {
     const fetchData = async () => {
       setLoadingContent(true);
       try {
-        const [goalsRes, matchesRes, achievementsRes] = await Promise.allSettled([
+        const [goalsRes, matchesRes] = await Promise.allSettled([
           axios.get(`${API_URL}/goals/${currentUserId}`),
           axios.get(`${API_URL}/matches/${currentUserId}`),
-          axios.get(`${API_URL}/achievements`),
         ]);
         if (goalsRes.status === 'fulfilled') setGoalTree(goalsRes.value.data);
-        if (achievementsRes.status === 'fulfilled') {
-          const adata = achievementsRes.value.data;
-          setAchievements(Array.isArray(adata) ? adata : []);
-        }
         if (matchesRes.status === 'fulfilled' && Array.isArray(matchesRes.value?.data)) {
           const allMatchData: MatchResult[] = matchesRes.value.data;
           const top3: MatchResult[] = allMatchData.slice(0, 3);
@@ -247,66 +181,6 @@ const DashboardPage: React.FC = () => {
     fetchData();
   }, [currentUserId]);
 
-  const refreshAchievements = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/achievements`);
-      setAchievements(response.data);
-    } catch (error) {
-      console.error('Error refreshing achievements:', error);
-    }
-  };
-
-  const handleVote = async (achievementId: string, type: 'upvote' | 'downvote') => {
-    if (!currentUserId) return;
-    try {
-      await axios.post(`${API_URL}/achievements/${achievementId}/votes`, { userId: currentUserId, type });
-      refreshAchievements();
-    } catch (error) {
-      console.error('Error submitting vote:', error);
-    }
-  };
-
-  const fetchComments = async (achievementId: string) => {
-    setCommentsLoading(true);
-    try {
-      const response = await axios.get(`${API_URL}/achievements/${achievementId}/comments`);
-      setComments(response.data);
-    } catch (error) {
-      setComments([]);
-    } finally {
-      setCommentsLoading(false);
-    }
-  };
-
-  const handleOpenComments = (achievement: Achievement) => {
-    setSelectedAchievement(achievement);
-    fetchComments(achievement.id);
-    setOpenCommentsDialog(true);
-  };
-
-  const handleCloseComments = () => {
-    setOpenCommentsDialog(false);
-    setSelectedAchievement(null);
-    setComments([]);
-    setNewCommentText('');
-  };
-
-  const handleAddComment = async () => {
-    if (!currentUserId || !selectedAchievement || !newCommentText.trim()) return;
-    try {
-      await axios.post(`${API_URL}/achievements/${selectedAchievement.id}/comments`, {
-        userId: currentUserId,
-        userName: user?.name,
-        userAvatarUrl: user?.avatarUrl,
-        content: newCommentText,
-      });
-      setNewCommentText('');
-      fetchComments(selectedAchievement.id);
-      refreshAchievements();
-    } catch (error) {
-      console.error('Error adding comment:', error);
-    }
-  };
 
   if (userLoading || loadingContent) {
     return (
@@ -462,190 +336,17 @@ const DashboardPage: React.FC = () => {
           </GlassCard>
         </Box>
 
-        {/* Bento Grid Layout */}
+        {/* Bento Grid */}
         <Grid container spacing={3}>
-          {/* AI Coaching Section */}
-          <Grid size={{ xs: 12, md: 7 }}>
-            <GlassCard 
-              glow="secondary"
-              sx={{ 
-                p: 4, 
-                height: '100%', 
-                minHeight: '400px',
-                position: 'relative',
-                boxShadow: '0 0 40px rgba(139,92,246,0.15)',
-              }}
-            >
-              <Chip 
-                label="PREMIUM" 
-                size="small" 
-                sx={{ 
-                  position: 'absolute', 
-                  top: 24, 
-                  right: 24, 
-                  background: 'linear-gradient(135deg, #8B5CF6, #F59E0B)', 
-                  color: '#0A0B14', 
-                  fontWeight: 800, 
-                  fontSize: '0.65rem' 
-                }} 
-              />
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                <Box sx={{ 
-                  p: 1.5, 
-                  borderRadius: '12px', 
-                  bgcolor: 'rgba(139,92,246,0.15)', 
-                  color: 'secondary.main' 
-                }}>
-                  <AutoAwesomeIcon />
-                </Box>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 800 }}>AI Performance Coach</Typography>
-                  <Typography variant="body2" color="text.secondary">Powered by Gemini Pro</Typography>
-                </Box>
-              </Box>
 
-              {user?.is_premium ? (
-                <Stack spacing={3}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={4}
-                    variant="outlined"
-                    placeholder="Ask about your strategy, blockers, or next steps..."
-                    value={aiCoachingPrompt}
-                    onChange={(e) => setAiCoachingPrompt(e.target.value)}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: 'rgba(255,255,255,0.03)',
-                        borderRadius: '16px',
-                      }
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    size="large"
-                    onClick={requestAiCoaching}
-                    disabled={aiCoachingLoading || !aiCoachingPrompt.trim()}
-                    sx={{ 
-                      py: 2, 
-                      borderRadius: '16px', 
-                      background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
-                      boxShadow: '0 8px 20px rgba(139,92,246,0.3)',
-                      fontWeight: 700
-                    }}
-                    startIcon={aiCoachingLoading ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
-                  >
-                    {aiCoachingLoading ? 'Analyzing Performance...' : 'Generate Strategic Insight'}
-                  </Button>
-                  {aiCoachingResponse && (
-                    <Box sx={{ 
-                      p: 3, 
-                      borderRadius: '16px', 
-                      bgcolor: 'rgba(139,92,246,0.05)', 
-                      border: '1px solid rgba(139,92,246,0.15)',
-                    }}>
-                      <Typography variant="body2" sx={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-                        {aiCoachingResponse}
-                      </Typography>
-                    </Box>
-                  )}
-                </Stack>
-              ) : (
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  height: '250px',
-                  textAlign: 'center'
-                }}>
-                  <StarIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2, opacity: 0.5 }} />
-                  <Typography variant="h6" sx={{ mb: 1 }}>Premium AI Insights</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 300 }}>
-                    Unlock strategic coaching tailored to your specific goals and progress data.
-                  </Typography>
-                  <Button 
-                    variant="contained" 
-                    component={RouterLink} 
-                    to="/upgrade" 
-                    sx={{ px: 4, borderRadius: '12px' }}
-                  >
-                    Upgrade to Premium
-                  </Button>
-                </Box>
-              )}
-            </GlassCard>
-          </Grid>
+          {/* 1 — Trackers (full width) */}
+          {currentUserId && (
+            <Grid size={{ xs: 12 }}>
+              <TrackerWidget userId={currentUserId} />
+            </Grid>
+          )}
 
-          {/* Goals Section */}
-          <Grid size={{ xs: 12, md: 5 }}>
-            <GlassCard sx={{ p: 4, height: '100%' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Typography variant="h5" sx={{ fontWeight: 800 }}>Core Objectives</Typography>
-                <IconButton component={RouterLink} to="/goal-selection" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Box>
-              
-              {hasGoals ? (
-                <Stack spacing={2.5}>
-                  {rootGoals.map((goal) => (
-                    <Box 
-                      key={goal.id} 
-                      sx={{ 
-                        p: 2.5, 
-                        borderRadius: '16px', 
-                        bgcolor: 'background.paper',
-                        borderLeft: `6px solid ${DOMAIN_COLORS[goal.domain]}`,
-                        transition: 'transform 0.2s',
-                        '&:hover': { transform: 'translateX(4px)' }
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                        <Typography variant="body1" sx={{ fontWeight: 700 }}>{goal.name}</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: DOMAIN_COLORS[goal.domain] }}>
-                          {Math.round(goal.progress * 100)}%
-                        </Typography>
-                      </Box>
-                      <LinearProgress 
-                        variant="determinate" 
-                        value={goal.progress * 100} 
-                        sx={{ 
-                          height: 6, 
-                          borderRadius: 3, 
-                          bgcolor: 'rgba(255,255,255,0.05)',
-                          '& .MuiLinearProgress-bar': {
-                            bgcolor: DOMAIN_COLORS[goal.domain],
-                          }
-                        }}
-                      />
-                      <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary', fontWeight: 600 }}>
-                        {goal.domain?.toUpperCase() || ''}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Stack>
-              ) : (
-                <Box sx={{ py: 4, textAlign: 'center' }}>
-                  <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>No goals yet</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Set up your goal tree to start getting matched with aligned partners.
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    component={RouterLink}
-                    to="/goal-selection"
-                    sx={{ borderRadius: '10px', fontWeight: 700 }}
-                  >
-                    Set Up My Goals
-                  </Button>
-                </Box>
-              )}
-            </GlassCard>
-          </Grid>
-
-          {/* Matches Section */}
+          {/* 2 — Top Alignments */}
           <Grid size={{ xs: 12, md: 5 }}>
             <GlassCard sx={{ p: 4 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -714,97 +415,14 @@ const DashboardPage: React.FC = () => {
             </GlassCard>
           </Grid>
 
-          {/* Community Achievements Section */}
+          {/* 3 — Best Examples */}
           <Grid size={{ xs: 12, md: 7 }}>
-            <GlassCard sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 800, mb: 4 }}>Global Achievements</Typography>
-              <Stack spacing={3}>
-                {achievements.slice(0, 3).map((achievement) => (
-                  <GlassCard
-                    key={achievement.id}
-                    onClick={() => handleOpenComments(achievement)}
-                    sx={{
-                      p: 3,
-                      bgcolor: 'rgba(255,255,255,0.01)',
-                      border: '1px solid rgba(255,255,255,0.04)',
-                      borderRadius: '20px',
-                      cursor: 'pointer',
-                      '&:hover': { border: '1px solid rgba(245,158,11,0.3)', bgcolor: 'rgba(245,158,11,0.03)' },
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                      <Avatar
-                        src={achievement.userAvatarUrl || undefined}
-                        sx={{ width: 44, height: 44, border: '2px solid rgba(255,255,255,0.1)' }}
-                      >
-                        {achievement.userName.charAt(0)}
-                      </Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                          <Typography variant="body1" sx={{ fontWeight: 700 }}>{achievement.userName}</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {achievement.video_url && (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => { e.stopPropagation(); setVideoUrl(achievement.video_url!); setVideoDialogOpen(true); }}
-                                sx={{ p: 0.5, color: '#10B981' }}
-                              >
-                                <PlayCircleOutlineIcon fontSize="small" />
-                              </IconButton>
-                            )}
-                            <Chip
-                              label={achievement.domain}
-                              size="small"
-                              sx={{
-                                height: 20,
-                                fontSize: '0.65rem',
-                                fontWeight: 800,
-                                bgcolor: `${DOMAIN_COLORS[achievement.domain]}15`,
-                                color: DOMAIN_COLORS[achievement.domain],
-                              }}
-                            />
-                          </Box>
-                        </Box>
-                        <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 800, mb: 0.5 }}>
-                          {achievement.title}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          {achievement.description}
-                        </Typography>
-
-                        <Stack direction="row" spacing={3}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleVote(achievement.id, 'upvote'); }} sx={{ p: 0.5 }}>
-                              <ThumbUpIcon fontSize="small" sx={{ opacity: 0.7 }} />
-                            </IconButton>
-                            <Typography variant="caption" sx={{ fontWeight: 700 }}>{achievement.totalUpvotes}</Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <IconButton size="small" onClick={() => handleOpenComments(achievement)} sx={{ p: 0.5 }}>
-                              <ChatBubbleOutlineIcon fontSize="small" sx={{ opacity: 0.7 }} />
-                            </IconButton>
-                            <Typography variant="caption" sx={{ fontWeight: 700, opacity: 0.5 }}>···</Typography>
-                          </Box>
-                          <Typography variant="caption" sx={{ ml: 'auto', alignSelf: 'center', opacity: 0.5 }}>
-                            {new Date(achievement.createdAt).toLocaleDateString()}
-                          </Typography>
-                        </Stack>
-                      </Box>
-                    </Box>
-                  </GlassCard>
-                ))}
-              </Stack>
-            </GlassCard>
-          </Grid>
-
-          {/* Leaderboard Section */}
-          <Grid size={{ xs: 12, md: 5 }}>
             <GlassCard sx={{ p: 4, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <LeaderboardIcon sx={{ color: 'primary.main' }} />
                   <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 800 }}>Top Achievers</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 800 }}>Best Examples</Typography>
                     {Object.keys(allMatchScores).length > 0 && (
                       <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 600 }}>
                         ⚡ Ranked by compatibility × points
@@ -891,79 +509,14 @@ const DashboardPage: React.FC = () => {
                   );
                 }) : (
                   <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                    Loading top achievers...
+                    Loading best examples...
                   </Typography>
                 )}
               </Stack>
             </GlassCard>
           </Grid>
 
-          {/* Coaching CTA */}
-          {currentUserId && (
-            <Grid size={{ xs: 12, md: 5 }}>
-              <TrackerWidget userId={currentUserId} />
-            </Grid>
-          )}
-
-          <Grid size={{ xs: 12 }}>
-            <GlassCard
-              sx={{
-                p: 3,
-                background: 'linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(245,158,11,0.08) 100%)',
-                border: '1px solid rgba(139,92,246,0.15)',
-                borderRadius: '20px',
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ p: 1.5, borderRadius: '12px', bgcolor: 'rgba(139,92,246,0.15)', color: 'secondary.main' }}>
-                    <SchoolIcon />
-                  </Box>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 800 }}>Coaching Marketplace</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Find a coach aligned with your goals, or share your expertise with others.
-                    </Typography>
-                  </Box>
-                </Box>
-                <Button
-                  variant="contained"
-                  component={RouterLink}
-                  to="/coaching"
-                  sx={{ borderRadius: '12px', fontWeight: 700, background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' }}
-                >
-                  Explore Coaches
-                </Button>
-              </Box>
-            </GlassCard>
-          </Grid>
         </Grid>
-
-        {/* Video Confirmation Dialog */}
-        <Dialog
-          open={videoDialogOpen}
-          onClose={() => { setVideoDialogOpen(false); setVideoUrl(null); }}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle sx={{ pb: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>Achievement Video</Typography>
-            <IconButton onClick={() => { setVideoDialogOpen(false); setVideoUrl(null); }} size="small">
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent sx={{ pt: 2 }}>
-            {videoUrl && (
-              <Box
-                component="video"
-                src={videoUrl}
-                controls
-                autoPlay
-                sx={{ width: '100%', borderRadius: '12px', maxHeight: '60vh' }}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
 
         {/* Community Challenges Section */}
         <Box sx={{ mt: 6 }}>
@@ -1032,97 +585,6 @@ const DashboardPage: React.FC = () => {
           <PostFeed context="general" />
         </Box>
       </Container>
-
-      {/* Achievement Detail Modal */}
-      <Dialog open={openCommentsDialog} onClose={handleCloseComments} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ pb: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-            <Avatar src={selectedAchievement?.userAvatarUrl || undefined} sx={{ width: 48, height: 48 }}>
-              {selectedAchievement?.userName?.charAt(0)}
-            </Avatar>
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                {selectedAchievement?.userName}
-              </Typography>
-              <Chip
-                label={selectedAchievement?.domain}
-                size="small"
-                sx={{
-                  height: 18, fontSize: '0.6rem', fontWeight: 800,
-                  bgcolor: `${DOMAIN_COLORS[selectedAchievement?.domain as Domain]}15`,
-                  color: DOMAIN_COLORS[selectedAchievement?.domain as Domain],
-                }}
-              />
-            </Box>
-            <IconButton onClick={handleCloseComments} size="small" sx={{ color: 'text.secondary' }}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-          <Typography variant="h6" sx={{ fontWeight: 800, mt: 1.5 }}>
-            {selectedAchievement?.title}
-          </Typography>
-          {selectedAchievement?.description && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {selectedAchievement.description}
-            </Typography>
-          )}
-          <Stack direction="row" spacing={2} sx={{ mt: 1.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <IconButton size="small" onClick={() => selectedAchievement && handleVote(selectedAchievement.id, 'upvote')} sx={{ p: 0.5 }}>
-                <ThumbUpIcon fontSize="small" sx={{ color: 'primary.main' }} />
-              </IconButton>
-              <Typography variant="caption" sx={{ fontWeight: 700 }}>{selectedAchievement?.totalUpvotes}</Typography>
-            </Box>
-            <Typography variant="caption" sx={{ alignSelf: 'center', opacity: 0.5 }}>
-              {selectedAchievement && new Date(selectedAchievement.createdAt).toLocaleDateString()}
-            </Typography>
-          </Stack>
-        </DialogTitle>
-        <DialogContent dividers>
-          {commentsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={20} />
-            </Box>
-          ) : comments.length > 0 ? (
-            <List>
-              {comments.map((comment, index) => (
-                <React.Fragment key={comment.id}>
-                  <ListItem alignItems="flex-start">
-                    <ListItemAvatar>
-                      <Avatar src={comment.userAvatarUrl || undefined}>{comment.userName.charAt(0)}</Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={<Typography variant="body2" fontWeight={700}>{comment.userName}</Typography>}
-                      secondary={
-                        <>
-                          <Typography variant="body2" color="text.primary">{comment.content}</Typography>
-                          <Typography variant="caption" color="text.disabled">
-                            {new Date(comment.createdAt).toLocaleString()}
-                          </Typography>
-                        </>
-                      }
-                    />
-                  </ListItem>
-                  {index < comments.length - 1 && <Divider variant="inset" component="li" />}
-                </React.Fragment>
-              ))}
-            </List>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-              Be the first to share an insight.
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <TextField
-            fullWidth variant="outlined" size="small" placeholder="Add a comment..."
-            value={newCommentText}
-            onChange={(e) => setNewCommentText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-          />
-          <Button variant="contained" onClick={handleAddComment} endIcon={<SendIcon />}>Post</Button>
-        </DialogActions>
-      </Dialog>
 
       <SiteTour open={tourOpen} onClose={handleTourClose} />
     </Box>
