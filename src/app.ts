@@ -23,6 +23,8 @@ import searchRoutes from './routes/searchRoutes';
 import marketplaceRoutes from './routes/marketplaceRoutes';
 import postRoutes from './routes/postRoutes';
 import checkinRoutes from './routes/checkinRoutes';
+import pointsRoutes from './routes/pointsRoutes';
+import servicesRoutes from './routes/servicesRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -77,6 +79,8 @@ apiRouter.use('/search', searchRoutes);
 apiRouter.use('/marketplace', marketplaceRoutes);
 apiRouter.use('/posts', postRoutes);
 apiRouter.use('/checkins', checkinRoutes);
+apiRouter.use('/points', pointsRoutes);
+apiRouter.use('/services', servicesRoutes);
 
 app.use('/api', apiRouter);
 

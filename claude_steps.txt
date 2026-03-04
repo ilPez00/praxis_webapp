@@ -1,7 +1,89 @@
 Hi Claude. You are building Praxis, as outlined in the whitepaper PDF. This file serves as your memory and development log across sessions. Modify it to set goals, track progress, record architectural decisions, and note anything useful.
 You can delegate tasks to gemini. Remember to git commit and edit this file at the end of each session.
 Never modify this paragraph.
+comment out what you think has been completed.
 ---
+THIS IS YOUR FIRST TASK: 
+Core Concept: Praxis Points (PP)
+Praxis Points are the in-app currency that rewards real progress and creates healthy tension between earning (retention) and spending (monetization).
+They are not pay-to-win for core features — you earn them primarily through effort — but they create strong incentives to stay active and upgrade.
+1. How Users Earn Points (Retention Engine)
+Points are awarded automatically for the behaviors you already want users to repeat:
+
+Daily check-in (any goal update): +10 PP
+Complete a goal node (progress = 100%): +50 PP × node weight
+Maintain a streak: +20 PP per day (×2 after 7 days, ×3 after 30 days)
+Win a bet: +100 PP + stake returned
+Mutual grading (give or receive): +15 PP each
+Helpful chat activity (partner verifies): +30 PP
+Stream a session that gets watched: +5 PP per viewer-minute
+Leaderboard bonuses (daily reset):
+#1 overall: +500 PP
+Top 10: +200 PP
+Top 100: +50 PP
+
+
+This system rewards consistency and social proof — the exact things that make Praxis sticky.
+2. How Users Spend Points (Monetization Sink)
+Points must have meaningful sinks, otherwise inflation kills the economy.
+Free-tier sinks (keeps free users engaged):
+
+Unlock one extra root goal slot: 200 PP
+24-hour “Boosted Visibility” (higher chance of being matched): 150 PP
+Custom goal icons / themes: 100 PP
+Skip waiting for partner grading: 80 PP
+Extra virtual bet stake: 50 PP
+
+Premium / Paid sinks (drives real revenue):
+
+Convert PP to real-money betting power (1:1, platform takes 5% fee)
+Buy “Super Match” (priority in matching queue + better AI quality): 300 PP or $2.99
+Unlock one AI Coaching session with Master Roshi: 500 PP or $4.99
+24-hour Featured spot on Leaderboard: 1,000 PP or $9.99
+Custom profile themes, avatars, or animated backgrounds: 200 PP or $1.99
+
+3. Profitable Mechanics (How Praxis Makes Money)
+The economy is designed to create multiple revenue streams:
+
+Microtransactions
+Sell point packs in-app:
+500 PP → $2.99
+2,000 PP → $9.99 (best value)
+5,000 PP → $19.99
+
+Betting House Edge
+Every real-money bet has a 5% platform fee. Winners get 95% of the pot. This is pure profit and scales with user activity.
+Premium Conversion Pressure
+Many high-value sinks (Super Match, AI Coaching, Featured Leaderboard) are cheaper or faster with a Pro subscription. This nudges users from free → paid.
+Optional Cash-Out (Premium only)
+Users can convert excess PP back to real money (platform takes 10–15% cut). This creates a healthy sink and makes points feel valuable.
+
+4. Balancing the Economy (Anti-Inflation Rules)
+
+Daily cap on some earnings (e.g., max 200 PP from check-ins/streaks per day)
+Points slowly decay if inactive (–5% per week of no activity)
+Weekly “Point Tax” on very high balances (encourages spending)
+Leaderboard resets every Sunday (fresh competition)
+
+5. Example User Journey
+
+User checks in daily → builds streak → earns ~150 PP/week
+Uses points to unlock extra goals and boosted visibility
+Places a small bet on their squat PR → wins → gets points + bragging rights
+Wants faster AI coaching → buys 500 PP pack or upgrades to Pro
+Reaches top 50 on leaderboard → gets featured slot and new followers
+
+Implementation Notes (Easy to Add)
+
+Add points column to profiles table (integer, default 0)
+Create simple backend endpoints: /points/earn (triggered by events) and /points/spend
+Display current points prominently in Navbar + Dashboard
+Add a “Shop” tab in profile for spending
+
+This point economy is self-reinforcing: users earn by progressing, spend to accelerate progress or flex status, and the platform profits from microtransactions + betting fees without making the experience pay-to-win.
+Would you like me to:
+
+
 
 ## Project Health (as of Session 35 — 2026-03-04)
 

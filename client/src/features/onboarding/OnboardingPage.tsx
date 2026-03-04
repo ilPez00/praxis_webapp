@@ -37,12 +37,31 @@ const OnboardingPage: React.FC = () => {
   
   // Form State
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [usernameError, setUsernameError] = useState('');
   const [age, setAge] = useState('');
   const [bio, setBio] = useState('');
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState<string | null>(null);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
 
+
+  const validateUsername = async (value: string): Promise<string> => {
+    const cleaned = value.replace(/^@/, '').toLowerCase();
+    if (!cleaned) return '';
+    if (!/^[a-z0-9._]{3,30}$/.test(cleaned)) {
+      return 'Username must be 3–30 characters: letters, numbers, dots, underscores only.';
+    }
+    // Check uniqueness
+    const { data } = await supabase.from('profiles').select('id').eq('username', cleaned).maybeSingle();
+    if (data) return 'That username is already taken.';
+    return '';
+  };
+
+  const handleUsernameBlur = async () => {
+    const err = await validateUsername(username);
+    setUsernameError(err);
+  };
 
   const handleNext = () => {
     if (activeStep === steps.length - 1) {
@@ -83,6 +102,7 @@ const OnboardingPage: React.FC = () => {
 
         // Note: onboarding_completed is set to true in GoalSelectionPage,
         // only after the user has actually saved their goal tree.
+        const cleanUsername = username.replace(/^@/, '').toLowerCase() || null;
         const { error: updateError } = await supabase
             .from('profiles')
             .update({
@@ -90,6 +110,7 @@ const OnboardingPage: React.FC = () => {
             age: parseInt(age),
             bio,
             avatar_url: avatarUrl,
+            ...(cleanUsername ? { username: cleanUsername } : {}),
             })
             .eq('id', user.id);
 
@@ -150,6 +171,24 @@ const OnboardingPage: React.FC = () => {
               margin="normal"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              sx={{ borderRadius: '12px' }}
+            />
+            <TextField
+              fullWidth
+              label="@username"
+              variant="outlined"
+              margin="normal"
+              placeholder="e.g. giovanni.pezzin"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setUsernameError(''); }}
+              onBlur={handleUsernameBlur}
+              error={!!usernameError}
+              helperText={usernameError || 'Choose a unique handle — can only be set once.'}
+              InputProps={{
+                startAdornment: (
+                  <Box component="span" sx={{ color: 'text.disabled', mr: 0.5, fontWeight: 700 }}>@</Box>
+                ),
+              }}
               sx={{ borderRadius: '12px' }}
             />
             <TextField

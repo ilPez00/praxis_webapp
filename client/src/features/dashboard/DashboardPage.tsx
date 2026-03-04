@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { API_URL } from '../../lib/api';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -97,6 +97,7 @@ const DashboardPage: React.FC = () => {
 
   // Leaderboard state
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [allMatchScores, setAllMatchScores] = useState<Record<string, number>>({});
 
   // Video dialog state
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
@@ -179,6 +180,17 @@ const DashboardPage: React.FC = () => {
     if (user?.id) localStorage.setItem(`praxis_tour_seen_${user.id}`, '1');
   };
 
+  // Curated leaderboard: rank by praxis_points weighted by compatibility score
+  // ranked_score = points * (1 + compatibilityScore), fallback to raw points for non-matches
+  const curatedLeaderboard = useMemo(() => {
+    if (leaderboard.length === 0) return leaderboard;
+    return [...leaderboard].sort((a, b) => {
+      const aRanked = (a.praxis_points ?? 0) * (1 + (allMatchScores[a.id] ?? 0));
+      const bRanked = (b.praxis_points ?? 0) * (1 + (allMatchScores[b.id] ?? 0));
+      return bRanked - aRanked;
+    });
+  }, [leaderboard, allMatchScores]);
+
   const handleJoinChallenge = async (challengeId: string) => {
     if (!currentUserId) return;
     try {
@@ -205,8 +217,13 @@ const DashboardPage: React.FC = () => {
           setAchievements(Array.isArray(adata) ? adata : []);
         }
         if (matchesRes.status === 'fulfilled' && Array.isArray(matchesRes.value?.data)) {
-          const top3: MatchResult[] = matchesRes.value.data.slice(0, 3);
+          const allMatchData: MatchResult[] = matchesRes.value.data;
+          const top3: MatchResult[] = allMatchData.slice(0, 3);
           setMatches(top3);
+          // Store all match scores for curated leaderboard ranking
+          const scoreMap: Record<string, number> = {};
+          allMatchData.forEach(m => { scoreMap[m.userId] = m.score; });
+          setAllMatchScores(scoreMap);
           // Fetch profiles for each match so we can show real names + avatars
           const profileResults = await Promise.allSettled(
             top3.map((m) =>
@@ -780,7 +797,14 @@ const DashboardPage: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <LeaderboardIcon sx={{ color: 'primary.main' }} />
-                  <Typography variant="h5" sx={{ fontWeight: 800 }}>Top Achievers</Typography>
+                  <Box>
+                    <Typography variant="h5" sx={{ fontWeight: 800 }}>Top Achievers</Typography>
+                    {Object.keys(allMatchScores).length > 0 && (
+                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 600 }}>
+                        ⚡ Ranked by compatibility × points
+                      </Typography>
+                    )}
+                  </Box>
                 </Box>
                 <Button
                   component={RouterLink}
@@ -793,7 +817,7 @@ const DashboardPage: React.FC = () => {
                 </Button>
               </Box>
               <Stack spacing={1.5}>
-                {leaderboard.length > 0 ? leaderboard.map((entry: any, idx: number) => {
+                {curatedLeaderboard.length > 0 ? curatedLeaderboard.map((entry: any, idx: number) => {
                   const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
                   const isMe = entry.id === currentUserId;
                   return (

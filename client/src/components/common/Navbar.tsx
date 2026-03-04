@@ -41,6 +41,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -213,6 +215,24 @@ const Navbar: React.FC = () => {
                     </Box>
                   )}
 
+                  {/* Points chip */}
+                  {(user.praxis_points ?? 0) > 0 && (
+                    <Chip
+                      icon={<ElectricBoltIcon sx={{ color: '#A78BFA !important', fontSize: '14px !important' }} />}
+                      label={`${(user.praxis_points ?? 0).toLocaleString()} PP`}
+                      size="small"
+                      sx={{
+                        bgcolor: 'rgba(167,139,250,0.1)',
+                        border: '1px solid rgba(167,139,250,0.25)',
+                        color: '#A78BFA',
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => {}}
+                    />
+                  )}
+
                   {/* Streak chip */}
                   {(user.current_streak ?? 0) > 0 && (
                     <Chip
@@ -282,7 +302,17 @@ const Navbar: React.FC = () => {
                     {/* User info header */}
                     <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                       <Typography variant="body2" sx={{ fontWeight: 700 }}>{user.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">{user.email}</Typography>
+                      {user.username && (
+                        <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 600 }}>
+                          @{user.username}
+                        </Typography>
+                      )}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{user.email}</Typography>
+                      {(user.praxis_points ?? 0) > 0 && (
+                        <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700 }}>
+                          ⚡ {(user.praxis_points ?? 0).toLocaleString()} PP
+                        </Typography>
+                      )}
                     </Box>
 
                     <MenuItem onClick={() => handleNav(`/profile/${user.id}`)} sx={{ gap: 1.5, py: 1.25 }}>
@@ -296,6 +326,10 @@ const Navbar: React.FC = () => {
                     <MenuItem onClick={() => handleNav('/coaching')} sx={{ gap: 1.5, py: 1.25 }}>
                       <SchoolIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Coaching</Typography>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleNav('/services')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <HandshakeIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Services</Typography>
                     </MenuItem>
                     <MenuItem onClick={() => handleNav('/marketplace')} sx={{ gap: 1.5, py: 1.25 }}>
                       <StorefrontIcon fontSize="small" sx={{ color: 'text.secondary' }} />
@@ -415,6 +449,13 @@ const Navbar: React.FC = () => {
                     </Box>
                   )}
                 </Box>
+                <Box sx={{ display: 'flex', gap: 0.75, mt: 0.25, flexWrap: 'wrap' }}>
+                  {(user.praxis_points ?? 0) > 0 && (
+                    <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700 }}>
+                      ⚡ {(user.praxis_points ?? 0).toLocaleString()} PP
+                    </Typography>
+                  )}
+                </Box>
                 <Typography variant="caption" color="text.secondary">{user.email}</Typography>
               </Box>
             </Box>
@@ -428,6 +469,7 @@ const Navbar: React.FC = () => {
                 { label: 'Leaderboard', to: '/leaderboard', icon: <LeaderboardIcon /> },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
                 { label: 'Coaching', to: '/coaching', icon: <SchoolIcon /> },
+                { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon /> },

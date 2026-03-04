@@ -723,3 +723,58 @@ CREATE POLICY "Users manage own checkins" ON public.checkins FOR ALL USING (auth
 -- =============================================================================
 
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS reliability_score FLOAT DEFAULT 0;
+
+
+-- =============================================================================
+-- 17. CHALLENGES — add reward_points column
+-- =============================================================================
+ALTER TABLE public.challenges ADD COLUMN IF NOT EXISTS reward_points INT NOT NULL DEFAULT 100;
+
+
+-- =============================================================================
+-- 18. PROFILES — username column
+-- =============================================================================
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username VARCHAR(30) UNIQUE;
+
+
+-- =============================================================================
+-- 19. SERVICES — marketplace listings (services, jobs, gigs)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.services (
+  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id         UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_name       TEXT        NOT NULL DEFAULT '',
+  user_avatar_url TEXT,
+  title           TEXT        NOT NULL,
+  description     TEXT,
+  type            TEXT        NOT NULL DEFAULT 'service'
+                              CHECK (type IN ('service', 'job', 'gig')),
+  domain          TEXT,
+  price           NUMERIC,
+  price_currency  TEXT        NOT NULL DEFAULT 'negotiable'
+                              CHECK (price_currency IN ('USD', 'PP', 'negotiable', 'free')),
+  tags            JSONB       NOT NULL DEFAULT '[]',
+  contact_info    TEXT,
+  active          BOOLEAN     NOT NULL DEFAULT true,
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read active services" ON public.services;
+DROP POLICY IF EXISTS "Own services insert"             ON public.services;
+DROP POLICY IF EXISTS "Own services update"             ON public.services;
+DROP POLICY IF EXISTS "Own services delete"             ON public.services;
+
+CREATE POLICY "Anyone can read active services" ON public.services
+  FOR SELECT USING (active = true OR auth.uid() = user_id);
+
+CREATE POLICY "Own services insert" ON public.services
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Own services update" ON public.services
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Own services delete" ON public.services
+  FOR DELETE USING (auth.uid() = user_id);

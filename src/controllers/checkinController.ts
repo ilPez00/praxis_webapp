@@ -77,7 +77,12 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
     profile.current_streak ?? 0
   );
 
-  const newPoints = (profile.praxis_points ?? 0) + 10;
+  // Streak bonus: +20/day base, ×2 after 7 days, ×3 after 30 days
+  const streakBonus =
+    streakUpdate.current_streak >= 30 ? 60 :
+    streakUpdate.current_streak >= 7  ? 40 : 20;
+  const pointsAwarded = 10 + streakBonus; // 30–70 per day
+  const newPoints = (profile.praxis_points ?? 0) + pointsAwarded;
 
   // Insert checkin record
   await supabase.from('checkins').insert({
@@ -109,7 +114,8 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   return res.json({
     alreadyCheckedIn: false,
     streak: streakUpdate.current_streak,
-    pointsAwarded: 10,
+    pointsAwarded,
+    streakBonus,
     totalPoints: newPoints,
   });
 });

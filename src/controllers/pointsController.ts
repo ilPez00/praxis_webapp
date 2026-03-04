@@ -1,0 +1,121 @@
+import { Request, Response } from 'express';
+import { supabase } from '../lib/supabaseClient';
+import { catchAsync, BadRequestError, NotFoundError } from '../utils/appErrors';
+
+// ── Spend catalogue ───────────────────────────────────────────────────────────
+
+const SPEND_CATALOGUE: Record<string, { cost: number; label: string }> = {
+  boost_visibility:  { cost: 150, label: '24h Boosted Visibility'         },
+  goal_slot:         { cost: 200, label: 'Extra Root Goal Slot'           },
+  coaching_session:  { cost: 500, label: 'AI Coaching Session (Master Roshi)' },
+  super_match:       { cost: 300, label: 'Super Match (Priority Queue)'   },
+  custom_icon:       { cost: 100, label: 'Custom Goal Icon / Theme'       },
+  skip_grading:      { cost:  80, label: 'Skip Partner Grading Wait'      },
+  bet_stake:         { cost:  50, label: 'Extra Virtual Bet Stake'        },
+};
+
+/**
+ * GET /points/catalogue
+ * Returns the full list of spendable items.
+ */
+export const getCatalogue = (_req: Request, res: Response) => {
+  return res.json(
+    Object.entries(SPEND_CATALOGUE).map(([id, item]) => ({ id, ...item }))
+  );
+};
+
+/**
+ * GET /points/balance?userId=<uuid>
+ * Returns current balance + recent transaction log.
+ */
+export const getBalance = catchAsync(async (req: Request, res: Response) => {
+  const { userId } = req.query as { userId?: string };
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('praxis_points, profile_boosted_until, streak_shield')
+    .eq('id', userId)
+    .single();
+
+  const { data: txns } = await supabase
+    .from('marketplace_transactions')
+    .select('id, item_type, cost, metadata, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  return res.json({
+    balance: profile?.praxis_points ?? 0,
+    boostedUntil: profile?.profile_boosted_until ?? null,
+    streakShield: profile?.streak_shield ?? false,
+    transactions: txns ?? [],
+    catalogue: Object.entries(SPEND_CATALOGUE).map(([id, item]) => ({ id, ...item })),
+  });
+});
+
+/**
+ * POST /points/spend
+ * Body: { userId, item }
+ * Deducts points and applies the purchased effect.
+ */
+export const spendPoints = catchAsync(async (req: Request, res: Response) => {
+  const { userId, item } = req.body as { userId?: string; item?: string };
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+  if (!item || !SPEND_CATALOGUE[item]) {
+    throw new BadRequestError(`Unknown item "${item}". Valid items: ${Object.keys(SPEND_CATALOGUE).join(', ')}`);
+  }
+
+  const { cost } = SPEND_CATALOGUE[item];
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('praxis_points, profile_boosted_until')
+    .eq('id', userId)
+    .single();
+
+  if (error || !profile) throw new NotFoundError('User profile not found');
+
+  const currentPoints: number = profile.praxis_points ?? 0;
+  if (currentPoints < cost) {
+    return res.status(402).json({
+      error: 'INSUFFICIENT_POINTS',
+      message: `You need ${cost} PP but only have ${currentPoints} PP.`,
+      needed: cost,
+      have: currentPoints,
+    });
+  }
+
+  // Apply effect
+  const updates: Record<string, unknown> = { praxis_points: currentPoints - cost };
+
+  if (item === 'boost_visibility') {
+    // Extend boost: stack on existing if active, otherwise start fresh
+    const now = Date.now();
+    const existing = profile.profile_boosted_until ? new Date(profile.profile_boosted_until).getTime() : now;
+    const base = Math.max(existing, now);
+    updates.profile_boosted_until = new Date(base + 24 * 3600 * 1000).toISOString();
+  }
+  // Other items (goal_slot, coaching_session, super_match, etc.) are logged but
+  // their enforcement lives in the respective controllers. The transaction record
+  // is the source of truth for "has the user purchased this."
+
+  // Record transaction
+  await supabase.from('marketplace_transactions').insert({
+    user_id: userId,
+    item_type: item,
+    cost,
+    metadata: { label: SPEND_CATALOGUE[item].label },
+  });
+
+  // Update profile
+  await supabase.from('profiles').update(updates).eq('id', userId);
+
+  return res.json({
+    success: true,
+    item,
+    spent: cost,
+    balance: currentPoints - cost,
+    effect: updates,
+  });
+});

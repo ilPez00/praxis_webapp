@@ -1,14 +1,19 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/common/Navbar';
 import PrivateRoute from './features/auth/PrivateRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import routes from './config/routes';
 
+// For Electron apps loading from file://, HashRouter is necessary.
+// We detect Electron via the user agent or a global flag.
+const isElectron = /electron/i.test(navigator.userAgent);
+const Router = isElectron ? HashRouter : BrowserRouter;
+
 // On GitHub Pages the app is served at /praxis_webapp, so React Router needs
 // that as a basename. On Vercel / local dev it runs at the root.
-const basename = window.location.hostname === 'ilpez00.github.io'
+const basename = (!isElectron && window.location.hostname === 'ilpez00.github.io')
   ? '/praxis_webapp'
   : '';
 

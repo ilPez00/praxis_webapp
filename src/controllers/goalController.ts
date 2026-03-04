@@ -155,6 +155,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   const userProfile = await getUserProfileDetails(userId);
 
   // Iterate through the new set of goal nodes to identify newly completed goals
+  let totalCompletionPoints = 0;
   for (const newNode of nodes) {
     // Check if a goal's progress has reached 100%
     if (newNode.progress >= 1) {
@@ -164,8 +165,20 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       if (!oldNode || oldNode.progress < 1) {
         // Trigger the creation of an achievement for this completed goal
         await createAchievementFromGoal(newNode, userId, userProfile.name, userProfile.avatar_url || undefined);
+        // Award +50 PP × node weight (normalize weight to 0-1 range)
+        const normalizedWeight = (newNode.weight ?? 0.5) > 1 ? (newNode.weight ?? 0.5) / 100 : (newNode.weight ?? 0.5);
+        totalCompletionPoints += Math.max(5, Math.round(50 * normalizedWeight));
       }
     }
+  }
+  // Award completion points (best-effort)
+  if (totalCompletionPoints > 0) {
+    const currentPoints = profile?.praxis_points ?? 0;
+    await supabase
+      .from('profiles')
+      .update({ praxis_points: currentPoints + totalCompletionPoints })
+      .eq('id', userId);
+    logger.info(`Awarded ${totalCompletionPoints} PP to ${userId} for goal completions`);
   }
   // --- End Achievement Creation Logic ---
 

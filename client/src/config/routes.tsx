@@ -30,6 +30,7 @@ import MarketplacePage from '../features/marketplace/MarketplacePage';
 import AdminPage from '../features/admin/AdminPage';
 import DesktopWidget from '../features/dashboard/components/DesktopWidget';
 import LeaderboardPage from '../features/leaderboard/LeaderboardPage';
+import ServicesPage from '../features/services/ServicesPage';
 
 interface RouteConfig {
   path: string;
@@ -73,6 +74,7 @@ const routes: RouteConfig[] = [
   { path: '/marketplace', element: MarketplacePage, private: true },
   { path: '/admin', element: AdminPage, private: true },
   { path: '/leaderboard', element: LeaderboardPage, private: true },
+  { path: '/services', element: ServicesPage, private: true },
 ];
 
 export default routes;
