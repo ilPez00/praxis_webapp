@@ -225,18 +225,16 @@ const DashboardPage: React.FC = () => {
           const scoreMap: Record<string, number> = {};
           allMatchData.forEach(m => { scoreMap[m.userId] = m.score; });
           setAllMatchScores(scoreMap);
-          // Fetch profiles for each match so we can show real names + avatars
-          const profileResults = await Promise.allSettled(
-            top3.map((m) =>
-              supabase.from('profiles').select('name, avatar_url').eq('id', m.userId).single()
-            )
-          );
+          // Batch fetch all match profiles in a single query
+          const matchIds = top3.map((m) => m.userId);
+          const { data: profileRows } = await supabase
+            .from('profiles')
+            .select('id, name, avatar_url')
+            .in('id', matchIds);
           const profileMap: Record<string, MatchProfile> = {};
-          profileResults.forEach((res, i) => {
-            if (res.status === 'fulfilled' && res.value.data) {
-              profileMap[top3[i].userId] = res.value.data as MatchProfile;
-            }
-          });
+          for (const p of profileRows || []) {
+            profileMap[p.id] = { name: p.name, avatar_url: p.avatar_url };
+          }
           setMatchProfiles(profileMap);
         }
       } catch (err: any) {

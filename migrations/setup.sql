@@ -778,3 +778,30 @@ CREATE POLICY "Own services update" ON public.services
 
 CREATE POLICY "Own services delete" ON public.services
   FOR DELETE USING (auth.uid() = user_id);
+
+-- =============================================================================
+-- 20. PERFORMANCE INDEXES
+-- =============================================================================
+
+-- Messages: conversation lookups (ChatPage, ChatRoom)
+CREATE INDEX IF NOT EXISTS messages_sender_receiver_idx
+  ON public.messages (sender_id, receiver_id);
+CREATE INDEX IF NOT EXISTS messages_receiver_sender_idx
+  ON public.messages (receiver_id, sender_id);
+-- Group chat message queries
+CREATE INDEX IF NOT EXISTS messages_room_timestamp_idx
+  ON public.messages (room_id, timestamp DESC);
+
+-- Posts: board/context feed queries
+CREATE INDEX IF NOT EXISTS posts_context_created_idx
+  ON public.posts (context, created_at DESC);
+
+-- Achievements: user feed + dashboard
+CREATE INDEX IF NOT EXISTS achievements_user_created_idx
+  ON public.achievements (user_id, created_at DESC);
+
+-- Chat room members: getJoinedRooms, getRoomMembers
+CREATE INDEX IF NOT EXISTS chat_room_members_user_idx
+  ON public.chat_room_members (user_id);
+CREATE INDEX IF NOT EXISTS chat_room_members_room_idx
+  ON public.chat_room_members (room_id);

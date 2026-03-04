@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
+import { CircularProgress, Box } from '@mui/material';
 import Navbar from './components/common/Navbar';
 import PrivateRoute from './features/auth/PrivateRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import routes from './config/routes';
+
+const PageLoader = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+    <CircularProgress />
+  </Box>
+);
 
 // For Electron apps loading from file://, HashRouter is necessary.
 // We detect Electron via the user agent or a global flag.
@@ -23,17 +30,19 @@ const AppRouter: React.FC = () => {
       <Navbar />
       <Toaster position="top-right" />
       <ErrorBoundary>
-        <Routes>
-          {routes.map((route, index) => (
-            route.private ? (
-              <Route key={index} element={<PrivateRoute />}>
-                <Route path={route.path} element={<route.element />} />
-              </Route>
-            ) : (
-              <Route key={index} path={route.path} element={<route.element />} />
-            )
-          ))}
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {routes.map((route, index) => (
+              route.private ? (
+                <Route key={index} element={<PrivateRoute />}>
+                  <Route path={route.path} element={<route.element />} />
+                </Route>
+              ) : (
+                <Route key={index} path={route.path} element={<route.element />} />
+              )
+            ))}
+          </Routes>
+        </Suspense>
       </ErrorBoundary>
     </Router>
   );

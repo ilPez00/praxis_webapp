@@ -49,38 +49,41 @@ const ChatPage: React.FC = () => {
                     throw error;
                 }
 
-                const convMap = new Map<string, ConversationSummary>();
-
+                // Collect unique other-user IDs and their most recent message
+                const latestMessageByUser = new Map<string, typeof allMessages[0]>();
                 for (const message of allMessages || []) {
                     const otherUserId = message.sender_id === currentUser.id ? message.receiver_id : message.sender_id;
-
-                    // Skip group messages (receiver_id is null) and system messages
-                    if (!otherUserId) continue;
-
-                    if (!convMap.has(otherUserId)) {
-                        // Fetch other user's details
-                        const { data: otherUser, error: userError } = await supabase
-                            .from('profiles')
-                            .select('id, name')
-                            .eq('id', otherUserId)
-                            .single();
-
-                        if (userError) {
-                            console.error('Error fetching other user profile:', userError);
-                            continue;
-                        }
-
-                        // Mock unread count and time for now
-                        convMap.set(otherUserId, {
-                            otherUserId: otherUserId,
-                            otherUserName: otherUser?.name || 'Unknown User',
-                            lastMessage: message.content,
-                            lastMessageTime: new Date(message.timestamp || message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                            unreadCount: Math.floor(Math.random() * 3), // Mock
-                        });
+                    if (!otherUserId) continue; // skip group/system messages
+                    if (!latestMessageByUser.has(otherUserId)) {
+                        latestMessageByUser.set(otherUserId, message);
                     }
                 }
-                setConversations(Array.from(convMap.values()));
+
+                // Batch fetch all profiles in a single query
+                const otherUserIds = Array.from(latestMessageByUser.keys());
+                let profileMap = new Map<string, { id: string; name: string }>();
+                if (otherUserIds.length > 0) {
+                    const { data: profiles } = await supabase
+                        .from('profiles')
+                        .select('id, name')
+                        .in('id', otherUserIds);
+                    for (const p of profiles || []) {
+                        profileMap.set(p.id, p);
+                    }
+                }
+
+                const convList: ConversationSummary[] = [];
+                for (const [otherUserId, message] of Array.from(latestMessageByUser)) {
+                    const profile = profileMap.get(otherUserId);
+                    convList.push({
+                        otherUserId,
+                        otherUserName: profile?.name || 'Unknown User',
+                        lastMessage: message.content,
+                        lastMessageTime: new Date(message.timestamp || message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        unreadCount: 0,
+                    });
+                }
+                setConversations(convList);
 
             } catch (error: any) {
                 console.error('Error fetching conversations:', error.message);

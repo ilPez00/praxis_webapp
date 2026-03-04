@@ -1,38 +1,38 @@
 import React from 'react';
 
-// Public Pages
+// Public Pages — eagerly loaded (needed immediately on first paint)
 import Root from '../layout/Root';
 import LoginPage from '../features/auth/LoginPage';
 import SignupPage from '../features/auth/SignupPage';
 import SuccessPage from '../features/payments/SuccessPage';
 import CancelPage from '../features/payments/CancelPage';
-
-// Private Pages
-import DashboardPage from '../features/dashboard/DashboardPage';
-import ProfilePage from '../features/profile/ProfilePage';
-import MatchesPage from '../features/matches/MatchesPage';
-import ChatPage from '../features/chat/ChatPage';
-import OnboardingPage from '../features/onboarding/OnboardingPage';
-import GoalTreePage from '../features/goals/GoalTreePage';
-import GoalSelectionPage from '../features/goals/GoalSelectionPage';
-import ChatRoom from '../features/chat/ChatRoom';
-import UpgradePage from '../features/payments/UpgradePage';
-import IdentityVerificationPage from '../features/identity/IdentityVerificationPage';
-import AnalyticsPage from '../features/analytics/AnalyticsPage';
-import GroupsPage from '../features/groups/GroupsPage';
-import GroupRoom from '../features/groups/GroupRoom';
-import GroupChatRoom from '../features/groups/GroupChatRoom';
-import BoardsPage from '../features/groups/BoardsPage';
-import CommunicationPage from '../features/communication/CommunicationPage';
-import CoachingPage from '../features/coaching/CoachingPage';
-import SearchPage from '../features/search/SearchPage';
-import MarketplacePage from '../features/marketplace/MarketplacePage';
-import AdminPage from '../features/admin/AdminPage';
-import WordsPage from '../features/admin/WordsPage';
 import DesktopWidget from '../features/dashboard/components/DesktopWidget';
-import LeaderboardPage from '../features/leaderboard/LeaderboardPage';
-import ServicesPage from '../features/services/ServicesPage';
-import BettingPage from '../features/betting/BettingPage';
+
+// Private Pages — lazy loaded (code-split per route, loaded on demand)
+const DashboardPage = React.lazy(() => import('../features/dashboard/DashboardPage'));
+const ProfilePage = React.lazy(() => import('../features/profile/ProfilePage'));
+const MatchesPage = React.lazy(() => import('../features/matches/MatchesPage'));
+const ChatPage = React.lazy(() => import('../features/chat/ChatPage'));
+const OnboardingPage = React.lazy(() => import('../features/onboarding/OnboardingPage'));
+const GoalTreePage = React.lazy(() => import('../features/goals/GoalTreePage'));
+const GoalSelectionPage = React.lazy(() => import('../features/goals/GoalSelectionPage'));
+const ChatRoom = React.lazy(() => import('../features/chat/ChatRoom'));
+const UpgradePage = React.lazy(() => import('../features/payments/UpgradePage'));
+const IdentityVerificationPage = React.lazy(() => import('../features/identity/IdentityVerificationPage'));
+const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
+const GroupsPage = React.lazy(() => import('../features/groups/GroupsPage'));
+const GroupRoom = React.lazy(() => import('../features/groups/GroupRoom'));
+const GroupChatRoom = React.lazy(() => import('../features/groups/GroupChatRoom'));
+const BoardsPage = React.lazy(() => import('../features/groups/BoardsPage'));
+const CommunicationPage = React.lazy(() => import('../features/communication/CommunicationPage'));
+const CoachingPage = React.lazy(() => import('../features/coaching/CoachingPage'));
+const SearchPage = React.lazy(() => import('../features/search/SearchPage'));
+const MarketplacePage = React.lazy(() => import('../features/marketplace/MarketplacePage'));
+const AdminPage = React.lazy(() => import('../features/admin/AdminPage'));
+const WordsPage = React.lazy(() => import('../features/admin/WordsPage'));
+const LeaderboardPage = React.lazy(() => import('../features/leaderboard/LeaderboardPage'));
+const ServicesPage = React.lazy(() => import('../features/services/ServicesPage'));
+const BettingPage = React.lazy(() => import('../features/betting/BettingPage'));
 
 interface RouteConfig {
   path: string;
