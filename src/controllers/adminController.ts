@@ -356,3 +356,132 @@ export const grantPoints = catchAsync(async (req: Request, res: Response, next: 
   logger.info(`Admin ${req.user?.id} set ${amount} points for user ${id}`);
   res.json({ message: `Set ${amount} praxis points.`, points: amount });
 });
+
+/**
+ * GET /admin/groups
+ * Lists all chat rooms and boards for moderation.
+ */
+export const listGroups = catchAsync(async (_req: Request, res: Response) => {
+  const { data, error } = await supabase
+    .from('chat_rooms')
+    .select('id, name, description, created_at, is_board')
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Failed to fetch groups.' });
+  return res.json(data ?? []);
+});
+
+/**
+ * GET /admin/stats
+ * Aggregate stats for the whole userbase.
+ */
+export const getAdminStats = catchAsync(async (_req: Request, res: Response) => {
+  const [usersRes, treesRes, profilesRes, checkinsRes, challengesRes] = await Promise.all([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('goal_trees').select('id', { count: 'exact', head: true }),
+    supabase.from('profiles').select('praxis_points, current_streak, is_premium'),
+    supabase.from('checkins').select('id', { count: 'exact', head: true })
+      .gte('checked_in_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString()),
+    supabase.from('challenges').select('id', { count: 'exact', head: true }),
+  ]);
+
+  const profiles = profilesRes.data ?? [];
+  const totalPoints = profiles.reduce((s, p) => s + (p.praxis_points ?? 0), 0);
+  const avgStreak = profiles.length > 0
+    ? Math.round(profiles.reduce((s, p) => s + (p.current_streak ?? 0), 0) / profiles.length)
+    : 0;
+  const premiumCount = profiles.filter(p => p.is_premium).length;
+
+  return res.json({
+    totalUsers: usersRes.count ?? 0,
+    totalGoalTrees: treesRes.count ?? 0,
+    totalPoints,
+    avgStreak,
+    premiumCount,
+    activeToday: checkinsRes.count ?? 0,
+    totalChallenges: challengesRes.count ?? 0,
+  });
+});
+
+/**
+ * GET /admin/network
+ * Returns users + their goal domains for the network diagram.
+ */
+export const getNetworkData = catchAsync(async (_req: Request, res: Response) => {
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name, avatar_url, praxis_points, current_streak');
+
+  const { data: trees } = await supabase
+    .from('goal_trees')
+    .select('"userId", nodes');
+
+  const domainsByUser: Record<string, string[]> = {};
+  for (const tree of trees ?? []) {
+    const uid = (tree as any).userId;
+    const nodes: any[] = Array.isArray((tree as any).nodes) ? (tree as any).nodes : [];
+    domainsByUser[uid] = [...new Set(nodes.map((n: any) => n.domain).filter(Boolean))];
+  }
+
+  const nodes = (profiles ?? []).map(p => ({
+    id: p.id,
+    name: p.name,
+    points: p.praxis_points ?? 0,
+    streak: p.current_streak ?? 0,
+    domains: domainsByUser[p.id] ?? [],
+  }));
+
+  // Edges: users sharing ≥1 domain
+  const edges: { source: string; target: string; sharedDomains: string[] }[] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = new Set(nodes[i].domains);
+      const shared = nodes[j].domains.filter((d: string) => a.has(d));
+      if (shared.length > 0) {
+        edges.push({ source: nodes[i].id, target: nodes[j].id, sharedDomains: shared });
+      }
+    }
+  }
+
+  return res.json({ nodes, edges });
+});
+
+/**
+ * GET /admin/challenges
+ * List all community challenges.
+ */
+export const listChallenges = catchAsync(async (_req: Request, res: Response) => {
+  const { data, error } = await supabase
+    .from('challenges')
+    .select('id, title, description, domain, duration_days, reward_points, created_at')
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Failed to fetch challenges.' });
+  return res.json(data ?? []);
+});
+
+/**
+ * POST /admin/challenges
+ * Create a community challenge with optional reward_points.
+ */
+export const createChallenge = catchAsync(async (req: Request, res: Response) => {
+  const { title, description, domain, duration_days, reward_points } = req.body as {
+    title: string; description?: string; domain: string;
+    duration_days?: number; reward_points?: number;
+  };
+  if (!title || !domain) throw new BadRequestError('title and domain are required.');
+
+  const { data, error } = await supabase
+    .from('challenges')
+    .insert({
+      title,
+      description: description ?? null,
+      domain,
+      duration_days: duration_days ?? 30,
+      reward_points: reward_points ?? 100,
+    })
+    .select()
+    .single();
+
+  if (error) throw new InternalServerError(`Failed to create challenge: ${error.message}`);
+  logger.info(`Admin ${req.user?.id} created challenge "${title}"`);
+  return res.json(data);
+});

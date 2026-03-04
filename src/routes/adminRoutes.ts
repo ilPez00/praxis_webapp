@@ -3,6 +3,7 @@ import {
   seedDemoUsers, deleteDemoUsers,
   listAllUsers, adminDeleteUser, adminDeletePost, adminDeleteGroup,
   banUser, unbanUser, grantPoints,
+  listGroups, getAdminStats, getNetworkData, createChallenge, listChallenges,
 } from '../controllers/adminController';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -25,5 +26,12 @@ router.delete('/groups/:id', authenticateToken, requireAdmin, adminDeleteGroup);
 // Demo user management from webapp (same logic, JWT-secured)
 router.post('/seed', authenticateToken, requireAdmin, seedDemoUsers);
 router.delete('/demo-users', authenticateToken, requireAdmin, deleteDemoUsers);
+
+// Analytics + moderation
+router.get('/groups', authenticateToken, requireAdmin, listGroups);
+router.get('/stats', authenticateToken, requireAdmin, getAdminStats);
+router.get('/network', authenticateToken, requireAdmin, getNetworkData);
+router.get('/challenges', authenticateToken, requireAdmin, listChallenges);
+router.post('/challenges', authenticateToken, requireAdmin, createChallenge);
 
 export default router;
