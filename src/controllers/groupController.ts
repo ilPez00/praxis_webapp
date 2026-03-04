@@ -114,6 +114,14 @@ export const getRoomMessages = catchAsync(async (req: Request, res: Response, ne
     .order('timestamp', { ascending: true });
 
   if (error) {
+    if (
+      error.message?.includes('schema cache') ||
+      error.message?.includes('does not exist') ||
+      error.code === '42P01'
+    ) {
+      logger.warn('messages table not found — returning empty list. Run migrations/setup.sql.');
+      return res.json([]);
+    }
     logger.error('Error fetching room messages:', error.message);
     throw new InternalServerError('Failed to fetch room messages.');
   }
@@ -163,6 +171,14 @@ export const getRoomMembers = catchAsync(async (req: Request, res: Response, nex
     .eq('room_id', roomId);
 
   if (error) {
+    if (
+      error.message?.includes('schema cache') ||
+      error.message?.includes('does not exist') ||
+      error.code === '42P01'
+    ) {
+      logger.warn('chat_room_members table not found — returning empty members list. Run migrations/setup.sql.');
+      return res.json([]);
+    }
     logger.error('Error fetching room members:', error.message);
     throw new InternalServerError('Failed to fetch room members.');
   }

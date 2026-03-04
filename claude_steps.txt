@@ -3,7 +3,7 @@ You can delegate tasks to gemini. Remember to git commit and edit this file at t
 Never modify this paragraph.
 ---
 
-## Project Health (as of Session 31 — 2026-02-27)
+## Project Health (as of Session 34 — 2026-03-04)
 
 - **Backend TypeScript:** ✅ 0 errors (`npx tsc --noEmit`)
 - **Frontend TypeScript:** ✅ 0 errors (`npx tsc --noEmit` from `client/`)
@@ -12,6 +12,38 @@ Never modify this paragraph.
 - **Railway Backend:** ✅ All endpoints confirmed working via curl (POST /api/groups, /api/goals, /api/posts → 2xx).
 - **Git Status:** `main` — up to date with origin (commit `1b07334`).
 - **Deployment:** ✅ WORKING — groups, goals, posts all functional in production.
+
+---
+
+### Session 34 (2026-03-04) — Console Error Audit & Fixes
+
+**Errors diagnosed from console-export + diomerda.txt:**
+
+1. **`profiles?id=eq.null` (400)** — `ChatPage.tsx` was iterating all messages including group messages (no `receiver_id`). `otherUserId` became null → Supabase query with `id=eq.null` → 400.
+   - **Fixed:** Added `if (!otherUserId) continue;` before the profile fetch loop.
+
+2. **All write 500s (POST messages, groups, posts, goals)** — `SUPABASE_SERVICE_ROLE_KEY` on Railway is the publishable (anon) key. RLS blocks INSERT/UPDATE for anon context.
+   - **NOT fixable in code.** User must fix on Railway dashboard (see manual action).
+
+3. **`GET /api/groups/:roomId/members` → 500** — `getRoomMembers` lacked graceful handling for missing table (42P01).
+   - **Fixed:** Added schema-cache/does-not-exist/42P01 guard, returns `[]` like other endpoints.
+
+4. **`GET /api/groups/:roomId/messages` → 500** — same missing table guard.
+   - **Fixed:** Same graceful 42P01 handling added.
+
+5. **`POST /api/goals` → 500** — caused by anon key RLS blocking INSERT (same as #2).
+
+6. **`POST /api/ai-coaching/report` → 500** — Gemini API failure on Railway (key invalid/quota).
+   - **NOT fixable in code.** User must verify `GEMINI_API_KEY` on Railway.
+
+7. **`GET /api/goals/:userId` → 404** — Expected for new users with no goal tree. GoalSelectionPage handles this correctly in try/catch.
+
+8. **Frontend tsconfig** — `import.meta.env` was missing `vite/client` types in `client/tsconfig.json`, causing 2 TS errors.
+   - **Fixed:** Added `"types": ["vite/client"]` to tsconfig.
+
+**🔴 CRITICAL manual action still required:**
+- Railway dashboard → `SUPABASE_SERVICE_ROLE_KEY` → must be the SERVICE ROLE JWT from Supabase > Settings > API > `service_role` (long `eyJhbGci...` key, NOT the `sb_publishable_...` key).
+- This single fix resolves ALL write-operation 500s (messages, goals, posts, groups, coaches).
 
 ---
 

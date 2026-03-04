@@ -54,6 +54,9 @@ const ChatPage: React.FC = () => {
                 for (const message of allMessages || []) {
                     const otherUserId = message.sender_id === currentUser.id ? message.receiver_id : message.sender_id;
 
+                    // Skip group messages (receiver_id is null) and system messages
+                    if (!otherUserId) continue;
+
                     if (!convMap.has(otherUserId)) {
                         // Fetch other user's details
                         const { data: otherUser, error: userError } = await supabase
