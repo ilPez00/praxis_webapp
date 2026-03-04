@@ -15,6 +15,7 @@ import TrackerWidget from '../trackers/TrackerWidget';
 import SiteTour from '../../components/common/SiteTour';
 import { DOMAIN_COLORS } from '../../types/goal';
 import CheckInWidget from './components/CheckInWidget';
+import BalanceWidget from './components/BalanceWidget';
 
 import {
   Container,
@@ -351,6 +352,13 @@ const DashboardPage: React.FC = () => {
             />
           </Box>
         )}
+
+        {/* Balance Intervention — Master Roshi nudge when domain neglected for 14+ streak days */}
+        <BalanceWidget
+          nodes={allNodes}
+          streak={localStreak ?? (user?.current_streak ?? 0)}
+          onTakeZenDay={() => toast('Take a Zen Day: update a goal in a neglected domain today.', { icon: '🧘', duration: 6000 })}
+        />
 
         {/* Welcome Banner */}
         <Box sx={{ py: 4 }}>

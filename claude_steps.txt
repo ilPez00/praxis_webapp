@@ -517,19 +517,35 @@ Engineering priority: checkins endpoint → streak notification → requireTier 
 - Dashboard curated leaderboard: useMemo ranks by praxis_points × (1 + compatibilityScore)
 - ProfilePage social links: strip leading @ from Instagram/X/LinkedIn/Telegram buildUrl
 
-## Session 37 — Next Priorities
+## Session 37 (2026-03-04) — PDF Features: Betting UI + Balance Intervention + Reliability Score
+
+### Implemented (from whitepaper + architecture_of_intent PDFs):
+- BettingPage.tsx (/betting): full goal-staking UI — place bet (goal selector, deadline, PP slider),
+  active bets with progress bars + days left, cancel (refund), history (won/lost/cancelled)
+  Bet mechanics: stake_points deducted on create, ×2 on peer-verified win, forfeit on deadline miss
+- BalanceWidget.tsx (Dashboard): Master Roshi "Balance Intervention" pillar
+  Shows when streak >= 14 days AND any domain in goal tree has 0% avg progress
+  Lists neglected domains, "Take a Zen Day" CTA, Master Roshi quote
+- Reliability Score (full formula R = 0.65C + 0.25V + 0.10S):
+  C = check-in consistency (last 30 days / 30)
+  V = peer-verified completion rate (approved / total, last 90 days)
+  S = streak stability (min(streak,30) / 30)
+  (M = message responsiveness skipped — impractical to measure accurately)
+- routes.tsx + Navbar: /betting route + "Goal Staking" link (desktop dropdown + mobile drawer)
+
+## Session 38 — Next Priorities
 
 🔴 Phase 1 — Beta Readiness
-- [ ] Run DB migrations in Supabase: username col + services table + checkins + reliability_score + posts.title
+- [ ] Run DB migrations in Supabase: bets table + username col + services + checkins + reliability_score
 - [ ] Verify SUPABASE_SERVICE_ROLE_KEY on Railway is the correct service_role key
 - [ ] Seed demo users: POST /admin/seed-demo-users to populate Match feed
 - [ ] Achievement detail modal (click achievement → rich modal)
-- [ ] WhatsApp-style groups: member list panel, online/last-seen, join/leave, group description
 
 🟠 Phase 2 — Viral Hooks
 - [ ] "Challenge a friend" one-tap share: share bet/challenge via link
-- [ ] AI weekly narrative (Gemini): "This week you showed exceptional consistency" — POST /ai-coaching/weekly-recap
+- [ ] AI weekly narrative (Gemini): "This week you showed exceptional consistency"
 - [ ] Social streaks: mutual streak counter between accountability partners
+- [ ] WhatsApp-style groups: member list panel, online/last-seen, join/leave, group description
 
 🟡 Phase 3 — Production / Stability
 - [ ] Stripe prod: STRIPE_PRICE_ID + register webhook

@@ -31,6 +31,7 @@ import AdminPage from '../features/admin/AdminPage';
 import DesktopWidget from '../features/dashboard/components/DesktopWidget';
 import LeaderboardPage from '../features/leaderboard/LeaderboardPage';
 import ServicesPage from '../features/services/ServicesPage';
+import BettingPage from '../features/betting/BettingPage';
 
 interface RouteConfig {
   path: string;
@@ -75,6 +76,7 @@ const routes: RouteConfig[] = [
   { path: '/admin', element: AdminPage, private: true },
   { path: '/leaderboard', element: LeaderboardPage, private: true },
   { path: '/services', element: ServicesPage, private: true },
+  { path: '/betting', element: BettingPage, private: true },
 ];
 
 export default routes;

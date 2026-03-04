@@ -90,15 +90,44 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
     streak_day: streakUpdate.current_streak,
   });
 
-  // Compute reliability_score = checkins in last 30 days / 30
+  // Compute Reliability Score R using the whitepaper formula:
+  //   R = 0.65*C + 0.25*V + 0.10*S
+  //   C = Check-in Consistency: checkins in last 30 days / 30
+  //   V = Verified Completion rate: approved completion_requests / total requested (last 90 days)
+  //   S = Streak Stability: min(streak, 30) / 30
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
   const { count: recentCount } = await supabase
     .from('checkins')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .gte('checked_in_at', thirtyDaysAgo.toISOString());
-  const reliabilityScore = Math.min(((recentCount ?? 0) + 1) / 30, 1);
+
+  // V: peer-verified completions (best-effort — table may not exist yet)
+  let verificationRate = 0;
+  try {
+    const [{ count: approvedCount }, { count: totalCount }] = await Promise.all([
+      supabase.from('completion_requests').select('id', { count: 'exact', head: true })
+        .eq('requester_id', userId).eq('status', 'approved')
+        .gte('created_at', ninetyDaysAgo.toISOString()),
+      supabase.from('completion_requests').select('id', { count: 'exact', head: true })
+        .eq('requester_id', userId)
+        .gte('created_at', ninetyDaysAgo.toISOString()),
+    ]);
+    if ((totalCount ?? 0) > 0) {
+      verificationRate = Math.min((approvedCount ?? 0) / (totalCount ?? 1), 1);
+    }
+  } catch {
+    // Non-fatal — table may not exist in all environments
+  }
+
+  const C = Math.min(((recentCount ?? 0) + 1) / 30, 1);
+  const V = verificationRate;
+  const S = Math.min(streakUpdate.current_streak, 30) / 30;
+  const reliabilityScore = 0.65 * C + 0.25 * V + 0.10 * S;
 
   // Update profile
   await supabase

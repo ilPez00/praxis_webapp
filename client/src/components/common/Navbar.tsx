@@ -43,6 +43,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
+import CasinoIcon from '@mui/icons-material/Casino';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -331,6 +332,10 @@ const Navbar: React.FC = () => {
                       <HandshakeIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Services</Typography>
                     </MenuItem>
+                    <MenuItem onClick={() => handleNav('/betting')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <CasinoIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Goal Staking</Typography>
+                    </MenuItem>
                     <MenuItem onClick={() => handleNav('/marketplace')} sx={{ gap: 1.5, py: 1.25 }}>
                       <StorefrontIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Marketplace</Typography>
@@ -470,6 +475,7 @@ const Navbar: React.FC = () => {
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
                 { label: 'Coaching', to: '/coaching', icon: <SchoolIcon /> },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
+                { label: 'Goal Staking', to: '/betting', icon: <CasinoIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon /> },
