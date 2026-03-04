@@ -28,6 +28,7 @@ import CoachingPage from '../features/coaching/CoachingPage';
 import SearchPage from '../features/search/SearchPage';
 import MarketplacePage from '../features/marketplace/MarketplacePage';
 import AdminPage from '../features/admin/AdminPage';
+import WordsPage from '../features/admin/WordsPage';
 import DesktopWidget from '../features/dashboard/components/DesktopWidget';
 import LeaderboardPage from '../features/leaderboard/LeaderboardPage';
 import ServicesPage from '../features/services/ServicesPage';
@@ -77,6 +78,7 @@ const routes: RouteConfig[] = [
   { path: '/leaderboard', element: LeaderboardPage, private: true },
   { path: '/services', element: ServicesPage, private: true },
   { path: '/betting', element: BettingPage, private: true },
+  { path: '/words', element: WordsPage, private: true },
 ];
 
 export default routes;

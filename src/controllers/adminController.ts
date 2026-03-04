@@ -485,3 +485,51 @@ export const createChallenge = catchAsync(async (req: Request, res: Response) =>
   logger.info(`Admin ${req.user?.id} created challenge "${title}"`);
   return res.json(data);
 });
+
+/**
+ * GET /admin/services
+ * Lists all services/jobs/gigs for admin moderation.
+ */
+export const listAllServices = catchAsync(async (_req: Request, res: Response) => {
+  const { data, error } = await supabase
+    .from('services')
+    .select('id, user_id, user_name, user_avatar_url, title, type, domain, price, price_currency, active, created_at')
+    .order('created_at', { ascending: false });
+  if (error) {
+    if (error.message?.includes('schema cache') || error.message?.includes('not found') || error.code === '42P01') {
+      return res.json([]);
+    }
+    return res.status(500).json({ error: 'Failed to fetch services.' });
+  }
+  return res.json(data ?? []);
+});
+
+/**
+ * DELETE /admin/services/:id
+ * Admin-deletes any service listing.
+ */
+export const adminDeleteService = catchAsync(async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const { error } = await supabase.from('services').delete().eq('id', id);
+  if (error) throw new InternalServerError('Failed to delete service.');
+  logger.info(`Admin ${req.user?.id} deleted service ${id}`);
+  res.json({ message: 'Service deleted.' });
+});
+
+/**
+ * GET /admin/coaches
+ * Lists all coach profiles for admin review.
+ */
+export const listAllCoaches = catchAsync(async (_req: Request, res: Response) => {
+  const { data, error } = await supabase
+    .from('coach_profiles')
+    .select('id, user_id, bio, domains, skills, rating, hourly_rate, is_available, created_at')
+    .order('rating', { ascending: false });
+  if (error) {
+    if (error.message?.includes('schema cache') || error.message?.includes('not found') || error.code === '42P01') {
+      return res.json([]);
+    }
+    return res.status(500).json({ error: 'Failed to fetch coaches.' });
+  }
+  return res.json(data ?? []);
+});

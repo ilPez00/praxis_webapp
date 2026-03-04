@@ -21,6 +21,9 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import HubIcon from '@mui/icons-material/Hub';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AddIcon from '@mui/icons-material/Add';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import SchoolIcon from '@mui/icons-material/School';
+import DownloadIcon from '@mui/icons-material/Download';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
@@ -84,11 +87,37 @@ interface AdminChallenge {
   created_at: string;
 }
 
+interface AdminService {
+  id: string;
+  user_id: string;
+  user_name?: string;
+  title: string;
+  type: string;
+  domain?: string;
+  price?: number;
+  price_currency?: string;
+  active: boolean;
+  created_at: string;
+}
+
+interface AdminCoach {
+  id: string;
+  user_id: string;
+  bio?: string;
+  domains?: string[];
+  skills?: string[];
+  rating?: number;
+  hourly_rate?: number;
+  is_available: boolean;
+  created_at: string;
+}
+
 type ConfirmAction =
   | { type: 'delete'; user: AdminUser }
   | { type: 'ban'; user: AdminUser }
   | { type: 'delete-demo' }
   | { type: 'delete-group'; group: AdminGroup }
+  | { type: 'delete-service'; service: AdminService }
   | null;
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
@@ -102,6 +131,26 @@ const authHeaders = async () => {
   const token = await getToken();
   return { Authorization: `Bearer ${token}` };
 };
+
+// ── CSV helper ────────────────────────────────────────────────────────────────
+
+function downloadCSV(rows: Record<string, unknown>[], filename: string) {
+  if (rows.length === 0) return;
+  const headers = Object.keys(rows[0]);
+  const escape = (v: unknown) => {
+    const s = String(v ?? '').replace(/"/g, '""');
+    return s.includes(',') || s.includes('\n') || s.includes('"') ? `"${s}"` : s;
+  };
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => escape(r[h])).join(',')),
+  ].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ── Tab panel ─────────────────────────────────────────────────────────────────
 
@@ -282,6 +331,14 @@ const AdminPage: React.FC = () => {
   });
   const [creatingChallenge, setCreatingChallenge] = useState(false);
 
+  // ── Services state ──────────────────────────────────────────────────────────
+  const [services, setServices] = useState<AdminService[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+
+  // ── Coaches state ───────────────────────────────────────────────────────────
+  const [coaches, setCoaches] = useState<AdminCoach[]>([]);
+  const [loadingCoaches, setLoadingCoaches] = useState(false);
+
   // ── Data fetchers ────────────────────────────────────────────────────────────
 
   const fetchUsers = useCallback(async () => {
@@ -289,7 +346,10 @@ const AdminPage: React.FC = () => {
     try {
       const headers = await authHeaders();
       const res = await fetch(`${API_URL}/admin/users`, { headers });
-      if (res.ok) setUsers(Array.isArray(await res.json().then((d: unknown) => d)) ? await res.clone().json() : []);
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(Array.isArray(data) ? data : []);
+      }
     } catch { /* ignore */ } finally { setLoadingUsers(false); }
   }, []);
 
@@ -335,6 +395,28 @@ const AdminPage: React.FC = () => {
     } catch { /* ignore */ } finally { setLoadingChallenges(false); }
   }, []);
 
+  const fetchServices = useCallback(async () => {
+    setLoadingServices(true);
+    try {
+      const res = await apiFetch('/admin/services');
+      if (res.ok) {
+        const data = await res.json();
+        setServices(Array.isArray(data) ? data : []);
+      }
+    } catch { /* ignore */ } finally { setLoadingServices(false); }
+  }, []);
+
+  const fetchCoaches = useCallback(async () => {
+    setLoadingCoaches(true);
+    try {
+      const res = await apiFetch('/admin/coaches');
+      if (res.ok) {
+        const data = await res.json();
+        setCoaches(Array.isArray(data) ? data : []);
+      }
+    } catch { /* ignore */ } finally { setLoadingCoaches(false); }
+  }, []);
+
   // Load data when tab changes
   useEffect(() => {
     if (!user?.is_admin && user?.email !== 'pezzingiovanniantonio@gmail.com') return;
@@ -343,6 +425,8 @@ const AdminPage: React.FC = () => {
     if (tab === 2 && !stats) fetchStats();
     if (tab === 3 && netNodes.length === 0) fetchNetwork();
     if (tab === 4 && challenges.length === 0) fetchChallenges();
+    if (tab === 5 && services.length === 0) fetchServices();
+    if (tab === 6 && coaches.length === 0) fetchCoaches();
   }, [tab, user]);
 
   // ── User actions ─────────────────────────────────────────────────────────────
@@ -424,6 +508,17 @@ const AdminPage: React.FC = () => {
     } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
   };
 
+  // ── Service actions ───────────────────────────────────────────────────────────
+
+  const handleDeleteService = async (serviceId: string) => {
+    setActing(true);
+    try {
+      const res = await apiFetch(`/admin/services/${serviceId}`, { method: 'DELETE' });
+      if (res.ok) { setServices(prev => prev.filter(s => s.id !== serviceId)); toast.success('Service deleted.'); }
+      else toast.error('Failed to delete service.');
+    } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
+  };
+
   // ── Challenge actions ─────────────────────────────────────────────────────────
 
   const handleCreateChallenge = async () => {
@@ -488,6 +583,8 @@ const AdminPage: React.FC = () => {
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
+        variant="scrollable"
+        scrollButtons="auto"
         sx={{
           mb: 0,
           borderBottom: '1px solid rgba(255,255,255,0.08)',
@@ -499,6 +596,8 @@ const AdminPage: React.FC = () => {
         <Tab icon={<BarChartIcon fontSize="small" />} iconPosition="start" label="Stats" />
         <Tab icon={<HubIcon fontSize="small" />} iconPosition="start" label="Network" />
         <Tab icon={<EmojiEventsIcon fontSize="small" />} iconPosition="start" label="Challenges" />
+        <Tab icon={<HandshakeIcon fontSize="small" />} iconPosition="start" label="Services" />
+        <Tab icon={<SchoolIcon fontSize="small" />} iconPosition="start" label="Coaches" />
       </Tabs>
 
       {/* ── Tab 0: Users ──────────────────────────────────────────────────────── */}
@@ -545,7 +644,7 @@ const AdminPage: React.FC = () => {
 
         <Divider sx={{ mb: 2 }} />
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 1, flexWrap: 'wrap' }}>
           <TextField
             size="small"
             placeholder="Search by name or email…"
@@ -560,11 +659,23 @@ const AdminPage: React.FC = () => {
             }}
             sx={{ width: 320 }}
           />
-          <Tooltip title="Refresh">
-            <IconButton onClick={fetchUsers} disabled={loadingUsers} sx={{ color: 'text.secondary' }}>
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => downloadCSV(users as unknown as Record<string, unknown>[], 'praxis-users.csv')}
+              disabled={users.length === 0}
+              sx={{ borderRadius: 2 }}
+            >
+              Download CSV
+            </Button>
+            <Tooltip title="Refresh">
+              <IconButton onClick={fetchUsers} disabled={loadingUsers} sx={{ color: 'text.secondary' }}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
 
         {loadingUsers ? (
@@ -656,13 +767,25 @@ const AdminPage: React.FC = () => {
 
       {/* ── Tab 1: Groups & Boards ────────────────────────────────────────────── */}
       <TabPanel value={tab} index={1}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>Groups & Boards</Typography>
-          <Tooltip title="Refresh">
-            <IconButton onClick={fetchGroups} disabled={loadingGroups} sx={{ color: 'text.secondary' }}>
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => downloadCSV(groups as unknown as Record<string, unknown>[], 'praxis-groups.csv')}
+              disabled={groups.length === 0}
+              sx={{ borderRadius: 2 }}
+            >
+              Download CSV
+            </Button>
+            <Tooltip title="Refresh">
+              <IconButton onClick={fetchGroups} disabled={loadingGroups} sx={{ color: 'text.secondary' }}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
 
         {loadingGroups ? (
@@ -922,6 +1045,210 @@ const AdminPage: React.FC = () => {
         )}
       </TabPanel>
 
+      {/* ── Tab 5: Services ───────────────────────────────────────────────────── */}
+      <TabPanel value={tab} index={5}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>Services & Listings</Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => downloadCSV(services as unknown as Record<string, unknown>[], 'praxis-services.csv')}
+              disabled={services.length === 0}
+              sx={{ borderRadius: 2 }}
+            >
+              Download CSV
+            </Button>
+            <Tooltip title="Refresh">
+              <IconButton onClick={fetchServices} disabled={loadingServices} sx={{ color: 'text.secondary' }}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+
+        {loadingServices ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+        ) : services.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 6, color: 'text.disabled' }}>
+            <HandshakeIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+            <Typography variant="body2">No services listed yet.</Typography>
+          </Box>
+        ) : (
+          <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ '& th': { fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' } }}>
+                  <TableCell>User</TableCell>
+                  <TableCell>Title</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Domain</TableCell>
+                  <TableCell>Price</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Created</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {services.map(s => (
+                  <TableRow key={s.id} sx={{ '&:last-child td': { border: 0 }, '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
+                    <TableCell>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                        {s.user_name || s.user_id.slice(0, 8)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {s.title}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={s.type}
+                        size="small"
+                        sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(99,102,241,0.12)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.25)' }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" color="text.secondary">{s.domain || '—'}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" color="text.secondary">
+                        {s.price != null ? `${s.price} ${s.price_currency || 'EUR'}` : '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={s.active ? 'active' : 'inactive'}
+                        size="small"
+                        sx={{
+                          height: 18, fontSize: '0.65rem',
+                          bgcolor: s.active ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.12)',
+                          color: s.active ? '#4ADE80' : 'text.secondary',
+                          border: `1px solid ${s.active ? 'rgba(34,197,94,0.25)' : 'rgba(107,114,128,0.2)'}`,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" color="text.disabled">{new Date(s.created_at).toLocaleDateString()}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Delete service">
+                        <IconButton size="small" onClick={() => setConfirm({ type: 'delete-service', service: s })}
+                          sx={{ color: 'error.main', opacity: 0.5, '&:hover': { opacity: 1 } }}>
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </TabPanel>
+
+      {/* ── Tab 6: Coaches ────────────────────────────────────────────────────── */}
+      <TabPanel value={tab} index={6}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>Coach Profiles</Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => downloadCSV(coaches as unknown as Record<string, unknown>[], 'praxis-coaches.csv')}
+              disabled={coaches.length === 0}
+              sx={{ borderRadius: 2 }}
+            >
+              Download CSV
+            </Button>
+            <Tooltip title="Refresh">
+              <IconButton onClick={fetchCoaches} disabled={loadingCoaches} sx={{ color: 'text.secondary' }}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+
+        {loadingCoaches ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+        ) : coaches.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 6, color: 'text.disabled' }}>
+            <SchoolIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+            <Typography variant="body2">No coach profiles yet (or table not created).</Typography>
+          </Box>
+        ) : (
+          <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ '& th': { fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' } }}>
+                  <TableCell>User ID</TableCell>
+                  <TableCell>Bio</TableCell>
+                  <TableCell>Domains</TableCell>
+                  <TableCell>Rating</TableCell>
+                  <TableCell>Rate/hr</TableCell>
+                  <TableCell>Available</TableCell>
+                  <TableCell>Created</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {coaches.map(c => (
+                  <TableRow key={c.id} sx={{ '&:last-child td': { border: 0 }, '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
+                    <TableCell>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                        {c.user_id.slice(0, 8)}…
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 200, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.bio || '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', maxWidth: 180 }}>
+                        {(c.domains ?? []).slice(0, 3).map(d => (
+                          <Chip key={d} label={d} size="small" sx={{ height: 16, fontSize: '0.6rem' }} />
+                        ))}
+                        {(c.domains ?? []).length > 3 && (
+                          <Typography variant="caption" color="text.disabled">+{(c.domains ?? []).length - 3}</Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: c.rating != null ? '#FBBF24' : 'text.disabled' }}>
+                        {c.rating != null ? c.rating.toFixed(1) : '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" color="text.secondary">
+                        {c.hourly_rate != null ? `€${c.hourly_rate}` : '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={c.is_available ? 'yes' : 'no'}
+                        size="small"
+                        sx={{
+                          height: 18, fontSize: '0.65rem',
+                          bgcolor: c.is_available ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.12)',
+                          color: c.is_available ? '#4ADE80' : 'text.secondary',
+                          border: `1px solid ${c.is_available ? 'rgba(34,197,94,0.25)' : 'rgba(107,114,128,0.2)'}`,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" color="text.disabled">{new Date(c.created_at).toLocaleDateString()}</Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </TabPanel>
+
       {/* ── Confirm dialog ─────────────────────────────────────────────────────── */}
       <Dialog open={!!confirm} onClose={() => !acting && setConfirm(null)} maxWidth="xs" fullWidth>
         {confirm?.type === 'delete' && (
@@ -995,6 +1322,25 @@ const AdminPage: React.FC = () => {
               <Button variant="contained" color="error" disabled={acting}
                 endIcon={acting ? <CircularProgress size={14} color="inherit" /> : null}
                 onClick={() => handleDeleteGroup(confirm.group.id)}>
+                Delete permanently
+              </Button>
+            </DialogActions>
+          </>
+        )}
+        {confirm?.type === 'delete-service' && (
+          <>
+            <DialogTitle sx={{ fontWeight: 700 }}>Delete service?</DialogTitle>
+            <DialogContent>
+              <Typography variant="body2">
+                Permanently delete the listing <strong>{confirm.service.title}</strong>?{' '}
+                <Box component="span" sx={{ color: 'error.main', fontWeight: 700 }}>Cannot be undone.</Box>
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button onClick={() => setConfirm(null)} disabled={acting}>Cancel</Button>
+              <Button variant="contained" color="error" disabled={acting}
+                endIcon={acting ? <CircularProgress size={14} color="inherit" /> : null}
+                onClick={() => handleDeleteService(confirm.service.id)}>
                 Delete permanently
               </Button>
             </DialogActions>
