@@ -85,6 +85,16 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
     streak_day: streakUpdate.current_streak,
   });
 
+  // Compute reliability_score = checkins in last 30 days / 30
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const { count: recentCount } = await supabase
+    .from('checkins')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('checked_in_at', thirtyDaysAgo.toISOString());
+  const reliabilityScore = Math.min(((recentCount ?? 0) + 1) / 30, 1);
+
   // Update profile
   await supabase
     .from('profiles')
@@ -92,6 +102,7 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
       current_streak: streakUpdate.current_streak,
       last_activity_date: streakUpdate.last_activity_date,
       praxis_points: newPoints,
+      reliability_score: reliabilityScore,
     })
     .eq('id', userId);
 

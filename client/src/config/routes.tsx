@@ -28,6 +28,8 @@ import CoachingPage from '../features/coaching/CoachingPage';
 import SearchPage from '../features/search/SearchPage';
 import MarketplacePage from '../features/marketplace/MarketplacePage';
 import AdminPage from '../features/admin/AdminPage';
+import DesktopWidget from '../features/dashboard/components/DesktopWidget';
+import LeaderboardPage from '../features/leaderboard/LeaderboardPage';
 
 interface RouteConfig {
   path: string;
@@ -43,8 +45,10 @@ const routes: RouteConfig[] = [
   { path: '/signup', element: SignupPage, private: false },
   { path: '/success', element: SuccessPage, private: false },
   { path: '/cancel', element: CancelPage, private: false },
+  { path: '/desktop-widget', element: DesktopWidget, private: false }, // Should be accessible for the desktop app
 
   // Private Routes
+
   { path: '/dashboard', element: DashboardPage, private: true },
   { path: '/profile', element: ProfilePage, private: true },
   { path: '/profile/:id', element: ProfilePage, private: true, param: 'id' },
@@ -68,6 +72,7 @@ const routes: RouteConfig[] = [
   { path: '/search', element: SearchPage, private: true },
   { path: '/marketplace', element: MarketplacePage, private: true },
   { path: '/admin', element: AdminPage, private: true },
+  { path: '/leaderboard', element: LeaderboardPage, private: true },
 ];
 
 export default routes;

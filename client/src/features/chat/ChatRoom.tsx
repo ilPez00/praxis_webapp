@@ -26,7 +26,7 @@ import {
   InputLabel,
   Stack,
   Avatar,
-
+  Chip,
   Collapse,
   Dialog,
   DialogTitle,
@@ -59,6 +59,7 @@ const ChatRoom: React.FC = () => {
 
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [receiverName, setReceiverName] = useState<string>('Partner');
+  const [receiverStreak, setReceiverStreak] = useState<number>(0);
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
@@ -104,11 +105,12 @@ const ChatRoom: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('name')
+          .select('name, current_streak')
           .eq('id', user2Id)
           .single();
         if (error) throw error;
         setReceiverName(data.name || 'Partner');
+        setReceiverStreak(data.current_streak ?? 0);
       } catch (error) {
         console.error('Error fetching receiver name:', error);
       }
@@ -688,9 +690,18 @@ const ChatRoom: React.FC = () => {
             {receiverName.charAt(0)}
           </Avatar>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-              {receiverName}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                {receiverName}
+              </Typography>
+              {receiverStreak > 0 && (
+                <Chip
+                  label={`🔥 ${receiverStreak}d`}
+                  size="small"
+                  sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(249,115,22,0.12)', color: '#F97316', border: '1px solid rgba(249,115,22,0.3)' }}
+                />
+              )}
+            </Box>
             {receiverRootGoalsSummary && (
               <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <AccountTreeIcon sx={{ fontSize: 11 }} />

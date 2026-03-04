@@ -784,12 +784,12 @@ const DashboardPage: React.FC = () => {
                 </Box>
                 <Button
                   component={RouterLink}
-                  to="/matches"
+                  to="/leaderboard"
                   size="small"
                   variant="text"
                   color="primary"
                 >
-                  Explore
+                  Full Leaderboard
                 </Button>
               </Box>
               <Stack spacing={1.5}>
@@ -839,14 +839,24 @@ const DashboardPage: React.FC = () => {
                           </Typography>
                         )}
                       </Box>
-                      <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main' }}>
-                          {entry.praxis_points ?? 0}
-                        </Typography>
-                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem' }}>
-                          pts
-                        </Typography>
-                      </Box>
+                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexShrink: 0 }}>
+                        {(entry.current_streak ?? 0) > 0 && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                            <LocalFireDepartmentIcon sx={{ color: '#F97316', fontSize: 13 }} />
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#F97316', fontSize: '0.7rem' }}>
+                              {entry.current_streak}
+                            </Typography>
+                          </Box>
+                        )}
+                        <Box sx={{ textAlign: 'right' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                            {entry.praxis_points ?? 0}
+                          </Typography>
+                          <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem' }}>
+                            pts
+                          </Typography>
+                        </Box>
+                      </Stack>
                     </Box>
                   );
                 }) : (

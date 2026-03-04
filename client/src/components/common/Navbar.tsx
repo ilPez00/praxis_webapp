@@ -40,6 +40,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -138,6 +139,7 @@ const Navbar: React.FC = () => {
                   {[
                     { label: 'Dashboard', to: '/dashboard' },
                     { label: 'Matches', to: '/matches' },
+                    { label: 'Leaderboard', to: '/leaderboard' },
                     { label: 'Chat', to: '/communication' },
                   ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
@@ -423,6 +425,7 @@ const Navbar: React.FC = () => {
               {[
                 { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
                 { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
+                { label: 'Leaderboard', to: '/leaderboard', icon: <LeaderboardIcon /> },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
                 { label: 'Coaching', to: '/coaching', icon: <SchoolIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
