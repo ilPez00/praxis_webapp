@@ -130,6 +130,7 @@ export const DOMAIN_COLORS: Record<string, string> = {
     [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#A855F7',
     [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#F97316',
     [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#06B6D4',
+    [Domain.PERSONAL_GOALS]: '#F43F5E',
     'defaultDomain': '#9CA3AF',
 };
 
@@ -143,4 +144,5 @@ export const DOMAIN_ICONS: Record<string, string> = {
     [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '🎨',
     [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '❤️',
     [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '🤝',
+    [Domain.PERSONAL_GOALS]: '🏔️',
 };

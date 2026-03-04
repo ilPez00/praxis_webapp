@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { TRACKER_MAP, TrackerType } from './trackerTypes';
+import { TRACKER_MAP, DOMAIN_TRACKER_MAP, TrackerType } from './trackerTypes';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
 import {
@@ -45,6 +45,40 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+
+    // 1. Fetch user's goal domains to determine which trackers to auto-activate
+    const { data: treeData } = await supabase
+      .from('goal_trees')
+      .select('nodes')
+      .eq('userId', userId)
+      .maybeSingle();
+
+    if (treeData?.nodes) {
+      const nodes: { domain?: string }[] = Array.isArray(treeData.nodes) ? treeData.nodes : [];
+      const userDomains = Array.from(new Set(nodes.map(n => n.domain).filter(Boolean))) as string[];
+
+      // Determine which tracker IDs to auto-activate based on domains
+      const suggestedIds = Array.from(new Set(
+        userDomains.flatMap(d => DOMAIN_TRACKER_MAP[d] ?? [])
+      ));
+
+      if (suggestedIds.length > 0) {
+        // Fetch already-active trackers for this user
+        const { data: existing } = await supabase
+          .from('trackers')
+          .select('type')
+          .eq('user_id', userId);
+        const activeTypes = new Set((existing ?? []).map(t => t.type));
+        const toInsert = suggestedIds.filter(id => !activeTypes.has(id));
+        if (toInsert.length > 0) {
+          await supabase.from('trackers').insert(
+            toInsert.map(type => ({ user_id: userId, type }))
+          );
+        }
+      }
+    }
+
+    // 2. Fetch the (now possibly updated) active trackers
     const { data: tData } = await supabase
       .from('trackers')
       .select('id, type')
@@ -54,6 +88,7 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
     const activeTrackers: Tracker[] = tData ?? [];
     setTrackers(activeTrackers);
 
+    // 3. Count today's entries per tracker
     if (activeTrackers.length > 0) {
       const ids = activeTrackers.map(t => t.id);
       const today = new Date();

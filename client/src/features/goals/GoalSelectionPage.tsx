@@ -62,6 +62,12 @@ const DOMAIN_CATEGORIES: Record<Domain, string[]> = {
     'Make New Friends', 'Community Service', 'Social Events',
     'Reconnect Old Friends', 'Group Activities', 'Mentoring',
   ],
+  [Domain.PERSONAL_GOALS]: [
+    'Climb a Mountain', 'Go Skydiving', 'Run an Ultramarathon',
+    'Become a Parent', 'Write a Book', 'Learn to Fly',
+    'Travel Every Continent', 'Build My Dream Home', 'Start a Non-Profit',
+    'Speak at a Conference', 'Complete a Bucket List', 'Live Abroad',
+  ],
 };
 
 const MAX_FREE_GOALS = 3;

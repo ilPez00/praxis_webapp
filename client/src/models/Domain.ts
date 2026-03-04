@@ -22,4 +22,6 @@ export enum Domain {
   INTIMACY_ROMANTIC_EXPLORATION = 'Intimacy / Romantic Exploration',
   /** Building and maintaining meaningful platonic relationships. */
   FRIENDSHIP_SOCIAL_ENGAGEMENT = 'Friendship / Social Engagement',
+  /** Bucket-list experiences, life milestones, and personal adventures. */
+  PERSONAL_GOALS = 'Personal Goals',
 }

@@ -21,6 +21,8 @@ export interface TrackerType {
   entryLabel: (data: Record<string, string>) => string;
 }
 
+import { Domain } from '../../models/Domain';
+
 export const TRACKER_TYPES: TrackerType[] = [
   {
     id: 'lift',
@@ -150,8 +152,89 @@ export const TRACKER_TYPES: TrackerType[] = [
     ],
     entryLabel: d => `${d.type || '?'}: ${d.category || '?'} · €${d.amount || '?'}`,
   },
+  {
+    id: 'adventure',
+    label: 'Adventure Tracker',
+    icon: '🏔️',
+    description: 'Log bucket-list goals, milestones, and life experiences',
+    color: '#F43F5E',
+    bg: 'rgba(244,63,94,0.08)',
+    border: 'rgba(244,63,94,0.25)',
+    fields: [
+      { key: 'goal', label: 'Experience / Goal', type: 'text', placeholder: 'e.g. Climb Mt. Fuji' },
+      { key: 'status', label: 'Status', type: 'select', options: ['Planned', 'In Progress', 'Completed'] },
+      { key: 'location', label: 'Location', type: 'text', placeholder: 'e.g. Japan', optional: true },
+      { key: 'date', label: 'Target / Completed Date', type: 'date', optional: true },
+      { key: 'notes', label: 'Notes', type: 'text', placeholder: 'How did it feel?', optional: true },
+    ],
+    entryLabel: d => `${d.goal || '?'} — ${d.status || 'Planned'}${d.location ? ` · ${d.location}` : ''}`,
+  },
+  {
+    id: 'journal',
+    label: 'Journal',
+    icon: '📓',
+    description: 'Daily reflections, mood tracking, and gratitude entries',
+    color: '#14B8A6',
+    bg: 'rgba(20,184,166,0.08)',
+    border: 'rgba(20,184,166,0.25)',
+    fields: [
+      { key: 'mood', label: 'Mood', type: 'select', options: ['Great', 'Good', 'Okay', 'Low', 'Rough'] },
+      { key: 'entry', label: 'What happened / how do you feel?', type: 'text', placeholder: 'Write anything…' },
+      { key: 'gratitude', label: 'Grateful for…', type: 'text', placeholder: 'optional', optional: true },
+    ],
+    entryLabel: d => `${d.mood || '?'}: ${(d.entry || '').slice(0, 40)}${(d.entry || '').length > 40 ? '…' : ''}`,
+  },
+  {
+    id: 'project',
+    label: 'Creative Project',
+    icon: '🎨',
+    description: 'Track time and milestones on hobbies and creative work',
+    color: '#A855F7',
+    bg: 'rgba(168,85,247,0.08)',
+    border: 'rgba(168,85,247,0.25)',
+    fields: [
+      { key: 'project', label: 'Project Name', type: 'text', placeholder: 'e.g. Oil Painting Series' },
+      { key: 'time_spent', label: 'Time Spent (min)', type: 'number', placeholder: '60' },
+      { key: 'milestone', label: 'What did you accomplish?', type: 'text', placeholder: 'e.g. Finished underpainting' },
+      { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
+    ],
+    entryLabel: d => `${d.project || '?'}: ${d.milestone || '?'} (${d.time_spent}min)`,
+  },
+  {
+    id: 'job-apps',
+    label: 'Job Applications',
+    icon: '💼',
+    description: 'Track job applications, interviews, and career moves',
+    color: '#F59E0B',
+    bg: 'rgba(245,158,11,0.08)',
+    border: 'rgba(245,158,11,0.25)',
+    fields: [
+      { key: 'role', label: 'Role', type: 'text', placeholder: 'e.g. Software Engineer' },
+      { key: 'company', label: 'Company', type: 'text', placeholder: 'e.g. Google' },
+      { key: 'status', label: 'Status', type: 'select', options: ['Applied', 'Phone Screen', 'Interview', 'Offer', 'Rejected', 'Withdrawn'] },
+      { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
+    ],
+    entryLabel: d => `${d.role || '?'} @ ${d.company || '?'} — ${d.status || '?'}`,
+  },
 ];
 
 export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
   TRACKER_TYPES.map(t => [t.id, t])
 );
+
+/**
+ * Maps each goal domain to the tracker IDs that are automatically
+ * activated when a user has goals in that domain.
+ */
+export const DOMAIN_TRACKER_MAP: Record<string, string[]> = {
+  [Domain.FITNESS]:                          ['lift', 'cardio', 'meal'],
+  [Domain.ACADEMICS]:                        ['study'],
+  [Domain.MENTAL_HEALTH]:                    ['sleep', 'meditation', 'journal'],
+  [Domain.PHILOSOPHICAL_DEVELOPMENT]:        ['meditation', 'journal'],
+  [Domain.INVESTING]:                        ['budget'],
+  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]:     ['hangout'],
+  [Domain.INTIMACY_ROMANTIC_EXPLORATION]:    ['hangout'],
+  [Domain.CAREER]:                           ['job-apps'],
+  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: ['project'],
+  [Domain.PERSONAL_GOALS]:                   ['adventure'],
+};
