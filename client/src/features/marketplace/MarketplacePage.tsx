@@ -23,8 +23,10 @@ import SchoolIcon from '@mui/icons-material/School';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import GroupsIcon from '@mui/icons-material/Groups';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
+import DiamondIcon from '@mui/icons-material/Diamond';
 import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
+import { useNavigate } from 'react-router-dom';
 
 interface CatalogueItem {
   item_type: string;
@@ -87,6 +89,7 @@ const SECTIONS = [
 
 const MarketplacePage: React.FC = () => {
   const { user, refetch } = useUser();
+  const navigate = useNavigate();
   const [catalogue, setCatalogue] = useState<CatalogueItem[]>([]);
   const [coaches, setCoaches] = useState<CoachProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,6 +175,45 @@ const MarketplacePage: React.FC = () => {
         >
           {toast.message}
         </Alert>
+      )}
+
+      {/* Pro upgrade banner */}
+      {user && !user.is_premium && (
+        <Card sx={{
+          mb: 4,
+          background: 'linear-gradient(135deg, rgba(167,139,250,0.12) 0%, rgba(245,158,11,0.08) 100%)',
+          border: '1px solid rgba(167,139,250,0.3)',
+          borderRadius: 3,
+          overflow: 'hidden',
+        }}>
+          <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flexWrap: 'wrap', py: '20px !important' }}>
+            <Box sx={{ p: 1.25, borderRadius: 2, bgcolor: 'rgba(167,139,250,0.15)', flexShrink: 0 }}>
+              <DiamondIcon sx={{ fontSize: 28, color: '#A78BFA', display: 'block' }} />
+            </Box>
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#A78BFA', lineHeight: 1.2 }}>
+                Unlock Pro
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                Unlimited goals · AI Coaching (Master Roshi) · Advanced Analytics · Priority matching
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => navigate('/upgrade')}
+              sx={{
+                background: 'linear-gradient(135deg, #A78BFA 0%, #F59E0B 100%)',
+                fontWeight: 700,
+                borderRadius: 2,
+                px: 3,
+                flexShrink: 0,
+                '&:hover': { opacity: 0.9 },
+              }}
+            >
+              Upgrade — $10/mo
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {/* Catalogue sections */}

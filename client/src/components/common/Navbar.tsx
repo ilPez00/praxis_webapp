@@ -44,7 +44,6 @@ import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import CasinoIcon from '@mui/icons-material/Casino';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -325,14 +324,6 @@ const Navbar: React.FC = () => {
                       <BarChartIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Analytics</Typography>
                     </MenuItem>
-                    <MenuItem onClick={() => handleNav('/words')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <TextFieldsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Goal Language</Typography>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleNav('/coaching')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <SchoolIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Coaching</Typography>
-                    </MenuItem>
                     <MenuItem onClick={() => handleNav('/services')} sx={{ gap: 1.5, py: 1.25 }}>
                       <HandshakeIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Services</Typography>
@@ -478,12 +469,10 @@ const Navbar: React.FC = () => {
                 { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
                 { label: 'Leaderboard', to: '/leaderboard', icon: <LeaderboardIcon /> },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
-                { label: 'Coaching', to: '/coaching', icon: <SchoolIcon /> },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
                 { label: 'Goal Staking', to: '/betting', icon: <CasinoIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },
-                { label: 'Goal Language', to: '/words', icon: <TextFieldsIcon /> },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon /> },
               ].map(({ label, to, icon }) => (
                 <ListItem key={label} disablePadding>

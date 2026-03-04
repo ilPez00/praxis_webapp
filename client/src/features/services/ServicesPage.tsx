@@ -15,12 +15,14 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import SchoolIcon from '@mui/icons-material/School';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { DOMAIN_COLORS } from '../../types/goal';
 import { Domain } from '../../models/Domain';
+import CoachingPage from '../coaching/CoachingPage';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -122,7 +124,7 @@ const ServicesPage: React.FC = () => {
   }, []);
 
   useEffect(() => { if (tab === 0) fetchListings(); }, [tab, typeFilter, fetchListings]);
-  useEffect(() => { if (tab === 1) fetchMine(); }, [tab, fetchMine]);
+  useEffect(() => { if (tab === 2) fetchMine(); }, [tab, fetchMine]);
 
   // ── Search on Enter ────────────────────────────────────────────────────────
   const handleSearchKey = (e: React.KeyboardEvent) => {
@@ -311,6 +313,7 @@ const ServicesPage: React.FC = () => {
       {/* Tabs */}
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <Tab label="Browse All" />
+        <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Coaching" />
         {user && <Tab label="My Listings" />}
       </Tabs>
 
@@ -372,8 +375,11 @@ const ServicesPage: React.FC = () => {
         </>
       )}
 
-      {/* ── Tab 1: My Listings ── */}
-      {tab === 1 && user && (
+      {/* ── Tab 1: Coaching ── */}
+      {tab === 1 && <CoachingPage />}
+
+      {/* ── Tab 2: My Listings ── */}
+      {tab === 2 && user && (
         <>
           {myListings.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8, color: 'text.disabled' }}>

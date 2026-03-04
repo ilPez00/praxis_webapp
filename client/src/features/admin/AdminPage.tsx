@@ -24,7 +24,9 @@ import AddIcon from '@mui/icons-material/Add';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import SchoolIcon from '@mui/icons-material/School';
 import DownloadIcon from '@mui/icons-material/Download';
+import TextFieldsIcon from '@mui/icons-material/TextFields';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
@@ -299,6 +301,7 @@ const NetworkDiagram: React.FC<{ nodes: NetworkNode[]; edges: NetworkEdge[] }> =
 
 const AdminPage: React.FC = () => {
   const { user } = useUser();
+  const navigate = useNavigate();
   const [tab, setTab] = useState(0);
 
   // ── Users state ─────────────────────────────────────────────────────────────
@@ -569,14 +572,22 @@ const AdminPage: React.FC = () => {
     <Container maxWidth="lg" sx={{ mt: 4, pb: 8 }}>
 
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, flexWrap: 'wrap' }}>
         <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}>
           <AdminPanelSettingsIcon sx={{ fontSize: 26, color: 'error.main', display: 'block' }} />
         </Box>
-        <Box>
+        <Box sx={{ flexGrow: 1 }}>
           <Typography variant="h4" sx={{ fontWeight: 800 }}>Admin Panel</Typography>
           <Typography variant="body2" color="text.secondary">Godmode — handle with care</Typography>
         </Box>
+        <Button
+          variant="outlined"
+          startIcon={<TextFieldsIcon />}
+          onClick={() => navigate('/words')}
+          sx={{ borderRadius: 2, fontSize: '0.8rem', borderColor: 'rgba(167,139,250,0.4)', color: '#A78BFA', '&:hover': { borderColor: '#A78BFA', bgcolor: 'rgba(167,139,250,0.08)' } }}
+        >
+          Goal Language
+        </Button>
       </Box>
 
       {/* Tabs */}
