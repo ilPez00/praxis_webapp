@@ -12,6 +12,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { useUser } from '../../hooks/useUser';
+import UpgradeModal from '../../components/UpgradeModal';
 import { DOMAIN_COLORS } from '../../types/goal';
 import {
   Container,
@@ -37,6 +39,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FlagIcon from '@mui/icons-material/Flag';
 import PeopleIcon from '@mui/icons-material/People';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import LockIcon from '@mui/icons-material/Lock';
 
 interface StrategyItem {
   goal: string;
@@ -80,6 +83,8 @@ function formatAge(iso: string): string {
 // ── component ─────────────────────────────────────────────────────────────────
 
 const AICoachPage: React.FC = () => {
+  const { user } = useUser();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [report, setReport] = useState<CoachingReport | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [loadingReport, setLoadingReport] = useState(true);
@@ -236,6 +241,50 @@ const AICoachPage: React.FC = () => {
       <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.02em', color }}>{label}</Typography>
     </Box>
   );
+
+  // ── pro gate ─────────────────────────────────────────────────────────────
+
+  if (user !== null && !user.is_premium && !user.is_admin) {
+    return (
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+        <Box sx={{
+          p: 5, borderRadius: '24px',
+          background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(139,92,246,0.06) 100%)',
+          border: '1px solid rgba(245,158,11,0.2)',
+        }}>
+          <Avatar sx={{
+            width: 72, height: 72, mx: 'auto', mb: 2,
+            background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
+            border: '3px solid rgba(245,158,11,0.4)',
+            fontSize: '2rem',
+          }}>
+            🥋
+          </Avatar>
+          <LockIcon sx={{ color: 'primary.main', fontSize: 28, mb: 1 }} />
+          <Typography variant="h5" sx={{ fontWeight: 900, mb: 1, letterSpacing: '-0.02em' }}>
+            Master Roshi is Pro-only
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 320, mx: 'auto' }}>
+            Unlock AI-powered coaching, personalised strategies, and real-time Q&A with a Pro subscription.
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => setUpgradeOpen(true)}
+            sx={{
+              borderRadius: '12px',
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+              color: '#0A0B14',
+            }}
+          >
+            Upgrade to Pro
+          </Button>
+        </Box>
+        <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} featureName="Master Roshi AI Coaching" />
+      </Container>
+    );
+  }
 
   // ── loading ───────────────────────────────────────────────────────────────
 

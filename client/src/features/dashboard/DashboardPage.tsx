@@ -14,6 +14,7 @@ import PostFeed from '../posts/PostFeed';
 import TrackerWidget from '../trackers/TrackerWidget';
 import SiteTour from '../../components/common/SiteTour';
 import { DOMAIN_COLORS } from '../../types/goal';
+import CheckInWidget from './components/CheckInWidget';
 
 import {
   Container,
@@ -75,6 +76,8 @@ const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [localStreak, setLocalStreak] = useState<number | null>(null);
+  const [localPoints, setLocalPoints] = useState<number | null>(null);
   const [goalTree, setGoalTree] = useState<GoalTree | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [matchProfiles, setMatchProfiles] = useState<Record<string, MatchProfile>>({});
@@ -316,6 +319,22 @@ const DashboardPage: React.FC = () => {
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 8 }}>
       <Container maxWidth="xl">
+        {/* Check-in Widget */}
+        {currentUserId && (
+          <Box sx={{ pt: 3 }}>
+            <CheckInWidget
+              userId={currentUserId}
+              currentStreak={localStreak ?? (user?.current_streak ?? 0)}
+              lastActivityDate={user?.last_activity_date}
+              praxisPoints={localPoints ?? (user?.praxis_points ?? 0)}
+              onCheckIn={(newStreak, newPoints) => {
+                setLocalStreak(newStreak);
+                setLocalPoints(newPoints);
+              }}
+            />
+          </Box>
+        )}
+
         {/* Welcome Banner */}
         <Box sx={{ py: 4 }}>
           <GlassCard

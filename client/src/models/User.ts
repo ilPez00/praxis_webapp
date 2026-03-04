@@ -25,4 +25,5 @@ export interface User {
   profile_boosted_until?: string;
   badge?: string;
   is_admin?: boolean;
+  reliability_score?: number;
 }

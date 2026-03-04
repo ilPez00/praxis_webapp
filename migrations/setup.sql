@@ -697,3 +697,27 @@ BEGIN
   LIMIT match_limit;
 END;
 $$;
+
+
+-- =============================================================================
+-- 15. CHECKINS — daily check-in tracking
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.checkins (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id       UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  checked_in_at TIMESTAMPTZ DEFAULT now(),
+  streak_day    INT NOT NULL DEFAULT 1,
+  UNIQUE(user_id, (DATE(checked_in_at AT TIME ZONE 'UTC')))
+);
+
+ALTER TABLE public.checkins ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own checkins" ON public.checkins;
+CREATE POLICY "Users manage own checkins" ON public.checkins FOR ALL USING (auth.uid() = user_id);
+
+-- =============================================================================
+-- 16. PROFILES — reliability_score column
+-- =============================================================================
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS reliability_score FLOAT DEFAULT 0;

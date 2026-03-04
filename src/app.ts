@@ -22,6 +22,7 @@ import coachRoutes from './routes/coachRoutes';
 import searchRoutes from './routes/searchRoutes';
 import marketplaceRoutes from './routes/marketplaceRoutes';
 import postRoutes from './routes/postRoutes';
+import checkinRoutes from './routes/checkinRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -75,6 +76,7 @@ apiRouter.use('/coaches', coachRoutes);
 apiRouter.use('/search', searchRoutes);
 apiRouter.use('/marketplace', marketplaceRoutes);
 apiRouter.use('/posts', postRoutes);
+apiRouter.use('/checkins', checkinRoutes);
 
 app.use('/api', apiRouter);
 
