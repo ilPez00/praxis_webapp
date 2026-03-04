@@ -1,0 +1,109 @@
+% !TEX TS-program = xelatex
+% !TEX encoding = UTF-8
+
+\documentclass[11pt,a4paper]{article}
+
+% ── Core Packages ──────────────────────────────────────────
+\usepackage[margin=2cm]{geometry}
+\usepackage{fontspec}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\usepackage{fontawesome5}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{setspace}
+\usepackage{caption}
+\usepackage{microtype}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,calc,fit,shadows}
+
+% ── Typography ─────────────────────────────────────────────
+\setmainfont{Inter} 
+\setsansfont{Inter}
+\setmonofont{DejaVu Sans Mono}
+
+% ── Colors ─────────────────────────────────────────────────
+\definecolor{praxisBlue}{HTML}{007AFF}
+\definecolor{praxisPurple}{HTML}{5856D6}
+\definecolor{praxisGold}{HTML}{FFD60A}
+\definecolor{praxisDark}{HTML}{050505}
+\definecolor{praxisGray}{HTML}{1C1C1E}
+\definecolor{praxisText}{HTML}{F2F2F7}
+
+% ── Custom Boxes ───────────────────────────────────────────
+\tcbuselibrary{skins,breakable}
+\newtcolorbox{pitchbox}[1][]{
+    enhanced, breakable, colback=praxisGray, colframe=praxisBlue,
+    fonttitle=\bfseries\color{white}, title={#1},
+    left=8pt, right=8pt, top=6pt, bottom=6pt
+}
+
+% ───────────────────────────────────────────────────────────
+\begin{document}
+
+\pagecolor{praxisDark}
+\color{praxisText}
+
+\begin{center}
+\vspace*{1cm}
+{\fontsize{60}{70}\selectfont\textbf{\textcolor{praxisBlue}{P}RAXIS}}\\[0.5cm]
+{\LARGE\textbf{THE \$100B NETWORK STATE INFRASTRUCTURE}}\\[1.5cm]
+\end{center}
+
+\begin{pitchbox}[The Problem: The Great Exhaustion (2026)]
+Legacy social graphs are dead. Nation-states are insolvent. Institutional trust has collapsed. We are facing a \textbf{Coordination Crisis} that existing "networks" cannot solve.
+\end{pitchbox}
+
+\begin{pitchbox}[The Solution: A Post-Ideological OS]
+Praxis is the first Social Operating System designed for the **Architecture of Intent**. We synthesize the longevity of the \textbf{Church}, the exit-energy of the \textbf{Wandervogel}, and the resource pooling of the \textbf{Kibbutz} into a scalable digital market.
+\end{pitchbox}
+
+\begin{center}
+\begin{tikzpicture}[node distance=3.5cm]
+    \node[draw=praxisBlue, circle, inner sep=10pt, fill=praxisGray] (A) {\small Market};
+    \node[draw=praxisPurple, circle, inner sep=10pt, fill=praxisGray, right of=A] (B) {\small Monastery};
+    \node[draw=praxisGold, circle, inner sep=10pt, fill=praxisGray, right of=B] (C) {\small Commune};
+    \draw[thick, praxisPurple] (A) -- (B);
+    \draw[thick, praxisPurple] (B) -- (C);
+    \node[below=1.5cm of B, font=\Large\bfseries\color{praxisBlue}] {PRAXIS};
+\end{tikzpicture}
+\end{center}
+
+\section*{The Competitive Moat: The Intention Graph}
+Unlike the "Social Graph" (who you know) or the "Professional Graph" (what you've done), Praxis builds the **Intention Graph** (what you are going to do). This is the most valuable data asset of the next 50 years.
+
+\section*{Key Metrics \& Projections}
+\begin{itemize}
+    \item \textbf{High-Signal Matching:} $S_{AB}$ alignment yields 10x higher retention than tag-based communities.
+    \item \textbf{Reliability Capital:} The first non-gameable social credit score for decentralized trust.
+    \item \textbf{Economic Engine:} 5\% fee on Accountability Escrow (FinTech revenue).
+\end{itemize}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l X X X}
+\toprule
+\textbf{Metric} & \textbf{2026} & \textbf{2036} & \textbf{2076} \\
+\midrule
+Active Nodes & 50K & 10M & 500M+ \\
+Total Staked & \$1M & \$1B & \$50B+ \\
+Revenue (SaaS) & \$4.8M & \$800M & \$40B+ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\vfill
+\begin{center}
+\textcolor{praxisBlue}{\rule{8cm}{1.5pt}} \\
+\small\textcolor{praxisPurple}{Praxis Technologies · The Intentional Revolution · 2026}
+\end{center}
+
+\end{document}

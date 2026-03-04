@@ -37,6 +37,7 @@
     "eject": "react-scripts eject",
     "dev": "vite",
     "build": "vite build",
+    "build:electron": "vite build --config vite.electron.config.ts",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"

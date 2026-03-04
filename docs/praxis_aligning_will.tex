@@ -1,0 +1,304 @@
+% !TEX TS-program = xelatex
+% !TEX encoding = UTF-8
+
+\documentclass[11pt,a4paper,oneside]{article}
+
+% ── Core Packages ──────────────────────────────────────────
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{fontspec}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\usepackage{fontawesome5}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{abstract}
+\usepackage{setspace}
+\usepackage{caption}
+\usepackage{microtype}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,calc,fit}
+
+% ── Typography ─────────────────────────────────────────────
+% Note: Using standard fonts that are widely available but look clean
+\setmainfont{TeX Gyre Heros} % Helvetica-like
+\setsansfont{TeX Gyre Heros}
+\setmonofont{Courier New}
+
+% ── Colors (Praxis Branding) ───────────────────────────────
+\definecolor{praxisBlue}{HTML}{007AFF}
+\definecolor{praxisPurple}{HTML}{5856D6}
+\definecolor{praxisOrange}{HTML}{FF9500}
+\definecolor{praxisDark}{HTML}{0F0F0F}
+\definecolor{praxisGray}{HTML}{374151}
+\definecolor{praxisLight}{HTML}{F3F4F6}
+
+% Domain Colors
+\definecolor{careerGreen}{HTML}{4CAF50}
+\definecolor{investingTeal}{HTML}{26A69A}
+\definecolor{fitnessRed}{HTML}{E57373}
+\definecolor{academicsPink}{HTML}{EC407A}
+\definecolor{mentalBlue}{HTML}{64B5F6}
+\definecolor{philGray}{HTML}{78909C}
+\definecolor{cultureGreen}{HTML}{9CCC65}
+\definecolor{romanceOrange}{HTML}{FFA726}
+\definecolor{socialPurple}{HTML}{AB47BC}
+
+% ── Hyperref Setup ─────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=praxisPurple,
+    citecolor=praxisPurple,
+    urlcolor=praxisBlue,
+    pdftitle={Praxis: Aligning Will},
+    pdfauthor={Praxis Technologies},
+    pdfsubject={Goal-Aligned Social Operating System}
+}
+
+% ── Header / Footer ────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{praxisGray}{\textsc{Praxis} --- Confidential Whitepaper}}
+\fancyhead[R]{\small\textcolor{praxisGray}{v1.1 · March 2026}}
+\fancyfoot[C]{\small\textcolor{praxisGray}{\thepage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{praxisBlue}\leaders\hrule height \headrulewidth\hfill}}
+
+% ── Section Styles ─────────────────────────────────────────
+\titleformat{\section}{\large\bfseries\color{praxisDark}}{\thesection.}{0.75em}{}[\vspace{-4pt}\color{praxisBlue}\rule{\linewidth}{1.5pt}]
+\titleformat{\subsection}{\normalsize\bfseries\color{praxisGray}}{\thesubsection.}{0.5em}{}
+
+% ── Boxes ──────────────────────────────────────────────────
+\tcbuselibrary{skins,breakable}
+\newtcolorbox{callout}[2][]{
+    enhanced, breakable, colback=praxisLight, colframe=praxisBlue,
+    fonttitle=\bfseries\color{white}, title={#2}, #1,
+    left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+\newtcolorbox{philosophy}{
+    enhanced, breakable, colback=praxisDark, colframe=praxisPurple,
+    coltitle=white, fonttitle=\large\bfseries,
+    title={\faLightbulb\quad The Praxis Philosophy},
+    coltext=white, left=10pt, right=10pt, top=8pt, bottom=8pt
+}
+
+% ───────────────────────────────────────────────────────────
+\begin{document}
+
+% ═══════════════════════════════════════════════════════════
+%  TITLE PAGE
+% ═══════════════════════════════════════════════════════════
+\begin{titlepage}
+\pagecolor{praxisDark}
+\color{white}
+\begin{center}
+\vspace*{3cm}
+{\fontsize{72}{80}\selectfont\textbf{\textcolor{praxisBlue}{P}raxis}}
+
+\vspace{0.5cm}
+{\Large\textcolor{praxisLight}{Aligning Will}}
+
+\vspace{1.5cm}
+\textcolor{praxisBlue}{\rule{12cm}{1.5pt}}
+
+\vspace{1.5cm}
+{\LARGE\bfseries The Social Operating System for Human Ambition}
+
+\vspace{0.8cm}
+{\normalsize Technical \& Philosophical Whitepaper v1.1 \\ March 2026}
+
+\vspace{3cm}
+\begin{tabular}{ccc}
+\textcolor{praxisBlue}{\Large\faBullseye} &\quad\quad& \textcolor{praxisPurple}{\Large\faUsers} \\[4pt]
+\textcolor{praxisLight}{Goal Trees} && \textcolor{praxisLight}{Mutual Accountability} \\[16pt]
+\textcolor{praxisOrange}{\Large\faBrain} &\quad\quad& \textcolor{praxisBlue}{\Large\faLock} \\[4pt]
+\textcolor{praxisLight}{AI Alignment} && \textcolor{praxisLight}{Verified Will}
+\end{tabular}
+
+\vfill
+{\small\textcolor{praxisGray}{
+    Praxis Technologies · Confidential · Redistribution Prohibited
+}}
+\end{center}
+\end{titlepage}
+\nopagecolor
+
+% ═══════════════════════════════════════════════════════════
+%  ABSTRACT
+% ═══════════════════════════════════════════════════════════
+\newpage
+\begin{abstract}
+\noindent
+Praxis is a \textbf{goal-aligned social operating system} designed to bridge the gap between individual ambition and social infrastructure. While traditional social networks optimize for engagement (attention capture) and dating apps optimize for superficiality (appearance matching), Praxis optimizes for \textbf{shared trajectory}. By encoding human ambition into a multi-domain hierarchical goal tree and utilizing high-dimensional vector embeddings, Praxis identifies and pairs individuals whose "Wills" are semantically aligned. 
+
+The platform introduces the \textbf{Reliability Score} as a novel metric for social capital, the \textbf{Social Streak System} as a behavioral commitment device, and the \textbf{Master Roshi AI Coach} as a corrective feedback loop. This document details the mathematical underpinnings of the $S_{AB}$ matching algorithm, the technical architecture leveraging pgvector and Gemini, and the business model for the next era of value-driven social connectivity.
+\end{abstract}
+
+\tableofcontents
+
+% ═══════════════════════════════════════════════════════════
+%  1. THE PROBLEM: ATROPHY OF WILL
+% ═══════════════════════════════════════════════════════════
+\newpage
+\section{The Problem: Atrophy of Will}
+
+\subsection{The Loneliness of Ambition}
+Modern society suffers from a "loneliness epidemic" not due to a lack of connectivity, but a lack of \textit{aligned} connectivity. Ambition is often a solitary pursuit. Existing social platforms exacerbate this by prioritizing passive consumption over active progression. Users are connected based on what they \textit{look like} (dating), what they \textit{have done} (LinkedIn), or what they \textit{consume} (TikTok). None connect users based on what they \textit{intend to become}.
+
+\subsection{The Failure of Habit Trackers}
+Habit tracking apps often fail because they treat humans as isolated nodes. Without social skin-in-the-game, the cost of quitting is zero. Statistical failure rates for resolutions exceed 90\% precisely because the "infrastructure of Will" is non-existent.
+
+\begin{philosophy}
+Ambition is fragile in isolation, but antifragile in alignment. When two Wills are locked into a mutual commitment, the cost of failure becomes a social debt, and the reward for success is shared momentum.
+\end{philosophy}
+
+% ═══════════════════════════════════════════════════════════
+%  2. THE SOLUTION: PRAXIS
+% ═══════════════════════════════════════════════════════════
+\section{The Solution: Praxis}
+
+Praxis re-architects social interaction around three core pillars:
+\begin{enumerate}
+    \item \textbf{Identity as Intention:} You are defined by your Goal Tree.
+    \item \textbf{Matching as Alignment:} AI pairs you with your most compatible accountability partner.
+    \item \textbf{Validation as Progress:} Peer-verification makes growth socially legible.
+\end{enumerate}
+
+\subsection{The Multi-Domain Identity Layer}
+Praxis categorizes human life into 9 distinct domains, each with a specific color-identity matching the system's design language:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l X l}
+\toprule
+\textbf{Domain} & \textbf{Color} & \textbf{Focus} \\
+\midrule
+\textcolor{careerGreen}{\faBriefcase\ Career} & Green & Professional growth and craft \\
+\textcolor{investingTeal}{\faChartLine\ Investing} & Teal & Financial sovereignty and assets \\
+\textcolor{fitnessRed}{\faDumbbell\ Fitness} & Red & Physical capability and health \\
+\textcolor{academicsPink}{\faGraduationCap\ Academics} & Pink & Formal and informal learning \\
+\textcolor{mentalBlue}{\faBrain\ Mental Health} & Blue & Internal clarity and resilience \\
+\textcolor{philGray}{\faBook\ Philosophy} & Gray & Values, ethics, and worldview \\
+\textcolor{cultureGreen}{\faPalette\ Culture} & Light Green & Creative expression and hobbies \\
+\textcolor{romanceOrange}{\faHeart\ Intimacy} & Orange & Deep interpersonal relationships \\
+\textcolor{socialPurple}{\faUsers\ Friendship} & Purple & Community and social bond \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ═══════════════════════════════════════════════════════════
+%  3. THE MATHEMATICS OF ALIGNMENT
+% ═══════════════════════════════════════════════════════════
+\section{The Mathematics of Alignment}
+
+\subsection{Semantic Matching Algorithm ($S_{AB}$)}
+Alignment is not just sharing a keyword; it is sharing a semantic neighborhood. Praxis uses \texttt{text-embedding-004} (Gemini) to generate 768-dimensional vectors for every goal description. The match score $S_{AB}$ between user $A$ and user $B$ is:
+
+\begin{equation}
+S_{AB} = \frac{\sum_{i \in T_A, j \in T_B} \mathbb{I}(d_i = d_j) \cdot \cos(\vec{v}_i, \vec{v}_j) \cdot (1 - |p_i - p_j|) \cdot w_i \cdot w_j}{\sum w_i \cdot w_j}
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\mathbb{I}(d_i = d_j)$ is an indicator for shared domains.
+    \item $\cos(\vec{v}_i, \vec{v}_j)$ is the semantic similarity of goal descriptions.
+    \item $(1 - |p_i - p_j|)$ is the \textbf{Progress Proximity} factor (users at similar stages pair better).
+    \item $w_i, w_j$ are the importance weights assigned to each goal.
+\end{itemize}
+
+\subsection{The Reliability Score}
+The Reliability Score is the "Credit Score for Will." It measures how often a user's actions match their stated intentions.
+\begin{equation}
+R = 0.4(C) + 0.25(M) + 0.25(G) + 0.1(S)
+\end{equation}
+\begin{itemize}
+    \item $C$: Check-in consistency (rolling 30-day).
+    \item $M$: Message response rate to partners.
+    \item $G$: Goal completion rate (verified).
+    \item $S$: Streak stability (current streak / max streak).
+\end{itemize}
+
+% ═══════════════════════════════════════════════════════════
+%  4. BEHAVIORAL ARCHITECTURE
+% ═══════════════════════════════════════════════════════════
+\section{Behavioral Architecture}
+
+\subsection{Social Streak System}
+Praxis moves from individual streaks to \textbf{Mutual Streaks}. If one partner fails, the streak breaks for \textit{both}. This introduces "social loss aversion."
+
+\begin{callout}{The Grace System}
+To prevent "streak-death-spiral," Praxis allows for **Grace Days**. 
+\begin{itemize}
+    \item \textbf{Free Tier:} 1 Grace Day per 14 days (24h protection).
+    \item \textbf{Pro/Elite Tier:} 3-5 Grace Days + "Streak Shield" (72h protection).
+\end{itemize}
+Grace is not automatic; it must be requested, making the decision to "take a break" conscious and deliberate.
+\end{callout}
+
+\subsection{The Master Roshi AI Coach}
+Leveraging Gemini 1.5 Pro, the system generates a **Weekly Narrative**. Every Monday, users receive a coaching brief that analyzes their patterns:
+\textit{"This week you showed up 6/7 days. Your pattern shows a midweek dip on Wednesdays—let's discuss your energy management for next week."}
+
+% ═══════════════════════════════════════════════════════════
+%  5. TECHNICAL ARCHITECTURE
+% ═══════════════════════════════════════════════════════════
+\section{Technical Architecture}
+
+\subsection{Stack Overview}
+\begin{itemize}
+    \item \textbf{Frontend:} React 18, TypeScript, Material-UI (iOS-inspired design system).
+    \item \textbf{Backend:} Node.js, Express, TypeScript.
+    \item \textbf{Database:} Supabase (PostgreSQL + pgvector).
+    \item \textbf{AI Layer:} Google Gemini (Embeddings + Generative Coach).
+    \item \textbf{Realtime:} Supabase Broadcast for typing indicators and WebRTC signaling.
+\end{itemize}
+
+\subsection{The Matching Engine Pipeline}
+When a user updates a goal:
+1. **Embedding Trigger:** A background worker generates a vector for the goal text.
+2. **pgvector Upsert:** The vector is stored in a specialized index.
+3. **RPC Execution:** The `match_users_by_goals` function performs a cosine-similarity search across the entire user base in <100ms.
+
+% ═══════════════════════════════════════════════════════════
+%  6. BUSINESS MODEL: TIERS OF WILL
+% ═══════════════════════════════════════════════════════════
+\section{Business Model: Tiers of Will}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l X X X}
+\toprule
+\textbf{Feature} & \textbf{Free} & \textbf{Pro (\$9.99)} & \textbf{Elite (\$24.99)} \\
+\midrule
+Goal Trees & 3 active goals & Unlimited & Unlimited \\
+Matches & 5 per month & Unlimited & Priority Queue \\
+AI Coaching & 3 sessions & Weekly Narrative & Daily Check-ins \\
+Streaks & Basic & Mutual + Grace & Streak Shield \\
+Staking & Virtual Points & Real-Money Bets & Real-Money Bets \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ═══════════════════════════════════════════════════════════
+%  7. CONCLUSION: THE FUTURE OF ALIGNMENT
+% ═══════════════════════════════════════════════════════════
+\section{Conclusion: The Future of Alignment}
+
+Praxis is more than a productivity app; it is a fundamental reconfiguration of the social contract. By aligning human Will through technology, we move from a world of passive consumption to one of active transformation. 
+
+\textit{Goals unite us. Rigor guides us. Collaboration transforms us.}
+
+\bigskip
+\begin{center}
+\textcolor{praxisBlue}{\rule{6cm}{1pt}} \\
+\small\textcolor{praxisGray}{Praxis Technologies · March 2026}
+\end{center}
+
+\end{document}

@@ -533,7 +533,24 @@ Engineering priority: checkins endpoint → streak notification → requireTier 
   (M = message responsiveness skipped — impractical to measure accurately)
 - routes.tsx + Navbar: /betting route + "Goal Staking" link (desktop dropdown + mobile drawer)
 
-## Session 38 — Next Priorities
+## Session 38 (2026-03-04) — Admin Panel Fix + Words Page + Optimization
+
+### Implemented:
+- AdminPage.tsx: fixed fetchUsers double-json() bug (body stream consumed twice — broke all user data)
+- AdminPage: added Services tab (tab 5) + Coaches tab (tab 6) with full table + delete + CSV download
+- AdminPage: downloadCSV() helper for Users, Groups, Services, Coaches tabs
+- AdminPage: 7 scrollable tabs (was 5); Tabs variant="scrollable" for narrow screens
+- Backend: GET /admin/services, DELETE /admin/services/:id, GET /admin/coaches (all requireAdmin-gated)
+- wordsController.ts (new): aggregates words from all goal_trees.nodes (name/description/completionMetric),
+  filters 60+ stop words, returns top-100 with per-domain breakdown
+- wordsRoutes.ts (new): GET /words/frequency (authenticateToken-gated)
+- WordsPage.tsx (/words): CSS-only word cloud + top-15 horizontal bar chart, domain filter tabs
+- Navbar + routes.tsx: /words "Goal Language" link (TextFieldsIcon)
+- Commit: 019f2ab
+
+### Webapp Optimization (in progress — see below)
+
+## Session 39 — Next Priorities
 
 🔴 Phase 1 — Beta Readiness
 - [ ] Run DB migrations in Supabase: bets table + username col + services + checkins + reliability_score
