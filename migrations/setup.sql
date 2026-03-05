@@ -901,6 +901,36 @@ CREATE INDEX IF NOT EXISTS events_geo_idx ON public.events (latitude, longitude)
   WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
 
 -- =============================================================================
+-- 26. REFERRAL SYSTEM
+-- =============================================================================
+
+-- Each user gets one unique referral code (on-demand generation via API)
+CREATE TABLE IF NOT EXISTS public.referral_codes (
+  user_id    UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  code       VARCHAR(8) NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Tracks who claimed whose code; each claimer can only claim once
+CREATE TABLE IF NOT EXISTS public.referral_claims (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  claimer_id  UUID NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
+  referrer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  claimed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.referral_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.referral_claims ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Referral codes: own user read/write" ON public.referral_codes USING (auth.uid() = user_id);
+CREATE POLICY "Referral codes: insert own"          ON public.referral_codes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Referral claims: read all"           ON public.referral_claims FOR SELECT USING (true);
+CREATE POLICY "Referral claims: insert own"         ON public.referral_claims FOR INSERT WITH CHECK (auth.uid() = claimer_id);
+
+CREATE INDEX IF NOT EXISTS referral_codes_code_idx      ON public.referral_codes (code);
+CREATE INDEX IF NOT EXISTS referral_claims_referrer_idx ON public.referral_claims (referrer_id);
+
+-- =============================================================================
 -- 25. GEO COLUMNS ON PROFILES (user location for nearby discovery + feed scoring)
 -- =============================================================================
 

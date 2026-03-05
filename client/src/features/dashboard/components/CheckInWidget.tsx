@@ -8,6 +8,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import ShareIcon from '@mui/icons-material/Share';
 import GlassCard from '../../../components/common/GlassCard';
 
 interface Props {
@@ -150,23 +151,45 @@ const CheckInWidget: React.FC<Props> = ({
           )}
 
           {checkingStatus ? null : checkedIn ? (
-            <Tooltip title="You've checked in today">
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<CheckCircleIcon />}
-                disabled
-                sx={{
-                  borderRadius: '10px',
-                  borderColor: '#10B981',
-                  color: '#10B981',
-                  fontWeight: 700,
-                  '&.Mui-disabled': { borderColor: '#10B98166', color: '#10B981aa' },
-                }}
-              >
-                Checked In ✓
-              </Button>
-            </Tooltip>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Tooltip title="You've checked in today">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<CheckCircleIcon />}
+                  disabled
+                  sx={{
+                    borderRadius: '10px',
+                    borderColor: '#10B981',
+                    color: '#10B981',
+                    fontWeight: 700,
+                    '&.Mui-disabled': { borderColor: '#10B98166', color: '#10B981aa' },
+                  }}
+                >
+                  Checked In ✓
+                </Button>
+              </Tooltip>
+              {currentStreak >= 3 && (
+                <Tooltip title="Share your streak">
+                  <Button
+                    size="small"
+                    variant="text"
+                    startIcon={<ShareIcon sx={{ fontSize: '14px !important' }} />}
+                    onClick={() => {
+                      const text = `I'm on a 🔥 ${currentStreak}-day streak on Praxis! Building goals every day — join me → https://praxis-app.vercel.app`;
+                      if (navigator.share) {
+                        navigator.share({ title: 'My Praxis Streak', text }).catch(() => {});
+                      } else {
+                        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                      }
+                    }}
+                    sx={{ fontSize: '0.72rem', color: '#F97316', fontWeight: 700, borderRadius: '10px' }}
+                  >
+                    Share
+                  </Button>
+                </Tooltip>
+              )}
+            </Stack>
           ) : (
             <Button
               variant="contained"

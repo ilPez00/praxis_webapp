@@ -14,6 +14,7 @@ import SiteTour from '../../components/common/SiteTour';
 import { DOMAIN_COLORS } from '../../types/goal';
 import CheckInWidget from './components/CheckInWidget';
 import BalanceWidget from './components/BalanceWidget';
+import ReferralWidget from '../referral/ReferralWidget';
 
 import {
   Container,
@@ -536,6 +537,13 @@ const DashboardPage: React.FC = () => {
           </Grid>
 
         </Grid>
+
+        {/* Referral Widget */}
+        {currentUserId && (
+          <Box sx={{ mt: 4 }}>
+            <ReferralWidget userId={currentUserId} />
+          </Box>
+        )}
 
         {/* Community Challenges Section */}
         <Box sx={{ mt: 6 }}>

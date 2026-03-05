@@ -28,6 +28,7 @@ import servicesRoutes from './routes/servicesRoutes';
 import wordsRoutes from './routes/wordsRoutes';
 import eventsRoutes from './routes/eventsRoutes';
 import honorRoutes from './routes/honorRoutes';
+import referralRoutes from './routes/referralRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -87,6 +88,7 @@ apiRouter.use('/services', servicesRoutes);
 apiRouter.use('/words', wordsRoutes);
 apiRouter.use('/events', eventsRoutes);
 apiRouter.use('/honor', honorRoutes);
+apiRouter.use('/referrals', referralRoutes);
 
 app.use('/api', apiRouter);
 

@@ -109,6 +109,18 @@ const BettingPage: React.FC = () => {
         stakePoints: stake,
       });
       toast.success(`Bet placed! ${stake} PP staked on "${node.name}"`);
+
+      // Auto-post public accountability message to the feed
+      try {
+        await axios.post(`${API_URL}/posts`, {
+          userId: currentUserId,
+          userName: user?.name || 'A Praxis member',
+          userAvatarUrl: (user as any)?.avatar_url || null,
+          content: `🎯 I just staked ${stake} PP on completing my goal: "${node.name}" by ${new Date(deadline).toLocaleDateString()}. Hold me accountable! 💪`,
+          context: 'general',
+        });
+      } catch { /* non-critical */ }
+
       setDialogOpen(false);
       setSelectedNodeId('');
       setDeadline('');
