@@ -11,7 +11,6 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  Button,
   Stack,
   Chip,
   LinearProgress,
@@ -22,8 +21,8 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FeedbackIcon from '@mui/icons-material/Feedback';
 import InsightsIcon from '@mui/icons-material/Insights';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
-import LockIcon from '@mui/icons-material/Lock';
 import { DOMAIN_COLORS } from '../../types/goal';
+import ProBanner from '../../components/common/ProBanner';
 
 const StatCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode; glowColor?: string }> = ({
   icon, title, children, glowColor,
@@ -116,16 +115,8 @@ const AnalyticsPage: React.FC = () => {
 
   if (!user || !user.is_premium) {
     return (
-      <Container sx={{ mt: 4 }}>
-        <Alert
-          severity="warning"
-          icon={<LockIcon />}
-          action={
-            <Button color="inherit" size="small" onClick={() => navigate('/upgrade')}>Upgrade</Button>
-          }
-        >
-          Advanced Analytics requires a Premium subscription.
-        </Alert>
+      <Container maxWidth="sm" sx={{ mt: 8 }}>
+        <ProBanner message="Advanced Analytics — deep goal insights, domain performance, feedback trends, and peer comparison — is a Praxis Pro feature." />
       </Container>
     );
   }
