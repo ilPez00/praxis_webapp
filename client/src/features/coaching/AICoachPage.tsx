@@ -227,7 +227,14 @@ const AICoachPage: React.FC = () => {
       const { response } = await res.json();
       setChat(prev => [...prev, { role: 'coach', text: response }]);
     } catch (err: any) {
-      setChat(prev => [...prev, { role: 'coach', text: `Sorry, something went wrong: ${err.message}` }]);
+      const msg: string = err.message || '';
+      const isQuota = msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('resting') || msg.includes('429');
+      setChat(prev => [...prev, {
+        role: 'coach',
+        text: isQuota
+          ? "I need to rest — we've hit the daily AI limit. Check back in a few hours."
+          : `Sorry, I couldn't respond right now. ${msg}`,
+      }]);
     } finally {
       setAsking(false);
     }
@@ -313,10 +320,39 @@ const AICoachPage: React.FC = () => {
   }
 
   if (reportError) {
+    const isQuota = reportError.toLowerCase().includes('resting') || reportError.toLowerCase().includes('quota') || reportError.toLowerCase().includes('limit');
     return (
-      <Container maxWidth="md" sx={{ mt: 6 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>{reportError}</Alert>
-        <Button variant="contained" startIcon={<RefreshIcon />} onClick={handleRefresh}>Retry</Button>
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+        <Box sx={{
+          p: 5, borderRadius: '24px',
+          background: isQuota
+            ? 'linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(139,92,246,0.04) 100%)'
+            : 'rgba(255,255,255,0.03)',
+          border: `1px solid ${isQuota ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`,
+        }}>
+          <Avatar sx={{
+            width: 72, height: 72, mx: 'auto', mb: 2,
+            background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
+            border: '3px solid rgba(245,158,11,0.4)',
+            fontSize: '2rem',
+          }}>
+            🥋
+          </Avatar>
+          <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>
+            {isQuota ? 'Roshi is resting' : 'Roshi is unavailable'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 340, mx: 'auto' }}>
+            {isQuota
+              ? "He's hit the daily AI limit and needs to recharge. Check back in a few hours, or upgrade the Gemini API plan to remove this restriction."
+              : reportError}
+          </Typography>
+          {!isQuota && (
+            <Button variant="contained" startIcon={<RefreshIcon />} onClick={handleRefresh}
+              sx={{ borderRadius: '12px', fontWeight: 800 }}>
+              Retry
+            </Button>
+          )}
+        </Box>
       </Container>
     );
   }

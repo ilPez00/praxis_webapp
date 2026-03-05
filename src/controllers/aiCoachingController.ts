@@ -10,6 +10,21 @@ const aiCoachingService = new AICoachingService();
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('does not exist') || msg?.includes('42P01');
 
+/** Converts a raw Gemini error into a short, user-friendly message. */
+function friendlyAiError(err: any): { message: string; code: string } {
+  const msg: string = err?.message || String(err) || '';
+  if (msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('too many requests')) {
+    return {
+      code: 'QUOTA_EXCEEDED',
+      message: "Roshi is resting — the AI service has hit its daily limit. He'll be back soon. (Upgrade the Gemini API plan to remove this limit.)",
+    };
+  }
+  if (msg.includes('GEMINI_API_KEY') || msg.toLowerCase().includes('api key')) {
+    return { code: 'NOT_CONFIGURED', message: 'Master Roshi is offline — AI service not configured on this server.' };
+  }
+  return { code: 'UNKNOWN', message: 'Master Roshi is temporarily unavailable. Please try again in a moment.' };
+}
+
 // ---------------------------------------------------------------------------
 // Rate limiter for background brief generation (in-memory, resets on deploy)
 // ---------------------------------------------------------------------------
@@ -205,13 +220,8 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
     res.json(report);
   } catch (err: any) {
     logger.error('[AI Coach] Report generation failed:', err.message);
-    // Return 503 (service temporarily unavailable) rather than 500 —
-    // the client shows a friendly error with a Retry button either way.
-    return res.status(503).json({
-      message: err.message?.includes('GEMINI_API_KEY')
-        ? 'Master Roshi is offline — AI service not configured.'
-        : `Master Roshi is temporarily unavailable: ${err.message || 'Unknown error'}. Please try again in a moment.`,
-    });
+    const { message, code } = friendlyAiError(err);
+    return res.status(503).json({ message, code });
   }
 });
 
@@ -295,7 +305,8 @@ export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response,
     return res.json({ narrative, cached: false });
   } catch (err: any) {
     logger.error('[AI Coach] Weekly narrative failed:', err.message);
-    return res.status(503).json({ message: err.message || 'Failed to generate narrative.' });
+    const { message, code } = friendlyAiError(err);
+    return res.status(503).json({ message, code });
   }
 });
 
@@ -350,8 +361,7 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
     res.json({ response });
   } catch (err: any) {
     logger.error('[AI Coach] Follow-up generation failed:', err.message);
-    return res.status(503).json({
-      message: `Roshi couldn't respond right now: ${err.message || 'Unknown error'}. Please try again in a moment.`,
-    });
+    const { message, code } = friendlyAiError(err);
+    return res.status(503).json({ message, code });
   }
 });
