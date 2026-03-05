@@ -1,0 +1,5 @@
+Il cookie “__cf_bm” è stato rifiutato per il dominio non valido. websocket
+XHRPOST
+https://web-production-646a4.up.railway.app/api/ai-coaching/report
+[HTTP/2 500  1276ms]
+

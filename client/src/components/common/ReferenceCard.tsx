@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import FlagIcon from '@mui/icons-material/Flag';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
+import GroupsIcon from '@mui/icons-material/Groups';
+import EventIcon from '@mui/icons-material/Event';
 import CloseIcon from '@mui/icons-material/Close';
 
 export interface Reference {
-  type: 'goal' | 'service' | 'post';
+  type: 'goal' | 'service' | 'post' | 'group' | 'event';
   id: string;
   title: string;
   subtitle?: string;
@@ -15,9 +17,11 @@ export interface Reference {
 }
 
 const TYPE_META: Record<Reference['type'], { color: string; icon: React.ReactNode; label: string }> = {
-  goal:    { color: '#10B981', icon: <FlagIcon sx={{ fontSize: 14 }} />,           label: 'Goal'    },
-  service: { color: '#F59E0B', icon: <WorkOutlineIcon sx={{ fontSize: 14 }} />,    label: 'Service' },
+  goal:    { color: '#10B981', icon: <FlagIcon sx={{ fontSize: 14 }} />,            label: 'Goal'    },
+  service: { color: '#F59E0B', icon: <WorkOutlineIcon sx={{ fontSize: 14 }} />,     label: 'Service' },
   post:    { color: '#3B82F6', icon: <ArticleOutlinedIcon sx={{ fontSize: 14 }} />, label: 'Post'    },
+  group:   { color: '#8B5CF6', icon: <GroupsIcon sx={{ fontSize: 14 }} />,          label: 'Group'   },
+  event:   { color: '#EC4899', icon: <EventIcon sx={{ fontSize: 14 }} />,           label: 'Event'   },
 };
 
 interface Props {

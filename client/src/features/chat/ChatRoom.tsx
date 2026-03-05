@@ -8,6 +8,8 @@ import { FeedbackGrade } from '../../models/FeedbackGrade';
 import { GoalTree } from '../../models/GoalTree';
 import { GoalNode } from '../../models/GoalNode';
 import VideoCall from './VideoCall';
+import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
+import ReferencePicker from '../../components/common/ReferencePicker';
 import {
   Container,
   Box,
@@ -41,6 +43,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import LinkIcon from '@mui/icons-material/Link';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import CallIcon from '@mui/icons-material/Call';
@@ -82,6 +85,10 @@ const ChatRoom: React.FC = () => {
   const [showGradingDialog, setShowGradingDialog] = useState(false);
   const [gradingSubmitted, setGradingSubmitted] = useState(false);
   const [partnerGradedReceived, setPartnerGradedReceived] = useState(false);
+
+  // Reference linking
+  const [pendingRef, setPendingRef] = useState<Reference | null>(null);
+  const [refPickerOpen, setRefPickerOpen] = useState(false);
 
   // Goal-focused chat
   const [searchParams] = useSearchParams();
@@ -221,8 +228,10 @@ const ChatRoom: React.FC = () => {
   }, [gradingSubmitted, partnerGradedReceived]);
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !currentUserId || !user2Id) return;
-    const content = newMessage.trim();
+    if (!newMessage.trim() && !pendingRef) return;
+    if (!currentUserId || !user2Id) return;
+    const content = newMessage.trim() || (pendingRef ? `Shared a ${pendingRef.type}: ${pendingRef.title}` : '');
+    const refToSend = pendingRef;
     // Optimistic update — add message to state immediately so sender sees it right away
     const optimisticMsg = {
       id: `optimistic-${Date.now()}`,
@@ -232,15 +241,18 @@ const ChatRoom: React.FC = () => {
       timestamp: new Date().toISOString(),
       message_type: 'text',
       goal_node_id: focusGoalId || null,
+      metadata: refToSend ? { reference: refToSend } : undefined,
     };
     setMessages(prev => [...prev, optimisticMsg]);
     setNewMessage('');
+    setPendingRef(null);
     try {
       const response = await axios.post(`${API_URL}/messages/send`, {
         senderId: currentUserId,
         receiverId: user2Id,
         content,
         ...(focusGoalId ? { goalNodeId: focusGoalId } : {}),
+        ...(refToSend ? { metadata: { reference: refToSend } } : {}),
       });
       // Replace optimistic message with real one from server
       if (response.data?.sentMessage) {
@@ -598,6 +610,13 @@ const ChatRoom: React.FC = () => {
       );
     }
 
+    // Parse reference from metadata
+    let msgRef: Reference | null = null;
+    try {
+      const meta = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : (msg.metadata ?? {});
+      if (meta?.reference) msgRef = meta.reference as Reference;
+    } catch { /* ignore */ }
+
     // Default: text bubble
     return (
       <Box
@@ -633,6 +652,11 @@ const ChatRoom: React.FC = () => {
             >
               {msg.content}
             </Typography>
+            {msgRef && (
+              <Box sx={{ mt: 0.75 }}>
+                <ReferenceCard reference={msgRef} compact />
+              </Box>
+            )}
             <Typography
               variant="caption"
               sx={{
@@ -871,6 +895,14 @@ const ChatRoom: React.FC = () => {
             accept="image/*,video/*,.pdf,.doc,.docx,.txt"
             onChange={handleFileUpload}
           />
+
+          {/* Pending reference preview */}
+          {pendingRef && (
+            <Box sx={{ mb: 1 }}>
+              <ReferenceCard reference={pendingRef} onRemove={() => setPendingRef(null)} compact />
+            </Box>
+          )}
+
           <Stack direction="row" spacing={1} alignItems="center">
             <Tooltip title="Attach file">
               <IconButton
@@ -880,6 +912,15 @@ const ChatRoom: React.FC = () => {
                 sx={{ color: 'text.disabled', '&:hover': { color: 'text.secondary' } }}
               >
                 {uploadingFile ? <CircularProgress size={18} /> : <AttachFileIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Link a goal, post, group or event">
+              <IconButton
+                size="small"
+                onClick={() => setRefPickerOpen(true)}
+                sx={{ color: pendingRef ? 'primary.main' : 'text.disabled', '&:hover': { color: 'primary.main' } }}
+              >
+                <LinkIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <TextField
@@ -898,7 +939,7 @@ const ChatRoom: React.FC = () => {
             />
             <IconButton
               onClick={sendMessage}
-              disabled={!newMessage.trim()}
+              disabled={!newMessage.trim() && !pendingRef}
               sx={{
                 bgcolor: 'primary.main', color: '#0A0B14',
                 '&:hover': { bgcolor: 'primary.light' },
@@ -952,6 +993,16 @@ const ChatRoom: React.FC = () => {
           <Button size="small" onClick={() => setShowGoalPicker(false)}>Cancel</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Reference picker */}
+      {currentUserId && (
+        <ReferencePicker
+          open={refPickerOpen}
+          userId={currentUserId}
+          onSelect={(ref) => setPendingRef(ref)}
+          onClose={() => setRefPickerOpen(false)}
+        />
+      )}
 
       {/* Mutual grading dialog */}
       <Dialog open={showGradingDialog} onClose={() => !gradingSubmitted && setShowGradingDialog(false)} maxWidth="sm" fullWidth>

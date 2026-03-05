@@ -12,6 +12,8 @@ import {
 import FlagIcon from '@mui/icons-material/Flag';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
+import GroupsIcon from '@mui/icons-material/Groups';
+import EventIcon from '@mui/icons-material/Event';
 import SearchIcon from '@mui/icons-material/Search';
 import { API_URL } from '../../lib/api';
 import { Reference } from './ReferenceCard';
@@ -30,16 +32,20 @@ const ReferencePicker: React.FC<Props> = ({ open, userId, onSelect, onClose }) =
   const [goals, setGoals]       = useState<Reference[]>([]);
   const [services, setServices] = useState<Reference[]>([]);
   const [posts, setPosts]       = useState<Reference[]>([]);
+  const [groups, setGroups]     = useState<Reference[]>([]);
+  const [events, setEvents]     = useState<Reference[]>([]);
   const [loading, setLoading]   = useState(false);
 
   const fetchAll = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      const [goalsRes, servicesRes, postsRes] = await Promise.allSettled([
+      const [goalsRes, servicesRes, postsRes, groupsRes, eventsRes] = await Promise.allSettled([
         fetch(`${API_URL}/goals/${userId}`).then(r => r.ok ? r.json() : null),
         fetch(`${API_URL}/services`).then(r => r.ok ? r.json() : []),
         fetch(`${API_URL}/posts?context=general&userId=${userId}`).then(r => r.ok ? r.json() : []),
+        fetch(`${API_URL}/groups`).then(r => r.ok ? r.json() : []),
+        fetch(`${API_URL}/events`).then(r => r.ok ? r.json() : []),
       ]);
 
       // Goals: flatten tree nodes
@@ -77,6 +83,30 @@ const ReferencePicker: React.FC<Props> = ({ open, userId, onSelect, onClose }) =
           url: `/communication`,
         })));
       }
+
+      // Groups / boards
+      if (groupsRes.status === 'fulfilled') {
+        const all: any[] = Array.isArray(groupsRes.value) ? groupsRes.value : [];
+        setGroups(all.map(g => ({
+          type: 'group' as const,
+          id: g.id,
+          title: g.name,
+          subtitle: g.domain ? `${g.domain}${g.description ? ` · ${g.description.slice(0, 40)}` : ''}` : (g.description?.slice(0, 50) ?? ''),
+          url: `/boards/${g.id}`,
+        })));
+      }
+
+      // Events
+      if (eventsRes.status === 'fulfilled') {
+        const all: any[] = Array.isArray(eventsRes.value) ? eventsRes.value : [];
+        setEvents(all.slice(0, 30).map(e => ({
+          type: 'event' as const,
+          id: e.id,
+          title: e.title,
+          subtitle: `${e.event_date ?? ''}${e.location ? ` · ${e.location}` : ''}`.replace(/^·\s*/, ''),
+          url: `/events`,
+        })));
+      }
     } finally {
       setLoading(false);
     }
@@ -91,14 +121,16 @@ const ReferencePicker: React.FC<Props> = ({ open, userId, onSelect, onClose }) =
       ? items.filter(i => `${i.title} ${i.subtitle}`.toLowerCase().includes(search.toLowerCase()))
       : items;
 
-  const lists = [filtered(goals), filtered(services), filtered(posts)];
+  const lists = [filtered(goals), filtered(services), filtered(posts), filtered(groups), filtered(events)];
   const tabIcons = [
     <FlagIcon sx={{ fontSize: 16 }} />,
     <WorkOutlineIcon sx={{ fontSize: 16 }} />,
     <ArticleOutlinedIcon sx={{ fontSize: 16 }} />,
+    <GroupsIcon sx={{ fontSize: 16 }} />,
+    <EventIcon sx={{ fontSize: 16 }} />,
   ];
-  const tabLabels = ['Goals', 'Services', 'Posts'];
-  const tabColors = ['#10B981', '#F59E0B', '#3B82F6'];
+  const tabLabels = ['Goals', 'Services', 'Posts', 'Groups', 'Events'];
+  const tabColors = ['#10B981', '#F59E0B', '#3B82F6', '#8B5CF6', '#EC4899'];
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
