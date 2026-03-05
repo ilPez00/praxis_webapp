@@ -899,3 +899,17 @@ ALTER TABLE public.events ADD COLUMN IF NOT EXISTS city      TEXT;
 -- Spatial index (approximate — no PostGIS needed)
 CREATE INDEX IF NOT EXISTS events_geo_idx ON public.events (latitude, longitude)
   WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+
+-- =============================================================================
+-- 24. COACHING BRIEFS (cached AI coaching reports)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.coaching_briefs (
+  user_id      UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  brief        JSONB NOT NULL,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.coaching_briefs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Briefs: own user only" ON public.coaching_briefs
+  USING (auth.uid() = user_id);

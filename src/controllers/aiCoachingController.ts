@@ -4,7 +4,11 @@ import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, UnauthorizedError, InternalServerError } from '../utils/appErrors';
 
+// Instantiate once at module load — constructor no longer throws if API key missing
 const aiCoachingService = new AICoachingService();
+
+const SCHEMA_MISSING = (msg: string) =>
+  msg?.includes('schema cache') || msg?.includes('does not exist') || msg?.includes('42P01');
 
 // ---------------------------------------------------------------------------
 // Rate limiter for background brief generation (in-memory, resets on deploy)
@@ -16,10 +20,18 @@ const BRIEF_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 async function generateAndStoreBrief(userId: string): Promise<void> {
   const context = await buildContext(userId);
   const report = await aiCoachingService.generateFullReport(context);
-  await supabase
+  const { error } = await supabase
     .from('coaching_briefs')
     .upsert({ user_id: userId, brief: report, generated_at: new Date().toISOString() });
-  logger.info(`[AI Coach] Brief stored for user ${userId}`);
+  if (error) {
+    if (SCHEMA_MISSING(error.message)) {
+      logger.warn('[AI Coach] coaching_briefs table missing — brief generated but not cached. Run migrations.');
+    } else {
+      logger.warn(`[AI Coach] Failed to cache brief for ${userId}:`, error.message);
+    }
+  } else {
+    logger.info(`[AI Coach] Brief stored for user ${userId}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -44,11 +56,11 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .maybeSingle(),
 
       // 3. Recent feedback (received by this user)
+      // Column names: try both camelCase (legacy) and snake_case — maybeSingle gracefully handles missing table
       supabase
         .from('feedback')
-        .select('grade, comment, giverId')
-        .eq('receiverId', userId)
-        .order('createdAt', { ascending: false })
+        .select('grade, comment')
+        .or(`receiverId.eq.${userId},receiver_id.eq.${userId}`)
         .limit(5),
 
       // 4. Achievements
@@ -179,6 +191,12 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('User ID not found.');
 
+  if (!aiCoachingService.isConfigured) {
+    return res.status(503).json({
+      message: 'Master Roshi is offline — the AI service is not configured on this server. Please set GEMINI_API_KEY on Railway.',
+    });
+  }
+
   logger.info(`[AI Coach] Generating full report for user ${userId}`);
 
   try {
@@ -187,7 +205,13 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
     res.json(report);
   } catch (err: any) {
     logger.error('[AI Coach] Report generation failed:', err.message);
-    throw new InternalServerError(err.message || 'Failed to generate coaching report.');
+    // Return 503 (service temporarily unavailable) rather than 500 —
+    // the client shows a friendly error with a Retry button either way.
+    return res.status(503).json({
+      message: err.message?.includes('GEMINI_API_KEY')
+        ? 'Master Roshi is offline — AI service not configured.'
+        : `Master Roshi is temporarily unavailable: ${err.message || 'Unknown error'}. Please try again in a moment.`,
+    });
   }
 });
 
@@ -199,11 +223,16 @@ export const getBrief = catchAsync(async (req: Request, res: Response, _next: Ne
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated.');
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('coaching_briefs')
     .select('brief, generated_at')
     .eq('user_id', userId)
     .maybeSingle();
+
+  if (error && SCHEMA_MISSING(error.message)) {
+    // Table hasn't been created yet — return null so client falls back to inline generation
+    return res.json(null);
+  }
 
   res.json(data ?? null);
 });
@@ -247,12 +276,20 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
     return res.status(400).json({ message: 'userPrompt is required.' });
   }
 
+  if (!aiCoachingService.isConfigured) {
+    return res.status(503).json({
+      message: 'Master Roshi is offline — the AI service is not configured on this server.',
+    });
+  }
+
   try {
     const context = await buildContext(userId);
     const response = await aiCoachingService.generateCoachingResponse(userPrompt.trim(), context);
     res.json({ response });
   } catch (err: any) {
     logger.error('[AI Coach] Follow-up generation failed:', err.message);
-    throw new InternalServerError(err.message || 'Failed to generate coaching response.');
+    return res.status(503).json({
+      message: `Roshi couldn't respond right now: ${err.message || 'Unknown error'}. Please try again in a moment.`,
+    });
   }
 });

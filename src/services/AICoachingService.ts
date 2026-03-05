@@ -51,13 +51,18 @@ export interface CoachingReport {
 const MASTER_ROSHI_IDENTITY = `You are Master Roshi — an ancient, warm mentor who has guided countless people toward their best selves over many lifetimes. You have the patience of someone who has seen everything, the precision of a peak-performance strategist, and the genuine warmth of a grandfather who actually cares. You are equally comfortable helping someone map out a weekly plan as you are reflecting on the deeper patterns of their life. You draw on your library when it adds real value — not to show off, but because the right idea at the right moment changes everything. When someone asks a practical planning question, you give them a practical plan. When someone needs encouragement, you offer it genuinely — without hollow cheerleading. You notice what's going well and say so. You notice what's holding someone back and name it clearly but without judgment. You do not lecture. You do not preach. You have a conversation. Your tone is warm, direct, and occasionally dry — never cold, never preachy, never a motivational poster.`;
 
 export class AICoachingService {
-  private genAI: GoogleGenerativeAI;
-  private readonly MODEL = 'gemini-2.0-flash-lite';
+  private genAI: GoogleGenerativeAI | null = null;
+  // Use a widely-available stable model. gemini-2.0-flash-lite is newer and
+  // may not be on all API keys — fall back to gemini-1.5-flash which is GA.
+  private readonly MODEL = 'gemini-1.5-flash';
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY is not set in environment variables.');
-    this.genAI = new GoogleGenerativeAI(apiKey);
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey);
+    } else {
+      logger.warn('[AICoachingService] GEMINI_API_KEY not set — AI coaching will be unavailable.');
+    }
     // Kick off PDF loading in the background — first request may be slightly
     // slower if it arrives before loading completes
     knowledgeBase.load().catch(err =>
@@ -65,11 +70,18 @@ export class AICoachingService {
     );
   }
 
+  get isConfigured(): boolean {
+    return this.genAI !== null;
+  }
+
   /**
    * Generates a full structured coaching report (motivation + per-goal strategy + network leverage).
    * Returns a parsed CoachingReport object.
    */
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
+    if (!this.genAI) {
+      throw new Error('GEMINI_API_KEY is not configured on this server.');
+    }
     // Ensure books are loaded before generating
     await knowledgeBase.load();
     try {
@@ -80,13 +92,21 @@ export class AICoachingService {
 
       const prompt = this.buildReportPrompt(context);
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      const text = result.response.text().trim();
 
-      const parsed = JSON.parse(text) as CoachingReport;
+      // Strip markdown code fences if Gemini wraps the JSON despite responseMimeType
+      const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      let parsed: CoachingReport;
+      try {
+        parsed = JSON.parse(cleaned) as CoachingReport;
+      } catch {
+        logger.error('[AI Coach] JSON parse failed. Raw response:', text.slice(0, 500));
+        throw new Error('Master Roshi returned an unexpected response format. Please try again.');
+      }
       return parsed;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error generating coaching report:', error);
-      throw new Error('Failed to generate coaching report.');
+      throw new Error(error.message || 'Failed to generate coaching report.');
     }
   }
 
@@ -95,15 +115,18 @@ export class AICoachingService {
    * Returns plain text.
    */
   public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
+    if (!this.genAI) {
+      throw new Error('GEMINI_API_KEY is not configured on this server.');
+    }
     await knowledgeBase.load();
     try {
       const model = this.genAI.getGenerativeModel({ model: this.MODEL });
       const prompt = this.buildFollowUpPrompt(userPrompt, context);
       const result = await model.generateContent(prompt);
       return result.response.text();
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error generating coaching response:', error);
-      throw new Error('Failed to generate coaching response.');
+      throw new Error(error.message || 'Failed to generate coaching response.');
     }
   }
 
