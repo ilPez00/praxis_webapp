@@ -26,6 +26,7 @@ import checkinRoutes from './routes/checkinRoutes';
 import pointsRoutes from './routes/pointsRoutes';
 import servicesRoutes from './routes/servicesRoutes';
 import wordsRoutes from './routes/wordsRoutes';
+import eventsRoutes from './routes/eventsRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -83,6 +84,7 @@ apiRouter.use('/checkins', checkinRoutes);
 apiRouter.use('/points', pointsRoutes);
 apiRouter.use('/services', servicesRoutes);
 apiRouter.use('/words', wordsRoutes);
+apiRouter.use('/events', eventsRoutes);
 
 app.use('/api', apiRouter);
 

@@ -805,3 +805,44 @@ CREATE INDEX IF NOT EXISTS chat_room_members_user_idx
   ON public.chat_room_members (user_id);
 CREATE INDEX IF NOT EXISTS chat_room_members_room_idx
   ON public.chat_room_members (room_id);
+
+-- =============================================================================
+-- 21. EVENTS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.events (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id  UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  description TEXT,
+  event_date  DATE NOT NULL,
+  event_time  TIME,
+  location    TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.event_rsvps (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id   UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  status     TEXT NOT NULL CHECK (status IN ('going', 'maybe', 'not_going')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (event_id, user_id)
+);
+
+-- RLS
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_rsvps ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Events read all"       ON public.events FOR SELECT USING (true);
+CREATE POLICY "Events insert own"     ON public.events FOR INSERT WITH CHECK (auth.uid() = creator_id);
+CREATE POLICY "Events delete own"     ON public.events FOR DELETE USING (auth.uid() = creator_id);
+
+CREATE POLICY "RSVPs read all"        ON public.event_rsvps FOR SELECT USING (true);
+CREATE POLICY "RSVPs insert own"      ON public.event_rsvps FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "RSVPs upsert own"      ON public.event_rsvps FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "RSVPs delete own"      ON public.event_rsvps FOR DELETE USING (auth.uid() = user_id);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS events_date_idx ON public.events (event_date ASC);
+CREATE INDEX IF NOT EXISTS event_rsvps_event_idx ON public.event_rsvps (event_id);

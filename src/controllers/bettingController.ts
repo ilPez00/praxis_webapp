@@ -113,7 +113,8 @@ export const cancelBet = catchAsync(async (req: Request, res: Response, _next: N
 
   if (updateError) throw new InternalServerError('Failed to cancel bet.');
 
-  // Refund points
+  // Refund 90% of stake (10% house fee on cancellation)
+  const refunded = Math.floor(bet.stake_points * 0.9);
   const { data: profile } = await supabase
     .from('profiles')
     .select('praxis_points')
@@ -121,10 +122,10 @@ export const cancelBet = catchAsync(async (req: Request, res: Response, _next: N
     .single();
   await supabase
     .from('profiles')
-    .update({ praxis_points: (profile?.praxis_points ?? 0) + bet.stake_points })
+    .update({ praxis_points: (profile?.praxis_points ?? 0) + refunded })
     .eq('id', userId);
 
-  res.json({ message: 'Bet cancelled. Points refunded.', refunded: bet.stake_points });
+  res.json({ message: 'Bet cancelled. 90% of stake refunded (10% house fee).', refunded });
 });
 
 /**

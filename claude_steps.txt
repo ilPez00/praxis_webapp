@@ -570,17 +570,45 @@ Engineering priority: checkins endpoint → streak notification → requireTier 
 - "Top Achievers" renamed to "Best Examples"
 - Removed ~550 lines of dead code + all unused state/handlers/imports from DashboardPage
 
-## Session 40 — Next Priorities
+## Session 40 (2026-03-05) — Bet cancel fee + Events page
+
+### Implemented:
+- `bettingController.ts`: cancel refund changed from 100% → 90% (10% house fee); response now returns `refunded` amount
+- `BettingPage.tsx`: tooltip, toast, and dialog breakdown updated to show "90% refunded (10% house fee)"
+- `eventsController.ts` (NEW): CRUD for community events — GET (upcoming), POST, DELETE (creator only), POST /:id/rsvp (upsert going/maybe/not_going), DELETE /:id/rsvp
+  - Graceful schema-missing guard → returns [] / 503 (no crash before migrations run)
+- `eventsRoutes.ts` (NEW): all routes require authenticateToken
+- `app.ts`: registered `/events` route
+- `EventsPage.tsx` (NEW at `client/src/features/events/EventsPage.tsx`):
+  - Card grid of upcoming events with date badge, time, location chips, attendee counts
+  - RSVP buttons (Going / Maybe / Not Going) — toggle off by clicking same status
+  - Create Event dialog (title*, description, date*, time, location)
+  - Creator can delete their own events
+- `CommunicationPage.tsx`: added "Events" tab (tab 3) embedding EventsPage
+- `routes.tsx`: added lazy `/events` route
+- `migrations/setup.sql`: section 21 — events + event_rsvps tables with RLS + indexes
+
+## Session 41 — Next Priorities
+
+🟠 Phase 2 — Viral Hooks
+- [ ] "Challenge a friend" one-tap share: share bet/challenge via link
+- [ ] AI weekly narrative (Gemini): "This week you showed exceptional consistency"
+- [ ] Social streaks: mutual streak counter between accountability partners
+- [ ] WhatsApp-style groups: member list panel, online/last-seen, join/leave, group description
+
+🟡 Phase 3 — Production / Stability
+- [ ] Stripe prod: STRIPE_PRICE_ID + register webhook
+- [ ] Run migrations/setup.sql section 21 (events + event_rsvps tables) in Supabase
 
 🔴 Immediate (next session):
-- [ ] Cancelled bets refund only 90% of stake (10% house fee) — backend betsController cancel handler
-- [ ] Events page in Chat: calendar-style event creation + RSVP (new route /events, linked from /communication)
+- [x] Cancelled bets refund only 90% of stake (10% house fee) — backend betsController cancel handler
+- [x] Events page in Chat: calendar-style event creation + RSVP (new route /events, linked from /communication)
 
 🔴 Phase 1 — Beta Readiness
-- [ ] Run DB migrations in Supabase: bets table + username col + services + checkins + reliability_score
+- [x] Run DB migrations in Supabase: bets table + username col + services + checkins + reliability_score
   + 7 new performance indexes (migrations/setup.sql section 20)
-- [ ] Verify SUPABASE_SERVICE_ROLE_KEY on Railway is the correct service_role key
-- [ ] Seed demo users: POST /admin/seed-demo-users to populate Match feed
+- [x] Verify SUPABASE_SERVICE_ROLE_KEY on Railway is the correct service_role key
+- [x] Seed demo users: POST /admin/seed-demo-users to populate Match feed
 
 🟠 Phase 2 — Viral Hooks
 - [ ] "Challenge a friend" one-tap share: share bet/challenge via link

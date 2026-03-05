@@ -33,6 +33,7 @@ const WordsPage = React.lazy(() => import('../features/admin/WordsPage'));
 const LeaderboardPage = React.lazy(() => import('../features/leaderboard/LeaderboardPage'));
 const ServicesPage = React.lazy(() => import('../features/services/ServicesPage'));
 const BettingPage = React.lazy(() => import('../features/betting/BettingPage'));
+const EventsPage = React.lazy(() => import('../features/events/EventsPage'));
 
 interface RouteConfig {
   path: string;
@@ -79,6 +80,7 @@ const routes: RouteConfig[] = [
   { path: '/services', element: ServicesPage, private: true },
   { path: '/betting', element: BettingPage, private: true },
   { path: '/words', element: WordsPage, private: true },
+  { path: '/events', element: EventsPage, private: true },
 ];
 
 export default routes;

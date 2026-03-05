@@ -129,7 +129,7 @@ const BettingPage: React.FC = () => {
         data: { userId: currentUserId },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       });
-      toast.success('Bet cancelled. Points refunded.');
+      toast.success('Bet cancelled. 90% of stake refunded (10% house fee).');
       await fetchBets();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to cancel bet.');
@@ -250,7 +250,7 @@ const BettingPage: React.FC = () => {
                           />
                         </Stack>
                       </Box>
-                      <Tooltip title="Cancel bet (refunds stake)">
+                      <Tooltip title="Cancel bet (refunds 90% — 10% house fee)">
                         <Button
                           size="small"
                           color="error"
@@ -401,6 +401,10 @@ const BettingPage: React.FC = () => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
                 <Typography variant="body2" color="text.secondary">If you lose (missed deadline):</Typography>
                 <Typography variant="body2" sx={{ fontWeight: 800, color: '#EF4444' }}>−{stake} PP</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">If you cancel early:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: '#F59E0B' }}>+{Math.floor(stake * 0.9)} PP (90%)</Typography>
               </Box>
             </Box>
           </Stack>
