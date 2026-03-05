@@ -104,12 +104,16 @@ const OnboardingPage: React.FC = () => {
             avatarUrl = publicUrlData.publicUrl;
         }
 
-        // Note: onboarding_completed is set to true in GoalSelectionPage,
+        // Upsert handles the case where the profile row doesn't exist yet
+        // (e.g. Supabase handle_new_user trigger not configured).
+        // onboarding_completed is set to true in GoalSelectionPage,
         // only after the user has actually saved their goal tree.
         const { error: updateError } = await supabase
             .from('profiles')
-            .update({ name, age: parseInt(age), bio, avatar_url: avatarUrl })
-            .eq('id', user.id);
+            .upsert(
+              { id: user.id, name, age: parseInt(age), bio, avatar_url: avatarUrl, onboarding_completed: false },
+              { onConflict: 'id' }
+            );
 
         if (updateError) throw updateError;
 

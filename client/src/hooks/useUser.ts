@@ -33,7 +33,18 @@ export const useUser = () => {
         .single();
 
       if (profileError || !profile) {
-        setUser(null);
+        // Profile row doesn't exist yet (new user / trigger not set up / race condition).
+        // Return a stub instead of null so PrivateRoute redirects to /onboarding
+        // rather than /login, avoiding an infinite login loop.
+        setUser({
+          id: authUser.id,
+          email: authUser.email || '',
+          name: '',
+          age: 0,
+          bio: '',
+          goalTree: [],
+          onboarding_completed: false,
+        });
         return;
       }
 

@@ -38,7 +38,7 @@ const PrivateRoute: React.FC = () => {
   // Onboarding guard: redirect new users to onboarding until they complete setup.
   // Exempt /onboarding and /goal-selection so the flow itself isn't blocked.
   if (
-    user.onboarding_completed === false &&
+    !user.onboarding_completed &&
     !ONBOARDING_ALLOWED_PATHS.some((p) => location.pathname.startsWith(p))
   ) {
     return <Navigate to="/onboarding" replace />;
