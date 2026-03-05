@@ -52,9 +52,13 @@ const OnboardingPage: React.FC = () => {
     if (!/^[a-z0-9._]{3,30}$/.test(cleaned)) {
       return 'Username must be 3–30 characters: letters, numbers, dots, underscores only.';
     }
-    // Check uniqueness
-    const { data } = await supabase.from('profiles').select('id').eq('username', cleaned).maybeSingle();
-    if (data) return 'That username is already taken.';
+    // Check uniqueness — silently skip if column doesn't exist yet
+    try {
+      const { data } = await supabase.from('profiles').select('id').eq('username', cleaned).maybeSingle();
+      if (data) return 'That username is already taken.';
+    } catch {
+      // username column not yet migrated — ignore
+    }
     return '';
   };
 
@@ -102,19 +106,18 @@ const OnboardingPage: React.FC = () => {
 
         // Note: onboarding_completed is set to true in GoalSelectionPage,
         // only after the user has actually saved their goal tree.
-        const cleanUsername = username.replace(/^@/, '').toLowerCase() || null;
         const { error: updateError } = await supabase
             .from('profiles')
-            .update({
-            name,
-            age: parseInt(age),
-            bio,
-            avatar_url: avatarUrl,
-            ...(cleanUsername ? { username: cleanUsername } : {}),
-            })
+            .update({ name, age: parseInt(age), bio, avatar_url: avatarUrl })
             .eq('id', user.id);
 
         if (updateError) throw updateError;
+
+        // Save username separately — best-effort (column may not exist if migration hasn't run)
+        const cleanUsername = username.replace(/^@/, '').toLowerCase() || null;
+        if (cleanUsername) {
+            await supabase.from('profiles').update({ username: cleanUsername }).eq('id', user.id);
+        }
 
         await supabase.auth.updateUser({
             data: {
