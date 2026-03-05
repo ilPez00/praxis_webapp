@@ -27,6 +27,8 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import DiamondIcon from '@mui/icons-material/Diamond';
 import CasinoIcon from '@mui/icons-material/Casino';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import BoltIcon from '@mui/icons-material/Bolt';
 import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
@@ -180,54 +182,217 @@ const MarketplacePage: React.FC = () => {
 
       {/* Tabs */}
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <Tab icon={<DiamondIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Buy Pro" />
         <Tab icon={<CasinoIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Betting" />
         <Tab label="Shop" />
       </Tabs>
 
-      {/* ── Tab 0: Betting ── */}
-      {tab === 0 && <BettingPage />}
-
-      {/* ── Tab 1: Shop ── */}
-      {tab === 1 && <>
-
-      {/* Pro upgrade banner */}
-      {user && !user.is_premium && (
-        <Card sx={{
-          mb: 4,
-          background: 'linear-gradient(135deg, rgba(167,139,250,0.12) 0%, rgba(245,158,11,0.08) 100%)',
-          border: '1px solid rgba(167,139,250,0.3)',
-          borderRadius: 3,
-          overflow: 'hidden',
-        }}>
-          <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flexWrap: 'wrap', py: '20px !important' }}>
-            <Box sx={{ p: 1.25, borderRadius: 2, bgcolor: 'rgba(167,139,250,0.15)', flexShrink: 0 }}>
-              <DiamondIcon sx={{ fontSize: 28, color: '#A78BFA', display: 'block' }} />
-            </Box>
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#A78BFA', lineHeight: 1.2 }}>
-                Unlock Pro
+      {/* ── Tab 0: Buy Pro ── */}
+      {tab === 0 && (
+        <Box sx={{ maxWidth: 640, mx: 'auto', py: 2 }}>
+          {user?.is_premium ? (
+            <Card sx={{
+              textAlign: 'center', p: 4,
+              background: 'linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(52,211,153,0.06) 100%)',
+              border: '1px solid rgba(16,185,129,0.3)', borderRadius: 4,
+            }}>
+              <CheckCircleOutlineIcon sx={{ fontSize: 56, color: '#10B981', mb: 2 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800, color: '#10B981', mb: 1 }}>
+                You're on Praxis Pro ✓
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                Unlimited goals · AI Coaching (Master Roshi) · Advanced Analytics · Priority matching
+              <Typography color="text.secondary">
+                All Pro features are active. Manage your subscription from your Stripe billing portal.
               </Typography>
-            </Box>
-            <Button
-              variant="contained"
-              onClick={() => navigate('/upgrade')}
-              sx={{
-                background: 'linear-gradient(135deg, #A78BFA 0%, #F59E0B 100%)',
-                fontWeight: 700,
-                borderRadius: 2,
-                px: 3,
-                flexShrink: 0,
-                '&:hover': { opacity: 0.9 },
-              }}
-            >
-              Upgrade — $10/mo
-            </Button>
-          </CardContent>
-        </Card>
+              <Button
+                variant="outlined"
+                href="https://billing.stripe.com/p/login"
+                target="_blank"
+                sx={{ mt: 3, borderRadius: 2, borderColor: '#10B981', color: '#10B981' }}
+              >
+                Manage Billing
+              </Button>
+            </Card>
+          ) : (
+            <>
+              {/* Hero */}
+              <Box sx={{ textAlign: 'center', mb: 4 }}>
+                <Box sx={{
+                  display: 'inline-flex', alignItems: 'center', gap: 1,
+                  px: 2, py: 0.75, borderRadius: 10, mb: 2,
+                  bgcolor: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.3)',
+                }}>
+                  <DiamondIcon sx={{ fontSize: 16, color: '#A78BFA' }} />
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#A78BFA', letterSpacing: '0.1em' }}>
+                    PRAXIS PRO
+                  </Typography>
+                </Box>
+                <Typography variant="h3" sx={{ fontWeight: 900, letterSpacing: '-0.02em', mb: 1 }}>
+                  Level up your{' '}
+                  <Box component="span" sx={{
+                    background: 'linear-gradient(135deg, #A78BFA, #F59E0B)',
+                    backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  }}>
+                    practice
+                  </Box>
+                </Typography>
+                <Typography color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
+                  Everything you need to achieve your goals with AI, data, and community.
+                </Typography>
+              </Box>
+
+              {/* Pricing cards */}
+              <Grid container spacing={2} sx={{ mb: 4 }}>
+                {/* Monthly */}
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Card sx={{
+                    height: '100%', borderRadius: 3, p: 0.5,
+                    border: '1px solid rgba(167,139,250,0.25)',
+                    bgcolor: 'rgba(167,139,250,0.05)',
+                  }}>
+                    <CardContent>
+                      <Typography variant="overline" sx={{ color: '#A78BFA', fontWeight: 700 }}>Monthly</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, my: 1 }}>
+                        <Typography variant="h3" sx={{ fontWeight: 900 }}>$10</Typography>
+                        <Typography color="text.secondary">/month</Typography>
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">Billed monthly. Cancel anytime.</Typography>
+                      <Button
+                        fullWidth variant="contained"
+                        onClick={() => navigate('/upgrade')}
+                        sx={{
+                          mt: 2, borderRadius: 2, fontWeight: 700,
+                          background: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%)',
+                          '&:hover': { opacity: 0.9 },
+                        }}
+                      >
+                        Get Pro — $10/mo
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Annual */}
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Card sx={{
+                    height: '100%', borderRadius: 3, p: 0.5, position: 'relative',
+                    border: '1px solid rgba(245,158,11,0.4)',
+                    background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(167,139,250,0.08) 100%)',
+                  }}>
+                    <Box sx={{
+                      position: 'absolute', top: -1, right: 16,
+                      px: 1.5, py: 0.25, borderRadius: '0 0 8px 8px',
+                      bgcolor: '#F59E0B',
+                    }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#000', fontSize: '0.65rem' }}>
+                        SAVE $24
+                      </Typography>
+                    </Box>
+                    <CardContent>
+                      <Typography variant="overline" sx={{ color: '#F59E0B', fontWeight: 700 }}>Annual</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, my: 1 }}>
+                        <Typography variant="h3" sx={{ fontWeight: 900 }}>$8</Typography>
+                        <Typography color="text.secondary">/month</Typography>
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">$96 billed once a year.</Typography>
+                      <Button
+                        fullWidth variant="contained"
+                        onClick={() => navigate('/upgrade')}
+                        sx={{
+                          mt: 2, borderRadius: 2, fontWeight: 700,
+                          background: 'linear-gradient(135deg, #F59E0B 0%, #F97316 100%)',
+                          '&:hover': { opacity: 0.9 },
+                        }}
+                      >
+                        Get Annual — $96/yr
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Features list */}
+              <Card sx={{ borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', mb: 4 }}>
+                <CardContent>
+                  <Typography variant="overline" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+                    What's included
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    {[
+                      { icon: <AccountTreeIcon sx={{ color: '#34D399', fontSize: 20 }} />, label: 'Unlimited goals & tree depth' },
+                      { icon: <AutoAwesomeIcon sx={{ color: '#A78BFA', fontSize: 20 }} />, label: 'Master Roshi AI coaching — strategies, routines, meal plans' },
+                      { icon: <StarIcon sx={{ color: '#F59E0B', fontSize: 20 }} />, label: 'Advanced Analytics — domain performance, feedback trends' },
+                      { icon: <GroupsIcon sx={{ color: '#60A5FA', fontSize: 20 }} />, label: 'Priority matching algorithm' },
+                      { icon: <DiamondIcon sx={{ color: '#A78BFA', fontSize: 20 }} />, label: 'Exclusive Pro badge on your profile' },
+                      { icon: <BoltIcon sx={{ color: '#F59E0B', fontSize: 20 }} />, label: 'Early access to new features' },
+                    ].map(({ icon, label }) => (
+                      <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        {icon}
+                        <Typography variant="body2">{label}</Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              {/* Points packs */}
+              <Typography variant="overline" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+                Or buy Praxis Points
+              </Typography>
+              <Grid container spacing={2}>
+                {[
+                  { label: 'Starter', pp: '500 PP', price: '$2.99', color: '#60A5FA' },
+                  { label: 'Growth', pp: '1,500 PP', price: '$6.99', color: '#34D399', best: true },
+                  { label: 'Elite', pp: '5,000 PP', price: '$19.99', color: '#A78BFA' },
+                ].map(pack => (
+                  <Grid size={{ xs: 12, sm: 4 }} key={pack.label}>
+                    <Card sx={{
+                      borderRadius: 3, textAlign: 'center', p: 0.5,
+                      border: `1px solid ${pack.color}30`,
+                      bgcolor: `${pack.color}08`,
+                      position: 'relative',
+                    }}>
+                      {pack.best && (
+                        <Box sx={{
+                          position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
+                          px: 1.5, py: 0.25, borderRadius: '0 0 8px 8px',
+                          bgcolor: pack.color,
+                        }}>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#000', fontSize: '0.6rem' }}>
+                            BEST VALUE
+                          </Typography>
+                        </Box>
+                      )}
+                      <CardContent sx={{ pt: pack.best ? 3 : 2 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: pack.color }}>{pack.label}</Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 900, color: pack.color, my: 0.5 }}>
+                          {pack.pp}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{pack.price}</Typography>
+                        <Button
+                          fullWidth size="small" variant="outlined"
+                          sx={{ borderRadius: 2, borderColor: pack.color, color: pack.color, fontWeight: 700 }}
+                          onClick={() => navigate('/upgrade')}
+                        >
+                          Buy
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+              <Typography variant="caption" color="text.disabled" sx={{ display: 'block', textAlign: 'center', mt: 2 }}>
+                Points packs coming soon — wiring up Stripe one-time payments.
+              </Typography>
+            </>
+          )}
+        </Box>
       )}
+
+      {/* ── Tab 1: Betting ── */}
+      {tab === 1 && <BettingPage />}
+
+      {/* ── Tab 2: Shop ── */}
+      {tab === 2 && <>
 
       {/* Catalogue sections */}
       {SECTIONS.map(section => {

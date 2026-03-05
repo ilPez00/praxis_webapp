@@ -1,0 +1,319 @@
+================================================================
+PRAXIS — MONETISATION SETUP GUIDE
+================================================================
+Last updated: 2026-03-05
+Stack: Vercel (frontend) · Railway (backend) · Stripe · Supabase
+================================================================
+
+
+────────────────────────────────────────────────────────────────
+PRODUCTS
+────────────────────────────────────────────────────────────────
+
+1. PRAXIS PRO — Monthly   $10 / month   (recurring subscription)
+   Unlocks:
+   · Unlimited goal tree depth & edits
+   · Master Roshi AI coaching (unlimited sessions)
+   · Advanced Analytics dashboard
+   · Priority matching algorithm
+   · Goal collaboration chat rooms
+   · Exclusive Pro badge on profile
+
+2. PRAXIS PRO — Annual    $96 / year    (recurring subscription)
+   Same features as monthly — saves $24/year vs monthly.
+   Show as "$8/month, billed annually".
+
+3. PRAXIS POINTS — Starter Pack   $2.99 (one-time)   → 500 PP
+   For users who want to boost visibility, shield streaks,
+   or tip coaches without a Pro subscription.
+
+4. PRAXIS POINTS — Growth Pack    $6.99 (one-time)   → 1,500 PP
+   Best value for active marketplace participants.
+
+5. PRAXIS POINTS — Elite Pack     $19.99 (one-time)  → 5,000 PP
+   Power users, coaches, and goal-stakers.
+
+6. COACHING SESSION (future)      $25–75 / session   (one-time)
+   Booked through the Services page. Revenue split:
+   platform 20% · coach 80%. Implement when coach roster grows.
+
+
+================================================================
+STEP 1 — STRIPE DASHBOARD SETUP
+================================================================
+
+URL: https://dashboard.stripe.com
+
+--- 1a. Create Products ---
+
+Go to: Products → Add product
+
+PRODUCT 1: Praxis Pro Monthly
+  Name:          Praxis Pro
+  Description:   Unlimited goals, AI coaching, analytics, priority matching
+  Pricing model: Recurring
+  Price:         $10.00 USD / month
+  → Save. Copy the Price ID (starts with price_...)
+  → This is your STRIPE_PRICE_ID for the monthly plan
+
+PRODUCT 2: Praxis Pro Annual
+  Name:          Praxis Pro (Annual)
+  Description:   Save $24 vs monthly — $8/month billed annually
+  Pricing model: Recurring
+  Price:         $96.00 USD / year
+  → Save. Copy the Price ID.
+  → You'll add a second checkout session endpoint for this
+
+PRODUCT 3: Points Starter Pack
+  Name:          Praxis Points — Starter (500 PP)
+  Pricing model: One-time
+  Price:         $2.99 USD
+  → Save. Copy the Price ID.
+
+PRODUCT 4: Points Growth Pack
+  Name:          Praxis Points — Growth (1,500 PP)
+  Pricing model: One-time
+  Price:         $6.99 USD
+  → Save. Copy the Price ID.
+
+PRODUCT 5: Points Elite Pack
+  Name:          Praxis Points — Elite (5,000 PP)
+  Pricing model: One-time
+  Price:         $19.99 USD
+  → Save. Copy the Price ID.
+
+--- 1b. Customer Portal ---
+
+Go to: Settings → Customer portal → Activate
+
+Enable:
+  ✓ Allow customers to cancel subscriptions
+  ✓ Allow customers to update payment methods
+  ✓ Invoice history visible
+
+Save the Customer portal link — you'll surface it in the app.
+
+--- 1c. Webhook ---
+
+Go to: Developers → Webhooks → Add endpoint
+
+Endpoint URL:   https://web-production-646a4.up.railway.app/api/stripe/webhook
+
+Events to listen to:
+  ✓ checkout.session.completed
+  ✓ customer.subscription.updated
+  ✓ customer.subscription.deleted
+  ✓ invoice.payment_failed           (for dunning / failed renewals)
+  ✓ invoice.paid                     (confirmation of successful renewal)
+
+→ Save. Reveal the Webhook Signing Secret.
+→ This is your STRIPE_WEBHOOK_SECRET
+
+
+================================================================
+STEP 2 — RAILWAY ENV VARS (backend)
+================================================================
+
+Go to: https://railway.app → your project → Variables
+
+Add / verify these variables:
+
+STRIPE_SECRET_KEY=sk_live_...       ← from Stripe Dashboard → API keys
+STRIPE_PRICE_ID=price_...          ← Monthly Pro price ID from Step 1a
+STRIPE_WEBHOOK_SECRET=whsec_...    ← from Step 1c
+CLIENT_URL=https://praxis-app.vercel.app
+
+Also confirm these are set:
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJ...   ← service role key (NOT anon/publishable)
+GEMINI_API_KEY=AIza...
+
+Redeploy after adding variables.
+
+
+================================================================
+STEP 3 — VERCEL ENV VARS (frontend)
+================================================================
+
+Go to: https://vercel.com → your project → Settings → Environment Variables
+
+REACT_APP_API_URL=https://web-production-646a4.up.railway.app/api
+
+(The frontend currently has this hardcoded as a fallback in
+ client/src/lib/api.ts, so this is optional but good practice.)
+
+Redeploy after any changes.
+
+
+================================================================
+STEP 4 — SUPABASE: PREMIUM STATUS TRIGGER
+================================================================
+
+The webhook sets is_premium on the profiles table via the
+user_subscriptions table. Verify this trigger exists:
+
+-- Run in Supabase SQL Editor:
+SELECT trigger_name, event_manipulation, action_statement
+FROM information_schema.triggers
+WHERE event_object_table = 'user_subscriptions';
+
+If the trigger "update_profile_premium_status" is missing,
+create it:
+
+CREATE OR REPLACE FUNCTION sync_premium_status()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE public.profiles
+  SET is_premium = (
+    EXISTS (
+      SELECT 1 FROM public.user_subscriptions
+      WHERE user_id = NEW.user_id
+        AND status IN ('active', 'trialing')
+    )
+  )
+  WHERE id = NEW.user_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS update_profile_premium_status ON public.user_subscriptions;
+CREATE TRIGGER update_profile_premium_status
+AFTER INSERT OR UPDATE OR DELETE ON public.user_subscriptions
+FOR EACH ROW EXECUTE FUNCTION sync_premium_status();
+
+Also run §27 migration (friendships table) from migrations/setup.sql
+if you haven't already.
+
+
+================================================================
+STEP 5 — POINTS PACKS (backend wiring — TODO)
+================================================================
+
+When implementing Points packs (one-time purchases):
+
+1. Add new endpoint: POST /stripe/buy-points
+   Body: { userId, email, packId: 'starter' | 'growth' | 'elite' }
+
+2. Map packId → Stripe Price ID → PP amount:
+   starter → price_xxx → 500 PP
+   growth  → price_xxx → 1500 PP
+   elite   → price_xxx → 5000 PP
+
+3. Create checkout session with mode: 'payment' (not 'subscription')
+   and metadata: { userId, ppAmount }
+
+4. Handle webhook event: checkout.session.completed
+   Check metadata.ppAmount → UPDATE profiles SET praxis_points =
+   praxis_points + ppAmount WHERE id = userId
+
+5. Wire up the BuyPoints buttons in MarketplacePage.
+
+
+================================================================
+STEP 6 — STRIPE CLI (local webhook testing)
+================================================================
+
+Install: https://stripe.com/docs/stripe-cli
+
+stripe login
+stripe listen --forward-to localhost:3001/api/stripe/webhook
+
+# In another terminal, test events:
+stripe trigger checkout.session.completed
+stripe trigger customer.subscription.updated
+
+
+================================================================
+STEP 7 — TEST CHECKLIST (staging with test keys)
+================================================================
+
+Use test keys first (sk_test_... / pk_test_...) before going live.
+
+□ Set STRIPE_SECRET_KEY=sk_test_... on Railway
+□ Use Stripe test card: 4242 4242 4242 4242, any expiry/CVC
+□ Complete a checkout → verify profiles.is_premium = true in Supabase
+□ Cancel subscription in Stripe → verify is_premium = false
+□ Test webhook locally with Stripe CLI
+□ Check Railway logs for webhook events
+□ Verify /success and /cancel pages render correctly
+□ Test with failed payment card: 4000 0000 0000 0002
+
+Once all pass → swap to live keys → redeploy Railway.
+
+
+================================================================
+STEP 8 — GOING LIVE CHECKLIST
+================================================================
+
+□ Replace all sk_test_ keys with sk_live_ on Railway
+□ Update STRIPE_PRICE_ID to live Price ID
+□ Update STRIPE_WEBHOOK_SECRET to live webhook secret
+□ Set CLIENT_URL=https://praxis-app.vercel.app on Railway
+□ Verify Stripe account is fully activated (business info, bank)
+□ Set up Stripe Tax (if selling to EU/UK users — VAT required)
+□ Add Privacy Policy + Terms of Service pages on Vercel site
+  (required by Stripe for live account approval)
+□ Enable Stripe Radar (fraud rules) — on by default
+□ Set up email receipts in Stripe → Settings → Emails
+□ Test a real $0.50 transaction with your own card
+□ Redeploy Railway + Vercel
+
+
+================================================================
+STEP 9 — OPTIONAL ENHANCEMENTS
+================================================================
+
+Stripe Customer Portal (self-serve billing):
+  POST /stripe/portal-session → stripe.billingPortal.sessions.create
+  Redirect user to session.url
+  Add "Manage Subscription" button in Profile settings
+
+Annual pricing toggle on /upgrade:
+  Add a monthly/annual toggle that swaps STRIPE_PRICE_ID
+  sent to create-checkout-session
+
+Points pack purchases:
+  See Step 5 above — use mode: 'payment' sessions
+
+Referral discount:
+  Apply Stripe coupon code at checkout for referred users
+  (already have referral system in place)
+
+Dunning / failed payments:
+  Handle invoice.payment_failed webhook:
+  → Email user (via Resend or SendGrid)
+  → Show banner in-app after 3 failed attempts
+
+
+================================================================
+FILES TO KNOW
+================================================================
+
+Backend:
+  src/controllers/stripeController.ts   — checkout + webhook handler
+  src/routes/stripeRoutes.ts            — route definitions
+
+Frontend:
+  client/src/features/payments/UpgradePage.tsx   — /upgrade page
+  client/src/features/payments/SuccessPage.tsx   — post-checkout
+  client/src/features/payments/CancelPage.tsx    — cancelled checkout
+  client/src/features/marketplace/MarketplacePage.tsx — Buy Pro CTA
+
+Database:
+  public.user_subscriptions    — Stripe subscription mirror
+  public.profiles.is_premium   — boolean, set by trigger
+  public.profiles.praxis_points — PP balance
+
+
+================================================================
+PRICE SUMMARY
+================================================================
+
+  Praxis Pro Monthly     $10.00 / month
+  Praxis Pro Annual      $96.00 / year   ($8/mo)
+  Points Starter         $2.99  one-time  →  500 PP
+  Points Growth          $6.99  one-time  → 1,500 PP
+  Points Elite           $19.99 one-time  → 5,000 PP
+  Coaching Session       $25–75           → future (coach-set price)
+
+================================================================
