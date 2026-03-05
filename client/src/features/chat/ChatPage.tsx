@@ -11,7 +11,9 @@ import {
     ListItemText,
     Badge,
     Divider,
+    Chip,
 } from '@mui/material';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
 
@@ -110,6 +112,58 @@ const ChatPage: React.FC = () => {
             </Typography>
 
             <List sx={{ bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+                {/* Master Roshi — always pinned at top */}
+                <ListItem
+                    component={RouterLink}
+                    to="/coaching"
+                    sx={{
+                        py: 2,
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        background: 'linear-gradient(135deg, rgba(245,158,11,0.07) 0%, rgba(139,92,246,0.05) 100%)',
+                        borderLeft: '3px solid rgba(245,158,11,0.6)',
+                        '&:hover': { background: 'linear-gradient(135deg, rgba(245,158,11,0.13) 0%, rgba(139,92,246,0.1) 100%)' },
+                    }}
+                >
+                    <ListItemAvatar>
+                        <Avatar sx={{
+                            background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
+                            border: '2px solid rgba(245,158,11,0.45)',
+                            fontSize: '1.25rem',
+                            width: 44,
+                            height: 44,
+                        }}>
+                            🥋
+                        </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                        primary={
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="h6" component="span" sx={{ color: '#F59E0B', fontWeight: 800 }}>
+                                        Master Roshi
+                                    </Typography>
+                                    <Chip
+                                        icon={<AutoAwesomeIcon sx={{ fontSize: '12px !important' }} />}
+                                        label="AI Coach"
+                                        size="small"
+                                        sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)', fontWeight: 700 }}
+                                    />
+                                </Box>
+                                <Typography variant="caption" sx={{ color: 'rgba(245,158,11,0.6)', fontStyle: 'italic' }}>
+                                    always here
+                                </Typography>
+                            </Box>
+                        }
+                        secondary={
+                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                Strategy, accountability, mindset — ask me anything
+                            </Typography>
+                        }
+                    />
+                </ListItem>
+                <Divider component="li" />
+
                 {conversations.length > 0 ? (
                     conversations.map((conv, index) => (
                         <React.Fragment key={conv.otherUserId}>
