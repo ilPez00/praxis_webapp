@@ -238,6 +238,68 @@ export const getBrief = catchAsync(async (req: Request, res: Response, _next: Ne
 });
 
 // ---------------------------------------------------------------------------
+// GET /ai-coaching/weekly-narrative — short Roshi "this week" summary
+// ---------------------------------------------------------------------------
+
+// In-memory cache: userId → { narrative, generatedAt }
+const narrativeCache = new Map<string, { narrative: string; generatedAt: number }>();
+const NARRATIVE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  // Serve from cache if fresh
+  const cached = narrativeCache.get(userId);
+  if (cached && Date.now() - cached.generatedAt < NARRATIVE_COOLDOWN_MS) {
+    return res.json({ narrative: cached.narrative, cached: true });
+  }
+
+  if (!aiCoachingService.isConfigured) {
+    return res.status(503).json({ message: 'AI service not configured.' });
+  }
+
+  // Gather weekly stats
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const [profileRes, checkinsRes, goalTreeRes] = await Promise.allSettled([
+    supabase.from('profiles').select('name, current_streak').eq('id', userId).single(),
+    supabase.from('checkins').select('id', { count: 'exact', head: true })
+      .eq('user_id', userId).gte('checked_in_at', sevenDaysAgo.toISOString()),
+    supabase.from('goal_trees').select('nodes').eq('userId', userId).maybeSingle(),
+  ]);
+
+  const profile = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
+  const checkinsCount: number = checkinsRes.status === 'fulfilled' ? (checkinsRes.value.count ?? 0) : 0;
+  const nodes: any[] = goalTreeRes.status === 'fulfilled' ? (goalTreeRes.value.data?.nodes ?? []) : [];
+
+  // Find top goal (highest progress root node)
+  const rootNodes = nodes.filter(n => !n.parentId);
+  const topNode = rootNodes.sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0))[0];
+  const avgProgress = rootNodes.length > 0
+    ? Math.round(rootNodes.reduce((s, n) => s + (n.progress ?? 0), 0) / rootNodes.length)
+    : undefined;
+
+  try {
+    const narrative = await aiCoachingService.generateWeeklyNarrative({
+      userName: profile?.name || 'there',
+      streak: profile?.current_streak ?? 0,
+      checkinsThisWeek: checkinsCount,
+      topGoal: topNode ? (topNode.name || topNode.title) : undefined,
+      topDomain: topNode?.domain,
+      overallProgress: avgProgress,
+    });
+
+    narrativeCache.set(userId, { narrative, generatedAt: Date.now() });
+    return res.json({ narrative, cached: false });
+  } catch (err: any) {
+    logger.error('[AI Coach] Weekly narrative failed:', err.message);
+    return res.status(503).json({ message: err.message || 'Failed to generate narrative.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // POST /ai-coaching/trigger — kick off a background brief update (rate limited)
 // ---------------------------------------------------------------------------
 

@@ -1,11 +1,14 @@
 import { Router } from 'express';
-import { requestReport, requestCoaching, getBrief, triggerBriefUpdate } from '../controllers/aiCoachingController';
+import { requestReport, requestCoaching, getBrief, triggerBriefUpdate, getWeeklyNarrative } from '../controllers/aiCoachingController';
 import { requirePro } from '../middleware/requireTier';
 
 const router = Router();
 
 // Returns cached brief immediately (no generation)
 router.get('/brief', ...requirePro, getBrief);
+
+// Short Roshi weekly narrative (cached 7 days per user)
+router.get('/weekly-narrative', ...requirePro, getWeeklyNarrative);
 
 // Kicks off a background brief update (rate-limited to 30 min per user)
 router.post('/trigger', ...requirePro, triggerBriefUpdate);

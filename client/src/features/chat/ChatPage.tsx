@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import axios from 'axios';
 import {
     Container,
     Box,
@@ -12,9 +13,12 @@ import {
     Badge,
     Divider,
     Chip,
+    Tooltip,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import { supabase } from '../../lib/supabase';
+import { API_URL } from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 
 interface ConversationSummary {
@@ -29,6 +33,7 @@ const ChatPage: React.FC = () => {
     const { user: currentUser, loading: currentUserLoading } = useUser();
     const [conversations, setConversations] = useState<ConversationSummary[]>([]);
     const [loading, setLoading] = useState(true);
+    const [mutualStreaks, setMutualStreaks] = useState<Record<string, number>>({});
 
     useEffect(() => {
         const fetchConversations = async () => {
@@ -96,6 +101,32 @@ const ChatPage: React.FC = () => {
 
         fetchConversations();
     }, [currentUser, currentUserLoading]);
+
+    // Fetch mutual streaks for all conversation partners
+    useEffect(() => {
+        if (conversations.length === 0 || !currentUser) return;
+        (async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+                const results = await Promise.allSettled(
+                    conversations.map(conv =>
+                        axios.get(`${API_URL}/checkins/mutual`, { params: { partnerId: conv.otherUserId }, headers })
+                            .then(r => ({ id: conv.otherUserId, streak: r.data.mutualStreak as number }))
+                    )
+                );
+                const map: Record<string, number> = {};
+                for (const r of results) {
+                    if (r.status === 'fulfilled' && r.value.streak > 0) {
+                        map[r.value.id] = r.value.streak;
+                    }
+                }
+                setMutualStreaks(map);
+            } catch {
+                // silently ignore
+            }
+        })();
+    }, [conversations, currentUser]);
 
     if (currentUserLoading || loading) {
         return (
@@ -187,9 +218,21 @@ const ChatPage: React.FC = () => {
                                 <ListItemText
                                     primary={
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Typography variant="h6" component="span" sx={{ color: 'primary.main' }}>
-                                                {conv.otherUserName}
-                                            </Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Typography variant="h6" component="span" sx={{ color: 'primary.main' }}>
+                                                    {conv.otherUserName}
+                                                </Typography>
+                                                {mutualStreaks[conv.otherUserId] ? (
+                                                    <Tooltip title={`You and ${conv.otherUserName} have both checked in for ${mutualStreaks[conv.otherUserId]} days in a row`}>
+                                                        <Chip
+                                                            icon={<LocalFireDepartmentIcon sx={{ fontSize: '13px !important', color: '#F97316 !important' }} />}
+                                                            label={`${mutualStreaks[conv.otherUserId]}d mutual`}
+                                                            size="small"
+                                                            sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(249,115,22,0.1)', color: '#F97316', border: '1px solid rgba(249,115,22,0.3)', fontWeight: 700 }}
+                                                        />
+                                                    </Tooltip>
+                                                ) : null}
+                                            </Box>
                                             <Typography variant="body2" color="text.secondary">
                                                 {conv.lastMessageTime}
                                             </Typography>

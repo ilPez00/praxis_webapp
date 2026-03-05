@@ -647,9 +647,9 @@ Engineering priority: checkins endpoint → streak notification → requireTier 
 - [ ] Run §23 migrations in Supabase SQL Editor
 
 🟠 Phase 2 — Viral Hooks
-- [ ] "Challenge a friend" one-tap share: share bet/challenge via link
-- [ ] AI weekly narrative (Gemini): "This week you showed exceptional consistency"
-- [ ] Social streaks: mutual streak counter between accountability partners
+- [x] "Challenge a friend" one-tap share: share bet/challenge via link
+- [x] AI weekly narrative (Gemini): "This week you showed exceptional consistency"
+- [x] Social streaks: mutual streak counter between accountability partners
 
 🟡 Phase 3 — Production / Stability
 - [ ] Stripe prod: STRIPE_PRICE_ID + register webhook

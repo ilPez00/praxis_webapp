@@ -75,6 +75,9 @@ const DashboardPage: React.FC = () => {
   // Nearby users state
   const [nearbyUsers, setNearbyUsers] = useState<any[]>([]);
 
+  // Weekly narrative (Pro only)
+  const [weeklyNarrative, setWeeklyNarrative] = useState<string | null>(null);
+
   // Site tour state
   const [tourOpen, setTourOpen] = useState(false);
 
@@ -134,6 +137,21 @@ const DashboardPage: React.FC = () => {
       setTourOpen(true);
     }
   }, [user?.id]);
+
+  // Fetch weekly narrative for Pro users (fire-and-forget, non-blocking)
+  useEffect(() => {
+    if (!user?.is_premium && !user?.is_admin) return;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+        const res = await axios.get(`${API_URL}/ai-coaching/weekly-narrative`, { headers });
+        if (res.data?.narrative) setWeeklyNarrative(res.data.narrative);
+      } catch {
+        // silently ignore — narrative is a nice-to-have
+      }
+    })();
+  }, [user?.id, user?.is_premium, user?.is_admin]);
 
   const handleTourClose = () => {
     setTourOpen(false);
@@ -243,6 +261,37 @@ const DashboardPage: React.FC = () => {
               }}
             />
           </Box>
+        )}
+
+        {/* Weekly Narrative — Master Roshi's "this week" message (Pro only) */}
+        {weeklyNarrative && (
+          <GlassCard sx={{
+            p: 3,
+            mb: 3,
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(139,92,246,0.04) 100%)',
+            border: '1px solid rgba(245,158,11,0.2)',
+          }}>
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+              <Box sx={{
+                width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
+                border: '2px solid rgba(245,158,11,0.4)',
+                fontSize: '1.1rem',
+              }}>
+                🥋
+              </Box>
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography variant="caption" sx={{ color: 'rgba(245,158,11,0.7)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', mb: 0.5 }}>
+                  Roshi's Take — This Week
+                </Typography>
+                <Typography variant="body2" sx={{ lineHeight: 1.8, color: 'text.primary', fontStyle: 'italic' }}>
+                  {weeklyNarrative}
+                </Typography>
+              </Box>
+            </Box>
+          </GlassCard>
         )}
 
         {/* Balance Intervention — Master Roshi nudge when domain neglected for 14+ streak days */}

@@ -101,6 +101,49 @@ export class AICoachingService {
   }
 
   /**
+   * Generates a short weekly narrative (2-3 sentences) in Roshi's voice.
+   * Used for the Dashboard "This week" card.
+   */
+  public async generateWeeklyNarrative(stats: {
+    userName: string;
+    streak: number;
+    checkinsThisWeek: number;
+    topGoal?: string;
+    topDomain?: string;
+    overallProgress?: number; // avg 0-100
+  }): Promise<string> {
+    if (!this.genAI) {
+      throw new Error('GEMINI_API_KEY is not configured on this server.');
+    }
+    const { userName, streak, checkinsThisWeek, topGoal, topDomain, overallProgress } = stats;
+    const prompt = `${MASTER_ROSHI_IDENTITY}
+
+You are writing a weekly progress narrative for ${userName}.
+
+Stats this week:
+- Check-ins: ${checkinsThisWeek}/7 days
+- Current streak: ${streak} days
+${topGoal ? `- Main focus: "${topGoal}"${topDomain ? ` (${topDomain})` : ''}` : '- No active goals set yet'}
+${overallProgress !== undefined ? `- Average goal progress: ${overallProgress}%` : ''}
+
+Write 2-3 short sentences in Roshi's voice that:
+1. Acknowledge what they showed this week (specific, not generic)
+2. Name the most important thing to focus on next
+3. End with something that creates a tiny bit of urgency or excitement
+
+Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: this.MODEL });
+      const result = await model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (error: any) {
+      logger.error('Error generating weekly narrative:', error);
+      throw new Error(error.message || 'Failed to generate weekly narrative.');
+    }
+  }
+
+  /**
    * Generates a conversational follow-up response to a user's question.
    * Returns plain text.
    */

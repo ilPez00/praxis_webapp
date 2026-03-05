@@ -19,6 +19,7 @@ import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+import ShareIcon from '@mui/icons-material/Share';
 import { GoalNode } from '../../models/GoalNode';
 
 interface Bet {
@@ -262,17 +263,38 @@ const BettingPage: React.FC = () => {
                           />
                         </Stack>
                       </Box>
-                      <Tooltip title="Cancel bet (refunds 90% — 10% house fee)">
-                        <Button
-                          size="small"
-                          color="error"
-                          variant="outlined"
-                          onClick={() => handleCancel(bet.id)}
-                          sx={{ borderRadius: '8px', flexShrink: 0 }}
-                        >
-                          Cancel
-                        </Button>
-                      </Tooltip>
+                      <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+                        <Tooltip title="Challenge a friend — share this stake">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<ShareIcon sx={{ fontSize: '14px !important' }} />}
+                            onClick={() => {
+                              const deadlineStr = new Date(bet.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                              const text = `I just staked ${bet.stake_points} PP that I'll "${bet.goal_name}" by ${deadlineStr}. Think you can beat me? Join Praxis → https://praxis-app.vercel.app`;
+                              if (navigator.share) {
+                                navigator.share({ title: 'I accepted a Praxis challenge', text }).catch(() => {});
+                              } else {
+                                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                              }
+                            }}
+                            sx={{ borderRadius: '8px', color: '#A78BFA', borderColor: 'rgba(167,139,250,0.4)', fontSize: '0.72rem' }}
+                          >
+                            Challenge
+                          </Button>
+                        </Tooltip>
+                        <Tooltip title="Cancel bet (refunds 90% — 10% house fee)">
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            onClick={() => handleCancel(bet.id)}
+                            sx={{ borderRadius: '8px' }}
+                          >
+                            Cancel
+                          </Button>
+                        </Tooltip>
+                      </Stack>
                     </Box>
                     <Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>

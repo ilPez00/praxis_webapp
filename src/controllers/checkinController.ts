@@ -152,6 +152,47 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /checkins/mutual?partnerId=<uuid>
+ * Returns the mutual streak: consecutive days both the current user and the partner have checked in.
+ */
+export const getMutualStreak = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { partnerId } = req.query as { partnerId?: string };
+  if (!userId || !partnerId) {
+    return res.status(400).json({ error: 'partnerId query param required' });
+  }
+
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const since = ninetyDaysAgo.toISOString();
+
+  const [myRes, partnerRes] = await Promise.all([
+    supabase.from('checkins').select('checked_in_at').eq('user_id', userId).gte('checked_in_at', since),
+    supabase.from('checkins').select('checked_in_at').eq('user_id', partnerId).gte('checked_in_at', since),
+  ]);
+
+  const myDates = new Set((myRes.data || []).map((c: any) => c.checked_in_at.slice(0, 10)));
+  const partnerDates = new Set((partnerRes.data || []).map((c: any) => c.checked_in_at.slice(0, 10)));
+
+  // Walk back from today, count consecutive days where both checked in
+  let mutualStreak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    if (myDates.has(dateStr) && partnerDates.has(dateStr)) {
+      mutualStreak++;
+    } else {
+      break;
+    }
+  }
+
+  return res.json({ mutualStreak });
+});
+
+/**
  * GET /checkins/today?userId=<uuid>
  * Returns whether the user has already checked in today.
  */
