@@ -78,7 +78,7 @@ const GroupsPage: React.FC = () => {
     setLoading(true);
     try {
       const [allRes, joinedRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/groups?type=group`),
+        axios.get(`${API_URL}/groups`),
         axios.get(`${API_URL}/groups/joined?userId=${userId}`),
       ]);
       if (allRes.status === 'fulfilled') {

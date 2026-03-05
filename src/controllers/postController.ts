@@ -17,7 +17,7 @@ export const getPosts = catchAsync(async (req: Request, res: Response, _next: Ne
 
   const { data: posts, error } = await supabase
     .from('posts')
-    .select('id, user_id, user_name, user_avatar_url, title, content, media_url, media_type, context, created_at, post_likes(count), post_comments(count)')
+    .select('id, user_id, user_name, user_avatar_url, title, content, media_url, media_type, context, reference, created_at, post_likes(count), post_comments(count)')
     .eq('context', context)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -60,7 +60,7 @@ export const getPosts = catchAsync(async (req: Request, res: Response, _next: Ne
 // Body: { userId, userName, userAvatarUrl?, content, mediaUrl?, mediaType?, context }
 // ---------------------------------------------------------------------------
 export const createPost = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId, userName, userAvatarUrl, title, content, mediaUrl, mediaType, context } = req.body;
+  const { userId, userName, userAvatarUrl, title, content, mediaUrl, mediaType, context, reference } = req.body;
 
   if (!userId) throw new BadRequestError('userId is required.');
   if (!userName) throw new BadRequestError('userName is required.');
@@ -77,6 +77,7 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
       media_url: mediaUrl ?? null,
       media_type: mediaType ?? null,
       context: context || 'general',
+      reference: reference ?? null,
     })
     .select()
     .single();

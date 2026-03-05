@@ -133,17 +133,24 @@ export const getRoomMessages = catchAsync(async (req: Request, res: Response, ne
  */
 export const sendRoomMessage = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { roomId } = req.params;
-  const { senderId, content, messageType = 'text', mediaUrl } = req.body;
+  const { senderId, content, messageType = 'text', mediaUrl, replyToId, replyPreview, reference } = req.body;
 
   if (!senderId || !content) throw new BadRequestError('senderId and content are required.');
 
+  // Build metadata: reply preview + optional content reference
+  const metadata: Record<string, any> = {};
+  if (replyPreview) metadata.reply_preview = replyPreview; // { id, senderName, content }
+  if (reference)    metadata.reference    = reference;     // { type, id, title, subtitle, url }
+
   const payload: Record<string, any> = {
-    sender_id: senderId,
-    room_id: roomId,
+    sender_id:    senderId,
+    room_id:      roomId,
     content,
     message_type: messageType,
+    metadata:     Object.keys(metadata).length ? metadata : null,
   };
-  if (mediaUrl) payload.media_url = mediaUrl;
+  if (mediaUrl)  payload.media_url   = mediaUrl;
+  if (replyToId) payload.reply_to_id = replyToId;
 
   const { data, error } = await supabase
     .from('messages')

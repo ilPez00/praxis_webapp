@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { Box, Tabs, Tab, Container } from '@mui/material';
 import ChatIcon from '@mui/icons-material/Chat';
 import GroupsIcon from '@mui/icons-material/Groups';
-import ForumIcon from '@mui/icons-material/Forum';
 import EventIcon from '@mui/icons-material/Event';
 import ChatPage from '../chat/ChatPage';
 import GroupsPage from '../groups/GroupsPage';
-import BoardsPage from '../groups/BoardsPage';
 import EventsPage from '../events/EventsPage';
 
 const CommunicationPage: React.FC = () => {
@@ -35,7 +33,6 @@ const CommunicationPage: React.FC = () => {
           >
             <Tab label="Messages" icon={<ChatIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
             <Tab label="Groups" icon={<GroupsIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
-            <Tab label="Boards" icon={<ForumIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
             <Tab label="Events" icon={<EventIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
           </Tabs>
         </Container>
@@ -44,8 +41,7 @@ const CommunicationPage: React.FC = () => {
       {/* Tab content */}
       {tab === 0 && <ChatPage />}
       {tab === 1 && <GroupsPage />}
-      {tab === 2 && <BoardsPage />}
-      {tab === 3 && <EventsPage />}
+      {tab === 2 && <EventsPage />}
     </Box>
   );
 };

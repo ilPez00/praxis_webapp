@@ -846,3 +846,17 @@ CREATE POLICY "RSVPs delete own"      ON public.event_rsvps FOR DELETE USING (au
 -- Indexes
 CREATE INDEX IF NOT EXISTS events_date_idx ON public.events (event_date ASC);
 CREATE INDEX IF NOT EXISTS event_rsvps_event_idx ON public.event_rsvps (event_id);
+
+-- =============================================================================
+-- 22. REPLIES + CONTENT REFERENCES
+-- =============================================================================
+
+-- WhatsApp-style reply-to on group messages
+ALTER TABLE public.messages
+  ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES public.messages(id) ON DELETE SET NULL;
+
+-- Linked references on posts (goal / service / post links)
+ALTER TABLE public.posts
+  ADD COLUMN IF NOT EXISTS reference JSONB;
+
+CREATE INDEX IF NOT EXISTS messages_reply_to_idx ON public.messages (reply_to_id) WHERE reply_to_id IS NOT NULL;

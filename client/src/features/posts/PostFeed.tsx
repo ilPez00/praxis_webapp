@@ -12,6 +12,7 @@ import {
   Collapse,
   Divider,
   Button,
+  Tooltip,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -21,10 +22,13 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SendIcon from '@mui/icons-material/Send';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import CloseIcon from '@mui/icons-material/Close';
+import LinkIcon from '@mui/icons-material/Link';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
+import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
+import ReferencePicker from '../../components/common/ReferencePicker';
 
 interface Post {
   id: string;
@@ -36,6 +40,7 @@ interface Post {
   media_url: string | null;
   media_type: string | null;
   context: string;
+  reference: Reference | null;
   created_at: string;
   like_count: number;
   comment_count: number;
@@ -82,6 +87,8 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false }) => {
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [postRef, setPostRef] = useState<Reference | null>(null);
+  const [refPickerOpen, setRefPickerOpen] = useState(false);
 
   // Per-post comment state
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
@@ -160,6 +167,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false }) => {
           mediaUrl,
           mediaType,
           context,
+          reference: postRef ?? undefined,
         }),
       });
 
@@ -172,6 +180,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false }) => {
       setTitle('');
       setText('');
       clearFile();
+      setPostRef(null);
       // Fire-and-forget Roshi brief refresh
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
@@ -315,6 +324,16 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false }) => {
 
   return (
     <Box>
+      {/* Reference picker dialog */}
+      {user && (
+        <ReferencePicker
+          open={refPickerOpen}
+          userId={user.id}
+          onSelect={(ref) => { setPostRef(ref); setRefPickerOpen(false); }}
+          onClose={() => setRefPickerOpen(false)}
+        />
+      )}
+
       {/* Compose box */}
       {user && (
         <Card
@@ -389,17 +408,31 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false }) => {
                   </Box>
                 )}
 
+                {/* Reference preview */}
+                {postRef && (
+                  <Box sx={{ mt: 1 }}>
+                    <ReferenceCard reference={postRef} onRemove={() => setPostRef(null)} />
+                  </Box>
+                )}
+
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx,.txt"
-                    style={{ display: 'none' }}
-                    onChange={handleFileChange}
-                  />
-                  <IconButton size="small" onClick={() => fileInputRef.current?.click()} sx={{ color: 'text.secondary' }}>
-                    <AttachFileIcon fontSize="small" />
-                  </IconButton>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx,.txt"
+                      style={{ display: 'none' }}
+                      onChange={handleFileChange}
+                    />
+                    <IconButton size="small" onClick={() => fileInputRef.current?.click()} sx={{ color: 'text.secondary' }}>
+                      <AttachFileIcon fontSize="small" />
+                    </IconButton>
+                    <Tooltip title="Link a goal, service or post">
+                      <IconButton size="small" onClick={() => setRefPickerOpen(true)} sx={{ color: postRef ? 'primary.main' : 'text.secondary' }}>
+                        <LinkIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                   <Button
                     variant="contained"
                     size="small"
@@ -488,6 +521,13 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false }) => {
                   >
                     <InsertDriveFileIcon sx={{ fontSize: 18 }} />
                     <Typography variant="caption">Attachment</Typography>
+                  </Box>
+                )}
+
+                {/* Linked reference */}
+                {post.reference && (
+                  <Box sx={{ mb: 1.5 }}>
+                    <ReferenceCard reference={post.reference} />
                   </Box>
                 )}
 

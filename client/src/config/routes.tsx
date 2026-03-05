@@ -71,7 +71,7 @@ const routes: RouteConfig[] = [
   { path: '/groups', element: GroupsPage, private: true },
   { path: '/groups/:roomId', element: GroupRoom, private: true, param: 'roomId' },
   { path: '/boards', element: BoardsPage, private: true },
-  { path: '/boards/:roomId', element: GroupChatRoom, private: true, param: 'roomId' },
+  { path: '/boards/:roomId', element: GroupRoom, private: true, param: 'roomId' },
   { path: '/coaching', element: CoachingPage, private: true },
   { path: '/search', element: SearchPage, private: true },
   { path: '/marketplace', element: MarketplacePage, private: true },
