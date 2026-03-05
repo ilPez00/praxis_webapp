@@ -651,13 +651,19 @@ const ChatRoom: React.FC = () => {
         sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}
       >
         {!isMine && (
-          <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+          <Avatar
+            sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
+            onClick={() => navigate('/profile/' + (msg.sender_id ?? msg.senderId))}
+          >
             {receiverName.charAt(0)}
           </Avatar>
         )}
         <Box sx={{ maxWidth: '68%' }}>
           {!isMine && (
-            <Typography sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>
+            <Typography
+              sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5, cursor: 'pointer', '&:hover': { color: 'text.secondary' } }}
+              onClick={() => navigate('/profile/' + (msg.sender_id ?? msg.senderId))}
+            >
               {receiverName}
             </Typography>
           )}
@@ -742,7 +748,11 @@ const ChatRoom: React.FC = () => {
           </Avatar>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 600, lineHeight: 1.2, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                onClick={() => user2Id && navigate('/profile/' + user2Id)}
+              >
                 {receiverName}
               </Typography>
               {receiverStreak > 0 && (

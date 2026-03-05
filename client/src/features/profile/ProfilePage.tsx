@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import TrackerSection from '../trackers/TrackerSection';
 import { API_URL } from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
+import FriendButton from '../../components/common/FriendButton';
 import {
   Container,
   Box,
@@ -411,20 +412,29 @@ const ProfilePage: React.FC = () => {
                 </Button>
               )
             ) : (
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => navigate(`/chat/${user?.id}/${paramId}`)}
-                sx={{
-                  bgcolor: 'rgba(245,158,11,0.15)',
-                  border: '1px solid rgba(245,158,11,0.35)',
-                  color: 'primary.main',
-                  fontWeight: 600,
-                  '&:hover': { bgcolor: 'rgba(245,158,11,0.25)' },
-                }}
-              >
-                💬 Message
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => navigate(`/chat/${user?.id}/${paramId}`)}
+                  sx={{
+                    bgcolor: 'rgba(245,158,11,0.15)',
+                    border: '1px solid rgba(245,158,11,0.35)',
+                    color: 'primary.main',
+                    fontWeight: 600,
+                    '&:hover': { bgcolor: 'rgba(245,158,11,0.25)' },
+                  }}
+                >
+                  💬 Message
+                </Button>
+                {paramId && (
+                  <FriendButton
+                    targetUserId={paramId}
+                    targetName={profile.name}
+                    size="small"
+                  />
+                )}
+              </Stack>
             )}
           </Box>
 

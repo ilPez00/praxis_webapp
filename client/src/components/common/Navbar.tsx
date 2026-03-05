@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
+import { API_URL } from '../../lib/api';
 import {
   AppBar,
   Toolbar,
@@ -23,6 +24,7 @@ import {
   InputBase,
   Menu,
   MenuItem,
+  Badge,
 } from '@mui/material';
 import BoltIcon from '@mui/icons-material/Bolt';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -43,6 +45,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
+import PeopleIcon from '@mui/icons-material/People';
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -53,6 +56,25 @@ const Navbar: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
+  const [friendRequestCount, setFriendRequestCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchRequestCount = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const res = await fetch(`${API_URL}/friends/requests/incoming`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setFriendRequestCount(Array.isArray(data) ? data.length : 0);
+        }
+      } catch { /* silently ignore */ }
+    };
+    fetchRequestCount();
+  }, [user]);
 
   const hideSearch = /^\/profile(\/|$)/.test(location.pathname);
 
@@ -143,7 +165,8 @@ const Navbar: React.FC = () => {
                     { label: 'Matches', to: '/matches' },
                     { label: 'Leaderboard', to: '/leaderboard' },
                     { label: 'Chat', to: '/communication' },
-                  ].map(({ label, to }) => {
+                    { label: 'Friends', to: '/friends', badge: friendRequestCount },
+                  ].map(({ label, to, badge }) => {
                     const active = location.pathname.startsWith(to);
                     return (
                       <Button
@@ -158,7 +181,11 @@ const Navbar: React.FC = () => {
                           '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' },
                         }}
                       >
-                        {label}
+                        {badge ? (
+                          <Badge badgeContent={badge} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', minWidth: 16, height: 16 } }}>
+                            {label}
+                          </Badge>
+                        ) : label}
                       </Button>
                     );
                   })}
@@ -464,6 +491,7 @@ const Navbar: React.FC = () => {
                 { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
                 { label: 'Leaderboard', to: '/leaderboard', icon: <LeaderboardIcon /> },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
+                { label: 'Friends', to: '/friends', icon: <Badge badgeContent={friendRequestCount} color="error"><PeopleIcon /></Badge> },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },

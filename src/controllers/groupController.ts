@@ -208,6 +208,25 @@ export const getRoomMembers = catchAsync(async (req: Request, res: Response, nex
 });
 
 /**
+ * POST /groups/:roomId/invite — invite a user to a room (friend invite flow).
+ */
+export const inviteMember = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { roomId } = req.params;
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ message: 'userId required.' });
+
+  const { error } = await supabase
+    .from('chat_room_members')
+    .insert({ room_id: roomId, user_id: userId });
+
+  if (error) {
+    if (error.code === '23505') return res.json({ message: 'Already a member.' });
+    return res.status(500).json({ message: error.message });
+  }
+  res.status(201).json({ message: 'Invited.' });
+});
+
+/**
  * GET /groups/:roomId — get a single room's details.
  */
 export const getRoom = catchAsync(async (req: Request, res: Response, next: NextFunction) => {

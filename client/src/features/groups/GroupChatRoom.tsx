@@ -31,6 +31,11 @@ import {
   Tooltip,
   Tabs,
   Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
@@ -38,6 +43,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ForumIcon from '@mui/icons-material/Forum';
 import ChatIcon from '@mui/icons-material/Chat';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
 interface Member {
   user_id: string;
@@ -50,6 +57,12 @@ interface Room {
   name: string;
   description?: string;
   domain?: string;
+}
+
+interface Friend {
+  id: string;
+  name: string;
+  avatar_url?: string;
 }
 
 const GroupChatRoom: React.FC = () => {
@@ -69,6 +82,18 @@ const GroupChatRoom: React.FC = () => {
   const [myProfile, setMyProfile] = useState<{ name: string } | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [nameCache, setNameCache] = useState<Record<string, string>>({});
+
+  // Roshi state
+  const [roshiOpen, setRoshiOpen] = useState(false);
+  const [roshiPrompt, setRoshiPrompt] = useState('');
+  const [roshiResponse, setRoshiResponse] = useState('');
+  const [roshiLoading, setRoshiLoading] = useState(false);
+
+  // Invite friends state
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [invitingIds, setInvitingIds] = useState<Set<string>>(new Set());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
@@ -171,6 +196,67 @@ const GroupChatRoom: React.FC = () => {
     }
   };
 
+  const handleAskRoshi = async () => {
+    if (!roshiPrompt.trim()) return;
+    setRoshiLoading(true);
+    setRoshiResponse('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await axios.post(
+        `${API_URL}/ai-coaching/request`,
+        { prompt: roshiPrompt },
+        { headers: { Authorization: `Bearer ${session?.access_token}` } },
+      );
+      setRoshiResponse(res.data.response || res.data.message || JSON.stringify(res.data));
+    } catch (err: any) {
+      setRoshiResponse(err.response?.data?.message || 'Failed to get a response from Roshi.');
+    } finally {
+      setRoshiLoading(false);
+    }
+  };
+
+  const fetchFriendsForInvite = async () => {
+    setInviteLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await axios.get(`${API_URL}/friends`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = Array.isArray(res.data) ? res.data : [];
+      setFriends(data.map((f: any) => ({
+        id: f.id ?? f.friend_id ?? f.user_id,
+        name: f.name ?? f.friend_name ?? 'User',
+        avatar_url: f.avatar_url ?? f.friend_avatar_url,
+      })));
+    } catch {
+      setFriends([]);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleInviteFriend = async (friendId: string) => {
+    if (!roomId) return;
+    setInvitingIds(prev => new Set(Array.from(prev).concat(friendId)));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await axios.post(
+        `${API_URL}/groups/${roomId}/invite`,
+        { userId: friendId },
+        { headers: { Authorization: `Bearer ${session?.access_token}` } },
+      );
+      toast.success('Friend invited!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to invite friend.');
+    } finally {
+      setInvitingIds(prev => {
+        const next = new Set(Array.from(prev));
+        next.delete(friendId);
+        return next;
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Container sx={{ mt: 4, textAlign: 'center' }}>
@@ -204,6 +290,24 @@ const GroupChatRoom: React.FC = () => {
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Typography variant="caption" color="text.disabled">{members.length} members</Typography>
+            <Tooltip title="Invite Friends">
+              <IconButton
+                size="small"
+                onClick={() => { fetchFriendsForInvite(); setInviteOpen(true); }}
+                sx={{ color: 'text.secondary' }}
+              >
+                <PersonAddIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Ask Master Roshi">
+              <IconButton
+                size="small"
+                onClick={() => setRoshiOpen(true)}
+                sx={{ color: '#A78BFA' }}
+              >
+                <AutoAwesomeIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Members">
               <IconButton size="small" onClick={() => setMemberDrawerOpen(true)} sx={{ color: 'text.secondary' }}>
                 <PeopleIcon />
@@ -259,9 +363,23 @@ const GroupChatRoom: React.FC = () => {
                     if (msgType === 'image') {
                       return (
                         <Box key={msg.id} sx={{ display: 'flex', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
-                          {!isMine && <Avatar sx={{ width: 30, height: 30, fontSize: '0.8rem', flexShrink: 0 }}>{senderName.charAt(0)}</Avatar>}
+                          {!isMine && (
+                            <Avatar
+                              sx={{ width: 30, height: 30, fontSize: '0.8rem', flexShrink: 0, cursor: 'pointer' }}
+                              onClick={() => navigate('/profile/' + msg.sender_id)}
+                            >
+                              {senderName.charAt(0)}
+                            </Avatar>
+                          )}
                           <Box sx={{ maxWidth: '60%' }}>
-                            {!isMine && <Typography sx={{ fontSize: '0.7rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>{senderName}</Typography>}
+                            {!isMine && (
+                              <Typography
+                                sx={{ fontSize: '0.7rem', color: 'text.disabled', mb: 0.25, ml: 0.5, cursor: 'pointer', '&:hover': { color: 'text.secondary' } }}
+                                onClick={() => navigate('/profile/' + msg.sender_id)}
+                              >
+                                {senderName}
+                              </Typography>
+                            )}
                             <Box component="img" src={msg.media_url} alt="shared" onClick={() => window.open(msg.media_url, '_blank')} sx={{ width: '100%', maxWidth: 240, borderRadius: 2, display: 'block', cursor: 'pointer' }} />
                           </Box>
                         </Box>
@@ -271,9 +389,23 @@ const GroupChatRoom: React.FC = () => {
                     if (msgType === 'file') {
                       return (
                         <Box key={msg.id} sx={{ display: 'flex', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
-                          {!isMine && <Avatar sx={{ width: 30, height: 30, fontSize: '0.8rem', flexShrink: 0 }}>{senderName.charAt(0)}</Avatar>}
+                          {!isMine && (
+                            <Avatar
+                              sx={{ width: 30, height: 30, fontSize: '0.8rem', flexShrink: 0, cursor: 'pointer' }}
+                              onClick={() => navigate('/profile/' + msg.sender_id)}
+                            >
+                              {senderName.charAt(0)}
+                            </Avatar>
+                          )}
                           <Box>
-                            {!isMine && <Typography sx={{ fontSize: '0.7rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>{senderName}</Typography>}
+                            {!isMine && (
+                              <Typography
+                                sx={{ fontSize: '0.7rem', color: 'text.disabled', mb: 0.25, ml: 0.5, cursor: 'pointer', '&:hover': { color: 'text.secondary' } }}
+                                onClick={() => navigate('/profile/' + msg.sender_id)}
+                              >
+                                {senderName}
+                              </Typography>
+                            )}
                             <Box onClick={() => window.open(msg.media_url, '_blank')} sx={{ px: 2, py: 1, borderRadius: 2, bgcolor: isMine ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
                               <Typography variant="body2" sx={{ color: isMine ? 'primary.main' : 'text.primary' }}>📎 {msg.content?.replace('📎 ', '') || 'File'}</Typography>
                             </Box>
@@ -284,9 +416,23 @@ const GroupChatRoom: React.FC = () => {
 
                     return (
                       <Box key={msg.id} sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
-                        {!isMine && <Avatar sx={{ width: 30, height: 30, fontSize: '0.8rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>{senderName.charAt(0)}</Avatar>}
+                        {!isMine && (
+                          <Avatar
+                            sx={{ width: 30, height: 30, fontSize: '0.8rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer' }}
+                            onClick={() => navigate('/profile/' + msg.sender_id)}
+                          >
+                            {senderName.charAt(0)}
+                          </Avatar>
+                        )}
                         <Box sx={{ maxWidth: '70%' }}>
-                          {!isMine && <Typography sx={{ fontSize: '0.7rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>{senderName}</Typography>}
+                          {!isMine && (
+                            <Typography
+                              sx={{ fontSize: '0.7rem', color: 'text.disabled', mb: 0.25, ml: 0.5, cursor: 'pointer', '&:hover': { color: 'text.secondary' } }}
+                              onClick={() => navigate('/profile/' + msg.sender_id)}
+                            >
+                              {senderName}
+                            </Typography>
+                          )}
                           <Box sx={{
                             px: 2, py: 1,
                             borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
@@ -364,6 +510,97 @@ const GroupChatRoom: React.FC = () => {
           })}
         </List>
       </Drawer>
+
+      {/* Ask Roshi Dialog */}
+      <Dialog open={roshiOpen} onClose={() => setRoshiOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AutoAwesomeIcon sx={{ color: '#A78BFA' }} />
+          Ask Master Roshi
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            placeholder="Ask Roshi anything about this board, your goals, or for motivation..."
+            value={roshiPrompt}
+            onChange={e => setRoshiPrompt(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          {roshiResponse && (
+            <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)' }}>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                {roshiResponse}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => { setRoshiOpen(false); setRoshiPrompt(''); setRoshiResponse(''); }}>
+            Close
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAskRoshi}
+            disabled={roshiLoading || !roshiPrompt.trim()}
+            endIcon={roshiLoading ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
+            sx={{ bgcolor: '#7C3AED', '&:hover': { bgcolor: '#6D28D9' } }}
+          >
+            Ask Roshi
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Invite Friends Dialog */}
+      <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Invite Friends</DialogTitle>
+        <DialogContent>
+          {inviteLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : friends.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              No friends yet. Add friends from their profiles.
+            </Typography>
+          ) : (
+            <List disablePadding>
+              {friends.map((friend, i) => (
+                <React.Fragment key={friend.id}>
+                  <ListItem
+                    sx={{ px: 0, py: 1 }}
+                    secondaryAction={
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleInviteFriend(friend.id)}
+                        disabled={invitingIds.has(friend.id)}
+                        sx={{ borderRadius: 2, fontSize: '0.75rem' }}
+                      >
+                        {invitingIds.has(friend.id) ? <CircularProgress size={14} /> : 'Invite'}
+                      </Button>
+                    }
+                  >
+                    <ListItemAvatar>
+                      <Avatar src={friend.avatar_url} sx={{ width: 36, height: 36 }}>
+                        {friend.name?.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={friend.name}
+                      primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }}
+                    />
+                  </ListItem>
+                  {i < friends.length - 1 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />}
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setInviteOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

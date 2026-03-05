@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container, Box, Typography, Card, CardContent, CardActions,
   Button, TextField, InputAdornment, Chip, Avatar, CircularProgress,
@@ -192,6 +193,8 @@ const ServicesPage: React.FC = () => {
     } catch { toast.error('Failed to delete.'); }
   };
 
+  const navigate = useNavigate();
+
   // ── Listing card ───────────────────────────────────────────────────────────
   const ListingCard = ({ l, mine = false }: { l: ServiceListing; mine?: boolean }) => {
     const meta = TYPE_META[l.type];
@@ -207,12 +210,21 @@ const ServicesPage: React.FC = () => {
         <CardContent sx={{ flex: 1 }}>
           {/* Header */}
           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1.5 }}>
-            <Avatar src={l.user_avatar_url} sx={{ width: 36, height: 36, fontSize: '0.9rem' }}>
-              {l.user_name?.[0]?.toUpperCase()}
-            </Avatar>
+            <Box sx={{ cursor: 'pointer' }} onClick={() => navigate('/profile/' + l.user_id)}>
+              <Avatar src={l.user_avatar_url} sx={{ width: 36, height: 36, fontSize: '0.9rem' }}>
+                {l.user_name?.[0]?.toUpperCase()}
+              </Avatar>
+            </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{l.title}</Typography>
-              <Typography variant="caption" color="text.secondary">{l.user_name}</Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                onClick={() => navigate('/profile/' + l.user_id)}
+              >
+                {l.user_name}
+              </Typography>
             </Box>
             <Chip
               icon={meta.icon}

@@ -1,5 +1,4 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { knowledgeBase } from './KnowledgeBaseService';
 import logger from '../utils/logger';
 
 export interface GoalContext {
@@ -48,7 +47,7 @@ export interface CoachingReport {
 }
 
 // Master Roshi's identity — injected into every prompt
-const MASTER_ROSHI_IDENTITY = `You are Master Roshi — an ancient, warm mentor who has guided countless people toward their best selves over many lifetimes. You have the patience of someone who has seen everything, the precision of a peak-performance strategist, and the genuine warmth of a grandfather who actually cares. You are equally comfortable helping someone map out a weekly plan as you are reflecting on the deeper patterns of their life. You draw on your library when it adds real value — not to show off, but because the right idea at the right moment changes everything. When someone asks a practical planning question, you give them a practical plan. When someone needs encouragement, you offer it genuinely — without hollow cheerleading. You notice what's going well and say so. You notice what's holding someone back and name it clearly but without judgment. You do not lecture. You do not preach. You have a conversation. Your tone is warm, direct, and occasionally dry — never cold, never preachy, never a motivational poster.`;
+const MASTER_ROSHI_IDENTITY = `You are Master Roshi — a wise, warm, and practical life coach who has spent decades helping people achieve their most important goals. You are deeply experienced in strategy, habit formation, nutrition, training, productivity, and performance — and you bring genuine enthusiasm for each student's specific situation. Your tone is friendly and direct, like a trusted mentor who happens to know a lot. You speak simply, without jargon or academic citations. You ask good questions when you need more context. You give practical, concrete guidance: weekly plans, daily routines, meal ideas, accountability systems, and next actions. When asked to analyze someone's posts, goals, groups, or services, you give honest, useful feedback. You celebrate wins without hollow cheerleading, and you name obstacles clearly without judgment. You never cite books by name or author. You just give people what they need to move forward.`;
 
 export class AICoachingService {
   private genAI: GoogleGenerativeAI | null = null;
@@ -61,11 +60,6 @@ export class AICoachingService {
     } else {
       logger.warn('[AICoachingService] GEMINI_API_KEY not set — AI coaching will be unavailable.');
     }
-    // Kick off PDF loading in the background — first request may be slightly
-    // slower if it arrives before loading completes
-    knowledgeBase.load().catch(err =>
-      logger.warn('[AICoachingService] Knowledge base load failed:', err.message)
-    );
   }
 
   get isConfigured(): boolean {
@@ -80,8 +74,6 @@ export class AICoachingService {
     if (!this.genAI) {
       throw new Error('GEMINI_API_KEY is not configured on this server.');
     }
-    // Ensure books are loaded before generating
-    await knowledgeBase.load();
     try {
       const model = this.genAI.getGenerativeModel({
         model: this.MODEL,
@@ -116,7 +108,6 @@ export class AICoachingService {
     if (!this.genAI) {
       throw new Error('GEMINI_API_KEY is not configured on this server.');
     }
-    await knowledgeBase.load();
     try {
       const model = this.genAI.getGenerativeModel({ model: this.MODEL });
       const prompt = this.buildFollowUpPrompt(userPrompt, context);
@@ -161,11 +152,7 @@ export class AICoachingService {
       ? 'Not a member of any community boards yet.'
       : ctx.boards.map(b => `- "${b.name}"${b.domain ? ` [${b.domain}]` : ''}${b.description ? `: ${b.description}` : ''}`).join('\n');
 
-    const knowledgeContext = knowledgeBase.getContext();
-
     return `${MASTER_ROSHI_IDENTITY}
-
-${knowledgeContext}
 
 ---
 
@@ -193,24 +180,24 @@ ${boardsText}
 ---
 
 ## Instructions
-You are Master Roshi delivering a coaching report. Draw on your library where relevant — cite specific frameworks (e.g. habit stacking from Atomic Habits, the barbell strategy from Antifragile, contrarian thinking from Zero to One) when they directly apply to this student's goals. Keep advice concrete and personal.
+You are Master Roshi delivering a coaching report. Keep advice concrete, practical, and personal. Reference what you know about performance, habits, nutrition, and execution when relevant.
 
 Return ONLY valid JSON matching this schema (no markdown, no extra text):
 {
-  "motivation": "<2-3 sentences from Master Roshi — warm, personal, grounded in their actual situation (goals, streak, recent activity). Acknowledge where they are honestly. If things are going well, say so. If there's room to grow, say that too — but with care, not pressure. Reference a principle from the library only if it genuinely fits.>",
+  "motivation": "<2-3 sentences from Master Roshi — warm, personal, grounded in their actual situation (goals, streak, recent activity). Acknowledge where they are honestly. If things are going well, say so. If there's room to grow, say that too — but with care, not pressure.>",
   "strategy": [
     {
       "goal": "<exact goal name>",
       "domain": "<domain>",
       "progress": <number 0-100>,
-      "insight": "<1 sentence specific insight about their current progress — reference a book principle if relevant>",
+      "insight": "<1 sentence specific insight about their current progress>",
       "steps": ["<concrete action step 1>", "<concrete action step 2>", "<concrete action step 3>"]
     }
   ],
   "network": "<2-3 sentences on how ${ctx.userName} should leverage their network and community boards — be specific about which connections or boards are most relevant and what actions to take>"
 }
 
-Generate one strategy entry per goal. Every insight and step must be concrete, actionable, and drawn from this student's actual data and your library.`;
+Generate one strategy entry per goal. Every insight and step must be concrete, actionable, and drawn from this student's actual data.`;
   }
 
   private buildFollowUpPrompt(userPrompt: string, ctx: CoachingContext): string {
@@ -220,11 +207,8 @@ Generate one strategy entry per goal. Every insight and step must be concrete, a
 
     const networkSummary = ctx.network.map(n => n.name).join(', ') || 'none';
     const boardsSummary = ctx.boards.map(b => b.name).join(', ') || 'none';
-    const knowledgeContext = knowledgeBase.getContext();
 
     return `${MASTER_ROSHI_IDENTITY}
-
-${knowledgeContext}
 
 ---
 
@@ -240,7 +224,7 @@ ${ctx.userName} asks: "${userPrompt}"
 
 Respond as Master Roshi. Match your response to what they actually need:
 - If they're asking for a plan, schedule, or step-by-step breakdown — give them one, with concrete specifics.
-- If they're asking for advice or a perspective — be direct and grounded, draw on the library if relevant.
+- If they're asking for advice or a perspective — be direct and grounded.
 - If they want encouragement — give it genuinely, not generically. Reference something real about their situation.
 - Keep it conversational. Don't pad, don't lecture. Longer is fine if the question warrants it.`;
   }

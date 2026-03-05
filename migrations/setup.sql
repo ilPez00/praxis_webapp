@@ -955,3 +955,38 @@ CREATE TABLE IF NOT EXISTS public.coaching_briefs (
 ALTER TABLE public.coaching_briefs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Briefs: own user only" ON public.coaching_briefs
   USING (auth.uid() = user_id);
+
+-- ============================================================
+-- §27. FRIEND SYSTEM
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.friendships (
+  id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  requester_id  UUID          NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  recipient_id  UUID          NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  status        VARCHAR(20)   NOT NULL DEFAULT 'pending'
+                              CHECK (status IN ('pending', 'accepted', 'rejected')),
+  created_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  UNIQUE (requester_id, recipient_id),
+  CHECK (requester_id <> recipient_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_friendships_requester ON public.friendships(requester_id);
+CREATE INDEX IF NOT EXISTS idx_friendships_recipient ON public.friendships(recipient_id);
+
+ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "friendships_select" ON public.friendships;
+DROP POLICY IF EXISTS "friendships_insert" ON public.friendships;
+DROP POLICY IF EXISTS "friendships_update" ON public.friendships;
+DROP POLICY IF EXISTS "friendships_delete" ON public.friendships;
+
+CREATE POLICY "friendships_select" ON public.friendships
+  FOR SELECT USING (auth.uid() = requester_id OR auth.uid() = recipient_id);
+CREATE POLICY "friendships_insert" ON public.friendships
+  FOR INSERT WITH CHECK (auth.uid() = requester_id);
+CREATE POLICY "friendships_update" ON public.friendships
+  FOR UPDATE USING (auth.uid() = requester_id OR auth.uid() = recipient_id);
+CREATE POLICY "friendships_delete" ON public.friendships
+  FOR DELETE USING (auth.uid() = requester_id OR auth.uid() = recipient_id);

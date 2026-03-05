@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -76,8 +77,27 @@ const formatRelativeTime = (iso: string): string => {
   return new Date(iso).toLocaleDateString();
 };
 
+const renderContentWithMentions = (content: string): React.ReactNode => {
+  const parts = content.split(/(@\w+)/g);
+  return parts.map((part, i) => {
+    if (/^@\w+$/.test(part)) {
+      return (
+        <Typography
+          key={i}
+          component="span"
+          sx={{ color: 'primary.main', fontWeight: 600, cursor: 'pointer' }}
+        >
+          {part}
+        </Typography>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
 const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = false, feedUserId }) => {
   const { user } = useUser();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -481,11 +501,21 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
               <CardContent sx={{ pb: '12px !important' }}>
                 {/* Post header */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-                  <Avatar src={post.user_avatar_url ?? undefined} sx={{ width: 36, height: 36 }}>
+                  <Avatar
+                    src={post.user_avatar_url ?? undefined}
+                    sx={{ width: 36, height: 36, cursor: 'pointer' }}
+                    onClick={() => navigate('/profile/' + post.user_id)}
+                  >
                     {post.user_name?.charAt(0).toUpperCase()}
                   </Avatar>
                   <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{post.user_name}</Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 700, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                      onClick={() => navigate('/profile/' + post.user_id)}
+                    >
+                      {post.user_name}
+                    </Typography>
                     <Typography variant="caption" color="text.disabled">
                       {formatRelativeTime(post.created_at)}
                     </Typography>
@@ -507,7 +537,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                 {/* Content */}
                 {post.content && (
                   <Typography variant="body2" sx={{ mb: post.media_url ? 1.5 : 0, whiteSpace: 'pre-wrap', lineHeight: 1.6, color: post.title ? 'text.secondary' : 'text.primary' }}>
-                    {post.content}
+                    {renderContentWithMentions(post.content)}
                   </Typography>
                 )}
 
