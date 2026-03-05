@@ -22,7 +22,6 @@ import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { DOMAIN_COLORS } from '../../types/goal';
 import { Domain } from '../../models/Domain';
-import CoachingPage from '../coaching/CoachingPage';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,7 +32,7 @@ interface ServiceListing {
   user_avatar_url?: string;
   title: string;
   description?: string;
-  type: 'service' | 'job' | 'gig';
+  type: 'service' | 'job' | 'gig' | 'coaching';
   domain?: string;
   price?: number;
   price_currency: 'USD' | 'PP' | 'negotiable' | 'free';
@@ -46,9 +45,10 @@ interface ServiceListing {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const TYPE_META = {
-  service: { label: 'Service', color: '#60A5FA', icon: <BuildIcon fontSize="small" /> },
-  job:     { label: 'Job / Role', color: '#34D399', icon: <WorkIcon fontSize="small" /> },
-  gig:     { label: 'Gig / Freelance', color: '#FBBF24', icon: <FlashOnIcon fontSize="small" /> },
+  service:  { label: 'Service', color: '#60A5FA', icon: <BuildIcon fontSize="small" /> },
+  job:      { label: 'Job / Role', color: '#34D399', icon: <WorkIcon fontSize="small" /> },
+  gig:      { label: 'Gig / Freelance', color: '#FBBF24', icon: <FlashOnIcon fontSize="small" /> },
+  coaching: { label: 'Coaching', color: '#A78BFA', icon: <SchoolIcon fontSize="small" /> },
 };
 
 const CURRENCY_LABEL: Record<string, string> = {
@@ -82,7 +82,7 @@ const authFetch = async (url: string, opts?: RequestInit) => {
 // ── Empty form ────────────────────────────────────────────────────────────────
 
 const emptyForm = () => ({
-  title: '', description: '', type: 'service' as 'service' | 'job' | 'gig',
+  title: '', description: '', type: 'service' as 'service' | 'job' | 'gig' | 'coaching',
   domain: '' as string, price: '' as string | number,
   price_currency: 'negotiable' as 'USD' | 'PP' | 'negotiable' | 'free',
   tags: '' as string, contact_info: '',
@@ -124,7 +124,7 @@ const ServicesPage: React.FC = () => {
   }, []);
 
   useEffect(() => { if (tab === 0) fetchListings(); }, [tab, typeFilter, fetchListings]);
-  useEffect(() => { if (tab === 2) fetchMine(); }, [tab, fetchMine]);
+  useEffect(() => { if (tab === 1) fetchMine(); }, [tab, fetchMine]);
 
   // ── Search on Enter ────────────────────────────────────────────────────────
   const handleSearchKey = (e: React.KeyboardEvent) => {
@@ -136,7 +136,7 @@ const ServicesPage: React.FC = () => {
   const openEdit = (l: ServiceListing) => {
     setEditTarget(l);
     setForm({
-      title: l.title, description: l.description ?? '', type: l.type,
+      title: l.title, description: l.description ?? '', type: l.type as 'service' | 'job' | 'gig' | 'coaching',
       domain: l.domain ?? '', price: l.price ?? '',
       price_currency: l.price_currency, tags: (l.tags ?? []).join(', '),
       contact_info: l.contact_info ?? '',
@@ -313,7 +313,6 @@ const ServicesPage: React.FC = () => {
       {/* Tabs */}
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <Tab label="Browse All" />
-        <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Coaching" />
         {user && <Tab label="My Listings" />}
       </Tabs>
 
@@ -347,6 +346,7 @@ const ServicesPage: React.FC = () => {
               <ToggleButton value="service" sx={{ px: 1.5, fontSize: '0.75rem', color: '#60A5FA' }}>Services</ToggleButton>
               <ToggleButton value="job" sx={{ px: 1.5, fontSize: '0.75rem', color: '#34D399' }}>Jobs</ToggleButton>
               <ToggleButton value="gig" sx={{ px: 1.5, fontSize: '0.75rem', color: '#FBBF24' }}>Gigs</ToggleButton>
+              <ToggleButton value="coaching" sx={{ px: 1.5, fontSize: '0.75rem', color: '#A78BFA' }}>Coaching</ToggleButton>
             </ToggleButtonGroup>
           </Box>
 
@@ -356,7 +356,7 @@ const ServicesPage: React.FC = () => {
             <Box sx={{ textAlign: 'center', py: 8, color: 'text.disabled' }}>
               <StorefrontIcon sx={{ fontSize: 56, mb: 2, opacity: 0.2 }} />
               <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>No listings yet</Typography>
-              <Typography variant="body2">Be the first to post a service, job, or gig!</Typography>
+              <Typography variant="body2">Be the first to post a service, job, gig, or coaching offer!</Typography>
               {user && (
                 <Button variant="outlined" startIcon={<AddIcon />} onClick={openCreate} sx={{ mt: 3, borderRadius: 2 }}>
                   Post the first listing
@@ -375,11 +375,8 @@ const ServicesPage: React.FC = () => {
         </>
       )}
 
-      {/* ── Tab 1: Coaching ── */}
-      {tab === 1 && <CoachingPage />}
-
-      {/* ── Tab 2: My Listings ── */}
-      {tab === 2 && user && (
+      {/* ── Tab 1: My Listings ── */}
+      {tab === 1 && user && (
         <>
           {myListings.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8, color: 'text.disabled' }}>
@@ -416,10 +413,11 @@ const ServicesPage: React.FC = () => {
             <FormControl fullWidth size="small">
               <InputLabel>Type *</InputLabel>
               <Select label="Type *" value={form.type}
-                onChange={e => setForm(f => ({ ...f, type: e.target.value as 'service' | 'job' | 'gig' }))}>
+                onChange={e => setForm(f => ({ ...f, type: e.target.value as 'service' | 'job' | 'gig' | 'coaching' }))}>
                 <MenuItem value="service">Service — I offer a skill or expertise</MenuItem>
                 <MenuItem value="job">Job — I&apos;m looking for candidates / collaborators</MenuItem>
                 <MenuItem value="gig">Gig — Short freelance project or task</MenuItem>
+                <MenuItem value="coaching">Coaching — I offer personal or group coaching</MenuItem>
               </Select>
             </FormControl>
             <TextField

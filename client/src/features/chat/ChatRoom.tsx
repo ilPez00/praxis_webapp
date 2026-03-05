@@ -48,6 +48,7 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import CallIcon from '@mui/icons-material/Call';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const ChatRoom: React.FC = () => {
   const { user1Id, user2Id } = useParams<{ user1Id: string; user2Id: string }>();
@@ -89,6 +90,12 @@ const ChatRoom: React.FC = () => {
   // Reference linking
   const [pendingRef, setPendingRef] = useState<Reference | null>(null);
   const [refPickerOpen, setRefPickerOpen] = useState(false);
+
+  // Ask Roshi dialog
+  const [roshiOpen, setRoshiOpen] = useState(false);
+  const [roshiPrompt, setRoshiPrompt] = useState('');
+  const [roshiResponse, setRoshiResponse] = useState('');
+  const [roshiLoading, setRoshiLoading] = useState(false);
 
   // Goal-focused chat
   const [searchParams] = useSearchParams();
@@ -378,6 +385,26 @@ const ChatRoom: React.FC = () => {
       event: 'call-declined',
       payload: { from: currentUserId },
     });
+  };
+
+  const handleAskRoshi = async () => {
+    if (!roshiPrompt.trim() || roshiLoading) return;
+    setRoshiLoading(true);
+    setRoshiResponse('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await axios.post(
+        `${API_URL}/ai-coaching/request`,
+        { userPrompt: roshiPrompt.trim() },
+        { headers: { Authorization: `Bearer ${session?.access_token}` } },
+      );
+      setRoshiResponse(res.data.response || '…');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Roshi is unavailable right now.';
+      setRoshiResponse(msg);
+    } finally {
+      setRoshiLoading(false);
+    }
   };
 
   const handleSubmitFeedback = async () => {
@@ -785,6 +812,15 @@ const ChatRoom: React.FC = () => {
               <VideocamIcon />
             </IconButton>
           </Tooltip>
+          <Tooltip title="Ask Master Roshi for coaching advice">
+            <IconButton
+              size="small"
+              onClick={() => { setRoshiOpen(true); setRoshiPrompt(''); setRoshiResponse(''); }}
+              sx={{ color: 'text.secondary', '&:hover': { color: '#A78BFA' } }}
+            >
+              <AutoAwesomeIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         {/* Goal focus banner */}
@@ -1127,6 +1163,64 @@ const ChatRoom: React.FC = () => {
           isInitiator={isCallInitiator}
         />
       )}
+
+      {/* Ask Roshi dialog */}
+      <Dialog open={roshiOpen} onClose={() => !roshiLoading && setRoshiOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AutoAwesomeIcon sx={{ color: '#A78BFA', fontSize: 20 }} />
+          Ask Master Roshi
+          <IconButton size="small" onClick={() => setRoshiOpen(false)} sx={{ ml: 'auto', color: 'text.disabled' }} disabled={roshiLoading}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            <TextField
+              fullWidth
+              size="small"
+              multiline
+              rows={3}
+              placeholder="Ask Roshi anything — strategy, accountability, mindset, next steps…"
+              value={roshiPrompt}
+              onChange={e => setRoshiPrompt(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAskRoshi(); } }}
+              disabled={roshiLoading}
+            />
+            {roshiLoading && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <CircularProgress size={16} sx={{ color: '#A78BFA' }} />
+                <Typography variant="caption" color="text.secondary">Roshi is thinking…</Typography>
+              </Box>
+            )}
+            {roshiResponse && !roshiLoading && (
+              <Box sx={{
+                p: 2, borderRadius: 2,
+                bgcolor: 'rgba(167,139,250,0.08)',
+                border: '1px solid rgba(167,139,250,0.2)',
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1 }}>
+                  <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700 }}>🥋 Master Roshi</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                  {roshiResponse}
+                </Typography>
+              </Box>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setRoshiOpen(false)} disabled={roshiLoading}>Close</Button>
+          <Button
+            variant="contained"
+            onClick={handleAskRoshi}
+            disabled={roshiLoading || !roshiPrompt.trim()}
+            startIcon={roshiLoading ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
+            sx={{ bgcolor: '#A78BFA', '&:hover': { bgcolor: '#8B5CF6' }, color: '#fff', borderRadius: 2 }}
+          >
+            {roshiLoading ? 'Asking…' : 'Ask'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

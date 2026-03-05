@@ -52,9 +52,7 @@ const MASTER_ROSHI_IDENTITY = `You are Master Roshi — an ancient, warm mentor 
 
 export class AICoachingService {
   private genAI: GoogleGenerativeAI | null = null;
-  // Use a widely-available stable model. gemini-2.0-flash-lite is newer and
-  // may not be on all API keys — fall back to gemini-1.5-flash which is GA.
-  private readonly MODEL = 'gemini-1.5-flash';
+  private readonly MODEL = 'gemini-2.0-flash';
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
