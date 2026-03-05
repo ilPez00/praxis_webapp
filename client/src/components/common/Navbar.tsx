@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
@@ -25,6 +25,9 @@ import {
   Menu,
   MenuItem,
   Badge,
+  Popover,
+  Stack,
+  Tooltip,
 } from '@mui/material';
 import BoltIcon from '@mui/icons-material/Bolt';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -46,6 +49,39 @@ import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import PeopleIcon from '@mui/icons-material/People';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+
+interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  body?: string;
+  link?: string;
+  read: boolean;
+  created_at: string;
+}
+
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function notifIcon(type: string): string {
+  if (type === 'message' || type === 'group_message') return '💬';
+  if (type === 'verification') return '✅';
+  if (type === 'honor') return '🏅';
+  if (type === 'bet_result') return '🎲';
+  if (type === 'match') return '🤝';
+  return '🔔';
+}
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
@@ -57,6 +93,12 @@ const Navbar: React.FC = () => {
   const [searchValue, setSearchValue] = useState('');
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
   const [friendRequestCount, setFriendRequestCount] = useState(0);
+
+  // Notifications
+  const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notifChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -75,6 +117,75 @@ const Navbar: React.FC = () => {
     };
     fetchRequestCount();
   }, [user]);
+
+  // Fetch notifications + subscribe to realtime inserts
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchNotifs = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const headers = { Authorization: `Bearer ${session.access_token}` };
+        const [notifsRes, countRes] = await Promise.all([
+          fetch(`${API_URL}/notifications`, { headers }),
+          fetch(`${API_URL}/notifications/unread-count`, { headers }),
+        ]);
+        if (notifsRes.ok) setNotifications(await notifsRes.json());
+        if (countRes.ok) { const d = await countRes.json(); setUnreadCount(d.count ?? 0); }
+      } catch { /* silently ignore */ }
+    };
+
+    fetchNotifs();
+
+    // Realtime: subscribe to new notifications for this user
+    const channel = supabase
+      .channel(`notifs_${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        const n = payload.new as AppNotification;
+        setNotifications(prev => [n, ...prev].slice(0, 50));
+        setUnreadCount(c => c + 1);
+      })
+      .subscribe();
+
+    notifChannelRef.current = channel;
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
+
+  const handleOpenNotifs = async (e: React.MouseEvent<HTMLElement>) => {
+    setNotifAnchor(e.currentTarget);
+    // Mark all as read on open
+    if (unreadCount > 0) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        await fetch(`${API_URL}/notifications/read-all`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        setUnreadCount(0);
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      } catch { /* ignore */ }
+    }
+  };
+
+  const handleDeleteNotif = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      await fetch(`${API_URL}/notifications/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch { /* ignore */ }
+  };
 
   const hideSearch = /^\/profile(\/|$)/.test(location.pathname);
 
@@ -285,6 +396,91 @@ const Navbar: React.FC = () => {
                       }}
                     />
                   )}
+
+                  {/* Notification bell */}
+                  <Tooltip title="Notifications">
+                    <IconButton
+                      onClick={handleOpenNotifs}
+                      sx={{ color: unreadCount > 0 ? 'primary.main' : 'text.secondary', p: 0.75 }}
+                      aria-label="notifications"
+                    >
+                      <Badge badgeContent={unreadCount || undefined} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', minWidth: 16, height: 16 } }}>
+                        {unreadCount > 0 ? <NotificationsIcon fontSize="small" /> : <NotificationsNoneIcon fontSize="small" />}
+                      </Badge>
+                    </IconButton>
+                  </Tooltip>
+
+                  {/* Notifications Popover */}
+                  <Popover
+                    open={Boolean(notifAnchor)}
+                    anchorEl={notifAnchor}
+                    onClose={() => setNotifAnchor(null)}
+                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                    slotProps={{
+                      paper: {
+                        sx: {
+                          mt: 1, width: 340, maxHeight: 480,
+                          bgcolor: '#1F2937',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          borderRadius: '16px',
+                          overflow: 'hidden',
+                          display: 'flex', flexDirection: 'column',
+                        },
+                      },
+                    }}
+                  >
+                    <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Notifications</Typography>
+                      {notifications.some(n => !n.read) && (
+                        <Tooltip title="Mark all read">
+                          <IconButton size="small" sx={{ color: 'text.secondary' }} onClick={async () => {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            if (!session?.access_token) return;
+                            await fetch(`${API_URL}/notifications/read-all`, { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } });
+                            setUnreadCount(0);
+                            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                          }}>
+                            <DoneAllIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
+                    <Box sx={{ overflowY: 'auto', flex: 1 }}>
+                      {notifications.length === 0 ? (
+                        <Box sx={{ py: 5, textAlign: 'center' }}>
+                          <NotificationsNoneIcon sx={{ fontSize: 36, color: 'text.disabled', mb: 1 }} />
+                          <Typography variant="body2" color="text.disabled">No notifications yet</Typography>
+                        </Box>
+                      ) : (
+                        notifications.map(n => (
+                          <Box
+                            key={n.id}
+                            onClick={() => { if (n.link) navigate(n.link); setNotifAnchor(null); }}
+                            sx={{
+                              px: 2, py: 1.25,
+                              cursor: n.link ? 'pointer' : 'default',
+                              bgcolor: n.read ? 'transparent' : 'rgba(245,158,11,0.05)',
+                              borderLeft: n.read ? '3px solid transparent' : '3px solid rgba(245,158,11,0.5)',
+                              borderBottom: '1px solid rgba(255,255,255,0.04)',
+                              display: 'flex', gap: 1.5, alignItems: 'flex-start',
+                              '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                            }}
+                          >
+                            <Typography sx={{ fontSize: '1.1rem', flexShrink: 0, mt: 0.1 }}>{notifIcon(n.type)}</Typography>
+                            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                              <Typography variant="body2" sx={{ fontWeight: n.read ? 500 : 700, lineHeight: 1.3 }} noWrap>{n.title}</Typography>
+                              {n.body && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }} noWrap>{n.body}</Typography>}
+                              <Typography variant="caption" color="text.disabled">{timeAgo(n.created_at)}</Typography>
+                            </Box>
+                            <IconButton size="small" sx={{ color: 'text.disabled', flexShrink: 0, mt: -0.25 }} onClick={(e) => handleDeleteNotif(n.id, e)}>
+                              <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+                            </IconButton>
+                          </Box>
+                        ))
+                      )}
+                    </Box>
+                  </Popover>
 
                   {/* Profile avatar — opens dropdown */}
                   <IconButton

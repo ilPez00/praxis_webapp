@@ -4,6 +4,7 @@ import logger from '../utils/logger';
 import { catchAsync, BadRequestError, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors';
 import { createAchievementFromGoal } from './achievementController';
 import { resolveBetsOnGoalCompletion } from './bettingController';
+import { pushNotification } from './notificationController';
 
 /**
  * POST /completions
@@ -41,6 +42,16 @@ export const createCompletionRequest = catchAsync(async (req: Request, res: Resp
     message_type: 'completion_request',
     metadata: { requestId: request.id, goalNodeId, goalName },
   });
+
+  // Notify the verifier
+  pushNotification({
+    userId: verifierId,
+    type: 'verification',
+    title: 'Goal verification requested',
+    body: `Someone wants you to verify: "${goalName}"`,
+    link: `/communication`,
+    actorId: requesterId,
+  }).catch(() => {});
 
   res.status(201).json(request);
 });
@@ -146,6 +157,18 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
     message_type: 'system',
     metadata: { requestId: id, goalNodeId: request.goal_node_id, approved },
   });
+
+  // Notify the requester of the outcome
+  pushNotification({
+    userId: request.requester_id,
+    type: 'verification',
+    title: approved ? 'Goal verified!' : 'Verification declined',
+    body: approved
+      ? `"${request.goal_name}" was approved — goal marked complete.`
+      : `"${request.goal_name}" was not approved this time.`,
+    link: `/goal-tree`,
+    actorId: verifierId,
+  }).catch(() => {});
 
   res.json({ status, requestId: id });
 });

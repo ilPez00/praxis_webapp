@@ -49,6 +49,8 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import CallIcon from '@mui/icons-material/Call';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 
 const ChatRoom: React.FC = () => {
   const { user1Id, user2Id } = useParams<{ user1Id: string; user2Id: string }>();
@@ -57,6 +59,7 @@ const ChatRoom: React.FC = () => {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [muted, setMuted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -160,6 +163,17 @@ const ChatRoom: React.FC = () => {
       }
     };
     fetchMessages();
+
+    // Check mute status for this user
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token || !user2Id) return;
+        const res = await axios.get(`${API_URL}/mutes`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const mutedUsers: string[] = res.data?.mutedUsers ?? [];
+        setMuted(mutedUsers.includes(user2Id));
+      } catch { /* ignore */ }
+    })();
 
     channelRef.current = supabase.channel(`chat_${channelName}`, { config: { broadcast: { self: false } } })
       .on('postgres_changes', {
@@ -829,6 +843,30 @@ const ChatRoom: React.FC = () => {
               sx={{ color: 'text.secondary', '&:hover': { color: '#A78BFA' } }}
             >
               <AutoAwesomeIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={muted ? 'Unmute notifications from this user' : 'Mute notifications from this user'}>
+            <IconButton
+              size="small"
+              onClick={async () => {
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session?.access_token || !user2Id) return;
+                  const headers = { Authorization: `Bearer ${session.access_token}` };
+                  if (muted) {
+                    await axios.delete(`${API_URL}/mutes/user/${user2Id}`, { headers });
+                    setMuted(false);
+                    toast('Unmuted', { icon: '🔔' });
+                  } else {
+                    await axios.post(`${API_URL}/mutes/user/${user2Id}`, {}, { headers });
+                    setMuted(true);
+                    toast('Muted — you won\'t get notifications from this user', { icon: '🔕' });
+                  }
+                } catch { toast.error('Failed to update mute status.'); }
+              }}
+              sx={{ color: muted ? '#EF4444' : 'text.secondary', '&:hover': { color: muted ? '#F87171' : '#EF4444' } }}
+            >
+              {muted ? <VolumeOffIcon fontSize="small" /> : <VolumeUpIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
         </Box>

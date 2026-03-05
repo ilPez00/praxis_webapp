@@ -45,6 +45,8 @@ import ForumIcon from '@mui/icons-material/Forum';
 import ChatIcon from '@mui/icons-material/Chat';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 
 interface Member {
   user_id: string;
@@ -82,6 +84,8 @@ const GroupChatRoom: React.FC = () => {
   const [myProfile, setMyProfile] = useState<{ name: string } | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [nameCache, setNameCache] = useState<Record<string, string>>({});
+
+  const [roomMuted, setRoomMuted] = useState(false);
 
   // Roshi state
   const [roshiOpen, setRoshiOpen] = useState(false);
@@ -137,6 +141,17 @@ const GroupChatRoom: React.FC = () => {
       }
     };
     init();
+
+    // Check mute status for this room
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const res = await axios.get(`${API_URL}/mutes`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const mutedRooms: string[] = res.data?.mutedRooms ?? [];
+        setRoomMuted(mutedRooms.includes(roomId!));
+      } catch { /* ignore */ }
+    })();
 
     channelRef.current = supabase
       .channel(`group_${roomId}`)
@@ -306,6 +321,30 @@ const GroupChatRoom: React.FC = () => {
                 sx={{ color: '#A78BFA' }}
               >
                 <AutoAwesomeIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={roomMuted ? 'Unmute this board' : 'Mute notifications from this board'}>
+              <IconButton
+                size="small"
+                onClick={async () => {
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session?.access_token || !roomId) return;
+                    const headers = { Authorization: `Bearer ${session.access_token}` };
+                    if (roomMuted) {
+                      await axios.delete(`${API_URL}/mutes/room/${roomId}`, { headers });
+                      setRoomMuted(false);
+                      toast('Board unmuted', { icon: '🔔' });
+                    } else {
+                      await axios.post(`${API_URL}/mutes/room/${roomId}`, {}, { headers });
+                      setRoomMuted(true);
+                      toast('Board muted — you won\'t get notifications from here', { icon: '🔕' });
+                    }
+                  } catch { toast.error('Failed to update mute status.'); }
+                }}
+                sx={{ color: roomMuted ? '#EF4444' : 'text.secondary', '&:hover': { color: roomMuted ? '#F87171' : '#EF4444' } }}
+              >
+                {roomMuted ? <VolumeOffIcon /> : <VolumeUpIcon />}
               </IconButton>
             </Tooltip>
             <Tooltip title="Members">

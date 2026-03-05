@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, BadRequestError, InternalServerError } from '../utils/appErrors';
+import { pushNotification } from './notificationController';
 
 /**
  * GET /groups — list all public chat rooms, optionally filtered by domain.
@@ -162,6 +163,33 @@ export const sendRoomMessage = catchAsync(async (req: Request, res: Response, ne
     logger.error('Error sending group message:', error.message);
     throw new InternalServerError('Failed to send group message.');
   }
+
+  // Notify all room members except the sender (fire-and-forget, mute-checked inside)
+  const { data: members } = await supabase
+    .from('chat_room_members')
+    .select('user_id')
+    .eq('room_id', roomId)
+    .neq('user_id', senderId)
+    .limit(50);
+
+  if (members && members.length > 0) {
+    const senderProfile = await supabase.from('profiles').select('name').eq('id', senderId).single();
+    const senderName: string = senderProfile.data?.name || 'Someone';
+    const roomName = req.body.roomName as string | undefined;
+    const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;
+    for (const m of members) {
+      pushNotification({
+        userId: m.user_id,
+        type: 'group_message',
+        title: roomName ? `${senderName} in ${roomName}` : senderName,
+        body: preview,
+        link: `/communication`,
+        actorId: senderId,
+        roomId: roomId as string,
+      }).catch(() => {});
+    }
+  }
+
   res.status(201).json(data);
 });
 

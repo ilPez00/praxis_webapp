@@ -30,6 +30,8 @@ import eventsRoutes from './routes/eventsRoutes';
 import honorRoutes from './routes/honorRoutes';
 import referralRoutes from './routes/referralRoutes';
 import friendRoutes from './routes/friendRoutes';
+import notificationRoutes from './routes/notificationRoutes';
+import muteRoutes from './routes/muteRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -91,6 +93,8 @@ apiRouter.use('/events', eventsRoutes);
 apiRouter.use('/honor', honorRoutes);
 apiRouter.use('/referrals', referralRoutes);
 apiRouter.use('/friends', friendRoutes);
+apiRouter.use('/notifications', notificationRoutes);
+apiRouter.use('/mutes', muteRoutes);
 
 app.use('/api', apiRouter);
 

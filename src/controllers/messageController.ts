@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express'; // Import NextFunctio
 import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
 import logger from '../utils/logger'; // Import the logger
 import { catchAsync, BadRequestError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
+import { pushNotification } from './notificationController';
 // import { Message } from '../models/Message'; // Message model type is not directly used after Supabase integration
 
 export const getMessages = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -67,6 +68,18 @@ export const sendMessage = catchAsync(async (req: Request, res: Response, next: 
     logger.error('Supabase error sending message:', error.message);
     throw new InternalServerError('Failed to send message.');
   }
+
+  // Notify receiver (fire-and-forget, mute-checked inside pushNotification)
+  const senderProfile = await supabase.from('profiles').select('name').eq('id', senderId).single();
+  const senderName: string = senderProfile.data?.name || 'Someone';
+  pushNotification({
+    userId: receiverId,
+    type: 'message',
+    title: senderName,
+    body: content.length > 80 ? content.slice(0, 80) + '…' : content,
+    link: `/communication`,
+    actorId: senderId,
+  }).catch(() => {});
 
   res.status(201).json({ message: 'Message sent successfully.', sentMessage: data });
 });

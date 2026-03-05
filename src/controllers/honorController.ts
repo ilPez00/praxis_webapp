@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, BadRequestError, ForbiddenError, NotFoundError, InternalServerError } from '../utils/appErrors';
 import logger from '../utils/logger';
+import { pushNotification } from './notificationController';
 
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('does not exist') || msg?.includes('42P01');
@@ -45,6 +46,15 @@ export const giveHonor = catchAsync(async (req: Request, res: Response, _next: N
   // Increment honor_score
   const newScore = (target.honor_score ?? 0) + 1;
   await supabase.from('profiles').update({ honor_score: newScore }).eq('id', targetId);
+
+  pushNotification({
+    userId: targetId as string,
+    type: 'honor',
+    title: 'Someone honoured you',
+    body: `Your honor score is now ${newScore}.`,
+    link: `/profile/${targetId}`,
+    actorId: voterId,
+  }).catch(() => {});
 
   res.json({ message: 'Honor given.', honor_score: newScore });
 });

@@ -651,5 +651,43 @@ Engineering priority: checkins endpoint → streak notification → requireTier 
 - [x] AI weekly narrative (Gemini): "This week you showed exceptional consistency"
 - [x] Social streaks: mutual streak counter between accountability partners
 
+## Session 42 (2026-03-05) — Notifications + Mute
+
+### Implemented:
+- `notificationsController.ts` (new): `pushNotification()` internal helper (mute-checked), GET /notifications, GET /notifications/unread-count, POST /notifications/read, POST /notifications/read-all, DELETE /notifications/:id
+- `muteController.ts` (new): GET /mutes, POST/DELETE /mutes/user/:targetId, POST/DELETE /mutes/room/:roomId
+- Both routes registered in app.ts
+- `pushNotification` wired into: messageController (DM), groupController (group msg → all members), completionController (verification request + response), honorController (honor given)
+- Navbar: bell icon with unread badge + popover dropdown; realtime via Supabase postgres_changes on notifications table; mark-all-read on open; per-notification delete
+- ChatRoom: mute/unmute user button in header (VolumeOff/VolumeUp), loads mute state on mount
+- GroupChatRoom: mute/unmute room button in header
+
+### DB migrations required (§24):
+```sql
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  type TEXT NOT NULL, title TEXT NOT NULL, body TEXT, link TEXT,
+  read BOOLEAN DEFAULT false,
+  actor_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id, created_at DESC);
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own notifications" ON public.notifications FOR ALL USING (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS public.mutes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  muted_user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  muted_room_id UUID REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mutes_user ON public.mutes(user_id, muted_user_id) WHERE muted_user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mutes_room ON public.mutes(user_id, muted_room_id) WHERE muted_room_id IS NOT NULL;
+ALTER TABLE public.mutes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid() = user_id);
+```
+
 🟡 Phase 3 — Production / Stability
 - [ ] Stripe prod: STRIPE_PRICE_ID + register webhook
