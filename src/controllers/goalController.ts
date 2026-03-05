@@ -154,11 +154,25 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   // Fetch user profile details to be used in achievement creation (denormalized data)
   const userProfile = await getUserProfileDetails(userId);
 
+  // Fetch already-rewarded node IDs to prevent farming (premium users resetting progress)
+  const { data: existingRewardTxns } = await supabase
+    .from('marketplace_transactions')
+    .select('metadata')
+    .eq('user_id', userId)
+    .eq('item_type', 'goal_completion');
+  const alreadyRewardedNodeIds = new Set<string>(
+    (existingRewardTxns || []).map((r: any) => r.metadata?.node_id as string).filter(Boolean)
+  );
+
   // Iterate through the new set of goal nodes to identify newly completed goals
+  const SINGLE_SAVE_PP_CAP = 500; // prevent bulk-completion exploits
   let totalCompletionPoints = 0;
+  const newlyRewardedNodes: { node_id: string; node_name: string; points: number }[] = [];
+
   for (const newNode of nodes) {
+    if (totalCompletionPoints >= SINGLE_SAVE_PP_CAP) break;
     // Check if a goal's progress has reached 100%
-    if (newNode.progress >= 1) {
+    if (newNode.progress >= 1 && !alreadyRewardedNodeIds.has(newNode.id)) {
       // Find the corresponding old node to see its previous progress
       const oldNode = existingNodes.find(n => n.id === newNode.id);
       // If the goal is newly completed (wasn't completed before or didn't exist)
@@ -167,18 +181,31 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
         await createAchievementFromGoal(newNode, userId, userProfile.name, userProfile.avatar_url || undefined);
         // Award +50 PP × node weight (normalize weight to 0-1 range)
         const normalizedWeight = (newNode.weight ?? 0.5) > 1 ? (newNode.weight ?? 0.5) / 100 : (newNode.weight ?? 0.5);
-        totalCompletionPoints += Math.max(5, Math.round(50 * normalizedWeight));
+        const nodePoints = Math.min(
+          Math.max(5, Math.round(50 * normalizedWeight)),
+          SINGLE_SAVE_PP_CAP - totalCompletionPoints
+        );
+        totalCompletionPoints += nodePoints;
+        newlyRewardedNodes.push({ node_id: newNode.id, node_name: newNode.name, points: nodePoints });
       }
     }
   }
-  // Award completion points (best-effort)
+  // Award completion points + log each node to prevent double-awarding (best-effort)
   if (totalCompletionPoints > 0) {
     const currentPoints = profile?.praxis_points ?? 0;
     await supabase
       .from('profiles')
       .update({ praxis_points: currentPoints + totalCompletionPoints })
       .eq('id', userId);
-    logger.info(`Awarded ${totalCompletionPoints} PP to ${userId} for goal completions`);
+    for (const reward of newlyRewardedNodes) {
+      await supabase.from('marketplace_transactions').insert({
+        user_id: userId,
+        item_type: 'goal_completion',
+        cost: 0,
+        metadata: { node_id: reward.node_id, node_name: reward.node_name, points_awarded: reward.points },
+      });
+    }
+    logger.info(`Awarded ${totalCompletionPoints} PP to ${userId} for ${newlyRewardedNodes.length} goal completion(s)`);
   }
   // --- End Achievement Creation Logic ---
 

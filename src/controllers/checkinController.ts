@@ -81,7 +81,9 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   const streakBonus =
     streakUpdate.current_streak >= 30 ? 60 :
     streakUpdate.current_streak >= 7  ? 40 : 20;
-  const pointsAwarded = 10 + streakBonus; // 30–70 per day
+  // Hard daily cap of 200 PP from check-ins (anti-inflation guard)
+  const DAILY_CHECKIN_CAP = 200;
+  const pointsAwarded = Math.min(10 + streakBonus, DAILY_CHECKIN_CAP); // 30–70 per day currently
   const newPoints = (profile.praxis_points ?? 0) + pointsAwarded;
 
   // Insert checkin record

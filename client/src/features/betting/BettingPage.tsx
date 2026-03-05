@@ -140,7 +140,7 @@ const BettingPage: React.FC = () => {
   const activeBets = bets.filter(b => b.status === 'active');
   const historyBets = bets.filter(b => b.status !== 'active');
   const totalStaked = activeBets.reduce((s, b) => s + b.stake_points, 0);
-  const totalWon = bets.filter(b => b.status === 'won').reduce((s, b) => s + b.stake_points * 2, 0);
+  const totalWon = bets.filter(b => b.status === 'won').reduce((s, b) => s + Math.round(b.stake_points * 1.8), 0);
 
   const minDeadline = new Date();
   minDeadline.setDate(minDeadline.getDate() + 1);
@@ -244,7 +244,7 @@ const BettingPage: React.FC = () => {
                           />
                           <Chip
                             icon={<EmojiEventsIcon />}
-                            label={`Win: ${bet.stake_points * 2} PP`}
+                            label={`Win: ${Math.round(bet.stake_points * 1.8)} PP`}
                             size="small"
                             sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)', fontWeight: 700, fontSize: '0.7rem' }}
                           />
@@ -317,7 +317,7 @@ const BettingPage: React.FC = () => {
                       />
                       {bet.status === 'won' && (
                         <Typography variant="caption" sx={{ display: 'block', color: '#10B981', fontWeight: 700, mt: 0.25 }}>
-                          +{bet.stake_points * 2} PP
+                          +{Math.round(bet.stake_points * 1.8)} PP
                         </Typography>
                       )}
                     </Box>
@@ -396,7 +396,7 @@ const BettingPage: React.FC = () => {
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2" color="text.secondary">If you win (goal peer-verified):</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 800, color: '#10B981' }}>+{stake * 2} PP</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: '#10B981' }}>+{Math.round(stake * 1.8)} PP (1.8×)</Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
                 <Typography variant="body2" color="text.secondary">If you lose (missed deadline):</Typography>

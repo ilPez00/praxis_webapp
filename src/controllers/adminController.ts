@@ -533,3 +533,102 @@ export const listAllCoaches = catchAsync(async (_req: Request, res: Response) =>
   }
   return res.json(data ?? []);
 });
+
+/**
+ * POST /admin/decay-points
+ * Weekly economy balancer — run via cron (e.g. Railway scheduled job every Sunday).
+ *
+ * Rules applied in order:
+ *   1. Inactivity decay  — users with no activity in ≥7 days lose 5% of their PP
+ *   2. Wealth tax        — users with PP > WEALTH_TAX_THRESHOLD lose an additional 2%
+ *
+ * Both are floored at 0 and rounded down.
+ * Returns a report of how many users were affected and total PP removed.
+ *
+ * Safe to call via X-Admin-Secret header (cron) or JWT admin auth (webapp).
+ */
+export const decayPoints = catchAsync(async (req: Request, res: Response) => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
+  const isJwtAdmin = !!req.user?.id;
+  if (!isSecretAuth && !isJwtAdmin) {
+    throw new UnauthorizedError('Admin authentication required.');
+  }
+
+  const INACTIVITY_DECAY_RATE = 0.05;   // -5% for inactive users
+  const WEALTH_TAX_RATE       = 0.02;   // -2% additional for high-balance users
+  const WEALTH_TAX_THRESHOLD  = 5000;   // PP above this get the wealth tax
+  const INACTIVITY_DAYS       = 7;      // days without activity = inactive
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - INACTIVITY_DAYS);
+  const cutoffStr = cutoffDate.toISOString().slice(0, 10);
+
+  // Fetch all profiles with any PP
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, praxis_points, last_activity_date')
+    .gt('praxis_points', 0);
+
+  if (error) throw new InternalServerError('Failed to fetch profiles for decay.');
+
+  let inactiveDecayed = 0;
+  let wealthTaxed = 0;
+  let totalPPRemoved = 0;
+  const updates: { id: string; newPoints: number; removed: number; reasons: string[] }[] = [];
+
+  for (const profile of profiles ?? []) {
+    const current: number = profile.praxis_points ?? 0;
+    if (current <= 0) continue;
+
+    let adjusted = current;
+    const reasons: string[] = [];
+
+    // Rule 1: inactivity decay (no activity in ≥ INACTIVITY_DAYS days, or never active)
+    const lastActive = profile.last_activity_date;
+    const isInactive = !lastActive || lastActive < cutoffStr;
+    if (isInactive) {
+      const decayAmount = Math.floor(adjusted * INACTIVITY_DECAY_RATE);
+      adjusted = Math.max(0, adjusted - decayAmount);
+      reasons.push(`inactivity -${decayAmount}`);
+      inactiveDecayed++;
+    }
+
+    // Rule 2: wealth tax (applied to anyone above threshold, after inactivity decay)
+    if (adjusted > WEALTH_TAX_THRESHOLD) {
+      const taxAmount = Math.floor(adjusted * WEALTH_TAX_RATE);
+      adjusted = Math.max(0, adjusted - taxAmount);
+      reasons.push(`wealth_tax -${taxAmount}`);
+      wealthTaxed++;
+    }
+
+    if (adjusted < current) {
+      updates.push({ id: profile.id, newPoints: adjusted, removed: current - adjusted, reasons });
+      totalPPRemoved += current - adjusted;
+    }
+  }
+
+  // Apply all updates (batch by updating one at a time — Supabase JS doesn't support bulk UPDATE)
+  let applied = 0;
+  for (const u of updates) {
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ praxis_points: u.newPoints })
+      .eq('id', u.id);
+    if (!updateError) applied++;
+    else logger.warn(`Decay update failed for ${u.id}: ${updateError.message}`);
+  }
+
+  const report = {
+    ran_at: new Date().toISOString(),
+    inactivity_cutoff: cutoffStr,
+    profiles_scanned: (profiles ?? []).length,
+    inactivity_decayed: inactiveDecayed,
+    wealth_taxed: wealthTaxed,
+    updates_applied: applied,
+    total_pp_removed: totalPPRemoved,
+  };
+
+  logger.info(`[Decay] ${applied} profiles updated, ${totalPPRemoved} PP removed`, report);
+  return res.json(report);
+});

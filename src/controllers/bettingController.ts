@@ -197,12 +197,13 @@ export const resolveBetsOnGoalCompletion = async (userId: string, goalNodeId: st
         .select('praxis_points')
         .eq('id', userId)
         .single();
-      // Award 2× stake on win
+      // Award 1.8× stake on win (10% house edge — makes bets a net sink for the economy)
+      const winnings = Math.round(bet.stake_points * 1.8);
       await supabase
         .from('profiles')
-        .update({ praxis_points: (profile?.praxis_points ?? 0) + bet.stake_points * 2 })
+        .update({ praxis_points: (profile?.praxis_points ?? 0) + winnings })
         .eq('id', userId);
-      logger.info(`Bet ${bet.id} WON for user ${userId}: +${bet.stake_points * 2} Praxis Points`);
+      logger.info(`Bet ${bet.id} WON for user ${userId}: +${winnings} Praxis Points (1.8× payout)`);
     }
   } catch (err) {
     // Non-fatal — bet resolution failure shouldn't block goal verification
