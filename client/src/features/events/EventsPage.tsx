@@ -13,6 +13,8 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EventIcon from '@mui/icons-material/Event';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PlaceIcon from '@mui/icons-material/Place';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
+import NearMeIcon from '@mui/icons-material/NearMe';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -32,6 +34,10 @@ interface CalendarEvent {
   event_date: string;
   event_time: string | null;
   location: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  distance_km: number | null;
   created_at: string;
   creator: { id: string; full_name: string; avatar_url: string | null } | null;
   rsvps: EventRsvp[];
@@ -63,12 +69,20 @@ const EventsPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Geo filter
+  const [nearbyMode, setNearbyMode] = useState(false);
+  const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+
   // Form
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventTime, setEventTime] = useState('');
   const [location, setLocation] = useState('');
+  const [city, setCity] = useState('');
+  const [formLat, setFormLat] = useState('');
+  const [formLng, setFormLng] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => setCurrentUserId(u?.id));
@@ -79,10 +93,11 @@ const EventsPage: React.FC = () => {
     return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
   };
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (geo?: { lat: number; lng: number }) => {
     try {
       const headers = await getAuthHeader();
-      const res = await axios.get(`${API_URL}/events`, { headers });
+      const params = geo ? `?lat=${geo.lat}&lng=${geo.lng}&radius=100` : '';
+      const res = await axios.get(`${API_URL}/events${params}`, { headers });
       setEvents(Array.isArray(res.data) ? res.data : []);
     } catch {
       setEvents([]);
@@ -92,6 +107,42 @@ const EventsPage: React.FC = () => {
   }, []);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+  const handleToggleNearby = () => {
+    if (nearbyMode) {
+      setNearbyMode(false);
+      setUserGeo(null);
+      fetchEvents();
+      return;
+    }
+    if (!navigator.geolocation) {
+      toast.error('Geolocation not supported by your browser.');
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserGeo(geo);
+        setNearbyMode(true);
+        fetchEvents(geo);
+        setGeoLoading(false);
+      },
+      () => {
+        toast.error('Location access denied.');
+        setGeoLoading(false);
+      }
+    );
+  };
+
+  const autoFillGeo = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setFormLat(String(pos.coords.latitude.toFixed(5)));
+      setFormLng(String(pos.coords.longitude.toFixed(5)));
+      toast.success('Location detected!');
+    }, () => toast.error('Location access denied.'));
+  };
 
   const handleCreate = async () => {
     if (!title.trim() || !eventDate) {
@@ -107,10 +158,14 @@ const EventsPage: React.FC = () => {
         eventDate,
         eventTime: eventTime || undefined,
         location: location.trim() || undefined,
+        city: city.trim() || undefined,
+        latitude: formLat ? parseFloat(formLat) : undefined,
+        longitude: formLng ? parseFloat(formLng) : undefined,
       }, { headers });
       toast.success('Event created!');
       setDialogOpen(false);
       setTitle(''); setDescription(''); setEventDate(''); setEventTime(''); setLocation('');
+      setCity(''); setFormLat(''); setFormLng('');
       await fetchEvents();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create event.');
@@ -170,14 +225,25 @@ const EventsPage: React.FC = () => {
               Upcoming community events — create one and invite your accountability network.
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddCircleOutlineIcon />}
-            onClick={() => setDialogOpen(true)}
-            sx={{ borderRadius: '12px', fontWeight: 700, px: 3 }}
-          >
-            Create Event
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant={nearbyMode ? 'contained' : 'outlined'}
+              startIcon={geoLoading ? <CircularProgress size={16} color="inherit" /> : <NearMeIcon />}
+              onClick={handleToggleNearby}
+              disabled={geoLoading}
+              sx={{ borderRadius: '12px', fontWeight: 700 }}
+            >
+              {nearbyMode ? 'Nearby (on)' : 'Near me'}
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddCircleOutlineIcon />}
+              onClick={() => setDialogOpen(true)}
+              sx={{ borderRadius: '12px', fontWeight: 700, px: 3 }}
+            >
+              Create Event
+            </Button>
+          </Stack>
         </Box>
 
         {/* Events grid */}
@@ -251,12 +317,20 @@ const EventsPage: React.FC = () => {
                           sx={{ bgcolor: 'rgba(255,255,255,0.05)', fontSize: '0.7rem' }}
                         />
                       )}
-                      {event.location && (
+                      {(event.city || event.location) && (
                         <Chip
                           icon={<PlaceIcon />}
-                          label={event.location}
+                          label={event.city || event.location!}
                           size="small"
                           sx={{ bgcolor: 'rgba(255,255,255,0.05)', fontSize: '0.7rem' }}
+                        />
+                      )}
+                      {event.distance_km !== null && (
+                        <Chip
+                          icon={<NearMeIcon />}
+                          label={event.distance_km < 1 ? '<1 km away' : `${event.distance_km} km away`}
+                          size="small"
+                          sx={{ bgcolor: 'rgba(59,130,246,0.12)', color: '#3B82F6', fontSize: '0.7rem' }}
                         />
                       )}
                     </Stack>
@@ -366,11 +440,52 @@ const EventsPage: React.FC = () => {
             </Grid>
             <TextField
               fullWidth
-              label="Location"
+              label="Venue / Location"
               value={location}
               onChange={e => setLocation(e.target.value)}
               placeholder="e.g. Zoom, Central Park, Discord #voice"
             />
+            <TextField
+              fullWidth
+              label="City"
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              placeholder="e.g. Milan, London, Remote"
+              helperText="Shown on the card — helps people find local events"
+            />
+            {/* Geo coordinates — optional, enables geo-search */}
+            <Box>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Geo coordinates (optional — enables "Near me" filter)
+                </Typography>
+                <Button size="small" startIcon={<MyLocationIcon />} onClick={autoFillGeo} sx={{ fontSize: '0.72rem' }}>
+                  Detect
+                </Button>
+              </Stack>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Latitude"
+                    value={formLat}
+                    onChange={e => setFormLat(e.target.value)}
+                    placeholder="e.g. 45.4654"
+                    size="small"
+                  />
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Longitude"
+                    value={formLng}
+                    onChange={e => setFormLng(e.target.value)}
+                    placeholder="e.g. 9.1859"
+                    size="small"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>

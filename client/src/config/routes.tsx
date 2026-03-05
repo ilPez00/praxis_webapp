@@ -7,6 +7,7 @@ import SignupPage from '../features/auth/SignupPage';
 import SuccessPage from '../features/payments/SuccessPage';
 import CancelPage from '../features/payments/CancelPage';
 import DesktopWidget from '../features/dashboard/components/DesktopWidget';
+import MobileWidget from '../features/widgets/MobileWidget';
 
 // Private Pages — lazy loaded (code-split per route, loaded on demand)
 const DashboardPage = React.lazy(() => import('../features/dashboard/DashboardPage'));
@@ -50,6 +51,7 @@ const routes: RouteConfig[] = [
   { path: '/success', element: SuccessPage, private: false },
   { path: '/cancel', element: CancelPage, private: false },
   { path: '/desktop-widget', element: DesktopWidget, private: false }, // Should be accessible for the desktop app
+  { path: '/mobile-widget', element: MobileWidget, private: false }, // Home screen PWA shortcut
 
   // Private Routes
 

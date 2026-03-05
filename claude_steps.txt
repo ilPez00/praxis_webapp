@@ -588,33 +588,68 @@ Engineering priority: checkins endpoint → streak notification → requireTier 
 - `routes.tsx`: added lazy `/events` route
 - `migrations/setup.sql`: section 21 — events + event_rsvps tables with RLS + indexes
 
-## Session 41 — Next Priorities
+## Session 41 (2026-03-05) — Onboarding Fix + Widgets + Staff/Mod Hierarchy + Honor System + Events Geo
+
+### Implemented:
+
+**Onboarding loop fix (commit e86427e):**
+- `useUser.ts`: when auth user exists but profiles row missing, return stub user (onboarding_completed: false) instead of null → PrivateRoute routes to /onboarding, not /login
+- `PrivateRoute.tsx`: `=== false` → `!user.onboarding_completed` (handles null DB default)
+- `OnboardingPage.tsx`: `.update()` → `.upsert({ onConflict: 'id' })` — creates profile row if trigger not set up
+
+**Widgets — progress logging without opening the app:**
+- `DesktopWidget.tsx`: added check-in button (POST /checkins), checks today's status on load, shows ⚡ PP instead of generic points
+- `MobileWidget.tsx` (NEW at `client/src/features/widgets/MobileWidget.tsx`):
+  - `/mobile-widget` route — designed for PWA home screen shortcut
+  - Shows streak, PP, one-tap check-in CTA, active goal progress bars
+  - No navbar/sidebar — pure habit-loop micro UI
+- `routes.tsx`: added `/mobile-widget` (public, non-private — works before navbar loads)
+
+**Staff/Moderator hierarchy:**
+- `src/middleware/requireRole.ts` (NEW): `requireRole(minRole)` middleware — checks profiles.role + is_admin; ROLE_LEVELS: user=0, staff=1, moderator=2, admin=3
+- `adminController.ts`: added `promoteUser` — PUT /admin/users/:id/role sets role + syncs is_admin bool
+- `adminRoutes.ts`: registered `PUT /admin/users/:id/role`
+- `AdminPage.tsx`: role chips (staff=green, mod=blue) + ⭐ honor_score badge in flags column; ShieldIcon (staff) + WorkspacePremiumIcon (mod) toggle buttons in actions; `handlePromoteUser` handler; `AdminUser` interface extended with `role` + `honor_score`
+
+**Honor System (community respect score, parallel to reliability):**
+- `honorController.ts` (NEW): `giveHonor` (POST /honor/:targetId), `revokeHonor` (DELETE), `getHonor` (GET)
+  - One honor per voter per target (unique DB constraint); increments/decrements `profiles.honor_score`
+  - 23505 = already honored, returns 400 with friendly message
+- `honorRoutes.ts` (NEW): all routes require authenticateToken
+- `app.ts`: registered `/honor` route
+
+**Events + Geo-location:**
+- `eventsController.ts`:
+  - `getEvents`: Haversine distance calc; accepts `?lat=&lng=&radius=` query params; attaches `distance_km` to results; sorts by distance when geo active; null-geo events included but sorted last
+  - `createEvent`: accepts `latitude`, `longitude`, `city` in body
+- `EventsPage.tsx`:
+  - "Near me" toggle button — requests browser geolocation, fetches /events?lat=&lng=&radius=100
+  - `distance_km` chip on event cards (blue NearMeIcon)
+  - City chip on event cards (shown alongside/instead of location)
+  - Create dialog: added City field + optional geo fields (Lat/Lng) + "Detect" button (navigator.geolocation)
+  - `autoFillGeo()` helper fills form lat/lng from browser location
+
+**DB migrations §23 (run in Supabase):**
+- `profiles.role TEXT DEFAULT 'user' CHECK (IN user/staff/moderator/admin)`
+- `profiles.honor_score INTEGER DEFAULT 0`
+- `honor_votes` table with UNIQUE(voter_id, target_id) + RLS
+- `events.latitude FLOAT`, `events.longitude FLOAT`, `events.city TEXT` + spatial index
+
+### Next: Fix Master Roshi (BalanceWidget)
+
+🔴 Immediate:
+- [x] Fix new-user onboarding loop
+- [x] Widgets for progress logging (desktop check-in + mobile PWA widget)
+- [x] Staff/Moderator hierarchy + "Make staff/mod" in admin panel
+- [x] Honor system (community respect score parallel to reliability)
+- [x] Events geo-location (nearby filter, distance display, city field)
+- [ ] Fix Master Roshi / BalanceWidget (next)
+- [ ] Run §23 migrations in Supabase SQL Editor
 
 🟠 Phase 2 — Viral Hooks
 - [ ] "Challenge a friend" one-tap share: share bet/challenge via link
 - [ ] AI weekly narrative (Gemini): "This week you showed exceptional consistency"
 - [ ] Social streaks: mutual streak counter between accountability partners
-- [ ] WhatsApp-style groups: member list panel, online/last-seen, join/leave, group description
-
-🟡 Phase 3 — Production / Stability
-- [ ] Stripe prod: STRIPE_PRICE_ID + register webhook
-- [ ] Run migrations/setup.sql section 21 (events + event_rsvps tables) in Supabase
-
-🔴 Immediate (next session):
-- [x] Cancelled bets refund only 90% of stake (10% house fee) — backend betsController cancel handler
-- [x] Events page in Chat: calendar-style event creation + RSVP (new route /events, linked from /communication)
-
-🔴 Phase 1 — Beta Readiness
-- [x] Run DB migrations in Supabase: bets table + username col + services + checkins + reliability_score
-  + 7 new performance indexes (migrations/setup.sql section 20)
-- [x] Verify SUPABASE_SERVICE_ROLE_KEY on Railway is the correct service_role key
-- [x] Seed demo users: POST /admin/seed-demo-users to populate Match feed
-
-🟠 Phase 2 — Viral Hooks
-- [ ] "Challenge a friend" one-tap share: share bet/challenge via link
-- [ ] AI weekly narrative (Gemini): "This week you showed exceptional consistency"
-- [ ] Social streaks: mutual streak counter between accountability partners
-- [ ] WhatsApp-style groups: member list panel, online/last-seen, join/leave, group description
 
 🟡 Phase 3 — Production / Stability
 - [ ] Stripe prod: STRIPE_PRICE_ID + register webhook

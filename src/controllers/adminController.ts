@@ -253,7 +253,7 @@ export const listAllUsers = catchAsync(async (req: Request, res: Response, next:
 
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, name, bio, avatar_url, is_demo, is_admin, is_premium, onboarding_completed, created_at');
+    .select('id, name, bio, avatar_url, is_demo, is_admin, is_premium, onboarding_completed, role, honor_score, created_at');
 
   const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
@@ -631,4 +631,32 @@ export const decayPoints = catchAsync(async (req: Request, res: Response) => {
 
   logger.info(`[Decay] ${applied} profiles updated, ${totalPPRemoved} PP removed`, report);
   return res.json(report);
+});
+
+/**
+ * PUT /admin/users/:id/role
+ * Promote or demote a user's role. Roles: user | staff | moderator | admin
+ */
+export const promoteUser = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { role } = req.body;
+
+  const validRoles = ['user', 'staff', 'moderator', 'admin'];
+  if (!validRoles.includes(role)) throw new BadRequestError(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+
+  const adminId = req.user?.id;
+  if (id === adminId && role !== 'admin') {
+    throw new BadRequestError('Cannot demote your own admin account.');
+  }
+
+  const updateData: Record<string, unknown> = { role };
+  // Keep is_admin in sync with role column for backwards compatibility
+  if (role === 'admin') updateData.is_admin = true;
+  else updateData.is_admin = false;
+
+  const { error } = await supabase.from('profiles').update(updateData).eq('id', id);
+  if (error) throw new InternalServerError(`Failed to update role: ${error.message}`);
+
+  logger.info(`Admin ${adminId} set role=${role} for user ${id}`);
+  res.json({ success: true, role });
 });

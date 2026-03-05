@@ -10,6 +10,8 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import BlockIcon from '@mui/icons-material/Block';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
+import ShieldIcon from '@mui/icons-material/Shield';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -44,6 +46,8 @@ interface AdminUser {
   is_premium?: boolean;
   onboarding_completed?: boolean;
   banned_until?: string | null;
+  role?: string;
+  honor_score?: number;
   created_at: string;
 }
 
@@ -464,6 +468,23 @@ const AdminPage: React.FC = () => {
     } catch { toast.error('Failed.'); }
   };
 
+  const handlePromoteUser = async (userId: string, role: string) => {
+    try {
+      const res = await apiFetch(`/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role, is_admin: role === 'admin' } : u));
+        toast.success(`User set to ${role}.`);
+      } else {
+        const b = await res.json().catch(() => ({}));
+        toast.error((b as any).message || 'Failed to update role.');
+      }
+    } catch { toast.error('Failed.'); }
+  };
+
   const handleGrantPoints = async (userId: string) => {
     try {
       const res = await apiFetch(`/admin/users/${userId}/grant-points`, {
@@ -728,7 +749,10 @@ const AdminPage: React.FC = () => {
                         {isBanned(u) && <Chip label="banned" size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(239,68,68,0.15)', color: 'error.main', border: '1px solid rgba(239,68,68,0.3)' }} />}
                         {u.is_demo && <Chip label="demo" size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(245,158,11,0.12)', color: 'warning.main', border: '1px solid rgba(245,158,11,0.25)' }} />}
                         {u.is_admin && <Chip label="admin" size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(239,68,68,0.12)', color: 'error.main', border: '1px solid rgba(239,68,68,0.25)' }} />}
+                        {!u.is_admin && u.role === 'moderator' && <Chip label="mod" size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(59,130,246,0.12)', color: '#3B82F6', border: '1px solid rgba(59,130,246,0.25)' }} />}
+                        {!u.is_admin && u.role === 'staff' && <Chip label="staff" size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }} />}
                         {u.is_premium && <Chip label="pro" size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(139,92,246,0.12)', color: 'secondary.main', border: '1px solid rgba(139,92,246,0.25)' }} />}
+                        {(u.honor_score ?? 0) > 0 && <Chip label={`⭐ ${u.honor_score}`} size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }} />}
                       </Box>
                     </TableCell>
                     <TableCell><Typography variant="caption" color="text.disabled">{new Date(u.created_at).toLocaleDateString()}</Typography></TableCell>
@@ -738,6 +762,16 @@ const AdminPage: React.FC = () => {
                           <Tooltip title="Grant 999,999 points">
                             <IconButton size="small" onClick={() => handleGrantPoints(u.id)} sx={{ color: 'primary.main', opacity: 0.6, '&:hover': { opacity: 1 } }}>
                               <StarsIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title={u.role === 'staff' ? 'Demote to user' : 'Make staff'}>
+                            <IconButton size="small" onClick={() => handlePromoteUser(u.id, u.role === 'staff' ? 'user' : 'staff')} sx={{ color: '#10B981', opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                              <ShieldIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title={u.role === 'moderator' || u.is_admin ? 'Demote to user' : 'Make moderator'}>
+                            <IconButton size="small" onClick={() => handlePromoteUser(u.id, (u.role === 'moderator' || u.is_admin) ? 'user' : 'moderator')} sx={{ color: '#3B82F6', opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                              <WorkspacePremiumIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                           {isBanned(u) ? (

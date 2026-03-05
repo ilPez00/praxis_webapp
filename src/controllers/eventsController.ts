@@ -10,7 +10,25 @@ const SCHEMA_MISSING = (msg: string) =>
  * GET /events
  * Returns all upcoming events (ordered by date asc), with RSVP counts.
  */
+// Haversine distance in km between two lat/lng pairs
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export const getEvents = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { lat, lng, radius } = req.query;
+  const userLat = lat ? parseFloat(lat as string) : null;
+  const userLng = lng ? parseFloat(lng as string) : null;
+  const radiusKm = radius ? parseFloat(radius as string) : 50;
+
   const { data, error } = await supabase
     .from('events')
     .select(`
@@ -30,7 +48,29 @@ export const getEvents = catchAsync(async (req: Request, res: Response, _next: N
     throw new InternalServerError('Failed to fetch events.');
   }
 
-  res.json(data || []);
+  let events = data || [];
+
+  // If caller provides geo coords, attach distance and optionally filter
+  if (userLat !== null && userLng !== null && !isNaN(userLat) && !isNaN(userLng)) {
+    events = events
+      .map((e: any) => {
+        if (e.latitude != null && e.longitude != null) {
+          const dist = haversineKm(userLat, userLng, e.latitude, e.longitude);
+          return { ...e, distance_km: Math.round(dist * 10) / 10 };
+        }
+        return { ...e, distance_km: null }; // no geo — include but no distance
+      })
+      .filter((e: any) => e.distance_km === null || e.distance_km <= radiusKm)
+      .sort((a: any, b: any) => {
+        // Events with geo sort by distance; others fall to the end
+        if (a.distance_km === null && b.distance_km === null) return 0;
+        if (a.distance_km === null) return 1;
+        if (b.distance_km === null) return -1;
+        return a.distance_km - b.distance_km;
+      });
+  }
+
+  res.json(events);
 });
 
 /**
@@ -42,7 +82,7 @@ export const createEvent = catchAsync(async (req: Request, res: Response, _next:
   const userId = req.user?.id;
   if (!userId) throw new ForbiddenError('Authentication required.');
 
-  const { title, description, eventDate, eventTime, location } = req.body;
+  const { title, description, eventDate, eventTime, location, latitude, longitude, city } = req.body;
   if (!title || !eventDate) {
     throw new BadRequestError('title and eventDate are required.');
   }
@@ -56,6 +96,9 @@ export const createEvent = catchAsync(async (req: Request, res: Response, _next:
       event_date: eventDate,
       event_time: eventTime || null,
       location: location || null,
+      latitude: latitude ?? null,
+      longitude: longitude ?? null,
+      city: city || null,
     })
     .select()
     .single();

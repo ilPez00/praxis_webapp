@@ -860,3 +860,42 @@ ALTER TABLE public.posts
   ADD COLUMN IF NOT EXISTS reference JSONB;
 
 CREATE INDEX IF NOT EXISTS messages_reply_to_idx ON public.messages (reply_to_id) WHERE reply_to_id IS NOT NULL;
+
+-- =============================================================================
+-- 23. STAFF/MOD HIERARCHY + HONOR SYSTEM + EVENT GEO
+-- =============================================================================
+
+-- Role column on profiles (user < staff < moderator < admin)
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'
+    CHECK (role IN ('user', 'staff', 'moderator', 'admin'));
+
+-- Honor score (community respect, distinct from reliability score)
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS honor_score INTEGER NOT NULL DEFAULT 0;
+
+-- Honor votes table (each user can honor each other user once)
+CREATE TABLE IF NOT EXISTS public.honor_votes (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  voter_id   UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  target_id  UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (voter_id, target_id)
+);
+
+ALTER TABLE public.honor_votes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Honor votes readable by all" ON public.honor_votes FOR SELECT USING (true);
+CREATE POLICY "Honor votes insert own"      ON public.honor_votes FOR INSERT WITH CHECK (auth.uid() = voter_id);
+CREATE POLICY "Honor votes delete own"      ON public.honor_votes FOR DELETE USING (auth.uid() = voter_id);
+
+CREATE INDEX IF NOT EXISTS honor_votes_target_idx ON public.honor_votes (target_id);
+CREATE INDEX IF NOT EXISTS honor_votes_voter_idx  ON public.honor_votes (voter_id);
+
+-- Geo columns on events (enables nearby search)
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS latitude  FLOAT;
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS longitude FLOAT;
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS city      TEXT;
+
+-- Spatial index (approximate — no PostGIS needed)
+CREATE INDEX IF NOT EXISTS events_geo_idx ON public.events (latitude, longitude)
+  WHERE latitude IS NOT NULL AND longitude IS NOT NULL;

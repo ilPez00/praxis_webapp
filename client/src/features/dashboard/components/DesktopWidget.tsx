@@ -1,38 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Typography, Stack, IconButton, CircularProgress } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Typography, Stack, IconButton, CircularProgress, Button, Tooltip } from '@mui/material';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { supabase } from '../../../lib/supabase';
 import axios from 'axios';
 import { API_URL } from '../../../lib/api';
+import toast from 'react-hot-toast';
 
 const DesktopWidget: React.FC = () => {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [checkedInToday, setCheckedInToday] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+
+        const [userRes, checkinRes] = await Promise.allSettled([
+          axios.get(`${API_URL}/users/${user.id}`, { headers }),
+          axios.get(`${API_URL}/checkins/today`, { headers }),
+        ]);
+
+        if (userRes.status === 'fulfilled') setUserData(userRes.value.data);
+        if (checkinRes.status === 'fulfilled') setCheckedInToday(!!checkinRes.value.data?.checked_in);
+      }
+    } catch (error) {
+      console.error('Error fetching widget data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: { session } } = await supabase.auth.getSession();
-          const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-          const res = await axios.get(`${API_URL}/users/${user.id}`, { headers });
-          setUserData(res.data);
-        }
-      } catch (error) {
-        console.error('Error fetching widget data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-    // Refresh every 5 minutes
     const interval = setInterval(fetchData, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
+
+  const handleCheckIn = async () => {
+    if (checkedInToday || checkingIn) return;
+    setCheckingIn(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+      await axios.post(`${API_URL}/checkins`, {}, { headers });
+      setCheckedInToday(true);
+      // Refresh user data to show updated streak/points
+      fetchData();
+      toast.success('Checked in! 🔥');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Check-in failed';
+      toast.error(msg);
+    } finally {
+      setCheckingIn(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -51,28 +80,28 @@ const DesktopWidget: React.FC = () => {
   }
 
   return (
-    <Box 
+    <Box
       className="draggable"
-      sx={{ 
-        p: 1.5, 
-        bgcolor: 'rgba(10, 11, 20, 0.85)', 
+      sx={{
+        p: 1.5,
+        bgcolor: 'rgba(10, 11, 20, 0.85)',
         backdropFilter: 'blur(10px)',
-        borderRadius: '16px', 
+        borderRadius: '16px',
         border: '1px solid rgba(249, 115, 22, 0.4)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         width: 'fit-content',
-        minWidth: '180px',
+        minWidth: '200px',
         color: 'white',
         overflow: 'hidden',
-        userSelect: 'none'
+        userSelect: 'none',
       }}
     >
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
         <Typography variant="caption" sx={{ fontWeight: 800, color: 'rgba(255,255,255,0.6)', letterSpacing: 1 }}>
           PRAXIS
         </Typography>
-        <IconButton 
-          size="small" 
+        <IconButton
+          size="small"
           onClick={() => (window as any).electron?.closeWidget()}
           sx={{ color: 'rgba(255,255,255,0.3)', '&:hover': { color: 'white' } }}
         >
@@ -81,6 +110,7 @@ const DesktopWidget: React.FC = () => {
       </Stack>
 
       <Stack spacing={1.5}>
+        {/* Stats row */}
         <Stack direction="row" spacing={2} alignItems="center">
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <LocalFireDepartmentIcon sx={{ color: '#F97316', fontSize: 24 }} />
@@ -95,18 +125,50 @@ const DesktopWidget: React.FC = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AutoAwesomeIcon sx={{ color: '#3B82F6', fontSize: 20 }} />
+            <AutoAwesomeIcon sx={{ color: '#A78BFA', fontSize: 20 }} />
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1, color: '#3B82F6' }}>
+              <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1, color: '#A78BFA' }}>
                 {userData.praxisPoints || 0}
               </Typography>
               <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.6rem', fontWeight: 700 }}>
-                POINTS
+                PP
               </Typography>
             </Box>
           </Box>
         </Stack>
 
+        {/* Check-in button */}
+        <Tooltip title={checkedInToday ? 'Already checked in today' : 'Log today\'s check-in'}>
+          <span>
+            <Button
+              fullWidth
+              size="small"
+              variant={checkedInToday ? 'outlined' : 'contained'}
+              disabled={checkedInToday || checkingIn}
+              onClick={handleCheckIn}
+              startIcon={
+                checkingIn
+                  ? <CircularProgress size={12} color="inherit" />
+                  : checkedInToday
+                  ? <CheckCircleIcon fontSize="small" />
+                  : <RadioButtonUncheckedIcon fontSize="small" />
+              }
+              sx={{
+                borderRadius: 2,
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                py: 0.5,
+                ...(checkedInToday
+                  ? { borderColor: '#22C55E', color: '#22C55E', opacity: 0.7 }
+                  : { bgcolor: '#F97316', color: '#fff', '&:hover': { bgcolor: '#EA6B10' } }),
+              }}
+            >
+              {checkedInToday ? 'Checked in ✓' : 'Check in'}
+            </Button>
+          </span>
+        </Tooltip>
+
+        {/* Top goal */}
         {userData.topGoal && (
           <Box sx={{ pt: 0.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', display: 'block', fontSize: '0.55rem', fontWeight: 800 }}>

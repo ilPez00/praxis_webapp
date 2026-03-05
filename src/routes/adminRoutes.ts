@@ -4,7 +4,7 @@ import {
   listAllUsers, adminDeleteUser, adminDeletePost, adminDeleteGroup,
   banUser, unbanUser, grantPoints,
   listGroups, getAdminStats, getNetworkData, createChallenge, listChallenges,
-  listAllServices, adminDeleteService, listAllCoaches, decayPoints,
+  listAllServices, adminDeleteService, listAllCoaches, decayPoints, promoteUser,
 } from '../controllers/adminController';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -38,5 +38,6 @@ router.post('/challenges', authenticateToken, requireAdmin, createChallenge);
 router.get('/services', authenticateToken, requireAdmin, listAllServices);
 router.delete('/services/:id', authenticateToken, requireAdmin, adminDeleteService);
 router.get('/coaches', authenticateToken, requireAdmin, listAllCoaches);
+router.put('/users/:id/role', authenticateToken, requireAdmin, promoteUser);
 
 export default router;
