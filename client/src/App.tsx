@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { API_URL } from './lib/api';
 import axios from 'axios';
 import './App.css';
@@ -24,6 +25,7 @@ function App() {
           {message}
         </p>
       </header>
+      <SpeedInsights />
     </div>
   );
 }
