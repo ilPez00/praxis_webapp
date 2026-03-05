@@ -901,6 +901,18 @@ CREATE INDEX IF NOT EXISTS events_geo_idx ON public.events (latitude, longitude)
   WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
 
 -- =============================================================================
+-- 25. GEO COLUMNS ON PROFILES (user location for nearby discovery + feed scoring)
+-- =============================================================================
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS latitude  DOUBLE PRECISION;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS city      TEXT;
+
+-- Spatial index (bounding-box approximate — no PostGIS needed)
+CREATE INDEX IF NOT EXISTS profiles_geo_idx ON public.profiles (latitude, longitude)
+  WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+
+-- =============================================================================
 -- 24. COACHING BRIEFS (cached AI coaching reports)
 -- =============================================================================
 

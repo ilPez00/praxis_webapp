@@ -60,6 +60,8 @@ interface PostComment {
 interface Props {
   context: string; // 'general' | 'coaching' | 'marketplace' | roomId UUID
   isBoard?: boolean; // Reddit-style board mode: shows title field + prominent titles
+  personalized?: boolean; // Use the smart personalized feed endpoint
+  feedUserId?: string; // Required when personalized=true
 }
 
 const formatRelativeTime = (iso: string): string => {
@@ -74,7 +76,7 @@ const formatRelativeTime = (iso: string): string => {
   return new Date(iso).toLocaleDateString();
 };
 
-const PostFeed: React.FC<Props> = ({ context, isBoard = false }) => {
+const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = false, feedUserId }) => {
   const { user } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,15 +102,21 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false }) => {
   const fetchPosts = useCallback(async () => {
     setLoadingPosts(true);
     try {
-      const userId = user?.id ? `&userId=${user.id}` : '';
-      const res = await fetch(`${API_URL}/posts?context=${context}${userId}`);
+      let url: string;
+      if (personalized && feedUserId) {
+        url = `${API_URL}/posts/feed?userId=${feedUserId}`;
+      } else {
+        const userId = user?.id ? `&userId=${user.id}` : '';
+        url = `${API_URL}/posts?context=${context}${userId}`;
+      }
+      const res = await fetch(url);
       if (res.ok) setPosts(await res.json());
     } catch (err) {
       console.error('Failed to fetch posts:', err);
     } finally {
       setLoadingPosts(false);
     }
-  }, [context, user?.id]);
+  }, [context, user?.id, personalized, feedUserId]);
 
   useEffect(() => {
     fetchPosts();

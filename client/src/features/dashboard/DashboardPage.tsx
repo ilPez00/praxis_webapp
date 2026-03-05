@@ -39,6 +39,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GroupsIcon from '@mui/icons-material/Groups';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import PlaceIcon from '@mui/icons-material/Place';
 
 interface MatchResult {
   userId: string;
@@ -69,6 +70,9 @@ const DashboardPage: React.FC = () => {
   // Leaderboard state
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [allMatchScores, setAllMatchScores] = useState<Record<string, number>>({});
+
+  // Nearby users state
+  const [nearbyUsers, setNearbyUsers] = useState<any[]>([]);
 
   // Site tour state
   const [tourOpen, setTourOpen] = useState(false);
@@ -106,6 +110,21 @@ const DashboardPage: React.FC = () => {
       }
     };
     fetchLeaderboard();
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const fetchNearby = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/users/nearby`, {
+          params: { userId: currentUserId, radiusKm: 200 },
+        });
+        setNearbyUsers(Array.isArray(res.data) ? res.data.slice(0, 6) : []);
+      } catch {
+        setNearbyUsers([]);
+      }
+    };
+    fetchNearby();
   }, [currentUserId]);
 
   useEffect(() => {
@@ -577,12 +596,63 @@ const DashboardPage: React.FC = () => {
           </Grid>
         </Box>
 
-        {/* Community Feed */}
+        {/* Nearby Users */}
+        {nearbyUsers.length > 0 && (
+          <Box sx={{ mt: 6 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+              <PlaceIcon sx={{ color: '#10B981' }} />
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>Near You</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                People in your area
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {nearbyUsers.map((u: any) => (
+                <GlassCard
+                  key={u.id}
+                  sx={{
+                    p: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    cursor: 'pointer',
+                    borderRadius: '16px',
+                    minWidth: 200,
+                    flex: '1 1 200px',
+                    maxWidth: 280,
+                    '&:hover': { borderColor: '#10B981' },
+                  }}
+                  onClick={() => navigate(`/profile/${u.id}`)}
+                >
+                  <Avatar src={u.avatar_url || undefined} sx={{ width: 44, height: 44, bgcolor: '#10B981' }}>
+                    {(u.name || 'U').charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>{u.name || 'Praxis User'}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <PlaceIcon sx={{ fontSize: 12, color: '#10B981' }} />
+                      <Typography variant="caption" color="text.secondary">
+                        {u.distanceKm < 1 ? '< 1 km' : `${u.distanceKm} km`}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </GlassCard>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Personalized Feed */}
         <Box sx={{ mt: 6 }}>
-          <Typography variant="overline" color="text.secondary" sx={{ mb: 2, display: 'block', letterSpacing: '0.1em' }}>
-            Community Feed
-          </Typography>
-          <PostFeed context="general" />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: '0.1em' }}>
+              Your Feed
+            </Typography>
+            <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+              · ranked by goals · proximity · honor
+            </Typography>
+          </Box>
+          <PostFeed context="general" feedUserId={currentUserId} personalized />
         </Box>
       </Container>
 

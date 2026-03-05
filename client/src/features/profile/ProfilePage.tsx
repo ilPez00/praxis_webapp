@@ -20,6 +20,7 @@ import {
   Grid,
   Tooltip,
   InputAdornment,
+  IconButton,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -29,6 +30,7 @@ import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import LinkIcon from '@mui/icons-material/Link';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 import toast from 'react-hot-toast';
 
 interface Profile {
@@ -40,6 +42,9 @@ interface Profile {
   is_premium?: boolean;
   sex?: string;
   location?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  city?: string | null;
   social_instagram?: string;
   social_twitter?: string;
   social_linkedin?: string;
@@ -141,6 +146,9 @@ const ProfilePage: React.FC = () => {
   const [editedAge, setEditedAge] = useState('');
   const [editedSex, setEditedSex] = useState('');
   const [editedLocation, setEditedLocation] = useState('');
+  const [editedLat, setEditedLat] = useState<number | null>(null);
+  const [editedLng, setEditedLng] = useState<number | null>(null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
   const [editedSocials, setEditedSocials] = useState<Record<SocialKey, string>>({
     social_instagram: '',
     social_twitter: '',
@@ -169,6 +177,8 @@ const ProfilePage: React.FC = () => {
         setEditedAge(data.age ? String(data.age) : '');
         setEditedSex(data.sex || '');
         setEditedLocation(data.location || '');
+        setEditedLat(data.latitude ?? null);
+        setEditedLng(data.longitude ?? null);
         setEditedSocials({
           social_instagram: data.social_instagram || '',
           social_twitter: data.social_twitter || '',
@@ -192,6 +202,42 @@ const ProfilePage: React.FC = () => {
       setSelectedAvatarFile(file);
       setProfilePhotoPreviewUrl(URL.createObjectURL(file));
     }
+  };
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser.');
+      return;
+    }
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setEditedLat(latitude);
+        setEditedLng(longitude);
+        // Reverse geocode with Nominatim (free, no API key)
+        try {
+          const resp = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          const geo = await resp.json();
+          const city = geo.address?.city || geo.address?.town || geo.address?.village || geo.address?.county || '';
+          const country = geo.address?.country || '';
+          const label = [city, country].filter(Boolean).join(', ');
+          if (label) setEditedLocation(label);
+          toast.success(`Location detected: ${label || 'coordinates saved'}`);
+        } catch {
+          toast.success('Coordinates saved — city lookup unavailable.');
+        }
+        setDetectingLocation(false);
+      },
+      (err) => {
+        toast.error(`Location error: ${err.message}`);
+        setDetectingLocation(false);
+      },
+      { timeout: 10000 }
+    );
   };
 
   const handleSave = async () => {
@@ -225,6 +271,9 @@ const ProfilePage: React.FC = () => {
         age: editedAge ? parseInt(editedAge, 10) : null,
         sex: editedSex || null,
         location: editedLocation || null,
+        latitude: editedLat ?? null,
+        longitude: editedLng ?? null,
+        city: editedLat ? (editedLocation.split(',')[0].trim() || null) : null,
         social_instagram: editedSocials.social_instagram.trim() || null,
         social_twitter: editedSocials.social_twitter.trim() || null,
         social_linkedin: editedSocials.social_linkedin.trim() || null,
@@ -260,6 +309,8 @@ const ProfilePage: React.FC = () => {
       setEditedAge(profile.age ? String(profile.age) : '');
       setEditedSex(profile.sex || '');
       setEditedLocation(profile.location || '');
+      setEditedLat(profile.latitude ?? null);
+      setEditedLng(profile.longitude ?? null);
       setEditedSocials({
         social_instagram: profile.social_instagram || '',
         social_twitter: profile.social_twitter || '',
@@ -392,7 +443,34 @@ const ProfilePage: React.FC = () => {
                   </TextField>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField label="Location" value={editedLocation} onChange={e => setEditedLocation(e.target.value)} fullWidth size="small" placeholder="City, Country" />
+                  <TextField
+                    label="Location"
+                    value={editedLocation}
+                    onChange={e => setEditedLocation(e.target.value)}
+                    fullWidth
+                    size="small"
+                    placeholder="City, Country"
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <Tooltip title={detectingLocation ? 'Detecting…' : 'Detect my location'}>
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={handleDetectLocation}
+                                disabled={detectingLocation}
+                                sx={{ color: editedLat ? 'success.main' : 'text.secondary' }}
+                              >
+                                {detectingLocation
+                                  ? <CircularProgress size={16} />
+                                  : <MyLocationIcon fontSize="small" />}
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
                 </Grid>
               </Grid>
               <TextField label="Bio" value={editedBio} onChange={e => setEditedBio(e.target.value)} multiline rows={3} fullWidth size="small" />

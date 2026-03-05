@@ -157,6 +157,56 @@ export const updateUserProfile = catchAsync(async (req: Request, res: Response, 
   res.status(200).json({ message: 'User profile updated successfully.', user: data }); // Respond with success message and updated user data
 });
 
+// ---------------------------------------------------------------------------
+// GET /users/nearby?userId=<uuid>&radiusKm=100
+// Returns users within radiusKm of the requesting user (requires lat/lng on profiles)
+// ---------------------------------------------------------------------------
+export const getNearbyUsers = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId, radiusKm = '100' } = req.query as { userId?: string; radiusKm?: string };
+  if (!userId) throw new BadRequestError('userId is required.');
+
+  const radius = Math.min(Number(radiusKm) || 100, 1000);
+
+  const { data: me, error: meError } = await supabase
+    .from('profiles')
+    .select('latitude, longitude')
+    .eq('id', userId)
+    .single();
+
+  if (meError || !me?.latitude || !me?.longitude) {
+    return res.status(200).json([]); // no location set — nothing to show
+  }
+
+  function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, name, avatar_url, bio, city, honor_score, reliability_score, latitude, longitude')
+    .neq('id', userId)
+    .not('latitude', 'is', null)
+    .not('longitude', 'is', null);
+
+  if (error) return res.status(200).json([]);
+
+  const nearby = (profiles ?? [])
+    .map((p: any) => ({
+      ...p,
+      distanceKm: Math.round(haversineKm(me.latitude!, me.longitude!, p.latitude!, p.longitude!)),
+    }))
+    .filter((p: any) => p.distanceKm <= radius)
+    .sort((a: any, b: any) => a.distanceKm - b.distanceKm)
+    .slice(0, 20);
+
+  return res.status(200).json(nearby);
+});
+
 /**
  * POST /users/complete-onboarding
  * Marks onboarding_completed = true for the given userId.

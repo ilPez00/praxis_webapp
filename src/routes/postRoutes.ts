@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getPosts,
+  getPersonalizedFeed,
   createPost,
   deletePost,
   toggleLike,
@@ -11,6 +12,7 @@ import {
 
 const router = express.Router();
 
+router.get('/feed', getPersonalizedFeed);
 router.get('/', getPosts);
 router.post('/', createPost);
 router.delete('/:id', deletePost);
