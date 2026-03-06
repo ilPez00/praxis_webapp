@@ -67,6 +67,8 @@ export const useUser = () => {
         is_admin: profile.is_admin ?? false,
         reliability_score: profile.reliability_score ?? 0,
         username: profile.username ?? undefined,
+        occupation: profile.occupation ?? undefined,
+        education: profile.education ?? undefined,
         goalTree: [],
       });
     } catch (error) {

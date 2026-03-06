@@ -26,4 +26,6 @@ export interface User {
   badge?: string;
   is_admin?: boolean;
   reliability_score?: number;
+  occupation?: string;
+  education?: string;
 }

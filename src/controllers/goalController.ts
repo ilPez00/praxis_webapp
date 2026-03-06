@@ -244,12 +244,14 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     }
 
     // Increment edit count + update streak (best-effort — non-fatal if columns missing)
+    // Only count edits AFTER onboarding is complete — during onboarding, edits are free.
     try {
       const streakUpdate = computeStreakUpdate(profile?.last_activity_date, profile?.current_streak ?? 0);
+      const countUpdate = profile?.onboarding_completed ? { goal_tree_edit_count: editCount + 1 } : {};
       await supabase
         .from('profiles')
         .update({
-          goal_tree_edit_count: editCount + 1,
+          ...countUpdate,
           ...streakUpdate,
         })
         .eq('id', userId);

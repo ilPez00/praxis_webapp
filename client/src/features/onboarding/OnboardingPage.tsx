@@ -41,6 +41,8 @@ const OnboardingPage: React.FC = () => {
   const [usernameError, setUsernameError] = useState('');
   const [age, setAge] = useState('');
   const [bio, setBio] = useState('');
+  const [occupation, setOccupation] = useState('');
+  const [education, setEducation] = useState('');
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState<string | null>(null);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
@@ -111,7 +113,7 @@ const OnboardingPage: React.FC = () => {
         const { error: updateError } = await supabase
             .from('profiles')
             .upsert(
-              { id: user.id, name, age: parseInt(age), bio, avatar_url: avatarUrl, onboarding_completed: false },
+              { id: user.id, name, age: parseInt(age), bio, avatar_url: avatarUrl, onboarding_completed: false, occupation: occupation || null, education: education || null },
               { onConflict: 'id' }
             );
 
@@ -217,10 +219,28 @@ const OnboardingPage: React.FC = () => {
               variant="outlined"
               margin="normal"
               multiline
-              rows={4}
+              rows={3}
               placeholder="What drives you?"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Occupation"
+              variant="outlined"
+              margin="normal"
+              placeholder="e.g. Software Engineer, Student, Freelancer"
+              value={occupation}
+              onChange={(e) => setOccupation(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Education"
+              variant="outlined"
+              margin="normal"
+              placeholder="e.g. BSc Computer Science, Self-taught, MBA"
+              value={education}
+              onChange={(e) => setEducation(e.target.value)}
             />
             <Box sx={{ mt: 2, textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
