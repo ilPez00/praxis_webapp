@@ -804,6 +804,31 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 
 ---
 
-## Session 46 (2026-03-06) — Post Comments + Matching + Groups UX
+## Session 46 (2026-03-06) — Post Comments + Matching + Groups UX (commit 9a5f9a1)
+
+**Post thread page:**
+- `GET /posts/:id` backend (single post + like status, `NotFoundError` on missing)
+- `PostThreadPage.tsx` (`/posts/:id`): full post + comment thread, like toggle, author nav, delete own comment
+- `PostFeed.tsx`: comment count is now clickable → navigates to `/posts/:id`
+- Route added to `config/routes.tsx`
+
+**Leave group:**
+- `GroupChatRoom.tsx`: Leave button (ExitToApp icon) in header toolbar → confirm dialog → `DELETE /groups/:roomId/leave` → navigate to /boards
+- Backend `leaveRoom` endpoint was already registered
+
+**Matching + domain_proficiency:**
+- `matchingController.ts` slow path: fetches `profiles.domain_proficiency` for user + all candidates
+- Proficiency alignment bonus = avg of (my proficiency in their domains) + (their proficiency in my domains)
+- Final score = `baseScore * 0.8 + profBonus * 0.2`
+
+**ProfilePage occupation/education (commit eddfa8d):**
+- Edit form: Occupation + Education TextFields in 2-column grid below Bio
+- View mode: 💼/🎓 chips between bio and Friends chip
 
 ### TypeScript: ✅ 0 errors (both backend + frontend)
+
+## Next features:
+- [ ] Stripe prod setup: STRIPE_PRICE_ID + register webhook
+- [ ] Leaderboard bonuses (daily cron): #1 +500PP, top 10 +200PP, top 100 +50PP
+- [ ] Member avatars in group member drawer (already fetches avatar_url but not displayed)
+- [ ] Post title link: clicking a board post title also navigates to thread page
