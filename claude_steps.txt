@@ -834,6 +834,23 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 - **Group member avatars**: drawer now shows `avatar_url` + clicking member navigates to their profile
 - **Leaderboard cron**: `POST /admin/cron/leaderboard-bonus` — awards #1 +500PP, top 10 +200PP, top 100 +50PP; secured by `X-Admin-Secret` header or JWT admin; callable by Railway Cron daily
 
+## Session 48 (2026-03-06) — PP Economy + Social Status (commit 4db0dff)
+
+**PP economy completeness:**
+- `completionController`: verifier now earns +30 PP on approval; requester bumped to +50 PP
+- `honorController`: giver earns +15 PP (mutual grading); receiver earns +15 PP PP bonus
+- `challengeController`: first-time join awards +30 PP
+
+**Social status mechanics:**
+- `GET /users/:userId/percentile`: streak + reliability percentile vs. all users
+- `ProfilePage`: "Top X% reliability" chip shown on own profile (when reliability_percentile ≥ 50)
+- `ChatRoom`: `🤝 Xd mutual` streak badge when both user and partner have active streaks
+
+**Cron:**
+- `POST /admin/cron/streak-alerts`: push notifications to users with streak > 0 who haven't checked in today
+
 ## Next features:
 - [ ] Stripe prod setup: STRIPE_PRICE_ID + register webhook
-- [ ] Occupation/education fields confirmed in profile edit (added session 46)
+- [ ] Weekly AI narrative recap (Gemini): "This week you showed exceptional consistency"
+- [ ] "Seen but not checked in" micro-drama in matches/chat
+- [ ] Android FCM push notifications
