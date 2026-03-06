@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getPosts,
   getPersonalizedFeed,
+  getUserPosts,
   createPost,
   deletePost,
   toggleLike,
@@ -13,6 +14,7 @@ import {
 const router = express.Router();
 
 router.get('/feed', getPersonalizedFeed);
+router.get('/by-user/:userId', getUserPosts);
 router.get('/', getPosts);
 router.post('/', createPost);
 router.delete('/:id', deletePost);

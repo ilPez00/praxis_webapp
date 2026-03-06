@@ -216,6 +216,35 @@ export const getPosts = catchAsync(async (req: Request, res: Response, _next: Ne
 });
 
 // ---------------------------------------------------------------------------
+// GET /posts/by-user/:userId  — all posts by a specific user across all contexts
+// ---------------------------------------------------------------------------
+export const getUserPosts = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId } = req.params;
+  if (!userId) throw new BadRequestError('userId required.');
+
+  const { data: posts, error } = await supabase
+    .from('posts')
+    .select('id, user_id, user_name, user_avatar_url, title, content, media_url, media_type, context, reference, created_at, post_likes(count), post_comments(count)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    if (SCHEMA_MISSING(error.message)) return res.status(200).json([]);
+    handleSupabaseError(error);
+  }
+
+  const postList = (posts ?? []).map((p: any) => ({
+    ...p,
+    like_count: p.post_likes?.[0]?.count ?? 0,
+    comment_count: p.post_comments?.[0]?.count ?? 0,
+    user_liked: false,
+  }));
+
+  return res.status(200).json(postList);
+});
+
+// ---------------------------------------------------------------------------
 // POST /posts
 // Body: { userId, userName, userAvatarUrl?, content, mediaUrl?, mediaType?, context }
 // ---------------------------------------------------------------------------

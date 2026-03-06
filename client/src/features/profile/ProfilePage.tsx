@@ -3,9 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import TrackerSection from '../trackers/TrackerSection';
+import PostFeed from '../posts/PostFeed';
 import { API_URL } from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
 import FriendButton from '../../components/common/FriendButton';
+import axios from 'axios';
 import {
   Container,
   Box,
@@ -22,6 +24,13 @@ import {
   Tooltip,
   InputAdornment,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -32,6 +41,9 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import LinkIcon from '@mui/icons-material/Link';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
+import PeopleIcon from '@mui/icons-material/People';
+import ArticleIcon from '@mui/icons-material/Article';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import toast from 'react-hot-toast';
 
 interface Profile {
@@ -159,6 +171,11 @@ const ProfilePage: React.FC = () => {
   });
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState<string | null>(null);
+
+  // Friends
+  const [friends, setFriends] = useState<any[]>([]);
+  const [friendsDialogOpen, setFriendsDialogOpen] = useState(false);
+  const [friendsLoading, setFriendsLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -323,6 +340,24 @@ const ProfilePage: React.FC = () => {
       setSelectedAvatarFile(null);
     }
     setIsEditing(false);
+  };
+
+  const handleOpenFriends = async () => {
+    setFriendsDialogOpen(true);
+    if (friends.length > 0) return;
+    setFriendsLoading(true);
+    try {
+      const targetId = paramId || user?.id;
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await axios.get(`${API_URL}/friends/of/${targetId}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      setFriends(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      toast.error('Could not load friends.');
+    } finally {
+      setFriendsLoading(false);
+    }
   };
 
   if (loading || authLoading) {
@@ -549,9 +584,27 @@ const ProfilePage: React.FC = () => {
                 {profile.bio || 'No bio yet.'}
               </Typography>
 
+              {/* Friends count chip */}
+              <Box sx={{ mt: activeSocials.length > 0 ? 1.5 : 1 }}>
+                <Chip
+                  icon={<PeopleIcon sx={{ fontSize: '16px !important' }} />}
+                  label="Friends"
+                  size="small"
+                  onClick={handleOpenFriends}
+                  sx={{
+                    bgcolor: 'rgba(139,92,246,0.12)',
+                    border: '1px solid rgba(139,92,246,0.3)',
+                    color: '#A78BFA',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: 'rgba(139,92,246,0.2)' },
+                  }}
+                />
+              </Box>
+
               {/* Social links view */}
               {activeSocials.length > 0 && (
-                <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
                   {activeSocials.map(p => (
                     <Tooltip key={p.key} title={p.label}>
                       <Box
@@ -588,6 +641,62 @@ const ProfilePage: React.FC = () => {
         </Box>
       </GlassCard>
 
+      {/* Friends dialog */}
+      <Dialog
+        open={friendsDialogOpen}
+        onClose={() => setFriendsDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          {isOwnProfile ? 'Your Friends' : `${profile.name}'s Friends`}
+        </DialogTitle>
+        <DialogContent sx={{ px: 1, pb: 2 }}>
+          {friendsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : friends.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No friends yet.
+            </Typography>
+          ) : (
+            <List disablePadding>
+              {friends.map((f: any) => (
+                <ListItem
+                  key={f.id}
+                  sx={{ borderRadius: '10px', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' }, px: 1.5 }}
+                  onClick={() => { setFriendsDialogOpen(false); navigate(`/profile/${f.id}`); }}
+                >
+                  <ListItemAvatar>
+                    <Avatar src={f.avatar_url ?? undefined} sx={{ width: 40, height: 40 }}>
+                      {f.name?.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={<Typography variant="body2" sx={{ fontWeight: 600 }}>{f.name}</Typography>}
+                    secondary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        {f.current_streak > 0 && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                            <LocalFireDepartmentIcon sx={{ fontSize: 13, color: '#F59E0B' }} />
+                            <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 600 }}>{f.current_streak}d</Typography>
+                          </Box>
+                        )}
+                        {f.praxis_points > 0 && (
+                          <Typography variant="caption" color="text.disabled">⚡ {f.praxis_points} PP</Typography>
+                        )}
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Trackers — own profile only */}
       {isOwnProfile && (
         <GlassCard glowColor="rgba(245,158,11,0.08)" sx={{ p: 3 }}>
@@ -618,6 +727,22 @@ const ProfilePage: React.FC = () => {
             View Tree
           </Button>
         </Box>
+      </GlassCard>
+
+      {/* Posts timeline */}
+      <GlassCard glowColor="rgba(245,158,11,0.08)" sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+          <ArticleIcon sx={{ color: 'primary.main' }} />
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {isOwnProfile ? 'Your Posts' : `${profile.name}'s Posts`}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {isOwnProfile ? "Everything you've shared across Praxis." : 'Posts shared across the community.'}
+            </Typography>
+          </Box>
+        </Box>
+        <PostFeed context="general" profileUserId={paramId || user?.id} />
       </GlassCard>
     </Container>
   );

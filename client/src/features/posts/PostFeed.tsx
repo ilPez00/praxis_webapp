@@ -63,6 +63,7 @@ interface Props {
   isBoard?: boolean; // Reddit-style board mode: shows title field + prominent titles
   personalized?: boolean; // Use the smart personalized feed endpoint
   feedUserId?: string; // Required when personalized=true
+  profileUserId?: string; // Profile view: show all posts by this user, no compose box
 }
 
 const formatRelativeTime = (iso: string): string => {
@@ -95,7 +96,7 @@ const renderContentWithMentions = (content: string): React.ReactNode => {
   });
 };
 
-const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = false, feedUserId }) => {
+const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = false, feedUserId, profileUserId }) => {
   const { user } = useUser();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -123,7 +124,9 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
     setLoadingPosts(true);
     try {
       let url: string;
-      if (personalized && feedUserId) {
+      if (profileUserId) {
+        url = `${API_URL}/posts/by-user/${profileUserId}`;
+      } else if (personalized && feedUserId) {
         url = `${API_URL}/posts/feed?userId=${feedUserId}`;
       } else {
         const userId = user?.id ? `&userId=${user.id}` : '';
@@ -136,7 +139,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
     } finally {
       setLoadingPosts(false);
     }
-  }, [context, user?.id, personalized, feedUserId]);
+  }, [context, user?.id, personalized, feedUserId, profileUserId]);
 
   useEffect(() => {
     fetchPosts();
@@ -362,8 +365,8 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
         />
       )}
 
-      {/* Compose box */}
-      {user && (
+      {/* Compose box — hidden on profile views */}
+      {user && !profileUserId && (
         <Card
           sx={{
             mb: 3,
@@ -485,7 +488,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
         </Box>
       ) : posts.length === 0 ? (
         <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-          No posts yet. Be the first to share something!
+          {profileUserId ? 'No posts yet.' : 'No posts yet. Be the first to share something!'}
         </Typography>
       ) : (
         <Stack spacing={2}>

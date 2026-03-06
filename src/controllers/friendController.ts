@@ -118,6 +118,32 @@ export const rejectOrCancelRequest = catchAsync(async (req: Request, res: Respon
   res.json({ message: 'Removed.' });
 });
 
+// GET /friends/of/:userId — public friend list for any user
+export const getFriendsByUser = catchAsync(async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  if (!userId) return res.status(400).json({ message: 'userId required.' });
+
+  const { data, error } = await supabase
+    .from('friendships')
+    .select(`
+      id,
+      requester_id,
+      recipient_id,
+      requester:profiles!requester_id(id, name, avatar_url, current_streak, praxis_points),
+      recipient:profiles!recipient_id(id, name, avatar_url, current_streak, praxis_points)
+    `)
+    .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
+    .eq('status', 'accepted');
+
+  if (error) return res.status(500).json({ message: error.message });
+
+  const friends = (data || []).map((f: any) => {
+    const friend = f.requester_id === userId ? f.recipient : f.requester;
+    return { friendshipId: f.id, ...friend };
+  });
+  res.json(friends);
+});
+
 // DELETE /friends/:friendId — unfriend
 export const unfriend = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
