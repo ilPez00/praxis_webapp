@@ -47,6 +47,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 
 interface Member {
   user_id: string;
@@ -230,6 +231,18 @@ const GroupChatRoom: React.FC = () => {
     }
   };
 
+  const handleLeaveRoom = async () => {
+    if (!currentUserId || !roomId) return;
+    if (!window.confirm('Leave this group? You can rejoin later.')) return;
+    try {
+      await axios.delete(`${API_URL}/groups/${roomId}/leave`, { data: { userId: currentUserId } });
+      toast.success('You left the group.');
+      navigate('/boards');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to leave group.');
+    }
+  };
+
   const fetchFriendsForInvite = async () => {
     setInviteLoading(true);
     try {
@@ -350,6 +363,11 @@ const GroupChatRoom: React.FC = () => {
             <Tooltip title="Members">
               <IconButton size="small" onClick={() => setMemberDrawerOpen(true)} sx={{ color: 'text.secondary' }}>
                 <PeopleIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Leave group">
+              <IconButton size="small" onClick={handleLeaveRoom} sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
+                <ExitToAppIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Box>

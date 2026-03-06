@@ -38,12 +38,11 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
 
   // --- Slow path: O(n²) goal tree comparison ---
 
-  // 1. Fetch the requesting user's goal tree
-  const { data: userGoalTree, error: userGoalTreeError } = await supabase
-    .from('goal_trees')
-    .select('*')
-    .eq('userId', userId)
-    .single();
+  // 1. Fetch the requesting user's goal tree + proficiency
+  const [{ data: userGoalTree, error: userGoalTreeError }, { data: userProfile }] = await Promise.all([
+    supabase.from('goal_trees').select('*').eq('userId', userId).single(),
+    supabase.from('profiles').select('domain_proficiency').eq('id', userId).single(),
+  ]);
 
   if (userGoalTreeError && userGoalTreeError.code !== 'PGRST116') {
     logger.error('Supabase error fetching user goal tree:', userGoalTreeError.message);
@@ -53,11 +52,11 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
     throw new NotFoundError('User goal tree not found.');
   }
 
-  // 2. Fetch all other users' goal trees
-  const { data: allGoalTrees, error: allGoalTreesError } = await supabase
-    .from('goal_trees')
-    .select('*')
-    .neq('userId', userId);
+  // 2. Fetch all other users' goal trees + profiles (for domain_proficiency)
+  const [{ data: allGoalTrees, error: allGoalTreesError }, { data: otherProfiles }] = await Promise.all([
+    supabase.from('goal_trees').select('*').neq('userId', userId),
+    supabase.from('profiles').select('id, domain_proficiency').neq('id', userId),
+  ]);
 
   if (allGoalTreesError) {
     logger.error('Supabase error fetching all other goal trees:', allGoalTreesError.message);
@@ -65,16 +64,42 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
   }
 
   const userNodes: any[] = (userGoalTree as GoalTree).nodes || [];
+  const myDomains = new Set<string>(userNodes.map((n: any) => n.domain).filter(Boolean));
+  const myProficiency: Record<string, number> = (userProfile as any)?.domain_proficiency ?? {};
+
+  // Build a profile map for quick lookup
+  const profileProfMap = new Map<string, Record<string, number>>();
+  for (const p of (otherProfiles ?? [])) {
+    profileProfMap.set(p.id, (p as any).domain_proficiency ?? {});
+  }
 
   const potentialMatches: { user: string; score: number; goalTree: GoalTree; sharedGoals: { domain: string }[] }[] = [];
 
   for (const otherGoalTree of allGoalTrees || []) {
-    const score = await matchingEngine.calculateCompatibilityScore(userGoalTree as GoalTree, otherGoalTree as GoalTree);
-    if (score > 0) { // Only consider matches with a positive score
-      const otherNodes: any[] = (otherGoalTree as GoalTree).nodes || [];
-      const userDomains = new Set(userNodes.map((n: any) => n.domain).filter(Boolean));
+    const baseScore = await matchingEngine.calculateCompatibilityScore(userGoalTree as GoalTree, otherGoalTree as GoalTree);
+
+    const otherNodes: any[] = (otherGoalTree as GoalTree).nodes || [];
+    const otherDomains = new Set<string>(otherNodes.map((n: any) => n.domain).filter(Boolean));
+    const otherProficiency: Record<string, number> = profileProfMap.get(otherGoalTree.userId) ?? {};
+
+    // Proficiency alignment bonus: average of (my proficiency in their domains) + (their proficiency in my domains)
+    let profBonus = 0;
+    if (myDomains.size > 0 || otherDomains.size > 0) {
+      let sumA = 0; let countA = 0;
+      for (const d of Array.from(otherDomains)) { sumA += (myProficiency[d] ?? 0) / 100; countA++; }
+      let sumB = 0; let countB = 0;
+      for (const d of Array.from(myDomains)) { sumB += (otherProficiency[d] ?? 0) / 100; countB++; }
+      const avgA = countA > 0 ? sumA / countA : 0;
+      const avgB = countB > 0 ? sumB / countB : 0;
+      profBonus = (avgA + avgB) / 2;
+    }
+
+    // Blend: 80% goal-tree score + 20% proficiency alignment
+    const score = baseScore * 0.8 + profBonus * 0.2;
+
+    if (score > 0) {
       const sharedGoals = otherNodes
-        .filter((n: any) => n.domain && userDomains.has(n.domain))
+        .filter((n: any) => n.domain && myDomains.has(n.domain))
         .map((n: any) => ({ domain: n.domain }));
       potentialMatches.push({ user: otherGoalTree.userId, score, goalTree: otherGoalTree as GoalTree, sharedGoals });
     }

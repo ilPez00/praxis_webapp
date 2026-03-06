@@ -582,7 +582,13 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                   <IconButton size="small" onClick={() => toggleComments(post.id)} sx={{ p: 0.5, color: expandedComments.has(post.id) ? 'primary.main' : 'text.disabled' }}>
                     <ChatBubbleOutlineIcon fontSize="small" />
                   </IconButton>
-                  <Typography variant="caption" sx={{ fontWeight: 600 }}>{post.comment_count}</Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 600, cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
+                    onClick={() => navigate(`/posts/${post.id}`)}
+                  >
+                    {post.comment_count}
+                  </Typography>
                 </Box>
 
                 {/* Inline comments */}

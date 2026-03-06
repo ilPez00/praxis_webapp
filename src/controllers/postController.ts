@@ -170,6 +170,45 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
 });
 
 // ---------------------------------------------------------------------------
+// GET /posts/:id  — single post
+// ---------------------------------------------------------------------------
+export const getPost = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { id } = req.params;
+  const userId = req.query.userId as string | undefined;
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, user_id, user_name, user_avatar_url, title, content, media_url, media_type, context, reference, created_at, post_likes(count), post_comments(count)')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') throw new NotFoundError('Post not found.');
+    handleSupabaseError(error);
+  }
+  if (!data) throw new NotFoundError('Post not found.');
+
+  const post: any = {
+    ...data,
+    like_count: data.post_likes?.[0]?.count ?? 0,
+    comment_count: data.post_comments?.[0]?.count ?? 0,
+    user_liked: false,
+  };
+
+  if (userId) {
+    const { data: like } = await supabase
+      .from('post_likes')
+      .select('id')
+      .eq('post_id', id)
+      .eq('user_id', userId)
+      .maybeSingle();
+    post.user_liked = !!like;
+  }
+
+  return res.status(200).json(post);
+});
+
+// ---------------------------------------------------------------------------
 // GET /posts?context=general&userId=<uuid>
 // ---------------------------------------------------------------------------
 export const getPosts = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {

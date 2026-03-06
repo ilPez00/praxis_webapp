@@ -795,11 +795,15 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 - `services` table
 
 🟠 Next features:
-- [ ] ProfilePage: show occupation + education fields (edit + display)
-- [ ] Matching algorithm: incorporate domain_proficiency into compatibility score
-- [ ] Comments on posts (full thread view)
-- [ ] WhatsApp-style groups: member list, join/leave, group description
+- [x] ProfilePage: show occupation + education fields (edit + display) — Session 46
+- [x] Comments on posts (full thread view) — Session 46
+- [x] Matching algorithm: incorporate domain_proficiency into compatibility score — Session 46
+- [x] WhatsApp-style groups: member list, join/leave, group description — Session 46
 - [ ] Stripe prod setup: STRIPE_PRICE_ID + register webhook
 - [ ] Leaderboard bonuses (daily cron): #1 +500PP, top 10 +200PP, top 100 +50PP
+
+---
+
+## Session 46 (2026-03-06) — Post Comments + Matching + Groups UX
 
 ### TypeScript: ✅ 0 errors (both backend + frontend)
