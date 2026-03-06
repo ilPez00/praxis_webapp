@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   seedDemoUsers, deleteDemoUsers,
   listAllUsers, adminDeleteUser, adminDeletePost, adminDeleteGroup,
-  banUser, unbanUser, grantPoints,
+  banUser, unbanUser, grantPoints, resetTreeEdits, getUserDetail,
   listGroups, getAdminStats, getNetworkData, createChallenge, listChallenges,
   listAllServices, adminDeleteService, listAllCoaches, decayPoints, promoteUser,
 } from '../controllers/adminController';
@@ -22,6 +22,8 @@ router.delete('/users/:id', authenticateToken, requireAdmin, adminDeleteUser);
 router.post('/users/:id/ban', authenticateToken, requireAdmin, banUser);
 router.post('/users/:id/unban', authenticateToken, requireAdmin, unbanUser);
 router.post('/users/:id/grant-points', authenticateToken, requireAdmin, grantPoints);
+router.post('/users/:id/reset-tree-edits', authenticateToken, requireAdmin, resetTreeEdits);
+router.get('/users/:id/detail', authenticateToken, requireAdmin, getUserDetail);
 router.delete('/posts/:id', authenticateToken, requireAdmin, adminDeletePost);
 router.delete('/groups/:id', authenticateToken, requireAdmin, adminDeleteGroup);
 

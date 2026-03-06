@@ -253,7 +253,7 @@ export const listAllUsers = catchAsync(async (req: Request, res: Response, next:
 
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, name, bio, avatar_url, is_demo, is_admin, is_premium, onboarding_completed, role, honor_score, created_at');
+    .select('id, name, bio, avatar_url, is_demo, is_admin, is_premium, onboarding_completed, role, honor_score, praxis_points, current_streak, reliability_score, goal_tree_edit_count, created_at');
 
   const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
@@ -340,21 +340,87 @@ export const unbanUser = catchAsync(async (req: Request, res: Response, next: Ne
 
 /**
  * POST /admin/users/:id/grant-points
- * Sets a user's praxis_points to the provided amount (default 999999).
+ * Adjusts a user's praxis_points by a delta (positive or negative).
+ * Body: { delta: number } — e.g. { delta: 500 } or { delta: -200 }
  */
 export const grantPoints = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const id = String(req.params.id);
-  const amount: number = typeof req.body?.amount === 'number' ? req.body.amount : 999999;
+  const delta: number = typeof req.body?.delta === 'number' ? Math.round(req.body.delta) : 999999;
+
+  // Fetch current points first
+  const { data: profile, error: fetchErr } = await supabase
+    .from('profiles')
+    .select('praxis_points')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr || !profile) throw new InternalServerError('User not found.');
+
+  const current: number = profile.praxis_points ?? 0;
+  const newPoints = Math.max(0, current + delta);
 
   const { error } = await supabase
     .from('profiles')
-    .update({ praxis_points: amount })
+    .update({ praxis_points: newPoints })
     .eq('id', id);
 
-  if (error) throw new InternalServerError(`Failed to grant points: ${error.message}`);
+  if (error) throw new InternalServerError(`Failed to update points: ${error.message}`);
 
-  logger.info(`Admin ${req.user?.id} set ${amount} points for user ${id}`);
-  res.json({ message: `Set ${amount} praxis points.`, points: amount });
+  logger.info(`Admin ${req.user?.id} adjusted points for user ${id}: ${current} → ${newPoints} (delta ${delta})`);
+  res.json({ message: `Points updated: ${current} → ${newPoints}.`, points: newPoints, delta });
+});
+
+/**
+ * POST /admin/users/:id/reset-tree-edits
+ * Resets goal_tree_edit_count to 0, giving the user a free goal tree re-edit.
+ */
+export const resetTreeEdits = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const id = String(req.params.id);
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ goal_tree_edit_count: 0 })
+    .eq('id', id);
+
+  if (error) throw new InternalServerError(`Failed to reset tree edits: ${error.message}`);
+
+  logger.info(`Admin ${req.user?.id} reset goal_tree_edit_count for user ${id}`);
+  res.json({ message: 'Goal tree edit count reset to 0.' });
+});
+
+/**
+ * GET /admin/users/:id/detail
+ * Returns all profile fields + aggregate counts for a user.
+ */
+export const getUserDetail = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const id = String(req.params.id);
+
+  const [profileRes, checkinRes, postRes, treeRes, friendRes, completionRes] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', id).single(),
+    supabase.from('checkins').select('id', { count: 'exact', head: true }).eq('user_id', id),
+    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', id),
+    supabase.from('goal_trees').select('"userId", nodes, "rootNodes"').eq('"userId"', id).maybeSingle(),
+    supabase.from('friendships').select('id', { count: 'exact', head: true })
+      .or(`requester_id.eq.${id},recipient_id.eq.${id}`).eq('status', 'accepted'),
+    supabase.from('completion_requests').select('id, status', { count: 'exact' }).eq('verifier_id', id),
+  ]);
+
+  if (!profileRes.data) throw new InternalServerError('User not found.');
+
+  const profile = profileRes.data;
+  const tree = treeRes.data as any;
+  const rootNodeCount = Array.isArray(tree?.rootNodes) ? tree.rootNodes.length : 0;
+  const totalNodeCount = Array.isArray(tree?.nodes) ? tree.nodes.length : 0;
+
+  res.json({
+    ...profile,
+    checkin_count: checkinRes.count ?? 0,
+    post_count: postRes.count ?? 0,
+    friend_count: friendRes.count ?? 0,
+    root_goal_count: rootNodeCount,
+    total_node_count: totalNodeCount,
+    verification_count: completionRes.count ?? 0,
+  });
 });
 
 /**

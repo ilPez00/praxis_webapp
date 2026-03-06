@@ -27,6 +27,10 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import SchoolIcon from '@mui/icons-material/School';
 import DownloadIcon from '@mui/icons-material/Download';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import EditTreeIcon from '@mui/icons-material/AccountTree';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
@@ -48,7 +52,24 @@ interface AdminUser {
   banned_until?: string | null;
   role?: string;
   honor_score?: number;
+  praxis_points?: number;
+  current_streak?: number;
+  reliability_score?: number;
+  goal_tree_edit_count?: number;
   created_at: string;
+}
+
+interface UserDetail extends AdminUser {
+  bio?: string;
+  avatar_url?: string;
+  username?: string;
+  city?: string;
+  checkin_count: number;
+  post_count: number;
+  friend_count: number;
+  root_goal_count: number;
+  total_node_count: number;
+  verification_count: number;
 }
 
 interface AdminGroup {
@@ -315,6 +336,9 @@ const AdminPage: React.FC = () => {
   const [confirm, setConfirm] = useState<ConfirmAction>(null);
   const [acting, setActing] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
+  const [ppAmounts, setPpAmounts] = useState<Record<string, string>>({});
+  const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   // ── Groups state ────────────────────────────────────────────────────────────
   const [groups, setGroups] = useState<AdminGroup[]>([]);
@@ -485,16 +509,43 @@ const AdminPage: React.FC = () => {
     } catch { toast.error('Failed.'); }
   };
 
-  const handleGrantPoints = async (userId: string) => {
+  const handleModifyPoints = async (userId: string, sign: 1 | -1) => {
+    const raw = ppAmounts[userId] || '100';
+    const amount = parseInt(raw, 10);
+    if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid positive amount.'); return; }
+    const delta = sign * amount;
     try {
       const res = await apiFetch(`/admin/users/${userId}/grant-points`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 999999 }),
+        body: JSON.stringify({ delta }),
       });
-      if (res.ok) toast.success('999,999 points granted!');
-      else toast.error('Failed.');
+      if (res.ok) {
+        const body = await res.json();
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, praxis_points: body.points } : u));
+        toast.success(`PP: ${body.points.toLocaleString()} (${delta > 0 ? '+' : ''}${delta})`);
+      } else toast.error('Failed to update points.');
     } catch { toast.error('Failed.'); }
+  };
+
+  const handleResetTreeEdits = async (userId: string) => {
+    try {
+      const res = await apiFetch(`/admin/users/${userId}/reset-tree-edits`, { method: 'POST' });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, goal_tree_edit_count: 0 } : u));
+        toast.success('Goal tree edit reset — user gets 1 free edit.');
+      } else toast.error('Failed.');
+    } catch { toast.error('Failed.'); }
+  };
+
+  const handleOpenDetail = async (userId: string) => {
+    setLoadingDetail(true);
+    setUserDetail(null);
+    try {
+      const res = await apiFetch(`/admin/users/${userId}/detail`);
+      if (res.ok) setUserDetail(await res.json());
+      else toast.error('Failed to load user detail.');
+    } catch { toast.error('Failed.'); } finally { setLoadingDetail(false); }
   };
 
   const handleDeleteAllDemo = async () => {
@@ -720,6 +771,7 @@ const AdminPage: React.FC = () => {
                   <TableCell>User</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>Flags</TableCell>
+                  <TableCell>PP / Streak</TableCell>
                   <TableCell>Joined</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
@@ -755,45 +807,81 @@ const AdminPage: React.FC = () => {
                         {(u.honor_score ?? 0) > 0 && <Chip label={`⭐ ${u.honor_score}`} size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }} />}
                       </Box>
                     </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700 }}>
+                        ⚡{(u.praxis_points ?? 0).toLocaleString()}
+                      </Typography>
+                      {(u.current_streak ?? 0) > 0 && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          🔥{u.current_streak}d
+                        </Typography>
+                      )}
+                    </TableCell>
                     <TableCell><Typography variant="caption" color="text.disabled">{new Date(u.created_at).toLocaleDateString()}</Typography></TableCell>
                     <TableCell align="right">
-                      {u.id !== user?.id && (
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
-                          <Tooltip title="Grant 999,999 points">
-                            <IconButton size="small" onClick={() => handleGrantPoints(u.id)} sx={{ color: 'primary.main', opacity: 0.6, '&:hover': { opacity: 1 } }}>
-                              <StarsIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title={u.role === 'staff' ? 'Demote to user' : 'Make staff'}>
-                            <IconButton size="small" onClick={() => handlePromoteUser(u.id, u.role === 'staff' ? 'user' : 'staff')} sx={{ color: '#10B981', opacity: 0.6, '&:hover': { opacity: 1 } }}>
-                              <ShieldIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title={u.role === 'moderator' || u.is_admin ? 'Demote to user' : 'Make moderator'}>
-                            <IconButton size="small" onClick={() => handlePromoteUser(u.id, (u.role === 'moderator' || u.is_admin) ? 'user' : 'moderator')} sx={{ color: '#3B82F6', opacity: 0.6, '&:hover': { opacity: 1 } }}>
-                              <WorkspacePremiumIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          {isBanned(u) ? (
-                            <Tooltip title="Unban user">
-                              <IconButton size="small" onClick={() => handleUnbanUser(u.id)} sx={{ color: 'success.main', opacity: 0.7, '&:hover': { opacity: 1 } }}>
-                                <LockOpenIcon fontSize="small" />
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {/* PP modifier */}
+                        <TextField
+                          size="small"
+                          type="number"
+                          value={ppAmounts[u.id] ?? '100'}
+                          onChange={e => setPpAmounts(prev => ({ ...prev, [u.id]: e.target.value }))}
+                          inputProps={{ min: 1, style: { width: 52, padding: '2px 4px', fontSize: '0.72rem' } }}
+                          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1, height: 24 } }}
+                        />
+                        <Tooltip title="Add PP">
+                          <IconButton size="small" onClick={() => handleModifyPoints(u.id, 1)} sx={{ color: '#A78BFA', opacity: 0.7, '&:hover': { opacity: 1 } }}>
+                            <AddCircleOutlineIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Remove PP">
+                          <IconButton size="small" onClick={() => handleModifyPoints(u.id, -1)} sx={{ color: 'warning.main', opacity: 0.7, '&:hover': { opacity: 1 } }}>
+                            <RemoveCircleOutlineIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title={`Reset free goal-tree edit (currently ${u.goal_tree_edit_count ?? 0} edits used)`}>
+                          <IconButton size="small" onClick={() => handleResetTreeEdits(u.id)} sx={{ color: '#10B981', opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                            <EditTreeIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="View all user metrics">
+                          <IconButton size="small" onClick={() => handleOpenDetail(u.id)} sx={{ color: 'text.secondary', opacity: 0.7, '&:hover': { opacity: 1 } }}>
+                            <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                        {u.id !== user?.id && (
+                          <>
+                            <Tooltip title={u.role === 'staff' ? 'Demote to user' : 'Make staff'}>
+                              <IconButton size="small" onClick={() => handlePromoteUser(u.id, u.role === 'staff' ? 'user' : 'staff')} sx={{ color: '#10B981', opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                                <ShieldIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                          ) : (
-                            <Tooltip title="Ban user">
-                              <IconButton size="small" onClick={() => setConfirm({ type: 'ban', user: u })} sx={{ color: 'warning.main', opacity: 0.6, '&:hover': { opacity: 1 } }}>
-                                <BlockIcon fontSize="small" />
+                            <Tooltip title={u.role === 'moderator' || u.is_admin ? 'Demote to user' : 'Make moderator'}>
+                              <IconButton size="small" onClick={() => handlePromoteUser(u.id, (u.role === 'moderator' || u.is_admin) ? 'user' : 'moderator')} sx={{ color: '#3B82F6', opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                                <WorkspacePremiumIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                          )}
-                          <Tooltip title="Delete permanently">
-                            <IconButton size="small" onClick={() => setConfirm({ type: 'delete', user: u })} sx={{ color: 'error.main', opacity: 0.5, '&:hover': { opacity: 1 } }}>
-                              <DeleteOutlineIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      )}
+                            {isBanned(u) ? (
+                              <Tooltip title="Unban user">
+                                <IconButton size="small" onClick={() => handleUnbanUser(u.id)} sx={{ color: 'success.main', opacity: 0.7, '&:hover': { opacity: 1 } }}>
+                                  <LockOpenIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            ) : (
+                              <Tooltip title="Ban user">
+                                <IconButton size="small" onClick={() => setConfirm({ type: 'ban', user: u })} sx={{ color: 'warning.main', opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                                  <BlockIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            <Tooltip title="Delete permanently">
+                              <IconButton size="small" onClick={() => setConfirm({ type: 'delete', user: u })} sx={{ color: 'error.main', opacity: 0.5, '&:hover': { opacity: 1 } }}>
+                                <DeleteOutlineIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        )}
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1391,6 +1479,68 @@ const AdminPage: React.FC = () => {
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* ── User Detail Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={!!userDetail || loadingDetail} onClose={() => setUserDetail(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <InfoOutlinedIcon sx={{ color: 'primary.main' }} />
+          User Metrics
+        </DialogTitle>
+        <DialogContent>
+          {loadingDetail && <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>}
+          {userDetail && (() => {
+            const d = userDetail;
+            const rows: { label: string; value: string | number | boolean | null | undefined }[] = [
+              { label: 'ID', value: d.id },
+              { label: 'Name', value: d.name || '—' },
+              { label: 'Email', value: d.email || '—' },
+              { label: 'Username', value: d.username || '—' },
+              { label: 'City', value: d.city || '—' },
+              { label: 'Bio', value: d.bio || '—' },
+              { label: 'Role', value: d.role || 'user' },
+              { label: 'Premium', value: d.is_premium ? 'Yes' : 'No' },
+              { label: 'Admin', value: d.is_admin ? 'Yes' : 'No' },
+              { label: 'Demo', value: d.is_demo ? 'Yes' : 'No' },
+              { label: 'Onboarding complete', value: d.onboarding_completed ? 'Yes' : 'No' },
+              { label: 'Praxis Points (PP)', value: (d.praxis_points ?? 0).toLocaleString() },
+              { label: 'Current Streak', value: `${d.current_streak ?? 0} days` },
+              { label: 'Reliability Score', value: d.reliability_score != null ? d.reliability_score.toFixed(2) : '—' },
+              { label: 'Honor Score', value: d.honor_score ?? 0 },
+              { label: 'Goal Tree Edits Used', value: d.goal_tree_edit_count ?? 0 },
+              { label: 'Root Goals', value: d.root_goal_count },
+              { label: 'Total Goal Nodes', value: d.total_node_count },
+              { label: 'Total Check-ins', value: d.checkin_count },
+              { label: 'Total Posts', value: d.post_count },
+              { label: 'Friends', value: d.friend_count },
+              { label: 'Verifications Given', value: d.verification_count },
+              { label: 'Joined', value: new Date(d.created_at).toLocaleString() },
+            ];
+            return (
+              <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  {rows.map(r => (
+                    <Box
+                      component="tr"
+                      key={r.label}
+                      sx={{ '&:nth-of-type(odd)': { bgcolor: 'rgba(255,255,255,0.03)' } }}
+                    >
+                      <Box component="td" sx={{ py: 0.75, px: 1.5, color: 'text.secondary', fontSize: '0.78rem', fontWeight: 600, width: '45%', verticalAlign: 'top' }}>
+                        {r.label}
+                      </Box>
+                      <Box component="td" sx={{ py: 0.75, px: 1.5, fontSize: '0.78rem', wordBreak: 'break-all', verticalAlign: 'top' }}>
+                        {String(r.value ?? '—')}
+                      </Box>
+                    </Box>
+                  ))}
+                </tbody>
+              </Box>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setUserDetail(null)}>Close</Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );
