@@ -773,3 +773,56 @@ export const leaderboardBonus = catchAsync(async (req: Request, res: Response) =
   logger.info(`[LeaderboardBonus] Awarded PP to ${awarded.length} users`);
   return res.json(report);
 });
+
+/**
+ * POST /admin/cron/streak-alerts
+ * Sends a push notification to every user who has a streak > 0 but hasn't
+ * checked in today. Intended to run nightly around 20:00 UTC.
+ * Security: X-Admin-Secret header or JWT admin.
+ */
+export const streakAlerts = catchAsync(async (req: Request, res: Response) => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
+  const isJwtAdmin = !!req.user?.id;
+  if (!isSecretAuth && !isJwtAdmin) throw new UnauthorizedError('Admin authentication required.');
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Find users with an active streak
+  const { data: activeUsers, error } = await supabase
+    .from('profiles')
+    .select('id, current_streak')
+    .gt('current_streak', 0);
+
+  if (error) throw new InternalServerError('Failed to fetch profiles.');
+
+  // Find which of those have already checked in today
+  const userIds = (activeUsers ?? []).map((u: any) => u.id);
+  if (userIds.length === 0) return res.json({ alerted: 0 });
+
+  const { data: checkedIn } = await supabase
+    .from('checkins')
+    .select('user_id')
+    .eq('date', today)
+    .in('user_id', userIds);
+
+  const checkedInSet = new Set((checkedIn ?? []).map((c: any) => c.user_id));
+
+  const { pushNotification } = await import('./notificationController');
+  let alerted = 0;
+
+  for (const user of (activeUsers ?? [])) {
+    if (checkedInSet.has(user.id)) continue; // already checked in
+    pushNotification({
+      userId: user.id,
+      type: 'streak_alert',
+      title: `Your ${user.current_streak}-day streak is at risk!`,
+      body: "Check in before midnight to keep your streak alive.",
+      link: '/dashboard',
+    }).catch(() => {});
+    alerted++;
+  }
+
+  logger.info(`[StreakAlerts] Notified ${alerted} at-risk users`);
+  return res.json({ alerted, total_with_streak: userIds.length, already_checked_in: checkedInSet.size });
+});

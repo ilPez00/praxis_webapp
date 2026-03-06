@@ -179,6 +179,9 @@ const ProfilePage: React.FC = () => {
   const [selectedBannerFile, setSelectedBannerFile] = useState<File | null>(null);
   const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null);
 
+  // Percentile
+  const [percentileData, setPercentileData] = useState<{ streak_percentile: number; reliability_percentile: number } | null>(null);
+
   // Friends
   const [friends, setFriends] = useState<any[]>([]);
   const [friendsDialogOpen, setFriendsDialogOpen] = useState(false);
@@ -215,6 +218,13 @@ const ProfilePage: React.FC = () => {
         });
         setProfilePhotoPreviewUrl(data.avatar_url);
         setBannerPreviewUrl(data.banner_url ?? null);
+        // Fetch percentile for own profile
+        if (!paramId || paramId === user?.id) {
+          fetch(`${API_URL}/users/${targetId}/percentile`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => d && setPercentileData(d))
+            .catch(() => {});
+        }
       } catch (err: any) {
         toast.error(`Failed to fetch profile: ${err.message}`);
       } finally {
@@ -659,6 +669,13 @@ const ProfilePage: React.FC = () => {
                     label="Onboarded"
                     size="small"
                     sx={{ bgcolor: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', color: '#10B981', fontWeight: 600 }}
+                  />
+                )}
+                {isOwnProfile && percentileData && percentileData.reliability_percentile >= 50 && (
+                  <Chip
+                    label={`Top ${100 - percentileData.reliability_percentile}% reliability`}
+                    size="small"
+                    sx={{ bgcolor: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.3)', color: '#A78BFA', fontWeight: 600 }}
                   />
                 )}
               </Box>

@@ -240,4 +240,41 @@ export const verifyIdentity = catchAsync(async (req: Request, res: Response, _ne
   res.status(200).json({ message: 'Identity verified.' });
 });
 
+/**
+ * GET /users/:userId/percentile
+ * Returns the user's discipline percentile: streak rank and reliability rank
+ * among all profiles. E.g. streak_percentile=88 means top 12%.
+ */
+export const getUserPercentile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId } = req.params;
+
+  const { data: user, error: userErr } = await supabase
+    .from('profiles')
+    .select('current_streak, reliability_score')
+    .eq('id', userId)
+    .single();
+
+  if (userErr || !user) throw new NotFoundError('User not found.');
+
+  const userStreak = user.current_streak ?? 0;
+  const userReliability = user.reliability_score ?? 0;
+
+  const [{ count: streakBelow }, { count: total }, { count: relBelow }] = await Promise.all([
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).lt('current_streak', userStreak),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).lt('reliability_score', userReliability),
+  ]);
+
+  const n = total ?? 1;
+  const streakPercentile = Math.round(((streakBelow ?? 0) / n) * 100);
+  const reliabilityPercentile = Math.round(((relBelow ?? 0) / n) * 100);
+
+  res.json({
+    streak: userStreak,
+    reliability: userReliability,
+    streak_percentile: streakPercentile,
+    reliability_percentile: reliabilityPercentile,
+    total_users: n,
+  });
+});
 

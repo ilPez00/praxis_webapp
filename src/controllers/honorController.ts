@@ -43,9 +43,19 @@ export const giveHonor = catchAsync(async (req: Request, res: Response, _next: N
     throw new InternalServerError('Failed to give honor.');
   }
 
-  // Increment honor_score
+  // Increment honor_score + award +15 PP to target
   const newScore = (target.honor_score ?? 0) + 1;
-  await supabase.from('profiles').update({ honor_score: newScore }).eq('id', targetId);
+  const { data: targetPP } = await supabase.from('profiles').select('praxis_points').eq('id', targetId).single();
+  await supabase.from('profiles').update({
+    honor_score: newScore,
+    praxis_points: (targetPP?.praxis_points ?? 0) + 15,
+  }).eq('id', targetId);
+
+  // Award +15 PP to voter for mutual grading
+  const { data: voterPP } = await supabase.from('profiles').select('praxis_points').eq('id', voterId).single();
+  if (voterPP) {
+    await supabase.from('profiles').update({ praxis_points: (voterPP.praxis_points ?? 0) + 15 }).eq('id', voterId);
+  }
 
   pushNotification({
     userId: targetId as string,

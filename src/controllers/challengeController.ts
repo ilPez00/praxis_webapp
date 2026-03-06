@@ -21,11 +21,29 @@ export const joinChallenge = catchAsync(async (req: Request, res: Response, _nex
   const { challengeId } = req.params;
   const { userId } = req.body;
   if (!userId) throw new BadRequestError('userId is required.');
+
+  // Check if already joined (upsert won't tell us)
+  const { data: existing } = await supabase
+    .from('challenge_participants')
+    .select('challenge_id')
+    .eq('challenge_id', challengeId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from('challenge_participants')
     .upsert({ challenge_id: challengeId, user_id: userId }, { onConflict: 'challenge_id,user_id' });
   if (error) throw new InternalServerError('Failed to join challenge.');
-  res.json({ message: 'Joined challenge.' });
+
+  // Award +30 PP for first-time join
+  if (!existing) {
+    const { data: prof } = await supabase.from('profiles').select('praxis_points').eq('id', userId).single();
+    if (prof) {
+      await supabase.from('profiles').update({ praxis_points: (prof.praxis_points ?? 0) + 30 }).eq('id', userId);
+    }
+  }
+
+  res.json({ message: 'Joined challenge.', pp_awarded: !existing ? 30 : 0 });
 });
 
 export const leaveChallenge = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {

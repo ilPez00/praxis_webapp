@@ -67,6 +67,7 @@ const ChatRoom: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [receiverName, setReceiverName] = useState<string>('Partner');
   const [receiverStreak, setReceiverStreak] = useState<number>(0);
+  const [myStreak, setMyStreak] = useState<number>(0);
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
@@ -120,14 +121,15 @@ const ChatRoom: React.FC = () => {
     if (!user2Id) return;
     const fetchReceiverName = async () => {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('name, current_streak')
-          .eq('id', user2Id)
-          .single();
-        if (error) throw error;
-        setReceiverName(data.name || 'Partner');
-        setReceiverStreak(data.current_streak ?? 0);
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const [partnerRes, myRes] = await Promise.all([
+          supabase.from('profiles').select('name, current_streak').eq('id', user2Id).single(),
+          authUser?.id ? supabase.from('profiles').select('current_streak').eq('id', authUser.id).single() : Promise.resolve({ data: null }),
+        ]);
+        if (partnerRes.error) throw partnerRes.error;
+        setReceiverName(partnerRes.data.name || 'Partner');
+        setReceiverStreak(partnerRes.data.current_streak ?? 0);
+        setMyStreak(myRes.data?.current_streak ?? 0);
       } catch (error) {
         console.error('Error fetching receiver name:', error);
       }
@@ -774,6 +776,13 @@ const ChatRoom: React.FC = () => {
                   label={`🔥 ${receiverStreak}d`}
                   size="small"
                   sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(249,115,22,0.12)', color: '#F97316', border: '1px solid rgba(249,115,22,0.3)' }}
+                />
+              )}
+              {myStreak > 0 && receiverStreak > 0 && (
+                <Chip
+                  label={`🤝 ${Math.min(myStreak, receiverStreak)}d mutual`}
+                  size="small"
+                  sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(167,139,250,0.12)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.3)' }}
                 />
               )}
             </Box>

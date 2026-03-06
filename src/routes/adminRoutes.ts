@@ -6,6 +6,7 @@ import {
   listGroups, getAdminStats, getNetworkData, createChallenge, listChallenges,
   listAllServices, adminDeleteService, listAllCoaches, decayPoints, promoteUser,
   leaderboardBonus,
+  streakAlerts,
 } from '../controllers/adminController';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -17,6 +18,7 @@ router.post('/seed-demo-users', seedDemoUsers);
 router.delete('/delete-demo-users', deleteDemoUsers);
 router.post('/decay-points', decayPoints);             // cron or admin-secret — weekly economy balancer
 router.post('/cron/leaderboard-bonus', leaderboardBonus); // daily cron — top 100 PP awards
+router.post('/cron/streak-alerts', streakAlerts);         // nightly cron — notify at-risk streaks
 
 // ── Webapp admin routes (JWT + is_admin check) ────────────────────────────────
 router.get('/users', authenticateToken, requireAdmin, listAllUsers);

@@ -116,9 +116,13 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
 
       await resolveBetsOnGoalCompletion(requesterId, request.goal_node_id);
 
-      // Award +5 Praxis Points to requester for peer-verified completion
+      // Award +50 PP to requester for peer-verified completion
       const { data: prof } = await supabase.from('profiles').select('praxis_points').eq('id', requesterId).single();
-      if (prof) await supabase.from('profiles').update({ praxis_points: (prof.praxis_points ?? 0) + 5 }).eq('id', requesterId);
+      if (prof) await supabase.from('profiles').update({ praxis_points: (prof.praxis_points ?? 0) + 50 }).eq('id', requesterId);
+
+      // Award +30 PP to verifier for being a helpful accountability partner
+      const { data: verProf } = await supabase.from('profiles').select('praxis_points').eq('id', verifierId).single();
+      if (verProf) await supabase.from('profiles').update({ praxis_points: (verProf.praxis_points ?? 0) + 30 }).eq('id', verifierId);
 
       // Award stake points back as bonus for won bets
       const { data: betProf } = await supabase.from('profiles').select('praxis_points').eq('id', requesterId).single();
