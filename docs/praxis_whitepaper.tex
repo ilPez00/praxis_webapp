@@ -188,12 +188,12 @@
 \noindent
 Praxis is a \textbf{goal-aligned social operating system} that connects individuals based on shared ambitions, compatible progress trajectories, and mutual accountability commitments — not appearance, demographics, or superficial interest tags. In an era characterised simultaneously by a \textit{global loneliness epidemic} and an explosion in personal-development spending, existing platforms fail the user at the precise moment of execution: they either optimise for engagement over outcomes (social networks), for appearance over values (dating apps), or for shallow connection over deep collaboration (professional networks).
 
-Praxis addresses this gap through three interlocking innovations: (1)~a \textbf{multi-domain hierarchical goal tree} that encodes a user's full ambition profile across nine life domains; (2)~an \textbf{AI-powered semantic matching engine} using Gemini embeddings and cosine-similarity scoring to identify the most compatible accountability partner from the entire user base; and (3)~a \textbf{peer verification protocol} that makes progress claims socially credible and auto-triggers community recognition.
+Praxis addresses this gap through what we term the \textbf{Architecture of Intent}: three interlocking innovations that create a new asset class — \textbf{Verified Intentionality}. These include: (1)~a \textbf{multi-domain hierarchical goal tree} that encodes a user's full ambition profile across nine life domains; (2)~an \textbf{AI-powered semantic matching engine} using Gemini embeddings and cosine-similarity scoring to identify the most compatible accountability partner from the entire user base; and (3)~a \textbf{peer verification protocol} that makes progress claims socially credible and auto-triggers community recognition.
 
-The platform currently operates as a production-grade MVP, deployed on a modern stack (React / TypeScript / Express / Supabase / pgvector), with a freemium subscription model and a novel \textbf{accountability betting} mechanism for premium users. This whitepaper presents the product rationale, the mathematical underpinnings of the matching algorithm, the competitive landscape, and a detailed financial thesis.
+Praxis is not merely a productivity tool; it is a structural upgrade to the human social experience, providing the missing infrastructure for human ambition. The platform currently operates as a production-grade MVP, deployed on a modern stack (React / TypeScript / Express / Supabase / pgvector), with a freemium subscription model and a novel \textbf{accountability betting} mechanism for premium users. This whitepaper presents the product rationale, the mathematical underpinnings of the matching algorithm, the competitive landscape, and a detailed financial thesis.
 
 \bigskip
-\noindent\textbf{Keywords:} goal-alignment, accountability, peer verification, AI matching, social operating system, pgvector, semantic embeddings, freemium, personal development.
+\noindent\textbf{Keywords:} goal-alignment, accountability, peer verification, AI matching, social operating system, pgvector, semantic embeddings, Verified Intentionality, Architecture of Intent.
 \end{abstract}
 
 % ══════════════════════════════════════════════════════════
@@ -201,6 +201,23 @@ The platform currently operates as a production-grade MVP, deployed on a modern 
 % ══════════════════════════════════════════════════════════
 \newpage
 \section{The Problem: Ambition Without Infrastructure}
+
+\subsection{The Crisis of the Nomos}
+To understand the contemporary "atrophy of will," we must return to the primordial definition of law. Carl Schmitt, in \textit{The Nomos of the Earth}, argues that the term \textit{nomos} signifies three distinct yet unified acts: to take (\textit{nehmen}), to divide (\textit{teilen}), and to produce (\textit{weiden}). Any stable social order is predicated upon a fundamental "land-taking"—a primary localization that precedes formal order.
+
+The crisis of the 21st century is a crisis of the \textit{Nomos}. In the transition from the terrestrial age to the digital age, "taking" has been decoupled from "division." In the infinite digital commons, there is no spatial limit, no horizon against which the subject can define its boundaries. Without this localization, the \textit{nomos} dissolves into collection of abstract rules that lack grounding in lived reality.
+
+\subsection{The Great Exhaustion}
+What we term the "Great Exhaustion" is the state of terminal \textit{deterritorialization}. Legacy networks are machines of continuous decoding; they break down the high-trust intermediate institutions—the Church, the Guild, the family—that previously provided the "Localization of the Will." 
+
+\begin{statbox}
+\begin{itemize}[nosep]
+  \item \textbf{78\%} of users feel emotionally exhausted by online dating; \textbf{79\%} of Gen~Z/Millennial users report ``dating app burnout'' \\ {\small (Forbes Health Survey, 2024, $n=1{,}000$)}
+  \item \textbf{46\%} of current users describe their experience as \textit{bad} \\ {\small (UK nationally representative poll, 2024)}
+\end{itemize}
+\end{statbox}
+
+This exhaustion is not just mental fatigue; it is the ontological failure of the subject to navigate the collapse of the \textit{Big Other}. Praxis enters this void not as another rule-set, but as a \textit{Digital Land-Taking} — the re-establishment of a sovereign \textit{Nomos} through the algorithmic division of the subject's own Intent.
 
 \subsection{The Achievement Gap}
 
@@ -409,6 +426,42 @@ Not Applicable & Domain irrelevant to partner & $\times 1.00$ \\
 
 Weights are recalibrated bilaterally and privately, never visible to the counterparty. The effect is an ever-improving signal of each user's genuine challenge frontier — which in turn improves future match quality. The system is \textbf{autopoietic}: it improves itself through use.
 
+\subsection{The Reliability Score: A Credit Score for Will}
+
+The \textbf{Reliability Score} ($R \in [0, 100]$) is the primary trust signal and "Credit Score for Will" on the platform. It measures the gap between a user's stated intentions and their actual behavioral output. $R$ is calculated via a rolling 90-day exponential decay window:
+
+\begin{equation}
+R = 0.4(C) + 0.25(V) + 0.25(M) + 0.1(S)
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item \textbf{C:} Check-in Consistency (the frequency of daily goal updates)
+    \item \textbf{V:} Verified Completion rate (the percentage of goals verified by peers)
+    \item \textbf{M:} Message Responsiveness (latency of communication with accountability partners)
+    \item \textbf{S:} Streak Stability (current streak relative to historical maximums)
+\end{itemize}
+
+\subsubsection{Status Tiers}
+
+Users are categorized into \textbf{Status Tiers} based on their Reliability Score and activity duration, providing an aspirational hierarchy for progress:
+
+\begin{center}
+\begin{tabular}{lcl}
+\toprule
+\textbf{Tier} & \textbf{Duration} & \textbf{Requirement} \\
+\midrule
+Newcomer & < 14d & Baseline entry \\
+Committed & 14d+ & $R \geq 40$ \\
+Disciplined & 30d+ & $R \geq 60$ \\
+Elite & 60d+ & $R \geq 75$ (Top 25\% of cohort) \\
+Relentless & 90d+ & $R \geq 90$ (Top 10\% of network) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Tiers are displayed on profile cards and within match results, serving as the definitive signal of a user's \textbf{Reliability Capital}.
+
 \subsection{Peer Verification Protocol}
 
 Progress claims on a social platform are only as valuable as their credibility. Praxis implements a \textbf{lightweight social verification layer}:
@@ -434,6 +487,14 @@ Praxis provides a full real-time communication stack purpose-built for goal-focu
   \item \textbf{Group community rooms} scoped by domain (e.g., a Fitness room, a Career room)
   \item \textbf{Mutual grading dialog} surfaced at natural session-end moments
 \end{itemize}
+
+\subsection{The Master Roshi AI: Sustainable Growth}
+
+Unlike conventional "hustle culture" applications that demand 24/7 output, Praxis uses the \textbf{Master Roshi AI} (powered by Gemini 1.5 Pro) to enforce \textbf{Sustainable Intentionality}. The system analyzes multi-domain patterns to prevent burnout: if a user is 100\% consistent in Career but 0\% in Mental Health or Philosophy for 14 days, the AI triggers a **Balance Intervention**. The user is nudged to take a "Zen Day" — preserving their streak while focusing on neglected domains. This increases long-term retention by aligning productivity with physiological and psychic health.
+
+\subsection{The Grace-Recovery Coefficient ($\Gamma$)}
+
+Praxis acknowledges the inevitability of human failure. To measure the augmentation of resilience, we introduce the \textbf{Grace-Recovery Coefficient ($\Gamma$)}, which calculates the velocity and quality of a user's re-entry into their commitments following a failure. A high $\Gamma$ indicates that the user is effectively utilizing the platform's social and AI support layers to integrate failures quickly, suppressing the "Death Drive" (the urge to abandon a goal permanently after a mistake).
 
 \subsection{Accountability Betting}
 
