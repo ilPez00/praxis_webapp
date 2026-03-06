@@ -58,6 +58,8 @@ interface Profile {
   latitude?: number | null;
   longitude?: number | null;
   city?: string | null;
+  occupation?: string | null;
+  education?: string | null;
   social_instagram?: string;
   social_twitter?: string;
   social_linkedin?: string;
@@ -159,6 +161,8 @@ const ProfilePage: React.FC = () => {
   const [editedAge, setEditedAge] = useState('');
   const [editedSex, setEditedSex] = useState('');
   const [editedLocation, setEditedLocation] = useState('');
+  const [editedOccupation, setEditedOccupation] = useState('');
+  const [editedEducation, setEditedEducation] = useState('');
   const [editedLat, setEditedLat] = useState<number | null>(null);
   const [editedLng, setEditedLng] = useState<number | null>(null);
   const [detectingLocation, setDetectingLocation] = useState(false);
@@ -197,6 +201,8 @@ const ProfilePage: React.FC = () => {
         setEditedLocation(data.location || '');
         setEditedLat(data.latitude ?? null);
         setEditedLng(data.longitude ?? null);
+        setEditedOccupation(data.occupation || '');
+        setEditedEducation(data.education || '');
         setEditedSocials({
           social_instagram: data.social_instagram || '',
           social_twitter: data.social_twitter || '',
@@ -292,6 +298,8 @@ const ProfilePage: React.FC = () => {
         latitude: editedLat ?? null,
         longitude: editedLng ?? null,
         city: editedLat ? (editedLocation.split(',')[0].trim() || null) : null,
+        occupation: editedOccupation.trim() || null,
+        education: editedEducation.trim() || null,
         social_instagram: editedSocials.social_instagram.trim() || null,
         social_twitter: editedSocials.social_twitter.trim() || null,
         social_linkedin: editedSocials.social_linkedin.trim() || null,
@@ -329,6 +337,8 @@ const ProfilePage: React.FC = () => {
       setEditedLocation(profile.location || '');
       setEditedLat(profile.latitude ?? null);
       setEditedLng(profile.longitude ?? null);
+      setEditedOccupation(profile.occupation || '');
+      setEditedEducation(profile.education || '');
       setEditedSocials({
         social_instagram: profile.social_instagram || '',
         social_twitter: profile.social_twitter || '',
@@ -519,6 +529,14 @@ const ProfilePage: React.FC = () => {
                 </Grid>
               </Grid>
               <TextField label="Bio" value={editedBio} onChange={e => setEditedBio(e.target.value)} multiline rows={3} fullWidth size="small" />
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField label="Occupation" value={editedOccupation} onChange={e => setEditedOccupation(e.target.value)} fullWidth size="small" placeholder="e.g. Software Engineer" />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField label="Education" value={editedEducation} onChange={e => setEditedEducation(e.target.value)} fullWidth size="small" placeholder="e.g. BSc Computer Science" />
+                </Grid>
+              </Grid>
 
               {/* Social links edit */}
               <Box>
@@ -580,9 +598,19 @@ const ProfilePage: React.FC = () => {
                 {profile.sex && profile.location && <Typography variant="body2" color="text.secondary">·</Typography>}
                 {profile.location && <Typography variant="body2" color="text.secondary">📍 {profile.location}</Typography>}
               </Stack>
-              <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6, mb: activeSocials.length > 0 ? 2 : 0 }}>
+              <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6, mb: (profile.occupation || profile.education) ? 1 : (activeSocials.length > 0 ? 2 : 0) }}>
                 {profile.bio || 'No bio yet.'}
               </Typography>
+              {(profile.occupation || profile.education) && (
+                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: activeSocials.length > 0 ? 2 : 1 }}>
+                  {profile.occupation && (
+                    <Chip label={`💼 ${profile.occupation}`} size="small" sx={{ bgcolor: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', color: 'text.secondary', fontWeight: 500 }} />
+                  )}
+                  {profile.education && (
+                    <Chip label={`🎓 ${profile.education}`} size="small" sx={{ bgcolor: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', color: 'text.secondary', fontWeight: 500 }} />
+                  )}
+                </Stack>
+              )}
 
               {/* Friends count chip */}
               <Box sx={{ mt: activeSocials.length > 0 ? 1.5 : 1 }}>

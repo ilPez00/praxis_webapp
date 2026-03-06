@@ -730,3 +730,76 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 - `eventsController.ts`: InternalServerError now includes actual Supabase error message for easier debugging
 
 ### TypeScript: ✅ 0 errors (both backend + frontend)
+
+---
+
+## Session 44 (2026-03-06) — Admin enhancements + Onboarding fields + Tree edit gate
+
+### Implemented (commit 71e45b2):
+
+**Admin panel — user metrics + PP control:**
+- `grantPoints`: now delta-based (`{ delta: N }`) — adds/subtracts from current balance, floored at 0
+- `resetTreeEdits`: new `POST /admin/users/:id/reset-tree-edits` → sets `goal_tree_edit_count = 0` (gives free edit)
+- `getUserDetail`: new `GET /admin/users/:id/detail` → all profile fields + checkin/post/friend/goal/verification counts
+- `listAllUsers`: now also selects `praxis_points`, `current_streak`, `reliability_score`, `goal_tree_edit_count`
+- `AdminPage.tsx`: PP/streak column in users table; inline amount input + Add/Remove PP buttons per row; tree-edit reset button; info icon → full metrics dialog (23 fields in a clean table)
+
+**Onboarding — education + occupation (commit 4ce880d):**
+- `OnboardingPage.tsx`: added Occupation + Education optional text fields in Profile step
+- Saved via upsert to `profiles.occupation` + `profiles.education`
+- `User` model + `useUser`: mapped new fields
+- SQL: `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS occupation TEXT; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS education TEXT;`
+
+**Goal tree edit gate (commit 4ce880d):**
+- `goalController.ts`: `goal_tree_edit_count` only incremented when `onboarding_completed = true` at save time — unlimited free edits during onboarding flow
+
+---
+
+## Session 45 (2026-03-06) — Always-visible domain tree + Proficiency system + Onboarding loop fix
+
+### Implemented (commit 49544f2):
+
+**Onboarding loop fix (reliable):**
+- `GoalSelectionPage.tsx`: writes `onboarding_completed = true` to BOTH `profiles` table AND `supabase.auth.updateUser({ data: { onboarding_completed: true } })` — auth metadata write always succeeds regardless of RLS / service-role key
+- `useUser.ts`: falls back to `authUser.user_metadata?.onboarding_completed` if profiles row says false — breaks redirect loop
+
+**Always-visible domain tree:**
+- `GoalTreeVisualization.tsx` full rewrite: all 10 domain nodes always rendered (no collapse/expand)
+- Active domains (user has goals) → breathing glow bloom (`gtv-active-glow` animation)
+- Inactive domains → 30% opacity, no glow
+- Domain nodes: emoji + `X.XX%` proficiency; short label below (Career, Finance, Fitness, etc.)
+- Goal sub-nodes with progress arc below their domain node
+- Removed collapse/expand toggle entirely
+
+**Domain proficiency system:**
+- `src/utils/proficiency.ts` (new): `classifyPostDomain()` (keyword classifier, 10 domains, 15–20 keywords each) + `bumpDomainProficiency()` (reads JSONB, adds delta, writes back — capped at 100%)
+- `postController.ts` `toggleLike`: when like added, classifies post content → awards `+0.01%` to post author's domain proficiency (fire-and-forget, no self-award)
+- `goalController.ts` `createOrUpdateGoalTree`: when goal node reaches 100% for first time → `+1.0%` domain proficiency (fire-and-forget alongside existing achievement/PP award)
+- `goalController.ts` `getGoalTree`: also fetches `profiles.domain_proficiency` and includes in response as `domain_proficiency`
+- `GoalTreePage.tsx`: extracts `domain_proficiency` from API response, passes to visualization
+- SQL needed: `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS domain_proficiency JSONB DEFAULT '{}';`
+
+### TypeScript: ✅ 0 errors (both backend + frontend)
+
+---
+
+## Next: Features to implement
+
+🔴 Pending SQL migrations (must run in Supabase):
+- §24: notifications + mutes tables
+- §25: `profiles.latitude/longitude/city` + spatial index
+- §26: `referral_codes` + `referral_claims` tables
+- `profiles.occupation`, `profiles.education`, `profiles.domain_proficiency`
+- `posts.title TEXT`
+- `profiles.username VARCHAR(30) UNIQUE`
+- `services` table
+
+🟠 Next features:
+- [ ] ProfilePage: show occupation + education fields (edit + display)
+- [ ] Matching algorithm: incorporate domain_proficiency into compatibility score
+- [ ] Comments on posts (full thread view)
+- [ ] WhatsApp-style groups: member list, join/leave, group description
+- [ ] Stripe prod setup: STRIPE_PRICE_ID + register webhook
+- [ ] Leaderboard bonuses (daily cron): #1 +500PP, top 10 +200PP, top 100 +50PP
+
+### TypeScript: ✅ 0 errors (both backend + frontend)
