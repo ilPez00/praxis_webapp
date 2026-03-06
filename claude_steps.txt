@@ -691,3 +691,42 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 
 🟡 Phase 3 — Production / Stability
 - [ ] Stripe prod: STRIPE_PRICE_ID + register webhook
+
+---
+
+## Session 43 (2026-03-06) — Profile Social Layer + Nav Cleanup + Analytics Leaderboard + Tracker Check-ins + Event Fixes
+
+### Implemented (commits aaba9f6, 96907be):
+
+**Profile page — Facebook-style social layer:**
+- `GET /friends/of/:userId` — returns any user's friend list (auth required), new endpoint in friendController + friendRoutes
+- `GET /posts/by-user/:userId` — all posts by a specific user across all contexts, new endpoint in postController + postRoutes
+- `ProfilePage.tsx`: "Friends" chip → click opens Dialog with friend list (avatar, streak 🔥, PP), click any friend → navigate to their profile; lazy-loads on first open
+- `ProfilePage.tsx`: "Posts" section below goal tree — read-only PostFeed showing all user posts (Twitter timeline style)
+- `PostFeed.tsx`: `profileUserId` prop → fetches `/posts/by-user/:id`, hides compose box, updates empty state message
+
+**Navbar cleanup:**
+- Removed "Leaderboard" and "Friends" from both desktop nav links and mobile drawer
+
+**Dashboard cleanup:**
+- Removed "Best Examples" leaderboard preview section entirely
+
+**Analytics page — leaderboard:**
+- Added full community leaderboard at bottom of AnalyticsPage (All / Aligned toggle)
+- Fetches `/users/leaderboard` alongside existing analytics calls
+- Shows medals, streak, PP, domain chips, match% when Aligned filter active; click navigates to profile
+
+**Tracker → check-in integration:**
+- `TrackerSection.tsx`: after any successful tracker entry save, fire-and-forget POST /checkins
+- Logging a workout, journal entry, etc. now counts as a daily check-in (streak + PP)
+
+**Events — geolocation reliability:**
+- Both `autoFillGeo()` and `handleToggleNearby()` now pass `{ enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }` to `getCurrentPosition` — uses cached location if < 5 min old, avoids long GPS wait
+- `autoFillGeo()` shows `toast.loading` spinner while detecting, replaces it with success/error
+
+**Events — `full_name` bug fix:**
+- `eventsController.ts`: join changed from `profiles!events_creator_id_fkey(id, full_name, avatar_url)` → `profiles!creator_id(id, name, avatar_url)` — `full_name` column doesn't exist on profiles (it's `name`)
+- `EventsPage.tsx`: `CalendarEvent.creator` interface updated from `full_name` → `name`; all usages updated
+- `eventsController.ts`: InternalServerError now includes actual Supabase error message for easier debugging
+
+### TypeScript: ✅ 0 errors (both backend + frontend)
