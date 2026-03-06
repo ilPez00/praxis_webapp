@@ -827,8 +827,13 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 
 ### TypeScript: ✅ 0 errors (both backend + frontend)
 
+## Session 47 (2026-03-06) — Profile Banner + Polish (commit 416bf9b)
+
+- **Profile banner**: clickable banner strip in edit mode → file input → upload to `avatars` bucket → stored in `profiles.banner_url`; displayed as `background-image: cover` with dark overlay; gradient fallback when unset. SQL: `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS banner_url TEXT;`
+- **Post title → thread**: board post titles now navigate to `/posts/:id` on click
+- **Group member avatars**: drawer now shows `avatar_url` + clicking member navigates to their profile
+- **Leaderboard cron**: `POST /admin/cron/leaderboard-bonus` — awards #1 +500PP, top 10 +200PP, top 100 +50PP; secured by `X-Admin-Secret` header or JWT admin; callable by Railway Cron daily
+
 ## Next features:
 - [ ] Stripe prod setup: STRIPE_PRICE_ID + register webhook
-- [ ] Leaderboard bonuses (daily cron): #1 +500PP, top 10 +200PP, top 100 +50PP
-- [ ] Member avatars in group member drawer (already fetches avatar_url but not displayed)
-- [ ] Post title link: clicking a board post title also navigates to thread page
+- [ ] Occupation/education fields confirmed in profile edit (added session 46)
