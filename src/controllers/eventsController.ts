@@ -33,7 +33,7 @@ export const getEvents = catchAsync(async (req: Request, res: Response, _next: N
     .from('events')
     .select(`
       *,
-      creator:profiles!events_creator_id_fkey(id, full_name, avatar_url),
+      creator:profiles!creator_id(id, name, avatar_url),
       rsvps:event_rsvps(user_id, status)
     `)
     .gte('event_date', new Date().toISOString().slice(0, 10))
@@ -109,7 +109,7 @@ export const createEvent = catchAsync(async (req: Request, res: Response, _next:
       return res.status(503).json({ message: 'Events feature not yet enabled. Run DB migrations.' });
     }
     logger.error('Error creating event:', error.message);
-    throw new InternalServerError('Failed to create event.');
+    throw new InternalServerError(`Failed to create event: ${error.message}`);
   }
 
   res.status(201).json(event);

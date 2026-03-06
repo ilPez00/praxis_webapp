@@ -39,7 +39,7 @@ interface CalendarEvent {
   longitude: number | null;
   distance_km: number | null;
   created_at: string;
-  creator: { id: string; full_name: string; avatar_url: string | null } | null;
+  creator: { id: string; name: string; avatar_url: string | null } | null;
   rsvps: EventRsvp[];
 }
 
@@ -131,17 +131,23 @@ const EventsPage: React.FC = () => {
       () => {
         toast.error('Location access denied.');
         setGeoLoading(false);
-      }
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
     );
   };
 
   const autoFillGeo = () => {
     if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setFormLat(String(pos.coords.latitude.toFixed(5)));
-      setFormLng(String(pos.coords.longitude.toFixed(5)));
-      toast.success('Location detected!');
-    }, () => toast.error('Location access denied.'));
+    toast.loading('Detecting location…', { id: 'geo' });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setFormLat(String(pos.coords.latitude.toFixed(5)));
+        setFormLng(String(pos.coords.longitude.toFixed(5)));
+        toast.success('Location detected!', { id: 'geo' });
+      },
+      () => toast.error('Location access denied.', { id: 'geo' }),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
   };
 
   const handleCreate = async () => {
@@ -345,10 +351,10 @@ const EventsPage: React.FC = () => {
                       {event.creator && (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 'auto' }}>
                           <Avatar sx={{ width: 18, height: 18, fontSize: '0.6rem' }} src={event.creator.avatar_url ?? undefined}>
-                            {event.creator.full_name?.[0]}
+                            {event.creator.name?.[0]}
                           </Avatar>
                           <Typography variant="caption" color="text.disabled" noWrap>
-                            {event.creator.full_name}
+                            {event.creator.name}
                           </Typography>
                         </Box>
                       )}

@@ -15,14 +15,44 @@ import {
   Chip,
   LinearProgress,
   Grid,
+  Avatar,
+  ToggleButtonGroup,
+  ToggleButton,
+  Tooltip,
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FeedbackIcon from '@mui/icons-material/Feedback';
 import InsightsIcon from '@mui/icons-material/Insights';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { DOMAIN_COLORS } from '../../types/goal';
 import ProBanner from '../../components/common/ProBanner';
+
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function getStreakTier(streak: number): { label: string; color: string } {
+  if (streak >= 30) return { label: 'Elite', color: '#EF4444' };
+  if (streak >= 14) return { label: 'Veteran', color: '#8B5CF6' };
+  if (streak >= 7)  return { label: 'Disciplined', color: '#3B82F6' };
+  if (streak >= 3)  return { label: 'Consistent', color: '#10B981' };
+  return { label: 'Newcomer', color: '#6B7280' };
+}
+
+interface LeaderboardEntry {
+  id: string;
+  name: string;
+  avatar_url?: string;
+  praxis_points: number;
+  is_premium?: boolean;
+  current_streak?: number;
+  reliability_score?: number;
+  rank: number;
+  similarity: number;
+  domains: string[];
+}
 
 const StatCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode; glowColor?: string }> = ({
   icon, title, children, glowColor,
@@ -57,6 +87,9 @@ const AnalyticsPage: React.FC = () => {
   const [achievementRate, setAchievementRate] = useState<any>(null);
   const [comparisonData, setComparisonData] = useState<any>(null);
 
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [lbFilter, setLbFilter] = useState<'all' | 'aligned'>('all');
+
   useEffect(() => {
     if (userLoading) return;
     if (!user || !user.is_premium) {
@@ -86,6 +119,12 @@ const AnalyticsPage: React.FC = () => {
         if (feedbackRes.status === 'fulfilled') setFeedbackTrends(feedbackRes.value.data);
         if (achievementRes.status === 'fulfilled') setAchievementRate(achievementRes.value.data);
         if (comparisonRes.status === 'fulfilled') setComparisonData(comparisonRes.value.data);
+
+        // Leaderboard
+        try {
+          const lbRes = await axios.get(`${API_URL}/users/leaderboard`, { params: { userId } });
+          setLeaderboardEntries(Array.isArray(lbRes.data) ? lbRes.data : []);
+        } catch { /* non-fatal */ }
       } catch (err) {
         setError('Failed to fetch analytics data.');
       } finally {
@@ -305,6 +344,94 @@ const AnalyticsPage: React.FC = () => {
           </Grid>
         </Grid>
       </Stack>
+
+      {/* Leaderboard */}
+      <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ p: 3, mt: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <LeaderboardIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>Community Leaderboard</Typography>
+          </Box>
+          <ToggleButtonGroup
+            size="small"
+            value={lbFilter}
+            exclusive
+            onChange={(_, v) => v && setLbFilter(v)}
+            sx={{ '& .MuiToggleButton-root': { px: 1.5, py: 0.4, fontSize: '0.75rem', fontWeight: 600 } }}
+          >
+            <ToggleButton value="all">All</ToggleButton>
+            <ToggleButton value="aligned">
+              <AutoAwesomeIcon sx={{ fontSize: 14, mr: 0.5 }} />
+              Aligned
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+
+        {leaderboardEntries.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+            No leaderboard data yet.
+          </Typography>
+        ) : (
+          <Stack spacing={1}>
+            {(lbFilter === 'aligned'
+              ? leaderboardEntries.filter(e => e.similarity > 0)
+              : leaderboardEntries
+            ).map((entry, idx) => {
+              const medal = MEDALS[idx];
+              const tier = getStreakTier(entry.current_streak ?? 0);
+              const isMe = entry.id === user?.id;
+              return (
+                <Box
+                  key={entry.id}
+                  onClick={() => navigate(`/profile/${entry.id}`)}
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: 1.5,
+                    p: 1.5, borderRadius: '12px', cursor: 'pointer',
+                    bgcolor: isMe ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.02)',
+                    border: isMe ? '1px solid rgba(245,158,11,0.2)' : '1px solid rgba(255,255,255,0.04)',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                  }}
+                >
+                  <Typography sx={{ minWidth: 28, fontSize: medal ? '1.1rem' : '0.8rem', fontWeight: 800, color: 'text.disabled', textAlign: 'center' }}>
+                    {medal ?? `#${entry.rank}`}
+                  </Typography>
+                  <Avatar src={entry.avatar_url || undefined} sx={{ width: 34, height: 34, border: isMe ? '2px solid rgba(245,158,11,0.5)' : '1px solid rgba(255,255,255,0.1)' }}>
+                    {(entry.name ?? 'U').charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>{entry.name ?? 'Praxis User'}</Typography>
+                      {isMe && <Chip label="you" size="small" sx={{ height: 16, fontSize: '0.6rem', bgcolor: 'rgba(245,158,11,0.12)', color: 'primary.main' }} />}
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {entry.domains?.slice(0, 2).map(d => (
+                        <Typography key={d} variant="caption" sx={{ color: DOMAIN_COLORS[d] || 'text.disabled', fontWeight: 500 }}>{d}</Typography>
+                      ))}
+                      {lbFilter === 'aligned' && entry.similarity > 0 && (
+                        <Chip label={`${Math.round(entry.similarity * 100)}% match`} size="small" sx={{ height: 16, fontSize: '0.6rem', bgcolor: 'rgba(139,92,246,0.12)', color: '#A78BFA' }} />
+                      )}
+                    </Box>
+                  </Box>
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexShrink: 0 }}>
+                    {(entry.current_streak ?? 0) > 0 && (
+                      <Tooltip title={`${tier.label} — ${entry.current_streak}d streak`}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                          <LocalFireDepartmentIcon sx={{ color: '#F97316', fontSize: 13 }} />
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#F97316', fontSize: '0.7rem' }}>{entry.current_streak}</Typography>
+                        </Box>
+                      </Tooltip>
+                    )}
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main' }}>{entry.praxis_points ?? 0}</Typography>
+                      <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem' }}>pts</Typography>
+                    </Box>
+                  </Stack>
+                </Box>
+              );
+            })}
+          </Stack>
+        )}
+      </GlassCard>
     </Container>
   );
 };

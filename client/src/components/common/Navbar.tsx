@@ -274,10 +274,8 @@ const Navbar: React.FC = () => {
                   {[
                     { label: 'Dashboard', to: '/dashboard' },
                     { label: 'Matches', to: '/matches' },
-                    { label: 'Leaderboard', to: '/leaderboard' },
                     { label: 'Chat', to: '/communication' },
-                    { label: 'Friends', to: '/friends', badge: friendRequestCount },
-                  ].map(({ label, to, badge }) => {
+                  ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
                     return (
                       <Button
@@ -292,11 +290,7 @@ const Navbar: React.FC = () => {
                           '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' },
                         }}
                       >
-                        {badge ? (
-                          <Badge badgeContent={badge} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', minWidth: 16, height: 16 } }}>
-                            {label}
-                          </Badge>
-                        ) : label}
+                        {label}
                       </Button>
                     );
                   })}
@@ -685,9 +679,7 @@ const Navbar: React.FC = () => {
               {[
                 { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
                 { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
-                { label: 'Leaderboard', to: '/leaderboard', icon: <LeaderboardIcon /> },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
-                { label: 'Friends', to: '/friends', icon: <Badge badgeContent={friendRequestCount} color="error"><PeopleIcon /></Badge> },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },
