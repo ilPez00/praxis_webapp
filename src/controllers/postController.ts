@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, NotFoundError, BadRequestError, InternalServerError } from '../utils/appErrors';
+import { classifyPostDomain, bumpDomainProficiency } from '../utils/proficiency';
 
 const handleSupabaseError = (error: any) => {
   logger.error('Supabase error (posts):', error);
@@ -328,6 +329,23 @@ export const toggleLike = catchAsync(async (req: Request, res: Response, _next: 
     .insert({ post_id: postId, user_id: userId });
 
   if (insertError) handleSupabaseError(insertError);
+
+  // Award +0.01% domain proficiency to the post author (fire-and-forget)
+  (async () => {
+    try {
+      const { data: post } = await supabase
+        .from('posts')
+        .select('user_id, content, title')
+        .eq('id', postId)
+        .single();
+      if (!post || post.user_id === userId) return; // don't self-award
+      const text = [post.title, post.content].filter(Boolean).join(' ');
+      const domain = classifyPostDomain(text);
+      if (domain) await bumpDomainProficiency(post.user_id, domain, 0.01);
+    } catch {
+      // non-fatal
+    }
+  })();
 
   return res.status(200).json({ liked: true });
 });

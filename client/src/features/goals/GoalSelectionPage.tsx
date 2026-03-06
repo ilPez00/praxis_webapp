@@ -223,16 +223,14 @@ const GoalSelectionPage: React.FC = () => {
       });
 
       // Mark onboarding complete if this is the first goal tree setup.
-      // Use Supabase anon client directly so it works regardless of backend service-role key.
       if (!user?.onboarding_completed) {
-        const { error: onboardErr } = await supabase
+        // 1. Update profiles table (anon client — works if RLS allows own-row update)
+        await supabase
           .from('profiles')
           .update({ onboarding_completed: true })
           .eq('id', currentUserId);
-        if (onboardErr) {
-          // Fallback to backend endpoint (service-role key path)
-          await axios.post(`${API_URL}/users/complete-onboarding`, { userId: currentUserId });
-        }
+        // 2. Always write to auth user metadata — this is reliable regardless of RLS/service-role
+        await supabase.auth.updateUser({ data: { onboarding_completed: true } });
         await refetch(); // sync useUser cache before navigating to a guarded route
       }
 

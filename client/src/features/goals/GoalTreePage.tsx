@@ -66,6 +66,7 @@ const GoalTreePage: React.FC = () => {
   const navigate = useNavigate();
 
   const [treeData, setTreeData] = useState<FrontendGoalNode[]>([]);
+  const [domainProficiency, setDomainProficiency] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [memberSince, setMemberSince] = useState<string | undefined>(undefined);
@@ -114,6 +115,9 @@ const GoalTreePage: React.FC = () => {
         const goalTree = response.data;
         const allNodes: any[] = goalTree.nodes || [];
         setTreeData(buildFrontendTree(allNodes));
+        if (goalTree.domain_proficiency && typeof goalTree.domain_proficiency === 'object') {
+          setDomainProficiency(goalTree.domain_proficiency as Record<string, number>);
+        }
 
         // Load bets + points for own tree
         if (!id || id === authUser?.id) {
@@ -349,6 +353,7 @@ const GoalTreePage: React.FC = () => {
         <Box sx={{ overflowX: 'auto', width: '100%' }}>
           <GoalTreeVisualization
             rootNodes={treeData}
+            domainProficiency={domainProficiency}
             memberSince={memberSince}
             onNodeClick={isOwnTree ? handleNodeClick : undefined}
           />

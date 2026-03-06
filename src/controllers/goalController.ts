@@ -7,6 +7,7 @@ import { createAchievementFromGoal } from './achievementController';
 import { EmbeddingService } from '../services/EmbeddingService';
 import logger from '../utils/logger';
 import { catchAsync, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors';
+import { bumpDomainProficiency } from '../utils/proficiency';
 
 const embeddingService = new EmbeddingService();
 
@@ -90,7 +91,13 @@ export const getGoalTree = catchAsync(async (req: Request, res: Response, next: 
 
   // Respond with the fetched goal tree or a 404 if not found
   if (data) {
-    res.json(data);
+    // Also return domain_proficiency from profile so the frontend can display it
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('domain_proficiency')
+      .eq('id', userId)
+      .single();
+    res.json({ ...data, domain_proficiency: (profile?.domain_proficiency as Record<string, number>) ?? {} });
   } else {
     throw new NotFoundError('Goal tree not found');
   }
@@ -206,6 +213,14 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       });
     }
     logger.info(`Awarded ${totalCompletionPoints} PP to ${userId} for ${newlyRewardedNodes.length} goal completion(s)`);
+  }
+  // Award domain proficiency for newly completed root-level goals (+1% per completion)
+  for (const reward of newlyRewardedNodes) {
+    const completedNode = nodes.find((n: any) => n.id === reward.node_id);
+    const domain: string | undefined = completedNode?.domain;
+    if (domain) {
+      bumpDomainProficiency(userId, domain, 1.0).catch(() => {});
+    }
   }
   // --- End Achievement Creation Logic ---
 

@@ -32,6 +32,9 @@ export const useUser = () => {
         .eq('id', authUser.id)
         .single();
 
+      // Auth metadata fallback — written by GoalSelectionPage on completion
+      const metaOnboarded = authUser.user_metadata?.onboarding_completed === true;
+
       if (profileError || !profile) {
         // Profile row doesn't exist yet (new user / trigger not set up / race condition).
         // Return a stub instead of null so PrivateRoute redirects to /onboarding
@@ -43,7 +46,7 @@ export const useUser = () => {
           age: 0,
           bio: '',
           goalTree: [],
-          onboarding_completed: false,
+          onboarding_completed: metaOnboarded,
         });
         return;
       }
@@ -56,7 +59,8 @@ export const useUser = () => {
         bio: profile.bio,
         avatarUrl: profile.avatar_url,
         is_premium: profile.is_premium,
-        onboarding_completed: profile.onboarding_completed,
+        // If profiles row says false but auth metadata says true, trust metadata
+        onboarding_completed: profile.onboarding_completed || metaOnboarded,
         goal_tree_edit_count: profile.goal_tree_edit_count ?? 0,
         current_streak: profile.current_streak ?? 0,
         last_activity_date: profile.last_activity_date ?? undefined,
