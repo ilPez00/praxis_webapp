@@ -5,6 +5,7 @@ import {
   banUser, unbanUser, grantPoints, resetTreeEdits, getUserDetail,
   listGroups, getAdminStats, getNetworkData, createChallenge, listChallenges,
   listAllServices, adminDeleteService, listAllCoaches, decayPoints, promoteUser,
+  leaderboardBonus,
 } from '../controllers/adminController';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -14,7 +15,8 @@ const router = Router();
 // ── curl-only routes (X-Admin-Secret header) ─────────────────────────────────
 router.post('/seed-demo-users', seedDemoUsers);
 router.delete('/delete-demo-users', deleteDemoUsers);
-router.post('/decay-points', decayPoints); // cron or admin-secret — weekly economy balancer
+router.post('/decay-points', decayPoints);             // cron or admin-secret — weekly economy balancer
+router.post('/cron/leaderboard-bonus', leaderboardBonus); // daily cron — top 100 PP awards
 
 // ── Webapp admin routes (JWT + is_admin check) ────────────────────────────────
 router.get('/users', authenticateToken, requireAdmin, listAllUsers);

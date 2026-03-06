@@ -51,6 +51,7 @@ interface Profile {
   age: number;
   bio: string;
   avatar_url: string;
+  banner_url?: string | null;
   onboarding_completed: boolean;
   is_premium?: boolean;
   sex?: string;
@@ -175,6 +176,8 @@ const ProfilePage: React.FC = () => {
   });
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState<string | null>(null);
+  const [selectedBannerFile, setSelectedBannerFile] = useState<File | null>(null);
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null);
 
   // Friends
   const [friends, setFriends] = useState<any[]>([]);
@@ -211,6 +214,7 @@ const ProfilePage: React.FC = () => {
           social_telegram: data.social_telegram || '',
         });
         setProfilePhotoPreviewUrl(data.avatar_url);
+        setBannerPreviewUrl(data.banner_url ?? null);
       } catch (err: any) {
         toast.error(`Failed to fetch profile: ${err.message}`);
       } finally {
@@ -225,6 +229,14 @@ const ProfilePage: React.FC = () => {
       const file = event.target.files[0];
       setSelectedAvatarFile(file);
       setProfilePhotoPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleBannerChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setSelectedBannerFile(file);
+      setBannerPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -268,6 +280,7 @@ const ProfilePage: React.FC = () => {
     if (!user) return;
     setLoading(true);
     let avatarUrl = profile?.avatar_url;
+    let bannerUrl = profile?.banner_url ?? null;
 
     if (selectedAvatarFile) {
       const fileExt = selectedAvatarFile.name.split('.').pop();
@@ -286,12 +299,27 @@ const ProfilePage: React.FC = () => {
       }
     }
 
+    if (selectedBannerFile) {
+      const fileExt = selectedBannerFile.name.split('.').pop();
+      const fileName = `banner-${user.id}-${Date.now()}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, selectedBannerFile, { cacheControl: '3600', upsert: true });
+      if (uploadError) {
+        toast.error('Banner upload failed. Other changes will still save.');
+      } else {
+        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(uploadData.path);
+        bannerUrl = publicUrlData.publicUrl;
+      }
+    }
+
     const { data, error: updateError } = await supabase
       .from('profiles')
       .update({
         name: editedName,
         bio: editedBio,
         avatar_url: avatarUrl,
+        banner_url: bannerUrl,
         age: editedAge ? parseInt(editedAge, 10) : null,
         sex: editedSex || null,
         location: editedLocation || null,
@@ -348,6 +376,8 @@ const ProfilePage: React.FC = () => {
       });
       setProfilePhotoPreviewUrl(profile.avatar_url);
       setSelectedAvatarFile(null);
+      setBannerPreviewUrl(profile.banner_url ?? null);
+      setSelectedBannerFile(null);
     }
     setIsEditing(false);
   };
@@ -394,11 +424,52 @@ const ProfilePage: React.FC = () => {
       {/* Hero card */}
       <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ overflow: 'hidden', mb: 3 }}>
         {/* Banner strip */}
-        <Box sx={{
-          height: 120,
-          background: 'linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(139,92,246,0.25) 100%)',
-          position: 'relative',
-        }} />
+        <Box
+          onClick={() => isOwnProfile && isEditing && document.getElementById('banner-upload-button')?.click()}
+          sx={{
+            height: 140,
+            position: 'relative',
+            overflow: 'hidden',
+            cursor: isOwnProfile && isEditing ? 'pointer' : 'default',
+            background: bannerPreviewUrl
+              ? 'none'
+              : 'linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(139,92,246,0.25) 100%)',
+            ...(bannerPreviewUrl && {
+              backgroundImage: `url(${bannerPreviewUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }),
+          }}
+        >
+          {/* Dim overlay for readability */}
+          {bannerPreviewUrl && (
+            <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.35)' }} />
+          )}
+          {/* Edit hint */}
+          {isOwnProfile && isEditing && (
+            <>
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="banner-upload-button"
+                type="file"
+                onChange={handleBannerChange}
+              />
+              <Box sx={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+                bgcolor: 'rgba(0,0,0,0.0)',
+                transition: 'background-color 0.2s',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.35)' },
+              }}>
+                <CameraAltIcon sx={{ color: 'rgba(255,255,255,0.7)', fontSize: 22 }} />
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                  Change banner
+                </Typography>
+              </Box>
+            </>
+          )}
+        </Box>
 
         {/* Avatar + info */}
         <Box sx={{ px: 4, pb: 3 }}>

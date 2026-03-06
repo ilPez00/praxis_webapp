@@ -726,3 +726,50 @@ export const promoteUser = catchAsync(async (req: Request, res: Response) => {
   logger.info(`Admin ${adminId} set role=${role} for user ${id}`);
   res.json({ success: true, role });
 });
+
+/**
+ * POST /admin/cron/leaderboard-bonus
+ * Daily leaderboard bonus: #1 +500 PP, top 10 +200 PP, top 100 +50 PP.
+ * Security: X-Admin-Secret header (for cron service) or JWT admin.
+ */
+export const leaderboardBonus = catchAsync(async (req: Request, res: Response) => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
+  const isJwtAdmin = !!req.user?.id;
+  if (!isSecretAuth && !isJwtAdmin) throw new UnauthorizedError('Admin authentication required.');
+
+  // Fetch top 100 by praxis_points
+  const { data: top, error } = await supabase
+    .from('profiles')
+    .select('id, praxis_points')
+    .order('praxis_points', { ascending: false })
+    .limit(100);
+
+  if (error) throw new InternalServerError('Failed to fetch leaderboard.');
+
+  const awarded: { id: string; rank: number; bonus: number }[] = [];
+
+  for (let i = 0; i < (top ?? []).length; i++) {
+    const profile = top![i];
+    let bonus = 50; // top 100
+    if (i === 0) bonus = 500;      // #1
+    else if (i < 10) bonus = 200;  // top 10
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ praxis_points: (profile.praxis_points ?? 0) + bonus })
+      .eq('id', profile.id);
+
+    if (!updateError) awarded.push({ id: profile.id, rank: i + 1, bonus });
+    else logger.warn(`Leaderboard bonus failed for rank ${i + 1}: ${updateError.message}`);
+  }
+
+  const report = {
+    ran_at: new Date().toISOString(),
+    awarded_count: awarded.length,
+    breakdown: { first: 500, top10: 200, top100: 50 },
+    recipients: awarded,
+  };
+  logger.info(`[LeaderboardBonus] Awarded PP to ${awarded.length} users`);
+  return res.json(report);
+});

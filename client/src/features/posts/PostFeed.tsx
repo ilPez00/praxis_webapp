@@ -532,7 +532,11 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
 
                 {/* Title (board posts) */}
                 {post.title && (
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.3 }}>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.3, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                    onClick={() => navigate(`/posts/${post.id}`)}
+                  >
                     {post.title}
                   </Typography>
                 )}

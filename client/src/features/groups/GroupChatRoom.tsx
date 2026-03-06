@@ -552,12 +552,16 @@ const GroupChatRoom: React.FC = () => {
         <List dense>
           {members.map((m, i) => {
             const name = m.profiles?.name || m.user_id.slice(0, 8);
+            const avatarUrl = m.profiles?.avatar_url ?? undefined;
             const isMe = m.user_id === currentUserId;
             return (
               <React.Fragment key={m.user_id}>
-                <ListItem>
+                <ListItem
+                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' }, borderRadius: 1 }}
+                  onClick={() => { setMemberDrawerOpen(false); navigate('/profile/' + m.user_id); }}
+                >
                   <ListItemAvatar>
-                    <Avatar sx={{ width: 36, height: 36, fontSize: '0.9rem' }}>{name.charAt(0)}</Avatar>
+                    <Avatar src={avatarUrl} sx={{ width: 36, height: 36, fontSize: '0.9rem' }}>{name.charAt(0)}</Avatar>
                   </ListItemAvatar>
                   <ListItemText primary={isMe ? `${name} (you)` : name} primaryTypographyProps={{ fontWeight: isMe ? 700 : 400, fontSize: '0.9rem' }} />
                 </ListItem>
