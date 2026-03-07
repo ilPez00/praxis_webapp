@@ -53,6 +53,7 @@ import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import BettingPage from '../betting/BettingPage';
+import ChallengesPage from '../challenges/ChallengesPage';
 
 interface CatalogueItem {
   item_type: string;
@@ -467,6 +468,7 @@ const MarketplacePage: React.FC = () => {
         <Tab icon={<CasinoIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Betting" />
         <Tab label="Shop" />
         <Tab label="Offers" />
+        <Tab icon={<EmojiEventsIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Challenges" />
       </Tabs>
 
       {/* ── Tab 0: Buy Pro ── */}
@@ -823,6 +825,9 @@ const MarketplacePage: React.FC = () => {
 
       {/* ── Tab 3: Offers ── */}
       {tab === 3 && <OffersPanel currentUserId={user?.id} />}
+
+      {/* ── Tab 4: Challenges ── */}
+      {tab === 4 && <ChallengesPage />}
     </Box>
   );
 };
