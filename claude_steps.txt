@@ -971,8 +971,75 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 ### TypeScript: ✅ 0 errors (backend + frontend)
 ### Commit: `54f6677`
 
-## Next steps:
+## Next steps (after session 51):
 - [ ] Run migrations §29 + §30 + privacy columns in Supabase SQL Editor
 - [ ] Get Google Maps API key and set VITE_GOOGLE_MAPS_KEY in Vercel (optional, for embedded map previews)
 - [ ] Complete Stripe production setup (see docs/manual_actions.txt)
+- [ ] Push to Railway + Vercel deploy
+
+---
+
+## Session 52 (2026-03-07) — P2P Duels / Challenges Feed
+
+### Overview
+Full P2P duel system: users can bet PP against each other on goal challenges, with an open feed sorted by matching relevance.
+
+### New: duels table (§31 migration)
+```sql
+CREATE TABLE IF NOT EXISTS public.duels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  opponent_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL,
+  stake_pp INT NOT NULL DEFAULT 50,
+  deadline_days INT NOT NULL DEFAULT 7,
+  deadline DATE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  won_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  creator_claimed BOOLEAN NOT NULL DEFAULT false,
+  opponent_claimed BOOLEAN NOT NULL DEFAULT false,
+  creator_claimed_at TIMESTAMPTZ,
+  opponent_claimed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- RLS: SELECT USING (true), INSERT WITH CHECK creator, UPDATE USING creator OR opponent
+```
+**Must run §31 in Supabase SQL Editor.**
+
+### Backend: duelController.ts + duelRoutes.ts
+- `listDuels`: fetches open duels, computes per-duel relevance score (50% domain match vs viewer's goal tree + 30% freshness decay `e^(-hours/72)` + 20% stake interest), sorts descending
+- `myDuels`: returns all duels where user is creator or opponent
+- `createDuel`: deducts stake PP (blocks if insufficient), sets status `open` (public) or `pending` (direct @username)
+- `acceptDuel`: opponent deducts their stake, status → active; push notification to creator
+- `declineDuel`: status → declined, full refund to creator
+- `cancelDuel`: creator-only before acceptance, full refund
+- `claimDuel`: marks `creator_claimed` / `opponent_claimed`; when both set, tiebreaks by `claimed_at` timestamp (first claimer wins)
+- `concedeDuel`: immediate opponent win
+- `resolveDuel` + `awardWinner`: winner gets `2 × stake × 0.95` (5% house fee); both parties get push notification
+- Routes registered at `GET /api/duels`, `GET /api/duels/mine`, `POST /api/duels`, `POST /api/duels/:id/{accept,decline,cancel,claim,concede}`
+
+### Frontend: ChallengesPage.tsx
+- **Open Feed tab**: category filter chips (10 domains, color-coded), DuelCard grid sorted by relevance
+- **My Duels tab**: groups by pending / active / history
+- **DuelCard**: status chip, stake/pot/winnings display, VS layout (creator avatar ↔ opponent or "Open slot"), claim indicators, contextual action buttons:
+  - Open + not creator → "Accept (N PP)"
+  - Creator + open/pending → "Cancel"
+  - Opponent + pending → "Accept" + "Decline"
+  - Active + unclaimed → "I won!" + "Concede"
+- **Create dialog**: title, description, category select, PP stake Slider (10–500), duration Slider (1–30d), optional @username for direct challenge
+- `lookupOpponent()`: queries profiles by `username` to resolve handle → UUID
+
+### Navbar + routes
+- Added `Challenges` as 4th primary nav link (desktop: Dashboard | Matches | Chat | **Challenges**)
+- Added to mobile drawer with `EmojiEventsIcon`
+- `/challenges` route lazy-loaded in routes.tsx
+
+### TypeScript: 0 errors (backend + frontend)
+### Commit: `9e2d98a`
+
+## Next steps:
+- [ ] Run §31 migration (duels table) in Supabase SQL Editor
+- [ ] Run §29 + §30 + privacy columns if not already done
 - [ ] Push to Railway + Vercel deploy
