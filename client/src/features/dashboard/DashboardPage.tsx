@@ -14,6 +14,7 @@ import { DOMAIN_COLORS } from '../../types/goal';
 import CheckInWidget from './components/CheckInWidget';
 import BalanceWidget from './components/BalanceWidget';
 import AccountabilityNetworkWidget from './components/AccountabilityNetworkWidget';
+import GoalProgressWidget from './components/GoalProgressWidget';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
@@ -257,6 +258,45 @@ const DashboardPage: React.FC = () => {
           );
         })()}
 
+        {/* Daily Axiom micro-message — free tier, deterministic (no API call) */}
+        {(() => {
+          const streak = localStreak ?? (user?.current_streak ?? 0);
+          const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+          const pools = {
+            elite: [
+              `${streak} days. Most people quit before they even start. You didn't.`,
+              `You've built something most people only talk about. Keep compounding.`,
+              `The gap between you and where you started is bigger than you think.`,
+            ],
+            veteran: [
+              `Two weeks in. This is where most people fall off. You haven't.`,
+              `Consistency is a skill. You're getting very good at it.`,
+              `Your streak is sending a message to your future self.`,
+            ],
+            active: [
+              `Every day you show up is a vote for the person you're becoming.`,
+              `Progress isn't always visible. But it's always real.`,
+              `Small moves, compounded. That's the whole game.`,
+            ],
+            new: [
+              `Day ${streak > 0 ? streak : 1}. The journey starts with one step.`,
+              `Something that gets measured gets better. You're here. That counts.`,
+              `Your goals are alive as long as you keep showing up.`,
+            ],
+          };
+          const pool = streak >= 30 ? pools.elite : streak >= 14 ? pools.veteran : streak >= 3 ? pools.active : pools.new;
+          const msg = pool[dayOfYear % pool.length];
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, px: 0.5 }}>
+              <Box sx={{ width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)', fontSize: '0.7rem', flexShrink: 0 }}>⚡</Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', lineHeight: 1.4 }}>
+                <Box component="span" sx={{ fontWeight: 700, color: 'rgba(245,158,11,0.8)', mr: 0.5 }}>Axiom:</Box>
+                {msg}
+              </Typography>
+            </Box>
+          );
+        })()}
+
         {/* Weekly Narrative — Axiom's "this week" message (Pro only, collapsible) */}
         {weeklyNarrative && (
           <GlassCard sx={{
@@ -356,6 +396,23 @@ const DashboardPage: React.FC = () => {
             </Grid>
           </GlassCard>
         </Box>
+
+        {/* Quick goal progress updates */}
+        {currentUserId && hasGoals && (
+          <GoalProgressWidget
+            userId={currentUserId}
+            nodes={allNodes}
+            onProgressUpdate={(nodeId, newProgress) => {
+              setGoalTree(prev => {
+                if (!prev) return prev;
+                const updatedNodes = prev.nodes.map((n: any) =>
+                  n.id === nodeId ? { ...n, progress: newProgress } : n
+                );
+                return { ...prev, nodes: updatedNodes };
+              });
+            }}
+          />
+        )}
 
         {/* Accountability Network — friends + their check-in status */}
         {currentUserId && <AccountabilityNetworkWidget userId={currentUserId} />}

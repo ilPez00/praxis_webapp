@@ -791,6 +791,25 @@ const ChatRoom: React.FC = () => {
                 />
               )}
             </Box>
+            {(() => {
+              // Response timer: find last message from partner, show if > 30 min ago
+              const lastPartnerMsg = [...messages]
+                .filter(m => (m.sender_id ?? m.senderId) !== currentUserId && m.message_type !== 'system')
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+              if (!lastPartnerMsg) return null;
+              const minsAgo = Math.floor((Date.now() - new Date(lastPartnerMsg.created_at).getTime()) / 60000);
+              if (minsAgo < 30) return null;
+              const label = minsAgo < 60
+                ? `Last replied ${minsAgo}m ago`
+                : minsAgo < 1440
+                ? `Last replied ${Math.floor(minsAgo / 60)}h ago`
+                : `Last replied ${Math.floor(minsAgo / 1440)}d ago`;
+              return (
+                <Typography variant="caption" sx={{ color: '#F59E0B', fontSize: '0.65rem', fontWeight: 600, lineHeight: 1 }}>
+                  {label}
+                </Typography>
+              );
+            })()}
             {receiverRootGoalsSummary && (
               <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <AccountTreeIcon sx={{ fontSize: 11 }} />

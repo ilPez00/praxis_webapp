@@ -80,6 +80,18 @@ const CheckInWidget: React.FC<Props> = ({
       if (!alreadyCheckedIn) {
         setCheckedIn(true);
         onCheckIn(streak, totalPoints);
+
+        // Milestone celebration toasts
+        const MILESTONES: Record<number, string> = {
+          7:   'One week straight! You\'re building real discipline. 🏆',
+          30:  'One month! You\'re in the top 5% of all users. 🔥',
+          100: 'ONE HUNDRED DAYS. Legendary. Praxis is part of you now. ⚡',
+          365: 'One full year. You are unstoppable. 🌟',
+        };
+        if (MILESTONES[streak]) {
+          setTimeout(() => toast.success(MILESTONES[streak], { duration: 6000, icon: '🎉' }), 600);
+        }
+
         if (shieldConsumed) {
           toast.success(`Streak shield absorbed your missed day! Streak: ${streak}d`, { icon: '🛡️' });
         } else {

@@ -15,8 +15,6 @@ import {
   Button,
   Tooltip,
 } from '@mui/material';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -112,6 +110,48 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
   const [submitting, setSubmitting] = useState(false);
   const [postRef, setPostRef] = useState<Reference | null>(null);
   const [refPickerOpen, setRefPickerOpen] = useState(false);
+
+  // Emoji reactions — stored client-side (emoji choice) backed by server like count
+  const REACTIONS = ['❤️', '🔥', '💪', '✅'] as const;
+  type Reaction = typeof REACTIONS[number];
+  const [userReactions, setUserReactions] = useState<Record<string, Reaction>>(() => {
+    const stored: Record<string, Reaction> = {};
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('praxis_react_')) {
+        const postId = key.replace('praxis_react_', '');
+        stored[postId] = localStorage.getItem(key) as Reaction;
+      }
+    }
+    return stored;
+  });
+
+  const handleReact = async (postId: string, emoji: Reaction) => {
+    if (!user) return;
+    const current = userReactions[postId];
+    const isSame = current === emoji;
+
+    if (isSame) {
+      // toggle off
+      const newReactions = { ...userReactions };
+      delete newReactions[postId];
+      setUserReactions(newReactions);
+      localStorage.removeItem(`praxis_react_${postId}`);
+    } else {
+      // switch or set new reaction
+      setUserReactions(prev => ({ ...prev, [postId]: emoji }));
+      localStorage.setItem(`praxis_react_${postId}`, emoji);
+    }
+
+    // If no previous reaction at all → like; if removing → unlike; if switching → no toggle needed
+    const wasLiked = posts.find(p => p.id === postId)?.user_liked;
+    if (!wasLiked && !isSame) {
+      // wasn't liked → like it
+      handleLike(postId);
+    } else if (wasLiked && isSame) {
+      // removing reaction → unlike
+      handleLike(postId);
+    }
+  };
 
   // Per-post comment state
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
@@ -577,11 +617,35 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                 )}
 
                 {/* Actions */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                  <IconButton size="small" onClick={() => handleLike(post.id)} sx={{ p: 0.5, color: post.user_liked ? '#EF4444' : 'text.disabled' }}>
-                    {post.user_liked ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
-                  </IconButton>
-                  <Typography variant="caption" sx={{ mr: 1.5, fontWeight: 600 }}>{post.like_count}</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+                  {/* Emoji reaction bar */}
+                  {REACTIONS.map(emoji => {
+                    const isSelected = userReactions[post.id] === emoji;
+                    return (
+                      <Tooltip key={emoji} title={isSelected ? 'Remove reaction' : `React with ${emoji}`}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleReact(post.id, emoji)}
+                          sx={{
+                            p: '3px', fontSize: '1rem', lineHeight: 1,
+                            borderRadius: '8px',
+                            border: isSelected ? '1px solid rgba(245,158,11,0.5)' : '1px solid transparent',
+                            bgcolor: isSelected ? 'rgba(245,158,11,0.08)' : 'transparent',
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' },
+                          }}
+                        >
+                          {emoji}
+                        </IconButton>
+                      </Tooltip>
+                    );
+                  })}
+                  {post.like_count > 0 && (
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', ml: 0.5 }}>
+                      {post.like_count}
+                    </Typography>
+                  )}
+
+                  <Box sx={{ flexGrow: 1 }} />
 
                   <IconButton size="small" onClick={() => toggleComments(post.id)} sx={{ p: 0.5, color: expandedComments.has(post.id) ? 'primary.main' : 'text.disabled' }}>
                     <ChatBubbleOutlineIcon fontSize="small" />
