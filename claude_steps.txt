@@ -1358,3 +1358,29 @@ CREATE TABLE IF NOT EXISTS public.duels (
 - [ ] Run §31 migration (duels table) in Supabase SQL Editor
 - [ ] Run §29 + §30 + privacy columns if not already done
 - [ ] Push to Railway + Vercel deploy
+
+---
+
+## Session 53 (2026-03-07) — Audit + Engagement Features
+
+### Issues 1–10 (Claude audit — CEO/sociologist/designer/UX/IT lens):
+- **N+1 fix**: matchingController batch-fetches profiles + goal_trees in 2 queries; MatchesPage simplified to consume enriched response
+- **Commitments rebrand**: BettingPage, MarketplacePage, Navbar, routes all renamed "Betting" → "Commitments" / "Pledges" / "Fulfilled" / "Missed"
+- **GettingStartedPage**: shown when onboarding done but goal tree empty — 3-step guide (build tree → see matches → chat)
+- **Axiom rebrand**: AICoachingService, aiCoachingController, AICoachPage, BalanceWidget — "Master Roshi" → "Axiom" everywhere
+- **Homepage social proof**: live stats strip (userCount, goalsTracked, checkInsThisWeek) from GET /users/stats/public + TestimonialStrip component
+- **Dashboard progressive disclosure**: weekly narrative collapsible (default collapsed), TrackerWidget removed, challenges sliced to 2
+- **ErrorBoundary fallback prop**: optional fallback (incl. null for silent) on CheckInWidget + BalanceWidget
+- **Navbar More dropdown**: secondary items (Challenges/Commitments/Services/Marketplace/Leaderboard/Analytics) in desktop menu + mobile section
+- **axiosInstance.ts**: centralized axios with JWT interceptor + 401 refresh+retry
+- **Cold-start invite links**: SignupForm reads ?domain= + ?ref= params, shows referral banner; MatchesPage "Invite a friend" shares goal-domain URL
+- **Profile completion widget**: on Dashboard, shows 5 items (photo/bio/occupation/goals/checkin) with gradient progress bar; auto-hides at 100%
+- **AccountabilityNetworkWidget**: Dashboard widget showing friends sorted by check-in status (green/amber/red); nudge button per friend
+
+### Engagement features:
+- **Goal milestone auto-posts**: when a node crosses 25/50/75/100% for the first time, auto-creates a feed post; deduped via marketplace_transactions (item_type='milestone_post')
+- **Partner nudge**: POST /notifications/nudge/:targetId (rate-limited 1/day via DB check); ChatRoom shows amber bell icon when partner hasn't checked in today
+- **Matches badge**: pulsing amber dot on Matches nav link if not visited in 24h; clears on click via localStorage
+
+### TypeScript: ✅ 0 errors (backend + frontend)
+### Commits: b86b972, eb47ad9, fb71f1e
