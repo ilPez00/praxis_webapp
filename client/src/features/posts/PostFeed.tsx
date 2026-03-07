@@ -44,9 +44,7 @@ interface Post {
   context: string;
   reference: Reference | null;
   created_at: string;
-  like_count: number;
   comment_count: number;
-  user_liked: boolean;
 }
 
 interface PostComment {
@@ -149,6 +147,8 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
 
   // ---- Votes ----
 
+  const postIds = posts.map(p => p.id).join(',');
+
   useEffect(() => {
     if (!posts.length) return;
     (async () => {
@@ -166,11 +166,24 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
       results.forEach(([id, data]) => { map[id] = data; });
       setPostVotes(map);
     })();
-  }, [posts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postIds]);
 
   const handleVote = async (postId: string, value: 1 | -1) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { toast.error('Sign in to vote'); return; }
+
+    const previous = postVotes[postId] ?? { score: 0, userVote: 0 };
+    const currentVote = previous.userVote;
+    const currentScore = previous.score;
+
+    const optimistic =
+      currentVote === value
+        ? { userVote: 0, score: currentScore + (value === 1 ? -1 : 1) }
+        : { userVote: value, score: currentScore + value - currentVote };
+
+    setPostVotes(prev => ({ ...prev, [postId]: optimistic }));
+
     try {
       const res = await axios.post(
         `${API_URL}/posts/${postId}/vote`,
@@ -179,6 +192,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
       );
       setPostVotes(prev => ({ ...prev, [postId]: res.data }));
     } catch {
+      setPostVotes(prev => ({ ...prev, [postId]: previous }));
       toast.error('Vote failed');
     }
   };
