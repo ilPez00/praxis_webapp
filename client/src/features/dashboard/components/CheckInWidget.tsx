@@ -76,11 +76,15 @@ const CheckInWidget: React.FC<Props> = ({
       const { data: { session } } = await supabase.auth.getSession();
       const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
       const res = await axios.post(`${API_URL}/checkins`, { userId }, { headers });
-      const { alreadyCheckedIn, streak, totalPoints } = res.data;
+      const { alreadyCheckedIn, streak, totalPoints, shieldConsumed } = res.data;
       if (!alreadyCheckedIn) {
         setCheckedIn(true);
         onCheckIn(streak, totalPoints);
-        toast.success(`+10 points! Streak: ${streak} days 🔥`);
+        if (shieldConsumed) {
+          toast.success(`Streak shield absorbed your missed day! Streak: ${streak}d`, { icon: '🛡️' });
+        } else {
+          toast.success(`+10 points! Streak: ${streak} days 🔥`);
+        }
       } else {
         setCheckedIn(true);
         toast('Already checked in today!', { icon: '✅' });

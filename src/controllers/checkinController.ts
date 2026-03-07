@@ -8,14 +8,15 @@ import { catchAsync, NotFoundError } from '../utils/appErrors';
  */
 function computeStreakUpdate(
   lastActivityDate: string | null | undefined,
-  currentStreak: number
-): { current_streak: number; last_activity_date: string } {
+  currentStreak: number,
+  streakShield: boolean = false
+): { current_streak: number; last_activity_date: string; shield_consumed: boolean } {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString().slice(0, 10);
 
   if (!lastActivityDate) {
-    return { current_streak: 1, last_activity_date: todayStr };
+    return { current_streak: 1, last_activity_date: todayStr, shield_consumed: false };
   }
 
   const last = new Date(lastActivityDate);
@@ -23,11 +24,14 @@ function computeStreakUpdate(
   const diffDays = Math.round((today.getTime() - last.getTime()) / 86400000);
 
   if (diffDays === 0) {
-    return { current_streak: currentStreak, last_activity_date: todayStr };
+    return { current_streak: currentStreak, last_activity_date: todayStr, shield_consumed: false };
   } else if (diffDays === 1) {
-    return { current_streak: currentStreak + 1, last_activity_date: todayStr };
+    return { current_streak: currentStreak + 1, last_activity_date: todayStr, shield_consumed: false };
+  } else if (streakShield) {
+    // Shield absorbs the missed day — keep streak, consume shield
+    return { current_streak: currentStreak, last_activity_date: todayStr, shield_consumed: true };
   } else {
-    return { current_streak: 1, last_activity_date: todayStr };
+    return { current_streak: 1, last_activity_date: todayStr, shield_consumed: false };
   }
 }
 
@@ -45,7 +49,7 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   // Verify user exists
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, current_streak, last_activity_date, praxis_points')
+    .select('id, current_streak, last_activity_date, praxis_points, streak_shield')
     .eq('id', userId)
     .single();
 
@@ -71,10 +75,11 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
-  // Compute new streak
+  // Compute new streak (shield absorbs a missed day if active)
   const streakUpdate = computeStreakUpdate(
     profile.last_activity_date,
-    profile.current_streak ?? 0
+    profile.current_streak ?? 0,
+    profile.streak_shield ?? false
   );
 
   // Streak bonus: +20/day base, ×2 after 7 days, ×3 after 30 days
@@ -131,16 +136,16 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   const S = Math.min(streakUpdate.current_streak, 30) / 30;
   const reliabilityScore = 0.65 * C + 0.25 * V + 0.10 * S;
 
-  // Update profile
-  await supabase
-    .from('profiles')
-    .update({
-      current_streak: streakUpdate.current_streak,
-      last_activity_date: streakUpdate.last_activity_date,
-      praxis_points: newPoints,
-      reliability_score: reliabilityScore,
-    })
-    .eq('id', userId);
+  // Update profile (clear streak shield if it was consumed)
+  const profileUpdate: Record<string, unknown> = {
+    current_streak: streakUpdate.current_streak,
+    last_activity_date: streakUpdate.last_activity_date,
+    praxis_points: newPoints,
+    reliability_score: reliabilityScore,
+  };
+  if (streakUpdate.shield_consumed) profileUpdate.streak_shield = false;
+
+  await supabase.from('profiles').update(profileUpdate).eq('id', userId);
 
   return res.json({
     alreadyCheckedIn: false,
@@ -148,6 +153,7 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
     pointsAwarded,
     streakBonus,
     totalPoints: newPoints,
+    shieldConsumed: streakUpdate.shield_consumed,
   });
 });
 
