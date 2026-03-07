@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { Container, Box, Typography, Button, Stack, Chip } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import BoltIcon from '@mui/icons-material/Bolt';
+import { API_URL } from '../../lib/api';
+import TestimonialStrip from './TestimonialStrip';
 
 // Decorative floating orb — pure CSS animation, no dependencies
 const Orb: React.FC<{ color: string; size: number; top: string; left: string; delay?: string }> = ({
@@ -31,6 +33,15 @@ const Orb: React.FC<{ color: string; size: number; top: string; left: string; de
 );
 
 const HomePage: React.FC = () => {
+  const [stats, setStats] = useState<{ userCount: number; goalsTracked: number; checkInsThisWeek: number } | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/users/stats/public`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setStats(d); })
+      .catch(() => {});
+  }, []);
+
   return (
     <Box
       sx={{
@@ -149,19 +160,23 @@ const HomePage: React.FC = () => {
             </Button>
           </Stack>
 
-          {/* Social proof strip */}
-          <Stack
-            direction="row"
-            spacing={4}
-            justifyContent="center"
-            sx={{ mt: 8, opacity: 0.5 }}
-          >
-            {['Goal-Driven Matching', 'AI Coaching', 'Progress Tracking'].map((label) => (
-              <Typography key={label} variant="caption" sx={{ fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                {label}
-              </Typography>
-            ))}
-          </Stack>
+          {/* Live stats strip */}
+          {stats && (
+            <Stack direction="row" spacing={4} justifyContent="center" sx={{ mt: 8, flexWrap: 'wrap', gap: 3 }}>
+              {[
+                { value: stats.userCount.toLocaleString(), label: 'members' },
+                { value: stats.goalsTracked.toLocaleString(), label: 'goal trees built' },
+                { value: stats.checkInsThisWeek.toLocaleString(), label: 'check-ins this week' },
+              ].map((s) => (
+                <Box key={s.label} sx={{ textAlign: 'center' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', lineHeight: 1 }}>{s.value}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{s.label}</Typography>
+                </Box>
+              ))}
+            </Stack>
+          )}
+
+          <TestimonialStrip />
         </Box>
       </Container>
     </Box>

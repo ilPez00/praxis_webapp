@@ -16,13 +16,13 @@ function friendlyAiError(err: any): { message: string; code: string } {
   if (msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('too many requests')) {
     return {
       code: 'QUOTA_EXCEEDED',
-      message: "Roshi is resting — the AI service has hit its daily limit. He'll be back soon. (Upgrade the Gemini API plan to remove this limit.)",
+      message: "Axiom is resting — the AI service has hit its daily limit. He'll be back soon. (Upgrade the Gemini API plan to remove this limit.)",
     };
   }
   if (msg.includes('GEMINI_API_KEY') || msg.toLowerCase().includes('api key')) {
-    return { code: 'NOT_CONFIGURED', message: 'Master Roshi is offline — AI service not configured on this server.' };
+    return { code: 'NOT_CONFIGURED', message: 'Axiom is offline — AI service not configured on this server.' };
   }
-  return { code: 'UNKNOWN', message: 'Master Roshi is temporarily unavailable. Please try again in a moment.' };
+  return { code: 'UNKNOWN', message: 'Axiom is temporarily unavailable. Please try again in a moment.' };
 }
 
 // ---------------------------------------------------------------------------
@@ -208,7 +208,7 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
 
   if (!aiCoachingService.isConfigured) {
     return res.status(503).json({
-      message: 'Master Roshi is offline — the AI service is not configured on this server. Please set GEMINI_API_KEY on Railway.',
+      message: 'Axiom is offline — the AI service is not configured on this server. Please set GEMINI_API_KEY on Railway.',
     });
   }
 
@@ -351,7 +351,7 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
 
   if (!aiCoachingService.isConfigured) {
     return res.status(503).json({
-      message: 'Master Roshi is offline — the AI service is not configured on this server.',
+      message: 'Axiom is offline — the AI service is not configured on this server.',
     });
   }
 

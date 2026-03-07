@@ -319,3 +319,23 @@ export const resetMyGoals = catchAsync(async (req: Request, res: Response, _next
 
   res.json({ success: true, message: 'Goal tree reset. You can start fresh.' });
 });
+
+// ---------------------------------------------------------------------------
+// Public stats — no auth required, used by HomePage social proof
+// GET /users/stats/public
+// ---------------------------------------------------------------------------
+export const getPublicStats = catchAsync(async (_req: Request, res: Response, _next: NextFunction) => {
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [profilesRes, treesRes, checkinsRes] = await Promise.allSettled([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('goal_trees').select('userId', { count: 'exact', head: true }),
+    supabase.from('checkins').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
+  ]);
+
+  res.json({
+    userCount: profilesRes.status === 'fulfilled' ? (profilesRes.value.count ?? 0) : 0,
+    goalsTracked: treesRes.status === 'fulfilled' ? (treesRes.value.count ?? 0) : 0,
+    checkInsThisWeek: checkinsRes.status === 'fulfilled' ? (checkinsRes.value.count ?? 0) : 0,
+  });
+});

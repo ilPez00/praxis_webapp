@@ -9,11 +9,13 @@ import {
   getUserPercentile,
   deleteMyAccount,
   resetMyGoals,
+  getPublicStats,
 } from '../controllers/userController';
 import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = Router();
 
+router.get('/stats/public', getPublicStats);
 router.post('/complete-onboarding', completeOnboarding);
 router.get('/leaderboard', getLeaderboard);
 router.get('/nearby', getNearbyUsers);

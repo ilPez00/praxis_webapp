@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import {
@@ -12,9 +12,11 @@ import {
   Link as MuiLink,
   Alert,
   Divider,
+  Chip,
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import GoogleIcon from '@mui/icons-material/Google';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const SignupForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -25,6 +27,9 @@ const SignupForm: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const referralDomain = searchParams.get('domain');
+  const referralCode = searchParams.get('ref');
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +37,7 @@ const SignupForm: React.FC = () => {
     try {
       const response = await axios.post(`${API_URL}/auth/signup`, {
         email, password, name, age: parseInt(age), bio,
+        referralCode: referralCode ?? undefined,
       });
       setIsError(false);
       setMessage(response.data.message);
@@ -79,6 +85,26 @@ const SignupForm: React.FC = () => {
         overflowY: 'auto',
       }}>
         <Box sx={{ width: '100%', maxWidth: 400 }}>
+          {/* Goal-aligned invite banner */}
+          {referralDomain && (
+            <Box sx={{
+              mb: 3, p: 2, borderRadius: '12px',
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(139,92,246,0.06))',
+              border: '1px solid rgba(245,158,11,0.25)',
+              display: 'flex', alignItems: 'center', gap: 1.5,
+            }}>
+              <AutoAwesomeIcon sx={{ color: '#F59E0B', fontSize: 20, flexShrink: 0 }} />
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
+                  Your friend is working on{' '}
+                  <Chip label={referralDomain} size="small" sx={{ bgcolor: 'rgba(245,158,11,0.15)', color: '#F59E0B', fontWeight: 700, fontSize: '0.72rem', height: 20 }} />
+                  {' '}goals
+                </Typography>
+                <Typography variant="caption" color="text.secondary">Join them on Praxis and hold each other accountable.</Typography>
+              </Box>
+            </Box>
+          )}
+
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>Create account</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
             Start your goal-aligned journey today.

@@ -606,6 +606,23 @@ const MatchesPage: React.FC = () => {
             <Button variant="contained" onClick={() => navigate(`/goals/${user?.id}`)} sx={{ borderRadius: '10px', px: 4 }}>
               Build my goal tree
             </Button>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                const domain = allDisplayed[0]?.domains?.[0] ?? selectedDomain ?? '';
+                const ref = user?.id ?? '';
+                const url = `${window.location.origin}/signup?ref=${ref}${domain ? `&domain=${encodeURIComponent(domain)}` : ''}`;
+                const text = `I'm tracking my ${domain || 'goals'} on Praxis — join me: ${url}`;
+                if (navigator.share) {
+                  navigator.share({ title: 'Join me on Praxis', text, url }).catch(() => {});
+                } else {
+                  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                }
+              }}
+              sx={{ borderRadius: '10px', px: 3, borderColor: '#10B981', color: '#10B981' }}
+            >
+              Invite a friend →
+            </Button>
             {!user?.is_premium && (
               <Button variant="outlined" onClick={() => navigate('/upgrade')} sx={{ borderRadius: '10px', px: 3, borderColor: '#8B5CF6', color: '#8B5CF6' }}>
                 Upgrade for more matches

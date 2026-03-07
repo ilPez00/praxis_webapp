@@ -67,7 +67,7 @@ const BalanceWidget: React.FC<Props> = ({ nodes, streak, onTakeZenDay }) => {
               </Typography>
               <Chip
                 icon={<WarningAmberIcon sx={{ fontSize: '14px !important' }} />}
-                label="Master Roshi"
+                label="Axiom"
                 size="small"
                 sx={{ bgcolor: 'rgba(139,92,246,0.12)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.3)', fontWeight: 700, fontSize: '0.65rem' }}
               />

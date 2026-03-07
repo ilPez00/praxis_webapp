@@ -1,5 +1,5 @@
 /**
- * AICoachPage — Master Roshi AI coaching interface.
+ * AICoachPage — Axiom AI coaching interface (formerly Master Roshi).
  *
  * Load order:
  *  1. GET /ai-coaching/brief   — instant cached brief (no spinner if exists)
@@ -269,7 +269,7 @@ const AICoachPage: React.FC = () => {
           </Avatar>
           <LockIcon sx={{ color: 'primary.main', fontSize: 28, mb: 1 }} />
           <Typography variant="h5" sx={{ fontWeight: 900, mb: 1, letterSpacing: '-0.02em' }}>
-            Master Roshi is Pro-only
+            Axiom is Pro-only
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 320, mx: 'auto' }}>
             Unlock AI-powered coaching, personalised strategies, and real-time Q&A with a Pro subscription.
@@ -288,7 +288,7 @@ const AICoachPage: React.FC = () => {
             Upgrade to Pro
           </Button>
         </Box>
-        <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} featureName="Master Roshi AI Coaching" />
+        <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} featureName="Axiom AI Coaching" />
       </Container>
     );
   }
@@ -309,7 +309,7 @@ const AICoachPage: React.FC = () => {
           }}>
             🥋
           </Avatar>
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Master Roshi is thinking…</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Axiom is thinking…</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Reviewing your goals, progress, and network.
           </Typography>
@@ -339,7 +339,7 @@ const AICoachPage: React.FC = () => {
             🥋
           </Avatar>
           <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>
-            {isQuota ? 'Roshi is resting' : 'Roshi is unavailable'}
+            {isQuota ? 'Axiom is resting' : 'Axiom is unavailable'}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 340, mx: 'auto' }}>
             {isQuota
@@ -376,7 +376,7 @@ const AICoachPage: React.FC = () => {
             🥋
           </Avatar>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>Master Roshi</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>Axiom</Typography>
             {generatedAt && (
               <Typography variant="caption" color="text.disabled">
                 Updated {formatAge(generatedAt)} · auto-refreshes when you post or edit your profile
@@ -404,7 +404,7 @@ const AICoachPage: React.FC = () => {
           background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(139,92,246,0.06) 100%)',
           border: '1px solid rgba(245,158,11,0.2)',
         }}>
-          <SectionHeader icon={<Box sx={{ fontSize: '1.1rem' }}>🥋</Box>} label="Roshi's Take" />
+          <SectionHeader icon={<Box sx={{ fontSize: '1.1rem' }}>🥋</Box>} label="Axiom's Take" />
           <Typography variant="body1" sx={{ lineHeight: 1.9, color: 'text.primary' }}>
             {report.motivation}
           </Typography>
@@ -468,7 +468,7 @@ const AICoachPage: React.FC = () => {
             })}
             {(report.strategy ?? []).length === 0 && (
               <Typography variant="body2" color="text.secondary">
-                No goals yet — set up your goal tree and Roshi will map a strategy for each one.
+                No goals yet — set up your goal tree and Axiom will map a strategy for each one.
               </Typography>
             )}
           </Stack>
@@ -484,7 +484,7 @@ const AICoachPage: React.FC = () => {
 
         {/* ── Follow-up Q&A ────────────────────────────────────────── */}
         <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <SectionHeader icon={<Box sx={{ fontSize: '1rem' }}>🥋</Box>} label="Ask Roshi" />
+          <SectionHeader icon={<Box sx={{ fontSize: '1rem' }}>🥋</Box>} label="Ask Axiom" />
 
           {chat.length > 0 && (
             <Stack spacing={1.5} sx={{ mb: 2 }}>
@@ -558,7 +558,7 @@ const AICoachPage: React.FC = () => {
               fullWidth
               multiline
               maxRows={4}
-              placeholder="Ask Roshi anything…"
+              placeholder="Ask Axiom anything…"
               value={question}
               onChange={e => setQuestion(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(); } }}

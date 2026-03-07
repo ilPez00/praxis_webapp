@@ -9,12 +9,12 @@ import { GoalTree } from '../../models/GoalTree';
 import { Domain } from '../../models/Domain';
 import GlassCard from '../../components/common/GlassCard';
 import PostFeed from '../posts/PostFeed';
-import TrackerWidget from '../trackers/TrackerWidget';
 import SiteTour from '../../components/common/SiteTour';
 import { DOMAIN_COLORS } from '../../types/goal';
 import CheckInWidget from './components/CheckInWidget';
 import BalanceWidget from './components/BalanceWidget';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 import {
   Container,
@@ -29,6 +29,7 @@ import {
   IconButton,
   Grid,
   LinearProgress,
+  Collapse,
 } from '@mui/material';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -37,6 +38,8 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import PlaceIcon from '@mui/icons-material/Place';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 const DashboardPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
@@ -60,6 +63,9 @@ const DashboardPage: React.FC = () => {
 
   // Site tour state
   const [tourOpen, setTourOpen] = useState(false);
+
+  // Weekly narrative collapsed by default
+  const [narrativeExpanded, setNarrativeExpanded] = useState(false);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -188,6 +194,7 @@ const DashboardPage: React.FC = () => {
         {/* Check-in Widget */}
         {currentUserId && (
           <Box sx={{ pt: 3 }}>
+            <ErrorBoundary fallback={null}>
             <CheckInWidget
               userId={currentUserId}
               currentStreak={localStreak ?? (user?.current_streak ?? 0)}
@@ -198,6 +205,7 @@ const DashboardPage: React.FC = () => {
                 setLocalPoints(newPoints);
               }}
             />
+            </ErrorBoundary>
           </Box>
         )}
 
@@ -248,43 +256,50 @@ const DashboardPage: React.FC = () => {
           );
         })()}
 
-        {/* Weekly Narrative — Master Roshi's "this week" message (Pro only) */}
+        {/* Weekly Narrative — Axiom's "this week" message (Pro only, collapsible) */}
         {weeklyNarrative && (
           <GlassCard sx={{
-            p: 3,
-            mb: 3,
-            borderRadius: '20px',
+            mb: 3, borderRadius: '20px',
             background: 'linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(139,92,246,0.04) 100%)',
             border: '1px solid rgba(245,158,11,0.2)',
+            overflow: 'hidden',
           }}>
-            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+            <Box
+              onClick={() => setNarrativeExpanded(e => !e)}
+              sx={{ display: 'flex', gap: 1.5, alignItems: 'center', p: 2, cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}
+            >
               <Box sx={{
-                width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
+                background: 'linear-gradient(135deg, #F59E0B 0%, #8B5CF6 100%)',
                 border: '2px solid rgba(245,158,11,0.4)',
-                fontSize: '1.1rem',
+                fontSize: '0.9rem', fontWeight: 900, color: '#0A0B14',
               }}>
-                🥋
+                ⚡
               </Box>
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="caption" sx={{ color: 'rgba(245,158,11,0.7)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', mb: 0.5 }}>
-                  Roshi's Take — This Week
-                </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(245,158,11,0.8)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', flexGrow: 1 }}>
+                Axiom's Take — This Week
+              </Typography>
+              {narrativeExpanded ? <ExpandLessIcon sx={{ color: 'text.disabled', fontSize: 18 }} /> : <ExpandMoreIcon sx={{ color: 'text.disabled', fontSize: 18 }} />}
+            </Box>
+            <Collapse in={narrativeExpanded}>
+              <Box sx={{ px: 2.5, pb: 2.5 }}>
                 <Typography variant="body2" sx={{ lineHeight: 1.8, color: 'text.primary', fontStyle: 'italic' }}>
                   {weeklyNarrative}
                 </Typography>
               </Box>
-            </Box>
+            </Collapse>
           </GlassCard>
         )}
 
-        {/* Balance Intervention — Master Roshi nudge when domain neglected for 14+ streak days */}
+        {/* Balance Intervention — Axiom nudge when domain neglected for 14+ streak days */}
+        <ErrorBoundary fallback={null}>
         <BalanceWidget
           nodes={allNodes}
           streak={localStreak ?? (user?.current_streak ?? 0)}
           onTakeZenDay={() => toast('Take a Zen Day: update a goal in a neglected domain today.', { icon: '🧘', duration: 6000 })}
         />
+        </ErrorBoundary>
 
         {/* Welcome Banner */}
         <Box sx={{ py: 4 }}>
@@ -341,21 +356,17 @@ const DashboardPage: React.FC = () => {
           </GlassCard>
         </Box>
 
-        {/* Trackers */}
-        {currentUserId && (
-          <Box sx={{ mb: 4 }}>
-            <TrackerWidget userId={currentUserId} />
-          </Box>
-        )}
-
         {/* Community Challenges Section */}
         <Box sx={{ mt: 6 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
             <EmojiEventsIcon sx={{ color: 'primary.main' }} />
             <Typography variant="h5" sx={{ fontWeight: 800 }}>Community Challenges</Typography>
+            <Button size="small" onClick={() => navigate('/challenges')} sx={{ ml: 'auto', fontSize: '0.75rem', color: 'text.secondary' }}>
+              See all →
+            </Button>
           </Box>
           <Grid container spacing={3}>
-            {challenges.length > 0 ? challenges.map((challenge) => {
+            {challenges.length > 0 ? challenges.slice(0, 2).map((challenge) => {
               const participantCount = challenge.challenge_participants?.[0]?.count ?? 0;
               const domainColor = DOMAIN_COLORS[challenge.domain as Domain] ?? '#9CA3AF';
               return (

@@ -3,6 +3,8 @@ import { Box, Typography, Button } from '@mui/material';
 
 interface Props {
   children: React.ReactNode;
+  /** Optional fallback UI. Pass null to silently hide a failed widget. */
+  fallback?: React.ReactNode;
 }
 
 interface State {
@@ -23,6 +25,11 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // If a custom fallback is provided (including null), use it
+      if (this.props.fallback !== undefined) {
+        return this.props.fallback;
+      }
+      // Default full-page error view
       return (
         <Box
           sx={{

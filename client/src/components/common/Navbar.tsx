@@ -95,6 +95,7 @@ const Navbar: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
+  const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(null);
   // Notifications
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -250,7 +251,7 @@ const Navbar: React.FC = () => {
           {isMobile ? (
             <Box sx={{ flexGrow: 1 }} />
           ) : (
-            /* ── Desktop: primary nav links (3 only) ── */
+            /* ── Desktop: primary nav links + More dropdown ── */
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexGrow: 1 }}>
               {user && (
                 <>
@@ -277,6 +278,35 @@ const Navbar: React.FC = () => {
                       </Button>
                     );
                   })}
+                  {/* More dropdown — secondary nav items */}
+                  <Button
+                    onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
+                    sx={{ color: 'text.secondary', fontWeight: 500, borderRadius: '8px', px: 1.5, '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' } }}
+                  >
+                    More ▾
+                  </Button>
+                  <Menu
+                    anchorEl={moreMenuAnchor}
+                    open={Boolean(moreMenuAnchor)}
+                    onClose={() => setMoreMenuAnchor(null)}
+                    transformOrigin={{ horizontal: 'left', vertical: 'top' }}
+                    anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
+                    slotProps={{ paper: { sx: { mt: 1, minWidth: 180, bgcolor: '#1F2937', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', overflow: 'hidden' } } }}
+                  >
+                    {[
+                      { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon fontSize="small" /> },
+                      { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon fontSize="small" /> },
+                      { label: 'Services', to: '/services', icon: <HandshakeIcon fontSize="small" /> },
+                      { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon fontSize="small" /> },
+                      { label: 'Leaderboard', to: '/leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
+                      { label: 'Analytics', to: '/analytics', icon: <BarChartIcon fontSize="small" /> },
+                    ].map(({ label, to, icon }) => (
+                      <MenuItem key={label} onClick={() => { setMoreMenuAnchor(null); handleNav(to); }} sx={{ gap: 1.5, py: 1.25 }}>
+                        <Box sx={{ color: 'text.secondary' }}>{icon}</Box>
+                        <Typography variant="body2">{label}</Typography>
+                      </MenuItem>
+                    ))}
+                  </Menu>
                 </>
               )}
             </Box>
@@ -668,23 +698,31 @@ const Navbar: React.FC = () => {
 
             <List disablePadding>
               {[
-                { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
-                { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
-                { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
-                { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon /> },
-                { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon /> },
-                { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
-                { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
-                { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },
-                { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon /> },
-                { label: 'Settings', to: '/settings', icon: <SettingsIcon /> },
-              ].map(({ label, to, icon }) => (
-                <ListItem key={label} disablePadding>
-                  <ListItemButton onClick={() => handleNav(to)}>
-                    <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>{icon}</ListItemIcon>
-                    <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9375rem' }} />
-                  </ListItemButton>
-                </ListItem>
+                { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon />, primary: true },
+                { label: 'Matches', to: '/matches', icon: <ExploreIcon />, primary: true },
+                { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
+                { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon />, primary: false },
+                { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon />, primary: false },
+                { label: 'Services', to: '/services', icon: <HandshakeIcon />, primary: false },
+                { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon />, primary: false },
+                { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
+                { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
+                { label: 'Settings', to: '/settings', icon: <SettingsIcon />, primary: false },
+              ].map(({ label, to, icon, primary }, idx, arr) => (
+                <React.Fragment key={label}>
+                  {/* Divider between primary and secondary items */}
+                  {!primary && idx > 0 && arr[idx - 1].primary && (
+                    <Box sx={{ px: 2, py: 0.75 }}>
+                      <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.62rem' }}>More</Typography>
+                    </Box>
+                  )}
+                  <ListItem disablePadding>
+                    <ListItemButton onClick={() => handleNav(to)}>
+                      <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>{icon}</ListItemIcon>
+                      <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9375rem' }} />
+                    </ListItemButton>
+                  </ListItem>
+                </React.Fragment>
               ))}
               {user.is_admin && (
                 <ListItem disablePadding>

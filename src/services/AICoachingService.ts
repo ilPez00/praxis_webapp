@@ -46,8 +46,8 @@ export interface CoachingReport {
   network: string;
 }
 
-// Master Roshi's identity — injected into every prompt
-const MASTER_ROSHI_IDENTITY = `You are Master Roshi — a wise, warm, and practical life coach who has spent decades helping people achieve their most important goals. You are deeply experienced in strategy, habit formation, nutrition, training, productivity, and performance — and you bring genuine enthusiasm for each student's specific situation. Your tone is friendly and direct, like a trusted mentor who happens to know a lot. You speak simply, without jargon or academic citations. You ask good questions when you need more context. You give practical, concrete guidance: weekly plans, daily routines, meal ideas, accountability systems, and next actions. When asked to analyze someone's posts, goals, groups, or services, you give honest, useful feedback. You celebrate wins without hollow cheerleading, and you name obstacles clearly without judgment. You never cite books by name or author. You just give people what they need to move forward.`;
+// Axiom's identity — injected into every prompt
+const MASTER_ROSHI_IDENTITY = `You are Axiom — a wise, warm, and practical life coach who has spent decades helping people achieve their most important goals. You are deeply experienced in strategy, habit formation, nutrition, training, productivity, and performance — and you bring genuine enthusiasm for each person's specific situation. Your tone is friendly and direct, like a trusted mentor who happens to know a lot. You speak simply, without jargon or academic citations. You ask good questions when you need more context. You give practical, concrete guidance: weekly plans, daily routines, meal ideas, accountability systems, and next actions. When asked to analyze someone's posts, goals, groups, or services, you give honest, useful feedback. You celebrate wins without hollow cheerleading, and you name obstacles clearly without judgment. You never cite books by name or author. You just give people what they need to move forward.`;
 
 export class AICoachingService {
   private genAI: GoogleGenerativeAI | null = null;
@@ -91,7 +91,7 @@ export class AICoachingService {
         parsed = JSON.parse(cleaned) as CoachingReport;
       } catch {
         logger.error('[AI Coach] JSON parse failed. Raw response:', text.slice(0, 500));
-        throw new Error('Master Roshi returned an unexpected response format. Please try again.');
+        throw new Error('Axiom returned an unexpected response format. Please try again.');
       }
       return parsed;
     } catch (error: any) {
@@ -101,7 +101,7 @@ export class AICoachingService {
   }
 
   /**
-   * Generates a short weekly narrative (2-3 sentences) in Roshi's voice.
+   * Generates a short weekly narrative (2-3 sentences) in Axiom's voice.
    * Used for the Dashboard "This week" card.
    */
   public async generateWeeklyNarrative(stats: {
@@ -126,7 +126,7 @@ Stats this week:
 ${topGoal ? `- Main focus: "${topGoal}"${topDomain ? ` (${topDomain})` : ''}` : '- No active goals set yet'}
 ${overallProgress !== undefined ? `- Average goal progress: ${overallProgress}%` : ''}
 
-Write 2-3 short sentences in Roshi's voice that:
+Write 2-3 short sentences in Axiom's voice that:
 1. Acknowledge what they showed this week (specific, not generic)
 2. Name the most important thing to focus on next
 3. End with something that creates a tiny bit of urgency or excitement
@@ -223,11 +223,11 @@ ${boardsText}
 ---
 
 ## Instructions
-You are Master Roshi delivering a coaching report. Keep advice concrete, practical, and personal. Reference what you know about performance, habits, nutrition, and execution when relevant.
+You are Axiom delivering a coaching report. Keep advice concrete, practical, and personal. Reference what you know about performance, habits, nutrition, and execution when relevant.
 
 Return ONLY valid JSON matching this schema (no markdown, no extra text):
 {
-  "motivation": "<2-3 sentences from Master Roshi — warm, personal, grounded in their actual situation (goals, streak, recent activity). Acknowledge where they are honestly. If things are going well, say so. If there's room to grow, say that too — but with care, not pressure.>",
+  "motivation": "<2-3 sentences from Axiom — warm, personal, grounded in their actual situation (goals, streak, recent activity). Acknowledge where they are honestly. If things are going well, say so. If there's room to grow, say that too — but with care, not pressure.>",
   "strategy": [
     {
       "goal": "<exact goal name>",
@@ -265,7 +265,7 @@ Boards: ${boardsSummary}
 
 ${ctx.userName} asks: "${userPrompt}"
 
-Respond as Master Roshi. Match your response to what they actually need:
+Respond as Axiom. Match your response to what they actually need:
 - If they're asking for a plan, schedule, or step-by-step breakdown — give them one, with concrete specifics.
 - If they're asking for advice or a perspective — be direct and grounded.
 - If they want encouragement — give it genuinely, not generically. Reference something real about their situation.
