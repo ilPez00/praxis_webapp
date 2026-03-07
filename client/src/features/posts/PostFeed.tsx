@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Box,
   Typography,
@@ -22,6 +23,8 @@ import SendIcon from '@mui/icons-material/Send';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import CloseIcon from '@mui/icons-material/Close';
 import LinkIcon from '@mui/icons-material/Link';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
@@ -101,6 +104,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [postVotes, setPostVotes] = useState<Record<string, { score: number; userVote: number }>>({});
 
   // Compose state
   const [title, setTitle] = useState('');
@@ -110,48 +114,6 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
   const [submitting, setSubmitting] = useState(false);
   const [postRef, setPostRef] = useState<Reference | null>(null);
   const [refPickerOpen, setRefPickerOpen] = useState(false);
-
-  // Emoji reactions — stored client-side (emoji choice) backed by server like count
-  const REACTIONS = ['❤️', '🔥', '💪', '✅'] as const;
-  type Reaction = typeof REACTIONS[number];
-  const [userReactions, setUserReactions] = useState<Record<string, Reaction>>(() => {
-    const stored: Record<string, Reaction> = {};
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith('praxis_react_')) {
-        const postId = key.replace('praxis_react_', '');
-        stored[postId] = localStorage.getItem(key) as Reaction;
-      }
-    }
-    return stored;
-  });
-
-  const handleReact = async (postId: string, emoji: Reaction) => {
-    if (!user) return;
-    const current = userReactions[postId];
-    const isSame = current === emoji;
-
-    if (isSame) {
-      // toggle off
-      const newReactions = { ...userReactions };
-      delete newReactions[postId];
-      setUserReactions(newReactions);
-      localStorage.removeItem(`praxis_react_${postId}`);
-    } else {
-      // switch or set new reaction
-      setUserReactions(prev => ({ ...prev, [postId]: emoji }));
-      localStorage.setItem(`praxis_react_${postId}`, emoji);
-    }
-
-    // If no previous reaction at all → like; if removing → unlike; if switching → no toggle needed
-    const wasLiked = posts.find(p => p.id === postId)?.user_liked;
-    if (!wasLiked && !isSame) {
-      // wasn't liked → like it
-      handleLike(postId);
-    } else if (wasLiked && isSame) {
-      // removing reaction → unlike
-      handleLike(postId);
-    }
-  };
 
   // Per-post comment state
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
@@ -184,6 +146,42 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  // ---- Votes ----
+
+  useEffect(() => {
+    if (!posts.length) return;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const headers = { Authorization: `Bearer ${session.access_token}` };
+      const results = await Promise.all(
+        posts.slice(0, 20).map(p =>
+          axios.get(`${API_URL}/posts/${p.id}/vote`, { headers })
+            .then(r => [p.id, r.data] as [string, { score: number; userVote: number }])
+            .catch(() => [p.id, { score: 0, userVote: 0 }] as [string, { score: number; userVote: number }])
+        )
+      );
+      const map: Record<string, { score: number; userVote: number }> = {};
+      results.forEach(([id, data]) => { map[id] = data; });
+      setPostVotes(map);
+    })();
+  }, [posts]);
+
+  const handleVote = async (postId: string, value: 1 | -1) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { toast.error('Sign in to vote'); return; }
+    try {
+      const res = await axios.post(
+        `${API_URL}/posts/${postId}/vote`,
+        { value },
+        { headers: { Authorization: `Bearer ${session.access_token}` } }
+      );
+      setPostVotes(prev => ({ ...prev, [postId]: res.data }));
+    } catch {
+      toast.error('Vote failed');
+    }
+  };
 
   // ---- Compose ----
 
@@ -265,32 +263,6 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
       toast.error(err.message || 'Failed to post. Please try again.');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  // ---- Like toggle ----
-
-  const handleLike = async (postId: string) => {
-    if (!user) return;
-    // Optimistic update
-    setPosts(prev => prev.map(p => {
-      if (p.id !== postId) return p;
-      const liked = !p.user_liked;
-      return { ...p, user_liked: liked, like_count: p.like_count + (liked ? 1 : -1) };
-    }));
-    try {
-      await fetch(`${API_URL}/posts/${postId}/likes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
-    } catch (err) {
-      // Revert on failure
-      setPosts(prev => prev.map(p => {
-        if (p.id !== postId) return p;
-        const liked = !p.user_liked;
-        return { ...p, user_liked: liked, like_count: p.like_count + (liked ? 1 : -1) };
-      }));
     }
   };
 
@@ -539,6 +511,8 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                 bgcolor: 'rgba(255,255,255,0.03)',
                 border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: '16px',
+                opacity: (postVotes[post.id]?.score ?? 0) < -5 ? 0.5 : 1,
+                transition: 'opacity 0.3s',
               }}
             >
               <CardContent sx={{ pb: '12px !important' }}>
@@ -617,33 +591,43 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                 )}
 
                 {/* Actions */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
-                  {/* Emoji reaction bar */}
-                  {REACTIONS.map(emoji => {
-                    const isSelected = userReactions[post.id] === emoji;
-                    return (
-                      <Tooltip key={emoji} title={isSelected ? 'Remove reaction' : `React with ${emoji}`}>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleReact(post.id, emoji)}
-                          sx={{
-                            p: '3px', fontSize: '1rem', lineHeight: 1,
-                            borderRadius: '8px',
-                            border: isSelected ? '1px solid rgba(245,158,11,0.5)' : '1px solid transparent',
-                            bgcolor: isSelected ? 'rgba(245,158,11,0.08)' : 'transparent',
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' },
-                          }}
-                        >
-                          {emoji}
-                        </IconButton>
-                      </Tooltip>
-                    );
-                  })}
-                  {post.like_count > 0 && (
-                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', ml: 0.5 }}>
-                      {post.like_count}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                  {/* Upvote / Downvote */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleVote(post.id, 1)}
+                      sx={{
+                        color: postVotes[post.id]?.userVote === 1 ? '#F97316' : 'text.disabled',
+                        p: 0.5,
+                      }}
+                    >
+                      <KeyboardArrowUpIcon fontSize="small" />
+                    </IconButton>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 700, minWidth: 20, textAlign: 'center',
+                        color: (postVotes[post.id]?.score ?? 0) > 0
+                          ? '#F97316'
+                          : (postVotes[post.id]?.score ?? 0) < 0
+                          ? '#EF4444'
+                          : 'text.disabled',
+                      }}
+                    >
+                      {postVotes[post.id]?.score ?? 0}
                     </Typography>
-                  )}
+                    <IconButton
+                      size="small"
+                      onClick={() => handleVote(post.id, -1)}
+                      sx={{
+                        color: postVotes[post.id]?.userVote === -1 ? '#EF4444' : 'text.disabled',
+                        p: 0.5,
+                      }}
+                    >
+                      <KeyboardArrowDownIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
 
                   <Box sx={{ flexGrow: 1 }} />
 
