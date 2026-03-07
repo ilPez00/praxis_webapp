@@ -258,7 +258,6 @@ const Navbar: React.FC = () => {
                     { label: 'Dashboard', to: '/dashboard' },
                     { label: 'Matches', to: '/matches' },
                     { label: 'Chat', to: '/communication' },
-                    { label: 'Challenges', to: '/challenges' },
                   ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
                     return (

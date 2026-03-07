@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../lib/api';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
@@ -14,7 +14,6 @@ import SiteTour from '../../components/common/SiteTour';
 import { DOMAIN_COLORS } from '../../types/goal';
 import CheckInWidget from './components/CheckInWidget';
 import BalanceWidget from './components/BalanceWidget';
-import ReferralWidget from '../referral/ReferralWidget';
 
 import {
   Container,
@@ -32,28 +31,11 @@ import {
 } from '@mui/material';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import ExploreIcon from '@mui/icons-material/Explore';
-import ChatIcon from '@mui/icons-material/Chat';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
-import BarChartIcon from '@mui/icons-material/BarChart';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GroupsIcon from '@mui/icons-material/Groups';
-import LeaderboardIcon from '@mui/icons-material/Leaderboard';
-import VerifiedIcon from '@mui/icons-material/Verified';
 import PlaceIcon from '@mui/icons-material/Place';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-
-interface MatchResult {
-  userId: string;
-  score: number;
-}
-
-interface MatchProfile {
-  name: string;
-  avatar_url: string | null;
-}
 
 const DashboardPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
@@ -63,17 +45,11 @@ const DashboardPage: React.FC = () => {
   const [localStreak, setLocalStreak] = useState<number | null>(null);
   const [localPoints, setLocalPoints] = useState<number | null>(null);
   const [goalTree, setGoalTree] = useState<GoalTree | null>(null);
-  const [matches, setMatches] = useState<MatchResult[]>([]);
-  const [matchProfiles, setMatchProfiles] = useState<Record<string, MatchProfile>>({});
   const [loadingContent, setLoadingContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Community challenges state
   const [challenges, setChallenges] = useState<any[]>([]);
-
-  // Leaderboard state
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [allMatchScores, setAllMatchScores] = useState<Record<string, number>>({});
 
   // Nearby users state
   const [nearbyUsers, setNearbyUsers] = useState<any[]>([]);
@@ -103,21 +79,6 @@ const DashboardPage: React.FC = () => {
     };
     fetchChallenges();
   }, []);
-
-  useEffect(() => {
-    if (!currentUserId) return;
-    const fetchLeaderboard = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/users/leaderboard`, {
-          params: { userId: currentUserId },
-        });
-        setLeaderboard(Array.isArray(res.data) ? res.data : []);
-      } catch {
-        setLeaderboard([]);
-      }
-    };
-    fetchLeaderboard();
-  }, [currentUserId]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -161,17 +122,6 @@ const DashboardPage: React.FC = () => {
     if (user?.id) localStorage.setItem(`praxis_tour_seen_${user.id}`, '1');
   };
 
-  // Curated leaderboard: rank by praxis_points weighted by compatibility score
-  // ranked_score = points * (1 + compatibilityScore), fallback to raw points for non-matches
-  const curatedLeaderboard = useMemo(() => {
-    if (leaderboard.length === 0) return leaderboard;
-    return [...leaderboard].sort((a, b) => {
-      const aRanked = (a.praxis_points ?? 0) * (1 + (allMatchScores[a.id] ?? 0));
-      const bRanked = (b.praxis_points ?? 0) * (1 + (allMatchScores[b.id] ?? 0));
-      return bRanked - aRanked;
-    });
-  }, [leaderboard, allMatchScores]);
-
   const handleJoinChallenge = async (challengeId: string) => {
     if (!currentUserId) return;
     try {
@@ -187,31 +137,10 @@ const DashboardPage: React.FC = () => {
     const fetchData = async () => {
       setLoadingContent(true);
       try {
-        const [goalsRes, matchesRes] = await Promise.allSettled([
+        const [goalsRes] = await Promise.allSettled([
           axios.get(`${API_URL}/goals/${currentUserId}`),
-          axios.get(`${API_URL}/matches/${currentUserId}`),
         ]);
         if (goalsRes.status === 'fulfilled') setGoalTree(goalsRes.value.data);
-        if (matchesRes.status === 'fulfilled' && Array.isArray(matchesRes.value?.data)) {
-          const allMatchData: MatchResult[] = matchesRes.value.data;
-          const top3: MatchResult[] = allMatchData.slice(0, 3);
-          setMatches(top3);
-          // Store all match scores for curated leaderboard ranking
-          const scoreMap: Record<string, number> = {};
-          allMatchData.forEach(m => { scoreMap[m.userId] = m.score; });
-          setAllMatchScores(scoreMap);
-          // Batch fetch all match profiles in a single query
-          const matchIds = top3.map((m) => m.userId);
-          const { data: profileRows } = await supabase
-            .from('profiles')
-            .select('id, name, avatar_url')
-            .in('id', matchIds);
-          const profileMap: Record<string, MatchProfile> = {};
-          for (const p of profileRows || []) {
-            profileMap[p.id] = { name: p.name, avatar_url: p.avatar_url };
-          }
-          setMatchProfiles(profileMap);
-        }
       } catch (err: any) {
         console.error('[Dashboard] fetchData threw:', err);
         setError(`Dashboard error: ${err?.message || String(err)}`);
@@ -390,13 +319,6 @@ const DashboardPage: React.FC = () => {
                     label={`${avgProgress}% Avg Progress`}
                     sx={{ bgcolor: 'rgba(139,92,246,0.1)', fontWeight: 700, p: 1 }}
                   />
-                  {(user as any)?.current_streak > 0 && (
-                    <Chip
-                      icon={<LocalFireDepartmentIcon sx={{ color: '#F97316 !important' }} />}
-                      label={`${(user as any).current_streak} day streak`}
-                      sx={{ bgcolor: 'rgba(249,115,22,0.1)', color: '#F97316', fontWeight: 700, p: 1 }}
-                    />
-                  )}
                 </Stack>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { md: 'flex-end', xs: 'flex-start' } }}>
@@ -413,133 +335,10 @@ const DashboardPage: React.FC = () => {
           </GlassCard>
         </Box>
 
-        {/* Quick Actions Pill Row */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 6 }}>
-          <GlassCard 
-            sx={{ 
-              p: 1, 
-              borderRadius: '50px', 
-              display: 'flex', 
-              gap: 1, 
-              background: 'rgba(17,24,39,0.8)',
-              backdropFilter: 'blur(30px)',
-              border: '1px solid rgba(255,255,255,0.05)',
-            }}
-          >
-            {[
-              { label: 'Goal Tree', to: `/goals/${currentUserId}`, icon: <TrackChangesIcon /> },
-              { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
-              { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
-              { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },
-            ].map((action) => (
-              <Button
-                key={action.label}
-                component={RouterLink}
-                to={action.to}
-                variant="text"
-                sx={{
-                  borderRadius: '40px',
-                  px: 3,
-                  py: 1,
-                  color: 'text.primary',
-                  '&:hover': {
-                    bgcolor: 'rgba(255,255,255,0.05)',
-                    color: 'primary.main',
-                  }
-                }}
-                startIcon={action.icon}
-              >
-                {action.label}
-              </Button>
-            ))}
-          </GlassCard>
-        </Box>
-
-        {/* Bento Grid */}
-        <Grid container spacing={3}>
-
-          {/* 1 — Trackers (full width) */}
-          {currentUserId && (
-            <Grid size={{ xs: 12 }}>
-              <TrackerWidget userId={currentUserId} />
-            </Grid>
-          )}
-
-          {/* 2 — Top Alignments */}
-          <Grid size={{ xs: 12, md: 5 }}>
-            <GlassCard sx={{ p: 4 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Typography variant="h5" sx={{ fontWeight: 800 }}>Top Alignments</Typography>
-                <Button component={RouterLink} to="/matches" size="small" variant="text" color="primary">View All</Button>
-              </Box>
-              
-              <Stack spacing={2}>
-                {matches.length > 0 ? (
-                  matches.map((match) => {
-                    const compatibility = Math.round(match.score * 100);
-                    const pillColor = compatibility > 70 ? '#10B981' : compatibility > 50 ? '#F59E0B' : '#9CA3AF';
-                    
-                    return (
-                      <Box 
-                        key={match.userId}
-                        onClick={() => navigate(`/chat/${currentUserId}/${match.userId}`)}
-                        sx={{ 
-                          p: 2, 
-                          borderRadius: '16px', 
-                          cursor: 'pointer',
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 2,
-                          bgcolor: 'rgba(255,255,255,0.02)',
-                          border: '1px solid rgba(255,255,255,0.05)',
-                          '&:hover': {
-                            bgcolor: 'rgba(255,255,255,0.04)',
-                            borderColor: 'primary.main',
-                          }
-                        }}
-                      >
-                        <Avatar
-                          src={matchProfiles[match.userId]?.avatar_url || undefined}
-                          sx={{ width: 48, height: 48, bgcolor: 'primary.main', fontWeight: 700 }}
-                        >
-                          {(matchProfiles[match.userId]?.name || match.userId).charAt(0).toUpperCase()}
-                        </Avatar>
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                            {matchProfiles[match.userId]?.name || 'Praxis User'}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">Goal-aligned</Typography>
-                        </Box>
-                        <Box sx={{ 
-                          px: 1.5, 
-                          py: 0.5, 
-                          borderRadius: '20px', 
-                          bgcolor: `${pillColor}15`, 
-                          color: pillColor,
-                          border: `1px solid ${pillColor}40`,
-                          fontSize: '0.75rem',
-                          fontWeight: 800
-                        }}>
-                          {compatibility}% Match
-                        </Box>
-                      </Box>
-                    );
-                  })
-                ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                    Seeking optimal matches...
-                  </Typography>
-                )}
-              </Stack>
-            </GlassCard>
-          </Grid>
-
-        </Grid>
-
-        {/* Referral Widget */}
+        {/* Trackers */}
         {currentUserId && (
-          <Box sx={{ mt: 4 }}>
-            <ReferralWidget userId={currentUserId} />
+          <Box sx={{ mb: 4 }}>
+            <TrackerWidget userId={currentUserId} />
           </Box>
         )}
 

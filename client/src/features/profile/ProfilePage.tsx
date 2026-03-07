@@ -7,6 +7,7 @@ import PostFeed from '../posts/PostFeed';
 import { API_URL } from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
 import FriendButton from '../../components/common/FriendButton';
+import ReferralWidget from '../referral/ReferralWidget';
 import axios from 'axios';
 import {
   Container,
@@ -862,6 +863,11 @@ const ProfilePage: React.FC = () => {
           {isOwnProfile ? 'Your Friends' : `${profile.name}'s Friends`}
         </DialogTitle>
         <DialogContent sx={{ px: 1, pb: 2 }}>
+          {isOwnProfile && user?.id && (
+            <Box sx={{ px: 1, mb: 1 }}>
+              <ReferralWidget userId={user.id} />
+            </Box>
+          )}
           {friendsLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress size={28} />
