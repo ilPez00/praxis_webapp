@@ -53,7 +53,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import CasinoIcon from '@mui/icons-material/Casino';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
@@ -531,9 +531,9 @@ const Navbar: React.FC = () => {
                       <StorefrontIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Marketplace</Typography>
                     </MenuItem>
-                    <MenuItem onClick={() => handleNav('/betting')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <CasinoIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Goal Staking</Typography>
+                    <MenuItem onClick={() => handleNav('/commitments')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <VerifiedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Commitments</Typography>
                     </MenuItem>
                     <MenuItem onClick={() => handleNav('/settings')} sx={{ gap: 1.5, py: 1.25 }}>
                       <SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
@@ -672,7 +672,7 @@ const Navbar: React.FC = () => {
                 { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
                 { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon /> },
-                { label: 'Goal Staking', to: '/betting', icon: <CasinoIcon /> },
+                { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon /> },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },

@@ -85,6 +85,321 @@ Would you like me to:
 
 
 
+---
+
+## Session 53 (2026-03-07) — Strategic Audit: Product, UX, Sociology, Tech
+
+CEO + Sociologist + Designer + UX/IT audit. 10 concrete issues found, each with an implementation plan below.
+
+---
+
+### ISSUE 1 — Feature Sprawl: Refocus the Core Loop [CEO — 🔴 HIGH]
+
+**Problem:** The product simultaneously tries to be LinkedIn, Reddit, Discord, Duolingo, and DraftKings. New users land on a 9-section dashboard with no clear "start here" path. The unique value (goal-aligned matching) is buried.
+
+**Implementation:**
+
+1. Define the three-step onboarding funnel and make it the entire first-session experience:
+   - Step 1: Build your goal tree (GoalSelectionPage — already exists)
+   - Step 2: See your matches (MatchesPage — already exists)
+   - Step 3: Message your top match (ChatRoom — already exists)
+
+2. Add `first_session_complete BOOLEAN DEFAULT false` to `profiles` table (SQL migration).
+   Set it to `true` after the user sends their first message.
+
+3. Gate the full dashboard behind `first_session_complete`. Until then, show a stripped
+   "Getting Started" page. Create: `client/src/features/onboarding/GettingStartedPage.tsx`
+   with three CTA cards only: "Build goal tree", "See matches", "Message someone".
+   In `DashboardPage.tsx` add: `if (!user?.first_session_complete) return <GettingStartedPage />;`
+
+4. Progressive disclosure: show full dashboard once `first_session_complete = true`.
+   Profile Completion widget shows only when score < 80%, auto-hides at 100%.
+
+---
+
+### ISSUE 2 — Cold-Start Problem: No Network Effect Flywheel [CEO/Sociologist — 🔴 HIGH]
+
+**Problem:** New users see mock/demo data in Matches. The value prop requires other users with
+complete goal trees. The referral system gives +100 PP but doesn't solve the social cold-start.
+
+**Implementation:**
+
+1. Goal-aligned invite links. When a user shares a referral, include their top domain:
+   - URL: `/signup?ref=<code>&domain=Fitness`
+   - In `SignupPage.tsx`: read `useSearchParams()`, detect `?domain=`, show banner:
+     "Your friend is working on Fitness goals — join them on Praxis."
+
+2. "Invite someone who shares your goal" CTA on the MatchesPage empty state.
+   When `realMatches.length === 0`, add a "Share to find a match" Button below
+   the existing CTA. Use `navigator.share()` with a prefilled URL containing the
+   user's top goal domain.
+
+3. Wire up "Seed demo user" in AdminPage.tsx. `POST /admin/seed-demo-user` already
+   exists per session 38 notes — add a button in the Admin panel's Users tab.
+   These are real DB records that new users can actually message.
+
+---
+
+### ISSUE 3 — Goal Staking / Betting Rebranding [CEO/Sociologist — 🔴 HIGH]
+
+**Problem:** `CasinoIcon` for "Goal Staking" signals gambling. Extrinsic financial stakes
+undermine intrinsic motivation (Deci & Ryan). Legal grey area in many jurisdictions.
+
+**Implementation:**
+
+1. Rename throughout:
+   - Route: `/betting` -> `/commitments`
+   - Nav label: "Goal Staking" -> "Commitments"
+   - Page title: "Bet on Your Goals" -> "Commitment Bonds"
+   - Icon: `CasinoIcon` -> `VerifiedIcon` or `HandshakeIcon`
+
+2. Files to update:
+   - `client/src/components/common/Navbar.tsx` (desktop dropdown + mobile drawer, 2 places)
+   - `client/src/config/routes.tsx` (update route path)
+   - `client/src/features/betting/BettingPage.tsx` (headings and copy)
+
+3. Reframe language inside BettingPage.tsx:
+   - "Place a bet" -> "Make a commitment"
+   - "Win/Lose" -> "Fulfilled/Missed"
+   - "Stake" -> "Pledge"
+   Keep all mechanics identical; only the language changes.
+
+---
+
+### ISSUE 4 — "Master Roshi" AI Persona Rebranding [CEO — 🟡 MEDIUM]
+
+**Problem:** Master Roshi (Dragon Ball Z — a perverted old man) is a liability when pitching
+to investors, enterprises, or universities.
+
+**Implementation:**
+
+1. Create an original AI mentor persona. Suggested name: "Axiom" — a wise, serious advisor
+   with a warm but direct tone. Keep the personality; change the identity.
+
+2. Files to update (search: `grep -r "Roshi\|roshi\|Master" client/src/ src/`):
+   - `client/src/features/dashboard/DashboardPage.tsx` — "Roshi's Take" label and the 🥋 emoji
+   - `client/src/features/dashboard/components/BalanceWidget.tsx` — "Master Roshi Balance Intervention"
+   - `client/src/features/coaching/AICoachPage.tsx` — any Roshi references
+   - `src/controllers/aiCoachingController.ts` — system prompt that references Roshi
+
+3. Design a simple avatar for the persona — a geometric SVG consistent with the amber/violet
+   brand palette. Place in `client/src/assets/axiom-avatar.svg` and reference it in the
+   weekly narrative card and the BalanceWidget.
+
+---
+
+### ISSUE 5 — Dashboard Overload: Progressive Disclosure [UX/UI — 🟡 MEDIUM]
+
+**Problem:** Dashboard renders 9 stacked sections. Cognitive overload leads to lower engagement
+with every individual feature.
+
+**Implementation:**
+
+1. Reduce default Dashboard to 4 sections:
+   - CheckInWidget (always first — drives daily retention)
+   - Welcome Banner with goal stats
+   - Personalized Feed (main content)
+   - Community Challenges (2 items max, "See all ->" link to /challenges)
+
+2. Relocate secondary sections:
+   - "Near You" -> move to a tab on MatchesPage or a dedicated /explore page
+   - "Balance Intervention" -> convert to a dismissible toast/snackbar, not a card
+   - "Tracker Widget" -> move inside GoalTreePage as a sidebar widget
+   - "Weekly Narrative" -> collapse to one line with expand chevron by default
+
+3. In `DashboardPage.tsx`: implement a two-column layout at md breakpoint:
+   `md: 8` for main feed, `md: 4` for a `DashboardSidebar` component holding
+   Trackers, NearbyUsers, and the collapsed narrative.
+
+---
+
+### ISSUE 6 — Homepage: Missing Social Proof [Designer — 🟡 MEDIUM]
+
+**Problem:** `HomePage.tsx` has zero social proof. The feature strip is `opacity: 0.5`
+and looks like placeholder text. No user count, testimonials, or activity signals.
+
+**Implementation:**
+
+1. Add a public stats endpoint. In `src/controllers/userController.ts` add:
+   `GET /api/stats/public` (no auth required) returning:
+   `{ userCount, goalsTracked, checkInsThisWeek }` via Supabase count queries.
+
+2. In `HomePage.tsx`: fetch `/api/stats/public` on mount, display:
+   "Join X people tracking goals across 9 domains."
+   Replace the opacity-0.5 strip with animated counters.
+
+3. Create `client/src/features/home/TestimonialStrip.tsx`: 3 short testimonial cards
+   (avatar, name, domain chip, one-sentence quote). Initially seeded/static; can
+   become dynamic later.
+
+4. Add a preview image of the goal tree visualization and match cards between the
+   CTA buttons and the stats strip. Use a static screenshot or an inline SVG mockup.
+
+---
+
+### ISSUE 7 — Matches N+1 Query: Enrich Server-Side [IT — 🔴 HIGH]
+
+**Problem:** `MatchesPage.tsx:375-414` fires 2 HTTP requests per match result
+(Supabase profile fetch + Express goals fetch). 10 matches = 20+ parallel requests.
+
+**Implementation:**
+
+In `src/controllers/matchingController.ts`, after computing match scores, batch-fetch
+all profiles and goal nodes in 2 Supabase queries, then join in memory:
+
+```typescript
+const userIds = rawMatches.map(m => m.userId);
+
+const { data: profiles } = await supabase
+  .from('profiles')
+  .select('id, name, avatar_url, bio, current_streak, last_activity_date')
+  .in('id', userIds);
+
+const { data: goalNodes } = await supabase
+  .from('goal_nodes')
+  .select('user_id, name, domain, progress')
+  .in('user_id', userIds);
+
+const enriched = rawMatches.map(m => {
+  const profile = profiles?.find(p => p.id === m.userId);
+  const nodes = goalNodes?.filter(n => n.user_id === m.userId) ?? [];
+  const domains = [...new Set(nodes.map(n => n.domain).filter(Boolean))];
+  const sharedGoals = nodes
+    .sort((a, b) => b.progress - a.progress)
+    .slice(0, 3).map(n => n.name);
+  const overallProgress = nodes.length
+    ? Math.round(nodes.reduce((s, n) => s + n.progress, 0) / nodes.length)
+    : undefined;
+  return { userId: m.userId, score: m.score, ...profile, domains, sharedGoals, overallProgress };
+});
+
+res.json(enriched);
+```
+
+Then update `MatchesPage.tsx` to consume the enriched response directly —
+remove the entire inner `Promise.all` loop (lines ~375-414).
+Result: 1 API call instead of 2N. Page load drops from ~2-4s to <500ms.
+
+---
+
+### ISSUE 8 — Auth Token: Centralized Axios Interceptor [IT — 🟡 MEDIUM]
+
+**Problem:** Auth token attachment is scattered across dozens of files with manual
+`supabase.auth.getSession()` calls. Some components use raw `fetch()`. Silent failures
+when session expires.
+
+**Implementation:**
+
+Create `client/src/lib/axiosInstance.ts`:
+
+```typescript
+import axios from 'axios';
+import { supabase } from './supabase';
+import { API_URL } from './api';
+
+const axiosInstance = axios.create({ baseURL: API_URL });
+
+axiosInstance.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
+});
+
+axiosInstance.interceptors.response.use(
+  res => res,
+  async (error) => {
+    if (error.response?.status === 401) {
+      const { data: { session } } = await supabase.auth.refreshSession();
+      if (session) {
+        error.config.headers.Authorization = `Bearer ${session.access_token}`;
+        return axiosInstance(error.config);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default axiosInstance;
+```
+
+Migrate all `axios.get/post/put/delete` calls in protected pages to use
+`axiosInstance`. Priority order: `MatchesPage.tsx`, `DashboardPage.tsx`, `ChatRoom.tsx`.
+For raw `fetch()` calls in `Navbar.tsx`, either migrate to axiosInstance or create
+an `authFetch()` wrapper that attaches the token before calling fetch.
+
+---
+
+### ISSUE 9 — Per-Widget Error Boundaries [IT — 🟢 LOW]
+
+**Problem:** `ErrorBoundary` exists but Dashboard renders all sections without per-widget
+isolation. One failed API call can crash the whole page.
+
+**Implementation:**
+
+In `DashboardPage.tsx`, wrap each major widget:
+
+```tsx
+<ErrorBoundary fallback={null}>
+  <CheckInWidget ... />
+</ErrorBoundary>
+
+<ErrorBoundary fallback={null}>
+  <TrackerWidget ... />
+</ErrorBoundary>
+
+<ErrorBoundary fallback={<Typography color="text.disabled">Challenges unavailable</Typography>}>
+  {/* Community Challenges section */}
+</ErrorBoundary>
+```
+
+Do the same in `MatchesPage.tsx` around the cards grid.
+Verify `ErrorBoundary.tsx` accepts an optional `fallback?: ReactNode` prop; add it if not.
+
+---
+
+### ISSUE 10 — Nav Architecture: Unify Desktop/Mobile [UX/UI — 🟢 LOW]
+
+**Problem:** Desktop nav shows 3 items; mobile drawer shows 10+. Users on different
+devices experience completely different products.
+
+**Implementation:**
+
+1. Define nav hierarchy:
+   - PRIMARY (always visible in desktop navbar): Dashboard, Matches, Chat
+   - SECONDARY (More dropdown on desktop, labeled section in mobile drawer):
+     Challenges, Commitments, Services, Marketplace, Analytics
+   - ACCOUNT (avatar dropdown, identical on both): Profile, Settings, Admin, Sign out
+
+2. In `Navbar.tsx` desktop section: add a "More" Button with MUI `Menu` anchored to it,
+   listing all secondary items. This surfaces the same features on desktop that mobile shows.
+
+3. In the mobile Drawer: add a `<Divider>` with label "More" between the primary 3
+   and the secondary items, matching the desktop hierarchy visually.
+
+4. Remove duplicate "Community Challenges" section from Dashboard body, or reduce it
+   to 2 items max with a "See all ->" link to `/challenges`.
+
+---
+
+### Summary Table — Session 53
+
+| # | Issue | Priority | Key Files |
+|---|-------|----------|-----------|
+| 1 | Feature sprawl / onboarding funnel | RED | DashboardPage.tsx, new GettingStartedPage.tsx, SQL |
+| 2 | Cold-start / goal-aligned invite links | RED | SignupPage.tsx, MatchesPage.tsx, AdminPage.tsx |
+| 3 | Betting -> Commitments rebrand | RED | Navbar.tsx, BettingPage.tsx, routes.tsx |
+| 4 | Roshi -> original AI persona (Axiom) | YELLOW | DashboardPage.tsx, BalanceWidget.tsx, aiCoachingController.ts |
+| 5 | Dashboard progressive disclosure | YELLOW | DashboardPage.tsx |
+| 6 | Homepage social proof + live stats | YELLOW | HomePage.tsx, new TestimonialStrip.tsx, userController.ts |
+| 7 | Matches N+1 -> server-side enrichment | RED | matchingController.ts, MatchesPage.tsx |
+| 8 | Centralized Axios auth interceptor | YELLOW | new axiosInstance.ts, all protected pages |
+| 9 | Per-widget error boundaries | GREEN | DashboardPage.tsx, MatchesPage.tsx |
+| 10 | Nav desktop/mobile hierarchy unification | GREEN | Navbar.tsx |
+
+---
+
 ## Project Health (as of Session 35 — 2026-03-04)
 
 - **Backend TypeScript:** ✅ 0 errors (`npx tsc --noEmit`)

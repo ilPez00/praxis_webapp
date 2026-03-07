@@ -3,7 +3,6 @@ import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
-import { supabase } from '../../lib/supabase';
 import { Domain } from '../../models/Domain';
 import { DOMAIN_COLORS } from '../../types/goal';
 import toast from 'react-hot-toast';
@@ -368,51 +367,19 @@ const MatchesPage: React.FC = () => {
           ? `${API_URL}/matches/${user.id}?domain=${encodeURIComponent(selectedDomain)}`
           : `${API_URL}/matches/${user.id}`;
         const matchRes = await axios.get(url);
-        const rawMatches: MatchResult[] = matchRes.data ?? [];
-
-        if (rawMatches.length === 0) { setRealMatches([]); return; }
-
-        const profiles = await Promise.all(rawMatches.map(async (m) => {
-          try {
-            const { data: profile } = await supabase
-              .from('profiles').select('name, avatar_url, bio, current_streak, last_activity_date').eq('id', m.userId).single();
-            let domains: string[] = [];
-            let sharedGoals: string[] = [];
-            let overallProgress: number | undefined;
-            try {
-              const goalRes = await axios.get(`${API_URL}/goals/${m.userId}`);
-              const nodes: any[] = goalRes.data?.nodes ?? [];
-              domains = Array.from(new Set<string>(nodes.map((n: any) => n.domain).filter(Boolean)));
-              // Top-level goal names as "shared goals"
-              sharedGoals = nodes
-                .filter((n: any) => n.name && n.progress !== undefined)
-                .sort((a: any, b: any) => b.progress - a.progress)
-                .slice(0, 3)
-                .map((n: any) => n.name);
-              // Average progress across all goals
-              const progNodes = nodes.filter((n: any) => typeof n.progress === 'number');
-              if (progNodes.length > 0) {
-                overallProgress = Math.round(
-                  progNodes.reduce((sum: number, n: any) => sum + n.progress, 0) / progNodes.length
-                );
-              }
-            } catch { /* non-fatal */ }
-            return {
-              userId: m.userId, score: m.score,
-              name: profile?.name ?? `User ${m.userId.slice(0, 6)}`,
-              avatarUrl: profile?.avatar_url ?? undefined,
-              bio: profile?.bio ?? undefined,
-              domains,
-              sharedGoals,
-              overallProgress,
-              currentStreak: profile?.current_streak ?? 0,
-              lastCheckinDate: profile?.last_activity_date ?? null,
-            } as MatchProfile;
-          } catch {
-            return { userId: m.userId, score: m.score, name: `User ${m.userId.slice(0, 6)}`, domains: [] } as MatchProfile;
-          }
+        const enrichedMatches: MatchProfile[] = (matchRes.data ?? []).map((m: any) => ({
+          userId: m.userId,
+          score: m.score,
+          name: m.name,
+          avatarUrl: m.avatarUrl,
+          bio: m.bio,
+          domains: m.domains ?? [],
+          sharedGoals: m.sharedGoals ?? [],
+          overallProgress: m.overallProgress,
+          currentStreak: m.currentStreak ?? 0,
+          lastCheckinDate: m.lastCheckinDate ?? null,
         }));
-        setRealMatches(profiles);
+        setRealMatches(enrichedMatches);
       } catch {
         setRealMatches([]);
       } finally {

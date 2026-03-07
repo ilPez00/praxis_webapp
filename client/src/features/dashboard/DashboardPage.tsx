@@ -14,6 +14,7 @@ import SiteTour from '../../components/common/SiteTour';
 import { DOMAIN_COLORS } from '../../types/goal';
 import CheckInWidget from './components/CheckInWidget';
 import BalanceWidget from './components/BalanceWidget';
+import GettingStartedPage from '../onboarding/GettingStartedPage';
 
 import {
   Container,
@@ -171,6 +172,11 @@ const DashboardPage: React.FC = () => {
   const rootGoals = Array.isArray(goalTree?.rootNodes) ? goalTree!.rootNodes : [];
   const allNodes = Array.isArray(goalTree?.nodes) ? goalTree!.nodes : [];
   const hasGoals = rootGoals.length > 0;
+
+  // Gate: onboarding done but no goal tree yet → show focused 3-step guide
+  if (user?.onboarding_completed && !hasGoals && currentUserId) {
+    return <GettingStartedPage userId={currentUserId} />;
+  }
   const userName = user?.name || 'Explorer';
   const avgProgress = hasGoals
     ? Math.round(rootGoals.reduce((sum, g) => sum + g.progress * 100, 0) / rootGoals.length)

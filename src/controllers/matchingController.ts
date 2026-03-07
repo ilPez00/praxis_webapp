@@ -30,7 +30,8 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
           r.sharedGoals.some((g: { domain: string }) => g.domain === domainFilter)
         );
       }
-      return res.json(results.map((r: { userId: string; score: number }) => ({ userId: r.userId, score: r.score })));
+      const enriched = await enrichMatches(results.map((r: { userId: string; score: number }) => ({ userId: r.userId, score: r.score })));
+      return res.json(enriched);
     }
   } catch (_) {
     // pgvector not available or table missing — fall through to O(n²) approach
@@ -131,5 +132,53 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
     ? potentialMatches.filter(match => match.sharedGoals.some(g => g.domain === domainFilter))
     : potentialMatches;
 
-  res.json(filtered.map(match => ({ userId: match.user, score: match.score, sharedGoals: match.sharedGoals })));
+  const enriched = await enrichMatches(filtered.map(match => ({ userId: match.user, score: match.score })));
+  res.json(enriched);
 });
+
+async function enrichMatches(rawMatches: { userId: string; score: number }[]): Promise<object[]> {
+  if (rawMatches.length === 0) return [];
+  const userIds = rawMatches.map(m => m.userId);
+
+  const [{ data: profiles }, { data: trees }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, name, avatar_url, bio, current_streak, last_activity_date')
+      .in('id', userIds),
+    supabase
+      .from('goal_trees')
+      .select('userId, nodes')
+      .in('userId', userIds),
+  ]);
+
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+  const treeMap = new Map((trees ?? []).map((t: any) => [t.userId, t.nodes ?? []]));
+
+  return rawMatches.map(m => {
+    const p = profileMap.get(m.userId) as any;
+    const nodes: any[] = treeMap.get(m.userId) ?? [];
+    const domains: string[] = [...new Set<string>(nodes.map((n: any) => n.domain).filter(Boolean))];
+    const sharedGoals: string[] = nodes
+      .filter((n: any) => n.name && typeof n.progress === 'number')
+      .sort((a: any, b: any) => b.progress - a.progress)
+      .slice(0, 3)
+      .map((n: any) => n.name);
+    const progNodes = nodes.filter((n: any) => typeof n.progress === 'number');
+    const overallProgress = progNodes.length
+      ? Math.round(progNodes.reduce((s: number, n: any) => s + n.progress, 0) / progNodes.length * 100)
+      : undefined;
+
+    return {
+      userId: m.userId,
+      score: m.score,
+      name: p?.name ?? `User ${m.userId.slice(0, 6)}`,
+      avatarUrl: p?.avatar_url ?? undefined,
+      bio: p?.bio ?? undefined,
+      currentStreak: p?.current_streak ?? 0,
+      lastCheckinDate: p?.last_activity_date ?? null,
+      domains,
+      sharedGoals,
+      overallProgress,
+    };
+  });
+}

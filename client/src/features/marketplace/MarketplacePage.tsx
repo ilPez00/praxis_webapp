@@ -46,7 +46,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import GroupsIcon from '@mui/icons-material/Groups';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import DiamondIcon from '@mui/icons-material/Diamond';
-import CasinoIcon from '@mui/icons-material/Casino';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import BoltIcon from '@mui/icons-material/Bolt';
 import { useUser } from '../../hooks/useUser';
@@ -465,7 +465,7 @@ const MarketplacePage: React.FC = () => {
       {/* Tabs */}
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <Tab icon={<DiamondIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Buy Pro" />
-        <Tab icon={<CasinoIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Betting" />
+        <Tab icon={<VerifiedIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Commitments" />
         <Tab label="Shop" />
         <Tab label="Offers" />
         <Tab icon={<EmojiEventsIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Challenges" />

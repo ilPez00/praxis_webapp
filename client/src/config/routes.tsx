@@ -83,7 +83,7 @@ const routes: RouteConfig[] = [
   { path: '/admin', element: AdminPage, private: true },
   { path: '/leaderboard', element: LeaderboardPage, private: true },
   { path: '/services', element: ServicesPage, private: true },
-  { path: '/betting', element: BettingPage, private: true },
+  { path: '/commitments', element: BettingPage, private: true },
   { path: '/words', element: WordsPage, private: true },
   { path: '/events', element: EventsPage, private: true },
   { path: '/friends', element: FriendsPage, private: true },

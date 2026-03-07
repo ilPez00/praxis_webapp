@@ -35,8 +35,8 @@ interface Bet {
 
 const STATUS_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   active:    { label: 'Active',     color: '#3B82F6', icon: <TimerIcon fontSize="small" /> },
-  won:       { label: 'Won',        color: '#10B981', icon: <EmojiEventsIcon fontSize="small" /> },
-  lost:      { label: 'Lost',       color: '#EF4444', icon: <HighlightOffIcon fontSize="small" /> },
+  won:       { label: 'Fulfilled',  color: '#10B981', icon: <EmojiEventsIcon fontSize="small" /> },
+  lost:      { label: 'Missed',     color: '#EF4444', icon: <HighlightOffIcon fontSize="small" /> },
   cancelled: { label: 'Cancelled',  color: '#6B7280', icon: <CancelIcon fontSize="small" /> },
 };
 
@@ -109,7 +109,7 @@ const BettingPage: React.FC = () => {
         deadline,
         stakePoints: stake,
       });
-      toast.success(`Bet placed! ${stake} PP staked on "${node.name}"`);
+      toast.success(`Commitment made! ${stake} PP pledged on "${node.name}"`);
 
       // Auto-post public accountability message to the feed
       try {
@@ -117,7 +117,7 @@ const BettingPage: React.FC = () => {
           userId: currentUserId,
           userName: user?.name || 'A Praxis member',
           userAvatarUrl: (user as any)?.avatar_url || null,
-          content: `🎯 I just staked ${stake} PP on completing my goal: "${node.name}" by ${new Date(deadline).toLocaleDateString()}. Hold me accountable! 💪`,
+          content: `🎯 I just pledged ${stake} PP on completing my goal: "${node.name}" by ${new Date(deadline).toLocaleDateString()}. Hold me accountable! 💪`,
           context: 'general',
         });
       } catch { /* non-critical */ }
@@ -142,7 +142,7 @@ const BettingPage: React.FC = () => {
         data: { userId: currentUserId },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       });
-      toast.success('Bet cancelled. 90% of stake refunded (10% house fee).');
+      toast.success('Pledge cancelled. 90% of stake refunded (10% house fee).');
       await fetchBets();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to cancel bet.');
@@ -174,9 +174,9 @@ const BettingPage: React.FC = () => {
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 900 }}>Goal Staking</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 900 }}>Commitments</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Put your Praxis Points on the line. Complete the goal → 2× reward. Fail → forfeit.
+              Put your Praxis Points behind a goal. Fulfill it → 2× reward. Miss it → forfeit.
             </Typography>
           </Box>
           <Button
@@ -186,7 +186,7 @@ const BettingPage: React.FC = () => {
             disabled={points < MIN_STAKE || goalNodes.length === 0}
             sx={{ borderRadius: '12px', fontWeight: 700, px: 3 }}
           >
-            Place Bet
+            New Commitment
           </Button>
         </Box>
 
@@ -195,7 +195,7 @@ const BettingPage: React.FC = () => {
           {[
             { label: 'Available PP', value: points.toLocaleString(), color: '#A78BFA', icon: <ElectricBoltIcon /> },
             { label: 'Staked PP', value: totalStaked.toLocaleString(), color: '#3B82F6', icon: <TimerIcon /> },
-            { label: 'Active Bets', value: activeBets.length, color: '#F59E0B', icon: <LocalFireDepartmentIcon /> },
+            { label: 'Active Pledges', value: activeBets.length, color: '#F59E0B', icon: <LocalFireDepartmentIcon /> },
             { label: 'PP Won (all-time)', value: totalWon.toLocaleString(), color: '#10B981', icon: <EmojiEventsIcon /> },
           ].map(stat => (
             <Grid key={stat.label} size={{ xs: 6, md: 3 }}>
@@ -211,15 +211,15 @@ const BettingPage: React.FC = () => {
         {/* Active Bets */}
         <GlassCard sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>
-            Active Bets ({activeBets.length})
+            Active Pledges ({activeBets.length})
           </Typography>
           {activeBets.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <TimerIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-              <Typography color="text.secondary">No active bets. Stake some PP on a goal to get started.</Typography>
+              <Typography color="text.secondary">No active pledges. Commit some PP to a goal to get started.</Typography>
               {points < MIN_STAKE && (
                 <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 1 }}>
-                  You need at least {MIN_STAKE} PP to place a bet. Keep checking in!
+                  You need at least {MIN_STAKE} PP to make a pledge. Keep checking in!
                 </Typography>
               )}
             </Box>
@@ -245,7 +245,7 @@ const BettingPage: React.FC = () => {
                         <Stack direction="row" spacing={1} sx={{ mt: 0.5 }} flexWrap="wrap">
                           <Chip
                             icon={<ElectricBoltIcon />}
-                            label={`${bet.stake_points} PP staked`}
+                            label={`${bet.stake_points} PP pledged`}
                             size="small"
                             sx={{ bgcolor: 'rgba(167,139,250,0.1)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.25)', fontWeight: 700, fontSize: '0.7rem' }}
                           />
@@ -271,9 +271,9 @@ const BettingPage: React.FC = () => {
                             startIcon={<ShareIcon sx={{ fontSize: '14px !important' }} />}
                             onClick={() => {
                               const deadlineStr = new Date(bet.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                              const text = `I just staked ${bet.stake_points} PP that I'll "${bet.goal_name}" by ${deadlineStr}. Think you can beat me? Join Praxis → https://praxis-app.vercel.app`;
+                              const text = `I just pledged ${bet.stake_points} PP that I'll "${bet.goal_name}" by ${deadlineStr}. Think you can beat me? Join Praxis → https://praxis-app.vercel.app`;
                               if (navigator.share) {
-                                navigator.share({ title: 'I accepted a Praxis challenge', text }).catch(() => {});
+                                navigator.share({ title: 'I made a Praxis commitment', text }).catch(() => {});
                               } else {
                                 window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                               }
@@ -368,7 +368,7 @@ const BettingPage: React.FC = () => {
         <DialogTitle sx={{ fontWeight: 800 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ElectricBoltIcon sx={{ color: '#A78BFA' }} />
-            Place a Bet
+            Make a Commitment
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -382,10 +382,10 @@ const BettingPage: React.FC = () => {
             <TextField
               select
               fullWidth
-              label="Goal to bet on"
+              label="Goal to commit to"
               value={selectedNodeId}
               onChange={e => setSelectedNodeId(e.target.value)}
-              helperText="You can only bet on incomplete goals"
+              helperText="Only incomplete goals are eligible"
             >
               {goalNodes.length === 0
                 ? <MenuItem value="" disabled>No incomplete goals found</MenuItem>
@@ -452,7 +452,7 @@ const BettingPage: React.FC = () => {
             startIcon={creating ? <CircularProgress size={16} color="inherit" /> : <ElectricBoltIcon />}
             sx={{ borderRadius: '10px', fontWeight: 800, px: 3, bgcolor: '#A78BFA', '&:hover': { bgcolor: '#9333EA' } }}
           >
-            {creating ? 'Placing…' : `Stake ${stake} PP`}
+            {creating ? 'Committing…' : `Pledge ${stake} PP`}
           </Button>
         </DialogActions>
       </Dialog>
