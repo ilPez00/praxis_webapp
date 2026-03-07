@@ -29,7 +29,14 @@ CREATE TABLE IF NOT EXISTS event_attendees (
 ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES events(id) ON DELETE SET NULL;
 
 -- 5. honor_score as float (weighted decay score, not integer count)
-ALTER TABLE profiles ALTER COLUMN honor_score TYPE FLOAT USING COALESCE(honor_score, 0)::FLOAT;
+DO $$
+BEGIN
+  IF (SELECT data_type FROM information_schema.columns
+      WHERE table_name = 'profiles' AND column_name = 'honor_score') <> 'double precision' THEN
+    ALTER TABLE profiles ALTER COLUMN honor_score TYPE FLOAT
+      USING COALESCE(honor_score, 0)::FLOAT;
+  END IF;
+END$$;
 
 -- 6. honor_votes: add created_at if missing (needed for decay calculation)
 ALTER TABLE honor_votes ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
