@@ -55,6 +55,7 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CasinoIcon from '@mui/icons-material/Casino';
 import SettingsIcon from '@mui/icons-material/Settings';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
 interface AppNotification {
   id: string;
@@ -257,6 +258,7 @@ const Navbar: React.FC = () => {
                     { label: 'Dashboard', to: '/dashboard' },
                     { label: 'Matches', to: '/matches' },
                     { label: 'Chat', to: '/communication' },
+                    { label: 'Challenges', to: '/challenges' },
                   ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
                     return (
@@ -670,6 +672,7 @@ const Navbar: React.FC = () => {
                 { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
                 { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
+                { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon /> },
                 { label: 'Goal Staking', to: '/betting', icon: <CasinoIcon /> },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },

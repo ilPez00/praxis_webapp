@@ -1065,3 +1065,44 @@ CREATE INDEX IF NOT EXISTS offers_status_idx ON public.offers (status);
 -- Privacy columns on profiles (for Settings page)
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_public         BOOLEAN DEFAULT true;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS match_visibility  TEXT    DEFAULT 'all';
+
+-- =============================================================================
+-- 31. DUELS — P2P challenges with PP stakes
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.duels (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id          UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  opponent_id         UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  title               TEXT NOT NULL,
+  description         TEXT,
+  category            TEXT NOT NULL,          -- goal domain / category
+  stake_pp            INT  NOT NULL DEFAULT 50,
+  deadline_days       INT  NOT NULL DEFAULT 7,
+  deadline            DATE NOT NULL,
+  status              TEXT NOT NULL DEFAULT 'open',
+    -- open: public, anyone can accept
+    -- pending: direct challenge awaiting response
+    -- active: accepted, in progress
+    -- completed: resolved, winner set
+    -- declined: opponent declined
+    -- cancelled: creator cancelled before acceptance
+  won_by              UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  creator_claimed     BOOLEAN NOT NULL DEFAULT false,
+  opponent_claimed    BOOLEAN NOT NULL DEFAULT false,
+  creator_claimed_at  TIMESTAMPTZ,
+  opponent_claimed_at TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.duels ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Duels read all"      ON public.duels FOR SELECT USING (true);
+CREATE POLICY "Duels insert own"    ON public.duels FOR INSERT WITH CHECK (auth.uid() = creator_id);
+CREATE POLICY "Duels update party"  ON public.duels FOR UPDATE
+  USING (auth.uid() = creator_id OR auth.uid() = opponent_id);
+
+CREATE INDEX IF NOT EXISTS duels_status_idx    ON public.duels (status);
+CREATE INDEX IF NOT EXISTS duels_category_idx  ON public.duels (category);
+CREATE INDEX IF NOT EXISTS duels_creator_idx   ON public.duels (creator_id);
+CREATE INDEX IF NOT EXISTS duels_opponent_idx  ON public.duels (opponent_id);
