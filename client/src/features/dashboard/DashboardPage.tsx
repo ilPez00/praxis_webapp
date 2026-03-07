@@ -28,6 +28,7 @@ import {
   Chip,
   IconButton,
   Grid,
+  LinearProgress,
 } from '@mui/material';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -41,6 +42,8 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import PlaceIcon from '@mui/icons-material/Place';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 
 interface MatchResult {
   userId: string;
@@ -262,6 +265,53 @@ const DashboardPage: React.FC = () => {
             />
           </Box>
         )}
+
+        {/* Profile Completion Widget — shown only when score < 100% */}
+        {(() => {
+          const items = [
+            { label: 'Add a profile photo', done: !!user?.avatarUrl, link: `/profile`, points: 20 },
+            { label: 'Write your bio', done: !!(user?.bio && user.bio.trim().length > 10), link: `/profile`, points: 20 },
+            { label: 'Add your occupation', done: !!user?.occupation, link: `/profile`, points: 15 },
+            { label: 'Set up your goal tree', done: hasGoals, link: '/goal-selection', points: 30 },
+            { label: 'Complete your first check-in', done: (user?.current_streak ?? 0) > 0, link: '/dashboard', points: 15 },
+          ];
+          const score = items.reduce((sum, i) => sum + (i.done ? i.points : 0), 0);
+          if (score >= 100) return null;
+          const nextItem = items.find(i => !i.done);
+          return (
+            <GlassCard sx={{ p: 2.5, mb: 3, border: '1px solid rgba(245,158,11,0.2)', borderRadius: '16px' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                  Profile Strength — {score}%
+                </Typography>
+                {nextItem && (
+                  <Button size="small" variant="outlined" onClick={() => navigate(nextItem.link)}
+                    sx={{ fontSize: '0.72rem', py: 0.25, px: 1.5, borderRadius: '8px', borderColor: 'rgba(245,158,11,0.4)', color: 'primary.main' }}>
+                    {nextItem.label}
+                  </Button>
+                )}
+              </Box>
+              <LinearProgress variant="determinate" value={score} sx={{
+                height: 6, borderRadius: 3,
+                bgcolor: 'rgba(255,255,255,0.06)',
+                '& .MuiLinearProgress-bar': { borderRadius: 3, background: 'linear-gradient(90deg, #F59E0B, #8B5CF6)' },
+                mb: 1.5,
+              }} />
+              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                {items.map(item => (
+                  <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {item.done
+                      ? <CheckCircleIcon sx={{ fontSize: 14, color: '#10B981' }} />
+                      : <RadioButtonUncheckedIcon sx={{ fontSize: 14, color: 'text.disabled' }} />}
+                    <Typography variant="caption" sx={{ color: item.done ? '#10B981' : 'text.disabled', fontWeight: item.done ? 600 : 400 }}>
+                      {item.label}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </GlassCard>
+          );
+        })()}
 
         {/* Weekly Narrative — Master Roshi's "this week" message (Pro only) */}
         {weeklyNarrative && (
