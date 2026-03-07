@@ -67,6 +67,14 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
   const myDomains = new Set<string>(userNodes.map((n: any) => n.domain).filter(Boolean));
   const myProficiency: Record<string, number> = (userProfile as any)?.domain_proficiency ?? {};
 
+  // Pre-compute token sets for the requesting user's goal names (for text similarity)
+  const STOPWORDS = new Set(['a', 'an', 'the', 'and', 'or', 'of', 'to', 'in', 'for', 'with', 'is', 'my', 'i', 'be', 'on', 'at', 'by', 'it', 'as', 'do', 'so']);
+  const tokenize = (text: string): Set<string> => new Set(
+    text.toLowerCase().split(/\W+/).filter(t => t.length >= 3 && !STOPWORDS.has(t))
+  );
+  const myTokenSets = userNodes.map((n: any) => tokenize(`${n.name || ''} ${n.customDetails || ''}`));
+  const myGoalText = myTokenSets.reduce((acc: Set<string>, s: Set<string>) => { s.forEach(t => acc.add(t)); return acc; }, new Set<string>());
+
   // Build a profile map for quick lookup
   const profileProfMap = new Map<string, Record<string, number>>();
   for (const p of (otherProfiles ?? [])) {
@@ -94,8 +102,18 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
       profBonus = (avgA + avgB) / 2;
     }
 
-    // Blend: 80% goal-tree score + 20% proficiency alignment
-    const score = baseScore * 0.8 + profBonus * 0.2;
+    // Text-token overlap: Jaccard similarity between goal name/description tokens
+    const otherGoalText = otherNodes.reduce((acc: Set<string>, n: any) => {
+      tokenize(`${n.name || ''} ${n.customDetails || ''}`).forEach((t: string) => acc.add(t));
+      return acc;
+    }, new Set<string>());
+    let textIntersection = 0;
+    for (const t of Array.from(myGoalText)) if (otherGoalText.has(t)) textIntersection++;
+    const textUnion = myGoalText.size + otherGoalText.size - textIntersection;
+    const textSim = textUnion > 0 ? textIntersection / textUnion : 0;
+
+    // Blend: 65% goal-tree score + 20% text similarity + 15% proficiency alignment
+    const score = baseScore * 0.65 + textSim * 0.20 + profBonus * 0.15;
 
     if (score > 0) {
       const sharedGoals = otherNodes

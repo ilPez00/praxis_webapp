@@ -87,21 +87,32 @@ export const createEvent = catchAsync(async (req: Request, res: Response, _next:
     throw new BadRequestError('title and eventDate are required.');
   }
 
-  const { data: event, error } = await supabase
+  const basePayload = {
+    creator_id: userId,
+    title,
+    description: description || null,
+    event_date: eventDate,
+    event_time: eventTime || null,
+    location: location || null,
+  };
+
+  // Try with geo columns first; fall back to base payload if columns don't exist yet
+  const COLUMN_MISSING = (msg: string) => msg?.includes('42703') || msg?.toLowerCase().includes('column') && msg?.includes('does not exist');
+
+  let { data: event, error } = await supabase
     .from('events')
-    .insert({
-      creator_id: userId,
-      title,
-      description: description || null,
-      event_date: eventDate,
-      event_time: eventTime || null,
-      location: location || null,
-      latitude: latitude ?? null,
-      longitude: longitude ?? null,
-      city: city || null,
-    })
+    .insert({ ...basePayload, latitude: latitude ?? null, longitude: longitude ?? null, city: city || null })
     .select()
     .single();
+
+  if (error && COLUMN_MISSING(error.message)) {
+    logger.warn('Geo columns missing on events table — retrying without lat/lng/city. Run migrations to enable geo features.');
+    ({ data: event, error } = await supabase
+      .from('events')
+      .insert(basePayload)
+      .select()
+      .single());
+  }
 
   if (error) {
     if (SCHEMA_MISSING(error.message)) {

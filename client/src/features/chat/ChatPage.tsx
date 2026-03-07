@@ -94,7 +94,7 @@ const ChatPage: React.FC = () => {
                 if (otherUserIds.length > 0) {
                     const { data: profiles } = await supabase
                         .from('profiles')
-                        .select('id, name, current_streak, last_checkin_date')
+                        .select('id, name, current_streak, last_activity_date')
                         .in('id', otherUserIds);
                     for (const p of profiles || []) {
                         profileMap.set(p.id, p);
@@ -110,7 +110,7 @@ const ChatPage: React.FC = () => {
                         lastMessage: message.content,
                         lastMessageTime: new Date(message.timestamp || message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                         unreadCount: 0,
-                        lastCheckinDate: (profile as any)?.last_checkin_date ?? null,
+                        lastCheckinDate: (profile as any)?.last_activity_date ?? null,
                         currentStreak: (profile as any)?.current_streak ?? 0,
                     });
                 }

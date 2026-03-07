@@ -375,7 +375,7 @@ const MatchesPage: React.FC = () => {
         const profiles = await Promise.all(rawMatches.map(async (m) => {
           try {
             const { data: profile } = await supabase
-              .from('profiles').select('name, avatar_url, bio, current_streak, last_checkin_date').eq('id', m.userId).single();
+              .from('profiles').select('name, avatar_url, bio, current_streak, last_activity_date').eq('id', m.userId).single();
             let domains: string[] = [];
             let sharedGoals: string[] = [];
             let overallProgress: number | undefined;
@@ -406,7 +406,7 @@ const MatchesPage: React.FC = () => {
               sharedGoals,
               overallProgress,
               currentStreak: profile?.current_streak ?? 0,
-              lastCheckinDate: profile?.last_checkin_date ?? null,
+              lastCheckinDate: profile?.last_activity_date ?? null,
             } as MatchProfile;
           } catch {
             return { userId: m.userId, score: m.score, name: `User ${m.userId.slice(0, 6)}`, domains: [] } as MatchProfile;
