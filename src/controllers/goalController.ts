@@ -361,18 +361,20 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
 
   if (updateErr) throw new InternalServerError(`Failed to update node: ${updateErr.message}`);
 
-  // Award PP + proficiency if newly completed (0→100%)
-  if (!wasComplete && progress === 100 && targetDomain) {
+  // Award PP + proficiency + achievement if newly completed (0→100%)
+  if (!wasComplete && progress === 100) {
+    const node = updatedNodes.find(n => n.id === nodeId);
     const { data: profile } = await supabase
-      .from('profiles').select('praxis_points, domain_proficiency').eq('id', userId).single();
-    if (profile) {
-      const node = updatedNodes.find(n => n.id === nodeId);
+      .from('profiles').select('praxis_points, name, avatar_url').eq('id', userId).single();
+    if (profile && node) {
       const weight = node?.weight ?? 1;
       const ppAward = Math.round(50 * weight);
       await supabase.from('profiles')
         .update({ praxis_points: (profile.praxis_points ?? 0) + ppAward })
         .eq('id', userId);
-      bumpDomainProficiency(userId as string, targetDomain, 1.0).catch(() => {});
+      if (targetDomain) bumpDomainProficiency(userId as string, targetDomain, 1.0).catch(() => {});
+      // Auto-create achievement + community feed post (fire-and-forget)
+      createAchievementFromGoal(node, userId as string, profile.name, profile.avatar_url ?? undefined).catch(() => {});
     }
   }
 
