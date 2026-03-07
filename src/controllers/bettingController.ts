@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, BadRequestError, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors';
+import { pushNotification } from './notificationController';
 
 /**
  * POST /bets
@@ -204,6 +205,12 @@ export const resolveBetsOnGoalCompletion = async (userId: string, goalNodeId: st
         .update({ praxis_points: (profile?.praxis_points ?? 0) + winnings })
         .eq('id', userId);
       logger.info(`Bet ${bet.id} WON for user ${userId}: +${winnings} Praxis Points (1.8× payout)`);
+      pushNotification({
+        userId,
+        type: 'bet_result',
+        title: `Goal completed! You won ${winnings} PP on "${bet.goal_name}"`,
+        link: '/betting',
+      });
     }
   } catch (err) {
     // Non-fatal — bet resolution failure shouldn't block goal verification

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
+import { pushNotification } from './notificationController';
 
 // GET /friends — accepted friends list
 export const getFriends = catchAsync(async (req: Request, res: Response) => {
@@ -80,6 +81,18 @@ export const sendFriendRequest = catchAsync(async (req: Request, res: Response) 
     if (error.code === '23505') return res.status(409).json({ message: 'Friend request already exists.' });
     return res.status(500).json({ message: error.message });
   }
+
+  // Notify recipient (fire-and-forget)
+  supabase.from('profiles').select('name').eq('id', userId).single().then(({ data: sender }) => {
+    pushNotification({
+      userId: targetUserId as string,
+      type: 'friend_request',
+      title: `${sender?.name ?? 'Someone'} sent you a friend request`,
+      link: '/friends',
+      actorId: userId as string,
+    });
+  });
+
   res.status(201).json(data);
 });
 
@@ -99,6 +112,18 @@ export const acceptFriendRequest = catchAsync(async (req: Request, res: Response
     .single();
 
   if (error || !data) return res.status(404).json({ message: 'Request not found or already handled.' });
+
+  // Notify requester that their request was accepted (fire-and-forget)
+  supabase.from('profiles').select('name').eq('id', userId).single().then(({ data: accepter }) => {
+    pushNotification({
+      userId: data.requester_id as string,
+      type: 'friend_accepted',
+      title: `${accepter?.name ?? 'Someone'} accepted your friend request`,
+      link: `/profile/${userId}`,
+      actorId: userId as string,
+    });
+  });
+
   res.json(data);
 });
 
