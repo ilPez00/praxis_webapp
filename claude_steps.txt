@@ -924,3 +924,55 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 
 ### TypeScript: ✅ 0 errors (both backend + frontend)
 ### Commit: `47b6b61`
+
+---
+
+## Session 51 (2026-03-07) — Settings, Places, Offers, Navbar Cleanup, Stripe Guide
+
+### Navbar cleanup
+- Removed from menu: Events, Boards, Friends, AI Coaching (kept accessible via routes)
+- Added: Settings (gear icon) in dropdown + mobile drawer
+- Removed friend-request count pre-fetch (no longer shown)
+
+### Settings page (/settings)
+- **Notifications**: per-type toggles (messages, matches, verifications, bets, streaks, friends, referrals) → stored in `localStorage` (key: `praxis_notif_prefs`)
+- **Geolocation**: detect city via browser GPS + Nominatim reverse-geocode → saves lat/lng/city via PUT /users/:id; clear button removes location data
+- **Privacy**: public profile toggle + match visibility selector (all/friends/none) → saved via PUT /users/:id; requires `is_public` + `match_visibility` columns (§30 migration)
+- **Analytics**: opt-out toggle stored in `localStorage`
+- **Danger zone**: "Reset goals" (type RESET) → POST /users/me/reset-goals; "Delete account" (type DELETE) → DELETE /users/me + supabase.auth.signOut
+
+### Chat → Places tab
+- ChatPage now has Tabs: Messages | Places
+- `PlacesTab.tsx`: browse community venues (gyms, museums, churches, coworking, cafés, etc.)
+  - Filter by type + "Near me" geolocation mode
+  - Google Maps embedded iframe when `VITE_GOOGLE_MAPS_KEY` set; else "Open in Maps" link
+  - Join/leave membership; owner can delete
+- Backend: `placesController.ts` + `placesRoutes.ts` at `/api/places`
+
+### Marketplace → Offers tab (tab 3)
+- `OffersPanel` component in MarketplacePage: job board for businesses seeking workers
+- Types: job, gig, internship, volunteer, collab
+- Fields: title, description, type, domain, city, compensation, remote, requirements, contact
+- Backend: `offersController.ts` + `offersRoutes.ts` at `/api/offers`
+
+### Backend additions
+- `DELETE /users/me` — deletes auth + profile (cascade FK handles rest); `POST /users/me/reset-goals` — clears goal tree, resets edit count
+- Both added to `userRoutes.ts` with `authenticateToken` middleware
+
+### Migrations (must run in Supabase SQL Editor)
+- §29: `places` + `place_members` tables, RLS, geo index
+- §30: `offers` table, RLS, type/status indexes
+- Privacy columns: `profiles.is_public BOOLEAN DEFAULT true`, `profiles.match_visibility TEXT DEFAULT 'all'`
+
+### Manual actions doc updated
+- Google Maps: get API key → enable Maps JavaScript + Embed APIs → set `VITE_GOOGLE_MAPS_KEY` in Vercel
+- Stripe prod: live secret key, price ID, webhook registration (3 events), signing secret
+
+### TypeScript: ✅ 0 errors (backend + frontend)
+### Commit: `54f6677`
+
+## Next steps:
+- [ ] Run migrations §29 + §30 + privacy columns in Supabase SQL Editor
+- [ ] Get Google Maps API key and set VITE_GOOGLE_MAPS_KEY in Vercel (optional, for embedded map previews)
+- [ ] Complete Stripe production setup (see docs/manual_actions.txt)
+- [ ] Push to Railway + Vercel deploy
