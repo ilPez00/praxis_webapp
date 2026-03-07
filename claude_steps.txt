@@ -1,7 +1,7 @@
-Hi Claude. You are building Praxis, as outlined in the whitepaper PDF. This file serves as your memory and development log across sessions. Modify it to set goals, track progress, record architectural decisions, and note anything useful.
-You can delegate tasks to gemini. Remember to git commit and edit this file at the end of each session.
+Hi Claude. You are building Praxis, as outlined in the /docs subdirectory. This file serves as your memory and development log across sessions. Modify it to set goals, track progress, record architectural decisions, and note anything useful.
+You can and should delegate minor tasks to gemini, which you can invoke running "gemini". Stick to using the free tier. use and install any plugins you may need, both for yourself and gemini. Remember to git commit and edit this file at the end of each session.
+Comment out what you think has been completed.
 Never modify this paragraph.
-comment out what you think has been completed.
 ---
 THIS IS YOUR FIRST TASK: 
 Core Concept: Praxis Points (PP)
@@ -898,3 +898,29 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 - [ ] Stripe prod setup: STRIPE_PRICE_ID + register webhook
 - [ ] Android FCM push notifications
 - [ ] Weekly AI narrative recap: confirmed already implemented (AICoachingService + DashboardPage)
+
+---
+
+## Session 50 (2026-03-07) — Bug Fixes + Semantic Matching + Events Resilience
+
+### Bugs Fixed
+
+**MatchesPage + ChatPage — names showing as UUID codes:**
+- Root cause: both files selected `last_checkin_date` from profiles table; this column doesn't exist (correct name is `last_activity_date`). Supabase silently fails the query → all fields null → name fallback `User ${id.slice(0,6)}` shown.
+- Fix: changed to `last_activity_date` in both files.
+
+### Events — creation resilience (eventsController.ts)
+- Problem: if user's Supabase instance only ran the base migration (no ALTER TABLE), `city`/`latitude`/`longitude` columns don't exist → Postgres 42703 error → event creation fails.
+- Fix: try insert with geo columns first; on 42703 column-not-found error, retry with base payload only (title, description, date, time, location). Events now work in both schema variants.
+
+### Semantic Matching (MatchingEngineService.ts + matchingController.ts)
+- **MatchingEngineService fallback** (used when Gemini unavailable): replaced simple domain Jaccard + progress with 3-signal score:
+  - 45% domain-level Jaccard overlap (structural)
+  - 35% within-domain token-Jaccard text similarity (goal name + description, stopwords removed, min 3-char tokens)
+  - 20% progress alignment
+- **matchingController slow path**: added cross-user token-Jaccard as additional blend signal:
+  - 65% goal-tree compatibility score + 20% text token overlap + 15% proficiency alignment
+- Result: "Run a marathon" matches "Marathon training" better than "Learn guitar" even within the same domain.
+
+### TypeScript: ✅ 0 errors (both backend + frontend)
+### Commit: `47b6b61`
