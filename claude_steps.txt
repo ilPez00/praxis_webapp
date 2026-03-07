@@ -854,3 +854,47 @@ CREATE POLICY "Users manage own mutes" ON public.mutes FOR ALL USING (auth.uid()
 - [ ] Weekly AI narrative recap (Gemini): "This week you showed exceptional consistency"
 - [ ] "Seen but not checked in" micro-drama in matches/chat
 - [ ] Android FCM push notifications
+
+---
+
+## Session 49 (2026-03-07) — Events Fix + Honor UI + Checkin Micro-drama + Nav + Analytics
+
+### Implemented (commits 1c4a6c1, 32ef55b, 5a8f428):
+
+**Events false-positive fix:**
+- `eventsController.ts`: narrowed `SCHEMA_MISSING` from `msg?.includes('does not exist')` (too broad, fired on FK/RLS errors) to only `msg?.includes('schema cache') || msg?.includes('42P01')` — eliminates 503 false-positive when events table exists
+
+**Honor button on ProfilePage:**
+- State: `hasHonored`, `honorScore`, `honorLoading`
+- On load (other user's profile): `GET /honor/:profileId` to check current honor status
+- Honor button in action area alongside Message + FriendButton: 🏅 score + "Honor"/"Honored" toggle
+- `handleHonor`: POST/DELETE `/honor/:id`; live-updates score; toast "+15 PP awarded to both"
+
+**Checkin micro-drama — MatchesPage:**
+- `checkinStatus()` helper: green "Checked in today", amber "Active yesterday"/"Missed today", orange "Last seen Xd ago", grey "Inactive Xd"
+- Status dot with glow + label shown below name/pace badge for non-demo matches
+- Match profile fetch now includes `current_streak` + `last_checkin_date`
+- Real match cards now include `sharedGoals` (top 3 by progress) + `overallProgress` (avg across goals)
+
+**Checkin micro-drama — ChatPage:**
+- Conversation list profile fetch extended to `current_streak, last_checkin_date`
+- `checkinDotColor()` / `checkinDotTitle()` helpers: green (today) / amber (≤2d) / grey (inactive)
+- Presence dot (10px, glowing) overlaid on each conversation avatar; Tooltip shows status text
+
+**Navbar — missing routes added:**
+- Desktop profile dropdown: Boards, Events, Goal Staking, AI Coaching
+- Mobile drawer: Boards, Events, Goal Staking, AI Coaching, Friends
+- Icons: `EventIcon`, `ForumIcon`, `CasinoIcon`, `PsychologyIcon`
+
+**Analytics — real community comparison:**
+- `analyticsController.getComparisonData`: replaced placeholder with real Supabase aggregation
+  - Fetches user's stats + up to 1000 community profiles in parallel
+  - Returns avg/median for streak, reliability, praxis_points, honor_score + percentile per metric
+- `AnalyticsPage`: replaced placeholder alert with bar chart rows showing You/Avg/Top X% per metric
+
+### TypeScript: ✅ 0 errors (both backend + frontend)
+
+## Next features:
+- [ ] Stripe prod setup: STRIPE_PRICE_ID + register webhook
+- [ ] Android FCM push notifications
+- [ ] Weekly AI narrative recap: confirmed already implemented (AICoachingService + DashboardPage)
