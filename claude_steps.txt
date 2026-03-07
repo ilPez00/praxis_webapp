@@ -1383,4 +1383,26 @@ CREATE TABLE IF NOT EXISTS public.duels (
 - **Matches badge**: pulsing amber dot on Matches nav link if not visited in 24h; clears on click via localStorage
 
 ### TypeScript: ✅ 0 errors (backend + frontend)
-### Commits: b86b972, eb47ad9, fb71f1e
+### Commits: b86b972, eb47ad9, fb71f1e, 98f3376
+
+## Session 54 (2026-03-07) — Engagement Loop Deepening
+
+### Features built:
+- **GoalProgressWidget** (`client/src/features/dashboard/components/GoalProgressWidget.tsx`):
+  Root goals on Dashboard with domain color bars + inline edit popover. Slider + quick 0/25/50/75/100% buttons.
+  PATCH /goals/:userId/node/:nodeId/progress on save — no page navigation needed.
+- **Emoji reactions on posts** (PostFeed.tsx): ❤️🔥💪✅ reaction bar replaces heart icon.
+  Emoji choice stored in localStorage, actual like/unlike calls existing endpoint.
+  Like count shown when >0. Comment button right-aligned with flex spacer.
+- **Response timer in ChatRoom**: header shows "Last replied Xh ago" in amber when
+  partner's last message is > 30 min old. Pure frontend computation from messages state.
+- **Streak milestone celebrations** (CheckInWidget.tsx): delayed toast on 7/30/100/365 day
+  streak milestones after successful check-in.
+- **Daily Axiom micro-message** (DashboardPage): deterministic message pool seeded by
+  dayOfYear × streak tier. No API call. Shown for all users. Updates each day.
+- **AccountabilityNetworkWidget** (see Session 53): friends sorted by check-in status.
+- **Goal milestone auto-posts** (see Session 53): backend auto-posts at 25/50/75/100%.
+- **Partner nudge** (see Session 53): POST /notifications/nudge/:targetId, ChatRoom bell.
+
+### TypeScript: ✅ 0 errors (backend + frontend)
+### Commit: 437a48f
