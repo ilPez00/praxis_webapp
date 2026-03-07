@@ -568,6 +568,16 @@ const Navbar: React.FC = () => {
                       <PsychologyIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">AI Coaching</Typography>
                     </MenuItem>
+                    <MenuItem onClick={() => handleNav('/friends')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <Badge badgeContent={friendRequestCount || undefined} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.55rem', minWidth: 14, height: 14 } }}>
+                        <PeopleIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      </Badge>
+                      <Typography variant="body2">Friends</Typography>
+                      {friendRequestCount > 0 && (
+                        <Chip label={`${friendRequestCount} pending`} size="small" color="error"
+                          sx={{ ml: 'auto', height: 18, fontSize: '0.6rem', fontWeight: 700 }} />
+                      )}
+                    </MenuItem>
 
                     {user.is_admin && (
                       <MenuItem onClick={() => handleNav('/admin')} sx={{ gap: 1.5, py: 1.25 }}>
@@ -712,7 +722,11 @@ const Navbar: React.FC = () => {
               ].map(({ label, to, icon }) => (
                 <ListItem key={label} disablePadding>
                   <ListItemButton onClick={() => handleNav(to)}>
-                    <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>{icon}</ListItemIcon>
+                    <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>
+                      {label === 'Friends' && friendRequestCount > 0
+                        ? <Badge badgeContent={friendRequestCount} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', minWidth: 16, height: 16 } }}>{icon}</Badge>
+                        : icon}
+                    </ListItemIcon>
                     <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9375rem' }} />
                   </ListItemButton>
                 </ListItem>
