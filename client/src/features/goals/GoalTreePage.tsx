@@ -30,6 +30,8 @@ import {
 import VerifiedIcon from '@mui/icons-material/Verified';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import Slider from '@mui/material/Slider';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   const nodeMap = new Map<string, FrontendGoalNode>();
@@ -90,6 +92,13 @@ const GoalTreePage: React.FC = () => {
   const [placingBet, setPlacingBet] = useState(false);
   const [userBets, setUserBets] = useState<any[]>([]);
   const [praxisPoints, setPraxisPoints] = useState<number | null>(null);
+  // Progress update dialog state
+  const [progressNode, setProgressNode] = useState<FrontendGoalNode | null>(null);
+  const [progressValue, setProgressValue] = useState(0);
+  const [savingProgress, setSavingProgress] = useState(false);
+  // Node action chooser state (click < 100%)
+  const [actionNode, setActionNode] = useState<FrontendGoalNode | null>(null);
+
   // Countdown tick — re-renders every minute so timers stay live
   const [, setTick] = useState(0);
 
@@ -172,10 +181,41 @@ const GoalTreePage: React.FC = () => {
       setAchieveNode(node);
       return;
     }
-    // < 100% — peer verification flow
-    setClaimNode(node);
-    setSelectedVerifier(null);
-    if (currentUserId) fetchDMPartners(currentUserId);
+    // < 100% — show action chooser
+    setActionNode(node);
+  };
+
+  const handleSaveProgress = async () => {
+    if (!progressNode || !currentUserId) return;
+    setSavingProgress(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await axios.patch(
+        `${API_URL}/goals/${currentUserId}/node/${progressNode.id}/progress`,
+        { progress: progressValue },
+        { headers: { Authorization: `Bearer ${session?.access_token}` } }
+      );
+      // Update local tree
+      const updateNode = (nodes: FrontendGoalNode[]): FrontendGoalNode[] =>
+        nodes.map(n => n.id === progressNode.id
+          ? { ...n, progress: progressValue }
+          : { ...n, children: updateNode(n.children) }
+        );
+      setTreeData(prev => updateNode(prev));
+      toast.success(progressValue === 100
+        ? '🎉 Goal completed! +50 PP awarded.'
+        : `Progress updated to ${progressValue}%.`
+      );
+      setProgressNode(null);
+      // If just hit 100%, offer achievement post
+      if (progressValue === 100) {
+        setTimeout(() => setAchieveNode({ ...progressNode, progress: 100 }), 400);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update progress.');
+    } finally {
+      setSavingProgress(false);
+    }
   };
 
   const handlePlaceBet = async () => {
@@ -539,6 +579,110 @@ const GoalTreePage: React.FC = () => {
             sx={{ background: 'linear-gradient(135deg, #F59E0B, #EF4444)' }}
           >
             {placingBet ? 'Placing…' : `Bet ${betStake} pts`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Action chooser — click node < 100% */}
+      <Dialog open={!!actionNode} onClose={() => setActionNode(null)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}>
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          {actionNode?.title}
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 400, mt: 0.5 }}>
+            Currently {actionNode?.progress}% — what would you like to do?
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<TrendingUpIcon />}
+              onClick={() => {
+                setProgressValue(actionNode?.progress ?? 0);
+                setProgressNode(actionNode);
+                setActionNode(null);
+              }}
+              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(16,185,129,0.4)', color: '#10B981',
+                '&:hover': { borderColor: '#10B981', bgcolor: 'rgba(16,185,129,0.08)' } }}
+            >
+              Update progress
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<VerifiedIcon />}
+              onClick={() => {
+                setClaimNode(actionNode);
+                setSelectedVerifier(null);
+                if (currentUserId) fetchDMPartners(currentUserId);
+                setActionNode(null);
+              }}
+              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(139,92,246,0.4)', color: '#8B5CF6',
+                '&:hover': { borderColor: '#8B5CF6', bgcolor: 'rgba(139,92,246,0.08)' } }}
+            >
+              Request peer verification
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<EmojiEventsIcon />}
+              onClick={() => { setBetNode(actionNode); setActionNode(null); }}
+              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(245,158,11,0.4)', color: '#F59E0B',
+                '&:hover': { borderColor: '#F59E0B', bgcolor: 'rgba(245,158,11,0.08)' } }}
+            >
+              Place a bet on this goal
+            </Button>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setActionNode(null)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Progress update slider */}
+      <Dialog open={!!progressNode} onClose={() => setProgressNode(null)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Update Progress
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 400, mt: 0.5 }}>
+            {progressNode?.title}
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ px: 1, pt: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="body2" color="text.secondary">Progress</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: progressValue === 100 ? '#10B981' : '#F59E0B' }}>
+                {progressValue}%
+              </Typography>
+            </Box>
+            <Slider
+              value={progressValue}
+              onChange={(_, v) => setProgressValue(v as number)}
+              min={0} max={100} step={5}
+              marks={[{ value: 0, label: '0%' }, { value: 50, label: '50%' }, { value: 100, label: '100%' }]}
+              sx={{
+                color: progressValue === 100 ? '#10B981' : '#F59E0B',
+                '& .MuiSlider-markLabel': { fontSize: '0.7rem', color: 'text.disabled' },
+              }}
+            />
+            {progressValue === 100 && (
+              <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 600, mt: 1, display: 'block' }}>
+                Setting to 100% will award PP and prompt you to post an achievement.
+              </Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setProgressNode(null)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={savingProgress}
+            onClick={handleSaveProgress}
+            sx={{ bgcolor: progressValue === 100 ? '#10B981' : '#F59E0B', '&:hover': { bgcolor: progressValue === 100 ? '#059669' : '#D97706' } }}
+          >
+            {savingProgress ? 'Saving…' : 'Save Progress'}
           </Button>
         </DialogActions>
       </Dialog>

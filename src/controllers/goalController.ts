@@ -309,3 +309,72 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     res.status(201).json(data); // Respond with the newly created goal tree
   }
 });
+
+/**
+ * PATCH /goals/:userId/node/:nodeId/progress
+ * Update a single goal node's progress without triggering the edit-count gate.
+ * Awards PP + domain proficiency if the node newly hits 100%.
+ */
+export const updateNodeProgress = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId, nodeId } = req.params;
+  const requesterId = (req as any).user?.id;
+  if (requesterId !== userId) throw new ForbiddenError('You can only update your own goals.');
+
+  const progress = Number(req.body.progress);
+  if (isNaN(progress) || progress < 0 || progress > 100) {
+    throw new NotFoundError('progress must be a number 0–100.');
+  }
+
+  // Fetch current tree
+  const { data: tree, error: treeErr } = await supabase
+    .from('goal_trees')
+    .select('nodes, "rootNodes"')
+    .eq('"userId"', userId)
+    .single();
+
+  if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
+
+  const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
+  const rootNodes: GoalNode[] = Array.isArray(tree['rootNodes']) ? tree['rootNodes'] : [];
+
+  // Find the node and update its progress
+  let wasComplete = false;
+  let targetDomain = '';
+  const updatedNodes = nodes.map((n: GoalNode) => {
+    if (n.id !== nodeId) return n;
+    wasComplete = n.progress >= 1;
+    targetDomain = n.domain || '';
+    return { ...n, progress: progress / 100 };
+  });
+  const updatedRootNodes = rootNodes.map((n: GoalNode) =>
+    n.id !== nodeId ? n : { ...n, progress: progress / 100 }
+  );
+
+  if (updatedNodes.length === nodes.length && !updatedNodes.find(n => n.id === nodeId)) {
+    throw new NotFoundError('Goal node not found in tree.');
+  }
+
+  const { error: updateErr } = await supabase
+    .from('goal_trees')
+    .update({ nodes: updatedNodes, 'rootNodes': updatedRootNodes })
+    .eq('"userId"', userId);
+
+  if (updateErr) throw new InternalServerError(`Failed to update node: ${updateErr.message}`);
+
+  // Award PP + proficiency if newly completed (0→100%)
+  if (!wasComplete && progress === 100 && targetDomain) {
+    const { data: profile } = await supabase
+      .from('profiles').select('praxis_points, domain_proficiency').eq('id', userId).single();
+    if (profile) {
+      const node = updatedNodes.find(n => n.id === nodeId);
+      const weight = node?.weight ?? 1;
+      const ppAward = Math.round(50 * weight);
+      await supabase.from('profiles')
+        .update({ praxis_points: (profile.praxis_points ?? 0) + ppAward })
+        .eq('id', userId);
+      bumpDomainProficiency(userId as string, targetDomain, 1.0).catch(() => {});
+    }
+  }
+
+  res.json({ success: true, nodeId, progress });
+});
