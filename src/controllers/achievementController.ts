@@ -127,10 +127,10 @@ export const getAchievementById = catchAsync(async (req: Request, res: Response,
  * @param res - The Express response object.
  */
 export const getAchievements = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { data, error } = await supabase
-    .from('achievements')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const { userId } = req.query;
+  let query = supabase.from('achievements').select('*').order('created_at', { ascending: false });
+  if (userId) query = query.eq('user_id', String(userId));
+  const { data, error } = await query;
 
   // Return empty array if table doesn't exist yet (schema cache miss during setup)
   if (error) {

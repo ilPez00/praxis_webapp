@@ -33,6 +33,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import LockIcon from '@mui/icons-material/Lock';
 import GlassCard from '../../components/common/GlassCard';
+import FriendButton from '../../components/common/FriendButton';
 import { mockMatches, MockMatch } from '../../data/mockMatches';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -268,7 +269,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onMessage, onViewProfile, 
       <Box sx={{ flexGrow: 1 }} />
 
       {/* Action buttons */}
-      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+      <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
         <Button
           variant="outlined"
           size="small"
@@ -282,6 +283,9 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onMessage, onViewProfile, 
         >
           Profile
         </Button>
+        {!match.isDemo && (
+          <FriendButton targetUserId={match.userId} targetName={match.name} size="small" />
+        )}
         {!match.isDemo && compatPct >= 60 && (
           <Button
             variant="outlined"

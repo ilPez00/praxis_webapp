@@ -45,6 +45,8 @@ import MyLocationIcon from '@mui/icons-material/MyLocation';
 import PeopleIcon from '@mui/icons-material/People';
 import ArticleIcon from '@mui/icons-material/Article';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import { DOMAIN_COLORS } from '../../types/goal';
 import toast from 'react-hot-toast';
 
 interface Profile {
@@ -207,6 +209,9 @@ const ProfilePage: React.FC = () => {
   const [friendsDialogOpen, setFriendsDialogOpen] = useState(false);
   const [friendsLoading, setFriendsLoading] = useState(false);
 
+  // Achievements
+  const [achievements, setAchievements] = useState<any[]>([]);
+
   useEffect(() => {
     const fetchProfile = async () => {
       const targetId = paramId || user?.id;
@@ -245,6 +250,11 @@ const ProfilePage: React.FC = () => {
             .then(d => d && setPercentileData(d))
             .catch(() => {});
         }
+        // Fetch achievements (visible on any profile)
+        fetch(`${API_URL}/achievements?userId=${targetId}`)
+          .then(r => r.ok ? r.json() : [])
+          .then(d => setAchievements(Array.isArray(d) ? d : []))
+          .catch(() => {});
         // Fetch honor status for other users' profiles
         if (paramId && paramId !== user?.id) {
           supabase.auth.getSession().then(({ data: { session } }) => {
@@ -943,6 +953,61 @@ const ProfilePage: React.FC = () => {
           </Button>
         </Box>
       </GlassCard>
+
+      {/* Achievements (trophies) */}
+      {achievements.length > 0 && (
+        <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+            <EmojiEventsIcon sx={{ color: '#F59E0B' }} />
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {isOwnProfile ? 'Your Achievements' : `${profile.name}'s Achievements`}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {achievements.length} completed goal{achievements.length !== 1 ? 's' : ''} unlocked
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+            {achievements.map((a: any) => {
+              const domainColor = DOMAIN_COLORS[a.domain as string] || '#F59E0B';
+              return (
+                <Tooltip key={a.id} title={a.description || a.title} arrow>
+                  <Box sx={{
+                    display: 'flex', alignItems: 'center', gap: 1,
+                    px: 1.5, py: 1, borderRadius: '12px',
+                    bgcolor: `${domainColor}12`,
+                    border: `1px solid ${domainColor}30`,
+                    maxWidth: 220,
+                  }}>
+                    <Box sx={{
+                      width: 32, height: 32, borderRadius: '8px',
+                      bgcolor: `${domainColor}20`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <EmojiEventsIcon sx={{ color: domainColor, fontSize: 18 }} />
+                    </Box>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{
+                        fontWeight: 700, fontSize: '0.78rem', color: domainColor,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {a.title}
+                      </Typography>
+                      {a.domain && (
+                        <Typography sx={{ fontSize: '0.63rem', color: 'text.disabled', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                          {a.domain}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                </Tooltip>
+              );
+            })}
+          </Box>
+        </GlassCard>
+      )}
 
       {/* Posts timeline */}
       <GlassCard glowColor="rgba(245,158,11,0.08)" sx={{ p: 3 }}>
