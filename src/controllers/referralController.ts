@@ -8,6 +8,7 @@ import {
   NotFoundError,
   InternalServerError,
 } from '../utils/appErrors';
+import { pushNotification } from './notificationController';
 
 const REFERRAL_REWARD = 100; // PP awarded to both referrer and claimer
 
@@ -101,6 +102,16 @@ export const claimCode = catchAsync(async (req: Request, res: Response, _next: N
   logger.info(
     `[Referral] ${userId} claimed code from ${refCode.user_id} — +${REFERRAL_REWARD} PP each`,
   );
+
+  // Notify the referrer (fire-and-forget)
+  supabase.from('profiles').select('name').eq('id', userId).single().then(({ data: claimer }) => {
+    pushNotification({
+      userId: refCode.user_id as string,
+      type: 'referral',
+      title: `${claimer?.name ?? 'Someone'} used your referral code — +${REFERRAL_REWARD} PP!`,
+      link: '/dashboard',
+    });
+  });
 
   return res.json({
     success: true,

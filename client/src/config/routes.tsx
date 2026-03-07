@@ -23,7 +23,6 @@ const IdentityVerificationPage = React.lazy(() => import('../features/identity/I
 const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
 const GroupsPage = React.lazy(() => import('../features/groups/GroupsPage'));
 const GroupRoom = React.lazy(() => import('../features/groups/GroupRoom'));
-const GroupChatRoom = React.lazy(() => import('../features/groups/GroupChatRoom'));
 const BoardsPage = React.lazy(() => import('../features/groups/BoardsPage'));
 const CommunicationPage = React.lazy(() => import('../features/communication/CommunicationPage'));
 const CoachingPage = React.lazy(() => import('../features/coaching/CoachingPage'));
