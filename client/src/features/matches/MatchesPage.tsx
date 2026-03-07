@@ -377,10 +377,25 @@ const MatchesPage: React.FC = () => {
             const { data: profile } = await supabase
               .from('profiles').select('name, avatar_url, bio, current_streak, last_checkin_date').eq('id', m.userId).single();
             let domains: string[] = [];
+            let sharedGoals: string[] = [];
+            let overallProgress: number | undefined;
             try {
               const goalRes = await axios.get(`${API_URL}/goals/${m.userId}`);
-              const nodes = goalRes.data?.nodes ?? [];
+              const nodes: any[] = goalRes.data?.nodes ?? [];
               domains = Array.from(new Set<string>(nodes.map((n: any) => n.domain).filter(Boolean)));
+              // Top-level goal names as "shared goals"
+              sharedGoals = nodes
+                .filter((n: any) => n.name && n.progress !== undefined)
+                .sort((a: any, b: any) => b.progress - a.progress)
+                .slice(0, 3)
+                .map((n: any) => n.name);
+              // Average progress across all goals
+              const progNodes = nodes.filter((n: any) => typeof n.progress === 'number');
+              if (progNodes.length > 0) {
+                overallProgress = Math.round(
+                  progNodes.reduce((sum: number, n: any) => sum + n.progress, 0) / progNodes.length
+                );
+              }
             } catch { /* non-fatal */ }
             return {
               userId: m.userId, score: m.score,
@@ -388,6 +403,8 @@ const MatchesPage: React.FC = () => {
               avatarUrl: profile?.avatar_url ?? undefined,
               bio: profile?.bio ?? undefined,
               domains,
+              sharedGoals,
+              overallProgress,
               currentStreak: profile?.current_streak ?? 0,
               lastCheckinDate: profile?.last_checkin_date ?? null,
             } as MatchProfile;
