@@ -106,8 +106,9 @@ const FriendsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Always fetch requests so the badge shows on the Friends tab
+    fetchRequests();
     if (tab === 0) fetchFriends();
-    else fetchRequests();
   }, [tab, fetchFriends, fetchRequests]);
 
   const setActing = (id: string, acting: boolean) => {

@@ -16,6 +16,7 @@ import {
 import PersonIcon from '@mui/icons-material/Person';
 import SchoolIcon from '@mui/icons-material/School';
 import GroupsIcon from '@mui/icons-material/Groups';
+import EventIcon from '@mui/icons-material/Event';
 import { API_URL } from '../../lib/api';
 
 interface UserResult {
@@ -49,10 +50,22 @@ interface GroupResult {
   domain?: string;
 }
 
+interface EventResult {
+  id: string;
+  title: string;
+  description?: string;
+  event_date: string;
+  event_time?: string;
+  city?: string;
+  location?: string;
+  creator?: { name: string };
+}
+
 interface SearchResults {
   users?: UserResult[];
   coaches?: CoachResult[];
   groups?: GroupResult[];
+  events?: EventResult[];
 }
 
 const SearchPage: React.FC = () => {
@@ -91,11 +104,13 @@ const SearchPage: React.FC = () => {
   const totalCount =
     (results.users?.length ?? 0) +
     (results.coaches?.length ?? 0) +
-    (results.groups?.length ?? 0);
+    (results.groups?.length ?? 0) +
+    (results.events?.length ?? 0);
 
   const showUsers  = tab === 'all' || tab === 'users';
   const showCoaches = tab === 'all' || tab === 'coaches';
   const showGroups  = tab === 'all' || tab === 'groups';
+  const showEvents  = tab === 'all' || tab === 'events';
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', px: { xs: 2, md: 3 }, py: 4 }}>
@@ -124,6 +139,9 @@ const SearchPage: React.FC = () => {
         </ToggleButton>
         <ToggleButton value="groups">
           <GroupsIcon sx={{ fontSize: 16, mr: 0.5 }} />Groups
+        </ToggleButton>
+        <ToggleButton value="events">
+          <EventIcon sx={{ fontSize: 16, mr: 0.5 }} />Events
         </ToggleButton>
       </ToggleButtonGroup>
 
@@ -285,6 +303,56 @@ const SearchPage: React.FC = () => {
                         {g.domain && (
                           <Chip label={g.domain} size="small" sx={{ mt: 0.5, fontSize: '0.65rem', height: 20 }} />
                         )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Events */}
+          {showEvents && (results.events?.length ?? 0) > 0 && (
+            <Box>
+              {tab === 'all' && (
+                <Typography variant="overline" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+                  Events
+                </Typography>
+              )}
+              <Stack spacing={1.5}>
+                {results.events!.map(ev => (
+                  <Card
+                    key={ev.id}
+                    onClick={() => navigate('/events')}
+                    sx={{
+                      cursor: 'pointer',
+                      bgcolor: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', borderColor: 'primary.main' },
+                    }}
+                  >
+                    <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: '12px !important' }}>
+                      <Box
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: '12px',
+                          bgcolor: 'rgba(236,72,153,0.12)',
+                          border: '1px solid rgba(236,72,153,0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <EventIcon sx={{ color: '#EC4899', fontSize: 22 }} />
+                      </Box>
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Typography variant="body1" sx={{ fontWeight: 700 }}>{ev.title}</Typography>
+                        <Typography variant="body2" color="text.secondary" noWrap>
+                          {new Date(ev.event_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                          {ev.city && ` · ${ev.city}`}
+                          {ev.creator?.name && ` · by ${ev.creator.name}`}
+                        </Typography>
                       </Box>
                     </CardContent>
                   </Card>

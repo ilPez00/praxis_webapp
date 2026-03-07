@@ -66,6 +66,20 @@ interface Profile {
   social_linkedin?: string;
   social_whatsapp?: string;
   social_telegram?: string;
+  current_streak?: number;
+  last_activity_date?: string | null;
+}
+
+function activityChip(profile: Profile): { label: string; color: string; bg: string; border: string } | null {
+  const streak = profile.current_streak ?? 0;
+  if (streak === 0) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
+  const last = profile.last_activity_date;
+  const isToday = last === todayStr;
+  if (isToday) return { label: `🔥 ${streak}d · Active today`, color: '#F97316', bg: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.3)' };
+  return { label: `🔥 ${streak}d streak`, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.25)' };
 }
 
 const SEX_OPTIONS = ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'];
@@ -769,8 +783,8 @@ const ProfilePage: React.FC = () => {
                 </Stack>
               )}
 
-              {/* Friends count chip */}
-              <Box sx={{ mt: activeSocials.length > 0 ? 1.5 : 1 }}>
+              {/* Friends count chip + activity chip */}
+              <Box sx={{ mt: activeSocials.length > 0 ? 1.5 : 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 <Chip
                   icon={<PeopleIcon sx={{ fontSize: '16px !important' }} />}
                   label="Friends"
@@ -785,6 +799,16 @@ const ProfilePage: React.FC = () => {
                     '&:hover': { bgcolor: 'rgba(139,92,246,0.2)' },
                   }}
                 />
+                {!isOwnProfile && (() => {
+                  const ac = activityChip(profile);
+                  return ac ? (
+                    <Chip
+                      label={ac.label}
+                      size="small"
+                      sx={{ bgcolor: ac.bg, border: `1px solid ${ac.border}`, color: ac.color, fontWeight: 600 }}
+                    />
+                  ) : null;
+                })()}
               </Box>
 
               {/* Social links view */}

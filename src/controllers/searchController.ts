@@ -2,16 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync } from '../utils/appErrors';
 
-// GET /search?q=<query>&type=users|coaches|groups|all
+// GET /search?q=<query>&type=users|coaches|groups|events|all
 export const search = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { q = '', type = 'all' } = req.query as { q?: string; type?: string };
   const query = q.trim();
 
   if (!query) {
-    return res.status(200).json({ users: [], coaches: [], groups: [] });
+    return res.status(200).json({ users: [], coaches: [], groups: [], events: [] });
   }
 
-  const results: { users?: any[]; coaches?: any[]; groups?: any[] } = {};
+  const results: { users?: any[]; coaches?: any[]; groups?: any[]; events?: any[] } = {};
 
   if (type === 'all' || type === 'users') {
     const { data: users } = await supabase
@@ -52,6 +52,18 @@ export const search = catchAsync(async (req: Request, res: Response, _next: Next
       .limit(10);
 
     results.groups = groups ?? [];
+  }
+
+  if (type === 'all' || type === 'events') {
+    const { data: events } = await supabase
+      .from('events')
+      .select('id, title, description, event_date, event_time, city, location, creator:profiles!creator_id(name)')
+      .ilike('title', `%${query}%`)
+      .gte('event_date', new Date().toISOString().slice(0, 10))
+      .order('event_date', { ascending: true })
+      .limit(10);
+
+    results.events = events ?? [];
   }
 
   return res.status(200).json(results);
