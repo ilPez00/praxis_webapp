@@ -36,6 +36,7 @@ const BettingPage = React.lazy(() => import('../features/betting/BettingPage'));
 const EventsPage = React.lazy(() => import('../features/events/EventsPage'));
 const FriendsPage = React.lazy(() => import('../features/friends/FriendsPage'));
 const PostThreadPage = React.lazy(() => import('../features/posts/PostThreadPage'));
+const SettingsPage = React.lazy(() => import('../features/settings/SettingsPage'));
 
 interface RouteConfig {
   path: string;
@@ -86,6 +87,7 @@ const routes: RouteConfig[] = [
   { path: '/events', element: EventsPage, private: true },
   { path: '/friends', element: FriendsPage, private: true },
   { path: '/posts/:postId', element: PostThreadPage, private: true },
+  { path: '/settings', element: SettingsPage, private: true },
 ];
 
 export default routes;

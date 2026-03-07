@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -15,7 +15,27 @@ import {
   Stack,
   Tabs,
   Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  FormControlLabel,
+  Switch,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import WorkIcon from '@mui/icons-material/Work';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import CloseIcon from '@mui/icons-material/Close';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import { supabase } from '../../lib/supabase';
 import ShieldIcon from '@mui/icons-material/Shield';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -92,6 +112,267 @@ const SECTIONS = [
   { label: 'Badges',   types: ['badge_pioneer', 'badge_apprentice', 'badge_achiever', 'badge_mentor', 'badge_legend', 'badge_visionary'] },
   { label: 'Premium',  types: ['goal_tree_edit', 'premium_trial'] },
 ];
+
+// ── Offers types ──────────────────────────────────────────────────────────────
+const OFFER_TYPES = [
+  { value: 'job', label: '💼 Full-time job', color: '#60A5FA' },
+  { value: 'gig', label: '⚡ Gig / Freelance', color: '#F59E0B' },
+  { value: 'internship', label: '🎓 Internship', color: '#34D399' },
+  { value: 'volunteer', label: '🤝 Volunteer', color: '#A78BFA' },
+  { value: 'collab', label: '🚀 Collaboration', color: '#EC4899' },
+];
+
+interface Offer {
+  id: string;
+  poster_id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  domain: string | null;
+  city: string | null;
+  compensation: string | null;
+  remote: boolean;
+  requirements: string | null;
+  contact: string | null;
+  status: string;
+  created_at: string;
+  poster: { id: string; name: string; avatar_url: string | null; is_premium?: boolean } | null;
+}
+
+const DOMAINS = ['Fitness', 'Business', 'Creative', 'Tech', 'Education', 'Health', 'Finance', 'Other'];
+
+function timeAgoOffers(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(ms / 86400000);
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  return `${days}d ago`;
+}
+
+const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) => {
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [formTitle, setFormTitle] = useState('');
+  const [formDesc, setFormDesc] = useState('');
+  const [formType, setFormType] = useState('job');
+  const [formDomain, setFormDomain] = useState('');
+  const [formCity, setFormCity] = useState('');
+  const [formComp, setFormComp] = useState('');
+  const [formRemote, setFormRemote] = useState(false);
+  const [formReqs, setFormReqs] = useState('');
+  const [formContact, setFormContact] = useState('');
+
+  const getAuthHeader = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  };
+
+  const fetchOffers = useCallback(async () => {
+    try {
+      const headers = await getAuthHeader();
+      const params = filterType ? `?type=${filterType}` : '';
+      const { data } = await axios.get(`${API_URL}/offers${params}`, { headers });
+      setOffers(Array.isArray(data) ? data : []);
+    } catch { setOffers([]); }
+    finally { setLoading(false); }
+  }, [filterType]);
+
+  useEffect(() => { fetchOffers(); }, [fetchOffers]);
+
+  const handleCreate = async () => {
+    if (!formTitle.trim()) { toast.error('Title is required.'); return; }
+    setSaving(true);
+    try {
+      const headers = await getAuthHeader();
+      await axios.post(`${API_URL}/offers`, {
+        title: formTitle.trim(), description: formDesc.trim() || undefined,
+        type: formType, domain: formDomain || undefined, city: formCity.trim() || undefined,
+        compensation: formComp.trim() || undefined, remote: formRemote,
+        requirements: formReqs.trim() || undefined, contact: formContact.trim() || undefined,
+      }, { headers });
+      toast.success('Offer posted!');
+      setDialogOpen(false);
+      setFormTitle(''); setFormDesc(''); setFormType('job'); setFormDomain('');
+      setFormCity(''); setFormComp(''); setFormRemote(false); setFormReqs(''); setFormContact('');
+      fetchOffers();
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to post offer.'); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const headers = await getAuthHeader();
+      await axios.delete(`${API_URL}/offers/${id}`, { headers });
+      toast.success('Offer removed.');
+      fetchOffers();
+    } catch { toast.error('Failed to remove offer.'); }
+  };
+
+  const typeCfg = (type: string) => OFFER_TYPES.find(t => t.value === type) ?? OFFER_TYPES[0];
+
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+        <Box>
+          <Typography variant="h5" fontWeight={900}>Job Offers</Typography>
+          <Typography variant="body2" color="text.secondary">Businesses and individuals seeking collaborators</Typography>
+        </Box>
+        <Stack direction="row" spacing={1}>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Filter type</InputLabel>
+            <Select value={filterType} label="Filter type" onChange={e => setFilterType(e.target.value)} sx={{ borderRadius: '10px' }}>
+              <MenuItem value="">All types</MenuItem>
+              {OFFER_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={() => setDialogOpen(true)}
+            sx={{ borderRadius: '10px', fontWeight: 700 }}
+          >
+            Post offer
+          </Button>
+        </Stack>
+      </Box>
+
+      {offers.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+          <WorkIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" fontWeight={700}>No offers yet</Typography>
+          <Typography variant="body2" color="text.disabled" sx={{ mb: 2 }}>Be the first to post a job or collaboration opportunity.</Typography>
+          <Button variant="outlined" sx={{ borderRadius: '10px' }} onClick={() => setDialogOpen(true)}>Post an offer</Button>
+        </Box>
+      ) : (
+        <Stack spacing={2}>
+          {offers.map(offer => {
+            const cfg = typeCfg(offer.type);
+            const isOwner = offer.poster_id === currentUserId;
+            return (
+              <Card key={offer.id} sx={{ bgcolor: '#1F2937', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '14px', p: 0 }}>
+                <CardContent sx={{ p: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+                        <Chip label={cfg.label} size="small" sx={{ bgcolor: `${cfg.color}18`, color: cfg.color, fontWeight: 700, fontSize: '0.72rem' }} />
+                        {offer.domain && <Chip label={offer.domain} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />}
+                        {offer.remote && <Chip label="🌍 Remote" size="small" sx={{ bgcolor: 'rgba(52,211,153,0.1)', color: '#34D399', fontSize: '0.7rem' }} />}
+                      </Box>
+                      <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.3 }}>{offer.title}</Typography>
+                      {offer.description && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{offer.description}</Typography>}
+                    </Box>
+                    {isOwner && (
+                      <Tooltip title="Remove offer">
+                        <IconButton size="small" onClick={() => handleDelete(offer.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}>
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1.5 }}>
+                    {offer.city && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <LocationOnIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                        <Typography variant="caption" color="text.secondary">{offer.city}</Typography>
+                      </Box>
+                    )}
+                    {offer.compensation && (
+                      <Typography variant="caption" sx={{ color: '#34D399', fontWeight: 700 }}>💰 {offer.compensation}</Typography>
+                    )}
+                    {offer.requirements && (
+                      <Typography variant="caption" color="text.secondary">📋 {offer.requirements}</Typography>
+                    )}
+                    {offer.contact && (
+                      <Typography variant="caption" sx={{ color: '#60A5FA' }}>📩 {offer.contact}</Typography>
+                    )}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Avatar src={offer.poster?.avatar_url ?? undefined} sx={{ width: 22, height: 22, fontSize: '0.65rem' }}>
+                        {offer.poster?.name?.[0]}
+                      </Avatar>
+                      <Typography variant="caption" color="text.secondary">{offer.poster?.name}</Typography>
+                      {offer.poster?.is_premium && <Chip label="Pro" size="small" sx={{ height: 16, fontSize: '0.6rem', bgcolor: 'rgba(167,139,250,0.15)', color: '#A78BFA' }} />}
+                    </Box>
+                    <Typography variant="caption" color="text.disabled">{timeAgoOffers(offer.created_at)}</Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </Stack>
+      )}
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><WorkIcon sx={{ color: 'primary.main' }} />Post an Offer</Box>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField fullWidth label="Title *" value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="e.g. Looking for a React developer" />
+            <TextField fullWidth label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} multiline rows={3} placeholder="What are you looking for?" />
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Type *</InputLabel>
+                  <Select value={formType} label="Type *" onChange={e => setFormType(e.target.value)}>
+                    {OFFER_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Domain</InputLabel>
+                  <Select value={formDomain} label="Domain" onChange={e => setFormDomain(e.target.value)}>
+                    <MenuItem value="">Any domain</MenuItem>
+                    {DOMAINS.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField fullWidth label="City" value={formCity} onChange={e => setFormCity(e.target.value)} placeholder="Milan, Remote…" />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField fullWidth label="Compensation" value={formComp} onChange={e => setFormComp(e.target.value)} placeholder="€30k/yr, €50/hr, equity…" />
+              </Grid>
+            </Grid>
+            <TextField fullWidth label="Requirements" value={formReqs} onChange={e => setFormReqs(e.target.value)} placeholder="2yr experience, fluent English…" />
+            <TextField fullWidth label="Contact / Apply" value={formContact} onChange={e => setFormContact(e.target.value)} placeholder="email@company.com or link" />
+            <FormControlLabel
+              control={<Switch checked={formRemote} onChange={e => setFormRemote(e.target.checked)} />}
+              label={<Typography variant="body2">Remote-friendly</Typography>}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleCreate}
+            disabled={saving || !formTitle.trim()}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <AddCircleOutlineIcon />}
+            sx={{ borderRadius: '10px', fontWeight: 800 }}
+          >
+            {saving ? 'Posting…' : 'Post offer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const MarketplacePage: React.FC = () => {
   const { user, refetch } = useUser();
@@ -185,6 +466,7 @@ const MarketplacePage: React.FC = () => {
         <Tab icon={<DiamondIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Buy Pro" />
         <Tab icon={<CasinoIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Betting" />
         <Tab label="Shop" />
+        <Tab label="Offers" />
       </Tabs>
 
       {/* ── Tab 0: Buy Pro ── */}
@@ -538,6 +820,9 @@ const MarketplacePage: React.FC = () => {
         </Box>
       )}
       </>}
+
+      {/* ── Tab 3: Offers ── */}
+      {tab === 3 && <OffersPanel currentUserId={user?.id} />}
     </Box>
   );
 };

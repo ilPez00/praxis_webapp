@@ -32,6 +32,8 @@ import referralRoutes from './routes/referralRoutes';
 import friendRoutes from './routes/friendRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import muteRoutes from './routes/muteRoutes';
+import placesRoutes from './routes/placesRoutes';
+import offersRoutes from './routes/offersRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -95,6 +97,8 @@ apiRouter.use('/referrals', referralRoutes);
 apiRouter.use('/friends', friendRoutes);
 apiRouter.use('/notifications', notificationRoutes);
 apiRouter.use('/mutes', muteRoutes);
+apiRouter.use('/places', placesRoutes);
+apiRouter.use('/offers', offersRoutes);
 
 app.use('/api', apiRouter);
 

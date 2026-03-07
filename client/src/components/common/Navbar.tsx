@@ -53,10 +53,8 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import EventIcon from '@mui/icons-material/Event';
-import ForumIcon from '@mui/icons-material/Forum';
 import CasinoIcon from '@mui/icons-material/Casino';
-import PsychologyIcon from '@mui/icons-material/Psychology';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 interface AppNotification {
   id: string;
@@ -96,31 +94,11 @@ const Navbar: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
-  const [friendRequestCount, setFriendRequestCount] = useState(0);
-
   // Notifications
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchRequestCount = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
-        const res = await fetch(`${API_URL}/friends/requests/incoming`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setFriendRequestCount(Array.isArray(data) ? data.length : 0);
-        }
-      } catch { /* silently ignore */ }
-    };
-    fetchRequestCount();
-  }, [user]);
 
   // Fetch notifications + subscribe to realtime inserts
   useEffect(() => {
@@ -552,31 +530,13 @@ const Navbar: React.FC = () => {
                       <StorefrontIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Marketplace</Typography>
                     </MenuItem>
-                    <MenuItem onClick={() => handleNav('/boards')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <ForumIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Boards</Typography>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleNav('/events')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <EventIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Events</Typography>
-                    </MenuItem>
                     <MenuItem onClick={() => handleNav('/betting')} sx={{ gap: 1.5, py: 1.25 }}>
                       <CasinoIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Goal Staking</Typography>
                     </MenuItem>
-                    <MenuItem onClick={() => handleNav('/coaching')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <PsychologyIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">AI Coaching</Typography>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleNav('/friends')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <Badge badgeContent={friendRequestCount || undefined} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.55rem', minWidth: 14, height: 14 } }}>
-                        <PeopleIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      </Badge>
-                      <Typography variant="body2">Friends</Typography>
-                      {friendRequestCount > 0 && (
-                        <Chip label={`${friendRequestCount} pending`} size="small" color="error"
-                          sx={{ ml: 'auto', height: 18, fontSize: '0.6rem', fontWeight: 700 }} />
-                      )}
+                    <MenuItem onClick={() => handleNav('/settings')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Settings</Typography>
                     </MenuItem>
 
                     {user.is_admin && (
@@ -710,23 +670,16 @@ const Navbar: React.FC = () => {
                 { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
                 { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
-                { label: 'Boards', to: '/boards', icon: <ForumIcon /> },
-                { label: 'Events', to: '/events', icon: <EventIcon /> },
                 { label: 'Goal Staking', to: '/betting', icon: <CasinoIcon /> },
-                { label: 'AI Coaching', to: '/coaching', icon: <PsychologyIcon /> },
-                { label: 'Friends', to: '/friends', icon: <PeopleIcon /> },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon /> },
+                { label: 'Settings', to: '/settings', icon: <SettingsIcon /> },
               ].map(({ label, to, icon }) => (
                 <ListItem key={label} disablePadding>
                   <ListItemButton onClick={() => handleNav(to)}>
-                    <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>
-                      {label === 'Friends' && friendRequestCount > 0
-                        ? <Badge badgeContent={friendRequestCount} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', minWidth: 16, height: 16 } }}>{icon}</Badge>
-                        : icon}
-                    </ListItemIcon>
+                    <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>{icon}</ListItemIcon>
                     <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9375rem' }} />
                   </ListItemButton>
                 </ListItem>

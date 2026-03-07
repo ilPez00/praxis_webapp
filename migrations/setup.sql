@@ -990,3 +990,78 @@ CREATE POLICY "friendships_update" ON public.friendships
   FOR UPDATE USING (auth.uid() = requester_id OR auth.uid() = recipient_id);
 CREATE POLICY "friendships_delete" ON public.friendships
   FOR DELETE USING (auth.uid() = requester_id OR auth.uid() = recipient_id);
+
+-- =============================================================================
+-- 29. PLACES — Continual gathering spots (gyms, churches, coworking, etc.)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.places (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  type        TEXT NOT NULL,          -- 'gym' | 'museum' | 'church' | 'library' | 'coworking' | 'studio' | 'club' | 'park' | 'cafe' | 'other'
+  address     TEXT,
+  city        TEXT,
+  latitude    FLOAT,
+  longitude   FLOAT,
+  description TEXT,
+  website     TEXT,
+  schedule    TEXT,                   -- e.g. "Mon-Fri 6am-10pm"
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.place_members (
+  place_id   UUID NOT NULL REFERENCES public.places(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  joined_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (place_id, user_id)
+);
+
+ALTER TABLE public.places ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.place_members ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Places read all"    ON public.places FOR SELECT USING (true);
+CREATE POLICY "Places insert own"  ON public.places FOR INSERT WITH CHECK (auth.uid() = owner_id);
+CREATE POLICY "Places delete own"  ON public.places FOR DELETE USING (auth.uid() = owner_id);
+
+CREATE POLICY "PlaceMembers read all"   ON public.place_members FOR SELECT USING (true);
+CREATE POLICY "PlaceMembers insert own" ON public.place_members FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "PlaceMembers delete own" ON public.place_members FOR DELETE USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS places_geo_idx ON public.places (latitude, longitude)
+  WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+CREATE INDEX IF NOT EXISTS places_type_idx ON public.places (type);
+
+-- =============================================================================
+-- 30. OFFERS — Job/gig/collab listings from businesses seeking workers
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.offers (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  poster_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  description  TEXT,
+  type         TEXT NOT NULL DEFAULT 'job',  -- 'job' | 'gig' | 'internship' | 'volunteer' | 'collab'
+  domain       TEXT,
+  city         TEXT,
+  compensation TEXT,
+  remote       BOOLEAN NOT NULL DEFAULT false,
+  requirements TEXT,
+  contact      TEXT,
+  status       TEXT NOT NULL DEFAULT 'open', -- 'open' | 'closed'
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.offers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Offers read all"    ON public.offers FOR SELECT USING (true);
+CREATE POLICY "Offers insert own"  ON public.offers FOR INSERT WITH CHECK (auth.uid() = poster_id);
+CREATE POLICY "Offers update own"  ON public.offers FOR UPDATE USING (auth.uid() = poster_id);
+CREATE POLICY "Offers delete own"  ON public.offers FOR DELETE USING (auth.uid() = poster_id);
+
+CREATE INDEX IF NOT EXISTS offers_type_idx   ON public.offers (type);
+CREATE INDEX IF NOT EXISTS offers_status_idx ON public.offers (status);
+
+-- Privacy columns on profiles (for Settings page)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_public         BOOLEAN DEFAULT true;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS match_visibility  TEXT    DEFAULT 'all';

@@ -398,3 +398,83 @@ TROUBLESHOOTING
   FIX:     Already fixed — GENERATE_SOURCEMAP=false in client/.env
 
 ================================================================================
+
+================================================================================
+GOOGLE MAPS API SETUP (for Places tab embedded map previews)
+================================================================================
+
+1. Go to https://console.cloud.google.com/
+2. Create a project (or use existing)
+3. Enable "Maps JavaScript API" and "Maps Embed API" from the API Library
+4. Go to "Credentials" → "Create Credentials" → "API Key"
+5. Restrict the key:
+   - Application restrictions: "HTTP referrers (websites)"
+   - Add your domains: https://your-app.vercel.app/*, http://localhost:3000/*
+   - API restrictions: restrict to "Maps JavaScript API" + "Maps Embed API"
+6. Copy the key
+
+Configure in development:
+  Add to client/.env:
+    VITE_GOOGLE_MAPS_KEY=your_key_here
+
+Configure in production (Vercel):
+  Dashboard → Your Project → Settings → Environment Variables
+  Name: VITE_GOOGLE_MAPS_KEY
+  Value: your_key_here
+
+Without the key: map previews fall back to a "Open in Google Maps" text link.
+The Places tab works fully without the key — only embedded map previews are affected.
+
+================================================================================
+STRIPE PRODUCTION SETUP
+================================================================================
+
+1. Go to https://dashboard.stripe.com/
+2. Switch to LIVE mode (top-left toggle)
+
+3. Create a product:
+   - Products → Add product
+   - Name: "Praxis Premium" (or "Pro")
+   - Pricing: recurring, monthly, your price (e.g. €9.99/mo)
+   - Copy the Price ID: price_XXXXXXXXXXXXXXXXXXXXXXXX
+
+4. Set environment variables on Railway:
+   STRIPE_SECRET_KEY=sk_live_...      (from Stripe Dashboard → Developers → API Keys)
+   STRIPE_PRICE_ID=price_...          (from step 3)
+   STRIPE_WEBHOOK_SECRET=whsec_...    (from step 5 below)
+   CLIENT_URL=https://your-app.vercel.app
+
+5. Register webhook:
+   - Stripe Dashboard → Developers → Webhooks → Add endpoint
+   - Endpoint URL: https://your-railway-app.railway.app/api/stripe/webhook
+   - Events to listen for:
+     • checkout.session.completed
+     • customer.subscription.deleted
+     • invoice.payment_failed
+   - Copy the Signing Secret (whsec_...) → set as STRIPE_WEBHOOK_SECRET
+
+6. Test flow in production:
+   - Log in to Praxis → Marketplace → Buy Pro → click Upgrade
+   - Complete checkout with a real card (or test card 4242 4242 4242 4242)
+   - After redirect back, verify is_premium = true in Supabase profiles table
+
+PROBLEM: "No such price" error
+FIX: STRIPE_PRICE_ID must be a live-mode price ID (starts with price_), not test mode
+
+PROBLEM: Webhook signature verification fails
+FIX: STRIPE_WEBHOOK_SECRET must match the endpoint's signing secret exactly
+
+PROBLEM: is_premium not updated after payment
+FIX: Check Railway logs for webhook delivery; ensure STRIPE_WEBHOOK_SECRET is set
+
+================================================================================
+SQL MIGRATIONS TO RUN (Session 51 — Places + Offers + Privacy columns)
+================================================================================
+
+Open Supabase → SQL Editor → run the section at the bottom of migrations/setup.sql
+starting from "-- 29. PLACES" down to end of file. Or copy-paste directly:
+
+  -- 29: places + place_members tables + RLS + indexes
+  -- 30: offers table + RLS + indexes
+  -- Privacy columns: is_public, match_visibility on profiles
+

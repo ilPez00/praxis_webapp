@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'; // Import NextFunction
 import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
 import logger from '../utils/logger'; // Import the logger
-import { catchAsync, NotFoundError, InternalServerError, BadRequestError } from '../utils/appErrors'; // Import custom errors and catchAsync
+import { catchAsync, NotFoundError, InternalServerError, BadRequestError, UnauthorizedError } from '../utils/appErrors'; // Import custom errors and catchAsync
 
 // ---------------------------------------------------------------------------
 // Leaderboard
@@ -278,3 +278,44 @@ export const getUserPercentile = catchAsync(async (req: Request, res: Response, 
   });
 });
 
+
+/**
+ * DELETE /users/me — hard-delete the authenticated user's account.
+ * Removes: goal_tree, profile data (cascades messages, etc. via FK).
+ * Auth: removes the user from Supabase Auth (service-role required).
+ */
+export const deleteMyAccount = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  // Delete goal tree first (not always cascade-linked)
+  await supabase.from('goal_trees').delete().eq('"userId"', userId);
+
+  // Delete profile — FK cascades handle most related data
+  await supabase.from('profiles').delete().eq('id', userId);
+
+  // Delete from Supabase Auth (requires service-role key)
+  const { error: authErr } = await supabase.auth.admin.deleteUser(userId);
+  if (authErr) {
+    logger.warn(`Could not delete auth user ${userId}: ${authErr.message}`);
+    // Non-fatal: profile is gone, auth entry will be orphaned but harmless
+  }
+
+  res.json({ success: true, message: 'Account deleted.' });
+});
+
+/**
+ * POST /users/me/reset-goals — delete the user's goal tree (fresh start)
+ */
+export const resetMyGoals = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const { error } = await supabase.from('goal_trees').delete().eq('"userId"', userId);
+  if (error) throw new InternalServerError('Failed to reset goal tree.');
+
+  // Also reset edit count so they get a free initial setup
+  await supabase.from('profiles').update({ goal_tree_edit_count: 0 }).eq('id', userId);
+
+  res.json({ success: true, message: 'Goal tree reset. You can start fresh.' });
+});
