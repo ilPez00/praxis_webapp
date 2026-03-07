@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
-import { catchAsync, NotFoundError, BadRequestError, InternalServerError } from '../utils/appErrors';
+import { catchAsync, NotFoundError, BadRequestError, ForbiddenError, InternalServerError } from '../utils/appErrors';
 import { classifyPostDomain, bumpDomainProficiency } from '../utils/proficiency';
 
 const handleSupabaseError = (error: any) => {
@@ -455,4 +455,125 @@ export const deleteComment = catchAsync(async (req: Request, res: Response, _nex
   if (error) handleSupabaseError(error);
 
   res.status(204).send();
+});
+
+// ---------------------------------------------------------------------------
+// POST /posts/:id/vote
+// Body: { value: 1 | -1 }
+// Awards/deducts PP and karma from the post author based on vote direction.
+// ---------------------------------------------------------------------------
+export const votePost = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const voterId = req.user?.id;
+  if (!voterId) throw new ForbiddenError('Authentication required.');
+
+  const postId = req.params.id;
+  const { value } = req.body;
+
+  if (value !== 1 && value !== -1) throw new BadRequestError('value must be 1 or -1.');
+
+  // Fetch post to get author
+  const { data: post, error: postError } = await supabase
+    .from('posts')
+    .select('user_id')
+    .eq('id', postId)
+    .maybeSingle();
+
+  if (postError) handleSupabaseError(postError);
+  if (!post) throw new NotFoundError('Post not found.');
+
+  const authorId: string = post.user_id;
+
+  // Fetch existing vote
+  const { data: existing, error: voteError } = await supabase
+    .from('post_votes')
+    .select('value')
+    .eq('post_id', postId)
+    .eq('user_id', voterId)
+    .maybeSingle();
+
+  if (voteError) handleSupabaseError(voteError);
+
+  let delta = 0;
+  let netVote: number = value;
+
+  if (!existing) {
+    // No existing vote — insert
+    const { error: insertError } = await supabase
+      .from('post_votes')
+      .insert({ post_id: postId, user_id: voterId, value });
+    if (insertError) handleSupabaseError(insertError);
+    delta = value === 1 ? 3 : -1;
+  } else if (existing.value === value) {
+    // Same direction — toggle off (delete)
+    const { error: deleteError } = await supabase
+      .from('post_votes')
+      .delete()
+      .eq('post_id', postId)
+      .eq('user_id', voterId);
+    if (deleteError) handleSupabaseError(deleteError);
+    delta = value === 1 ? -3 : 1;
+    netVote = 0;
+  } else {
+    // Opposite direction — flip
+    const { error: updateError } = await supabase
+      .from('post_votes')
+      .update({ value })
+      .eq('post_id', postId)
+      .eq('user_id', voterId);
+    if (updateError) handleSupabaseError(updateError);
+    delta = value === 1 ? 4 : -4;
+  }
+
+  // Award/deduct PP and karma to author (skip self-votes)
+  if (delta !== 0 && authorId !== voterId) {
+    const { data: authorProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('praxis_points, karma_score')
+      .eq('id', authorId)
+      .single();
+
+    if (!profileError && authorProfile) {
+      const newPoints = Math.max(0, (authorProfile.praxis_points ?? 0) + delta);
+      const newKarma = (authorProfile.karma_score ?? 0) + delta;
+      await supabase
+        .from('profiles')
+        .update({ praxis_points: newPoints, karma_score: newKarma })
+        .eq('id', authorId);
+    }
+  }
+
+  // Compute current score from all votes
+  const { data: allVotes, error: allVotesError } = await supabase
+    .from('post_votes')
+    .select('value')
+    .eq('post_id', postId);
+
+  if (allVotesError) handleSupabaseError(allVotesError);
+
+  const score = (allVotes ?? []).reduce((sum: number, v: any) => sum + (v.value ?? 0), 0);
+
+  return res.status(200).json({ score, userVote: netVote });
+});
+
+// ---------------------------------------------------------------------------
+// GET /posts/:id/vote
+// Returns the current vote score and the requesting user's vote (0 if none).
+// ---------------------------------------------------------------------------
+export const getPostVote = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const postId = req.params.id;
+  const userId = req.user?.id;
+
+  const [userVoteResult, allVotesResult] = await Promise.all([
+    userId
+      ? supabase.from('post_votes').select('value').eq('post_id', postId).eq('user_id', userId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    supabase.from('post_votes').select('value').eq('post_id', postId),
+  ]);
+
+  if (allVotesResult.error) handleSupabaseError(allVotesResult.error);
+
+  const score = (allVotesResult.data ?? []).reduce((sum: number, v: any) => sum + (v.value ?? 0), 0);
+  const userVote: number = (userVoteResult as any).data?.value ?? 0;
+
+  return res.status(200).json({ score, userVote });
 });

@@ -10,7 +10,10 @@ import {
   getComments,
   addComment,
   deleteComment,
+  votePost,
+  getPostVote,
 } from '../controllers/postController';
+import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = express.Router();
 
@@ -24,5 +27,7 @@ router.post('/:id/likes', toggleLike);
 router.get('/:id/comments', getComments);
 router.post('/:id/comments', addComment);
 router.delete('/:postId/comments/:commentId', deleteComment);
+router.post('/:id/vote', authenticateToken, votePost);
+router.get('/:id/vote', authenticateToken, getPostVote);
 
 export default router;
