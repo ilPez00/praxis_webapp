@@ -4,7 +4,7 @@ import logger from '../utils/logger';
 import { catchAsync, BadRequestError, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors';
 
 const SCHEMA_MISSING = (msg: string) =>
-  msg?.includes('schema cache') || msg?.includes('does not exist') || msg?.includes('42P01');
+  msg?.includes('schema cache') || msg?.includes('42P01');
 
 /**
  * GET /events

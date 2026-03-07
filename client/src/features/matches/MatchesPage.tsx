@@ -54,6 +54,8 @@ interface MatchProfile {
   sharedGoals?: string[];
   progressPace?: string;
   overallProgress?: number; // 0–100
+  currentStreak?: number;
+  lastCheckinDate?: string | null;
 }
 
 // ─── Compatibility ring (SVG circular arc) ────────────────────────────────────
@@ -84,6 +86,23 @@ const CompatibilityRing: React.FC<{ score: number }> = ({ score }) => {
     </Box>
   );
 };
+
+// ─── Checkin status indicator ─────────────────────────────────────────────────
+
+function checkinStatus(lastCheckinDate: string | null | undefined, streak: number | undefined) {
+  if (!lastCheckinDate) return { label: 'No check-ins yet', color: '#6B7280', dot: '#6B7280' };
+  const today = new Date().toISOString().slice(0, 10);
+  const last = lastCheckinDate.slice(0, 10);
+  if (last === today) return { label: 'Checked in today', color: '#10B981', dot: '#10B981' };
+  const diffDays = Math.round((Date.parse(today) - Date.parse(last)) / 86400000);
+  if (diffDays === 1) {
+    return streak && streak > 0
+      ? { label: 'Active yesterday', color: '#F59E0B', dot: '#F59E0B' }
+      : { label: 'Missed today', color: '#F59E0B', dot: '#F59E0B' };
+  }
+  if (diffDays <= 3) return { label: `Last seen ${diffDays}d ago`, color: '#F97316', dot: '#F97316' };
+  return { label: `Inactive ${diffDays}d`, color: '#6B7280', dot: '#4B5563' };
+}
 
 // ─── Progress pace badge ──────────────────────────────────────────────────────
 
@@ -159,7 +178,18 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onMessage, onViewProfile, 
             <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2, mb: 0.5 }}>
               {match.name}
             </Typography>
-            {match.progressPace && <PaceBadge pace={match.progressPace} />}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+              {match.progressPace && <PaceBadge pace={match.progressPace} />}
+              {!match.isDemo && (() => {
+                const s = checkinStatus(match.lastCheckinDate, match.currentStreak);
+                return (
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: s.dot, flexShrink: 0, boxShadow: `0 0 4px ${s.dot}` }} />
+                    <Typography sx={{ fontSize: '0.65rem', color: s.color, fontWeight: 600 }}>{s.label}</Typography>
+                  </Box>
+                );
+              })()}
+            </Box>
           </Box>
         </Box>
         <CompatibilityRing score={compatPct} />
@@ -345,7 +375,7 @@ const MatchesPage: React.FC = () => {
         const profiles = await Promise.all(rawMatches.map(async (m) => {
           try {
             const { data: profile } = await supabase
-              .from('profiles').select('name, avatar_url, bio').eq('id', m.userId).single();
+              .from('profiles').select('name, avatar_url, bio, current_streak, last_checkin_date').eq('id', m.userId).single();
             let domains: string[] = [];
             try {
               const goalRes = await axios.get(`${API_URL}/goals/${m.userId}`);
@@ -358,6 +388,8 @@ const MatchesPage: React.FC = () => {
               avatarUrl: profile?.avatar_url ?? undefined,
               bio: profile?.bio ?? undefined,
               domains,
+              currentStreak: profile?.current_streak ?? 0,
+              lastCheckinDate: profile?.last_checkin_date ?? null,
             } as MatchProfile;
           } catch {
             return { userId: m.userId, score: m.score, name: `User ${m.userId.slice(0, 6)}`, domains: [] } as MatchProfile;

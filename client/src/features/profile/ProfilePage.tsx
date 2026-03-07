@@ -182,6 +182,11 @@ const ProfilePage: React.FC = () => {
   // Percentile
   const [percentileData, setPercentileData] = useState<{ streak_percentile: number; reliability_percentile: number } | null>(null);
 
+  // Honor
+  const [hasHonored, setHasHonored] = useState(false);
+  const [honorScore, setHonorScore] = useState<number | null>(null);
+  const [honorLoading, setHonorLoading] = useState(false);
+
   // Friends
   const [friends, setFriends] = useState<any[]>([]);
   const [friendsDialogOpen, setFriendsDialogOpen] = useState(false);
@@ -224,6 +229,23 @@ const ProfilePage: React.FC = () => {
             .then(r => r.ok ? r.json() : null)
             .then(d => d && setPercentileData(d))
             .catch(() => {});
+        }
+        // Fetch honor status for other users' profiles
+        if (paramId && paramId !== user?.id) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session?.access_token) return;
+            fetch(`${API_URL}/honor/${targetId}`, {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            })
+              .then(r => r.ok ? r.json() : null)
+              .then(d => {
+                if (d) {
+                  setHonorScore(d.honor_score ?? 0);
+                  setHasHonored(d.has_honored ?? false);
+                }
+              })
+              .catch(() => {});
+          });
         }
       } catch (err: any) {
         toast.error(`Failed to fetch profile: ${err.message}`);
@@ -410,6 +432,30 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleHonor = async () => {
+    if (!user || !paramId) return;
+    setHonorLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { Authorization: `Bearer ${session?.access_token}` };
+      if (hasHonored) {
+        await axios.delete(`${API_URL}/honor/${paramId}`, { headers });
+        setHasHonored(false);
+        setHonorScore(s => (s ?? 1) - 1);
+        toast.success('Honor removed.');
+      } else {
+        await axios.post(`${API_URL}/honor/${paramId}`, {}, { headers });
+        setHasHonored(true);
+        setHonorScore(s => (s ?? 0) + 1);
+        toast.success('Honor given! +15 PP awarded to both of you.');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not update honor.');
+    } finally {
+      setHonorLoading(false);
+    }
+  };
+
   if (loading || authLoading) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
@@ -538,7 +584,7 @@ const ProfilePage: React.FC = () => {
                 </Button>
               )
             ) : (
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
                 <Button
                   variant="contained"
                   size="small"
@@ -559,6 +605,29 @@ const ProfilePage: React.FC = () => {
                     targetName={profile.name}
                     size="small"
                   />
+                )}
+                {paramId && honorScore !== null && (
+                  <Tooltip title={hasHonored ? 'Remove your honor vote' : 'Give honor — recognise this person\'s integrity (+15 PP each)'}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      disabled={honorLoading}
+                      onClick={handleHonor}
+                      sx={{
+                        fontWeight: 600,
+                        borderColor: hasHonored ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.15)',
+                        color: hasHonored ? '#FBBF24' : 'text.secondary',
+                        bgcolor: hasHonored ? 'rgba(251,191,36,0.1)' : 'transparent',
+                        '&:hover': {
+                          borderColor: '#FBBF24',
+                          color: '#FBBF24',
+                          bgcolor: 'rgba(251,191,36,0.1)',
+                        },
+                      }}
+                    >
+                      🏅 {honorScore > 0 ? honorScore : ''} {hasHonored ? 'Honored' : 'Honor'}
+                    </Button>
+                  </Tooltip>
                 )}
               </Stack>
             )}
