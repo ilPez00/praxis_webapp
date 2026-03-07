@@ -15,7 +15,7 @@ export const getLeaderboard = catchAsync(async (req: Request, res: Response, _ne
   // 1. Fetch top 50 profiles by praxis_points
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, name, avatar_url, praxis_points, is_premium, current_streak, reliability_score')
+    .select('id, name, avatar_url, praxis_points, is_premium, current_streak, reliability_score, honor_score')
     .order('praxis_points', { ascending: false })
     .limit(50);
 

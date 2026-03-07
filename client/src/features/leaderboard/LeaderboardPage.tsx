@@ -29,6 +29,7 @@ interface LeaderboardEntry {
   is_premium?: boolean;
   current_streak?: number;
   reliability_score?: number;
+  honor_score?: number;
   rank: number;
   similarity: number;
   domains: string[];
@@ -248,6 +249,13 @@ const LeaderboardPage: React.FC = () => {
                       <Tooltip title="Reliability (30-day check-in rate)">
                         <Typography variant="caption" sx={{ fontWeight: 700, color: '#10B981' }}>
                           {reliability}%
+                        </Typography>
+                      </Tooltip>
+                    )}
+                    {(entry.honor_score ?? 0) > 0 && (
+                      <Tooltip title="Honor score from peers">
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#F59E0B' }}>
+                          🏅{entry.honor_score}
                         </Typography>
                       </Tooltip>
                     )}
