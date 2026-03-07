@@ -51,6 +51,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 
 const ChatRoom: React.FC = () => {
   const { user1Id, user2Id } = useParams<{ user1Id: string; user2Id: string }>();
@@ -60,6 +61,8 @@ const ChatRoom: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [muted, setMuted] = useState(false);
+  const [partnerCheckedInToday, setPartnerCheckedInToday] = useState(false);
+  const [nudgeSent, setNudgeSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -123,13 +126,15 @@ const ChatRoom: React.FC = () => {
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         const [partnerRes, myRes] = await Promise.all([
-          supabase.from('profiles').select('name, current_streak').eq('id', user2Id).single(),
+          supabase.from('profiles').select('name, current_streak, last_activity_date').eq('id', user2Id).single(),
           authUser?.id ? supabase.from('profiles').select('current_streak').eq('id', authUser.id).single() : Promise.resolve({ data: null }),
         ]);
         if (partnerRes.error) throw partnerRes.error;
         setReceiverName(partnerRes.data.name || 'Partner');
         setReceiverStreak(partnerRes.data.current_streak ?? 0);
         setMyStreak(myRes.data?.current_streak ?? 0);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        setPartnerCheckedInToday(partnerRes.data.last_activity_date?.slice(0, 10) === todayStr);
       } catch (error) {
         console.error('Error fetching receiver name:', error);
       }
@@ -854,6 +859,31 @@ const ChatRoom: React.FC = () => {
               <AutoAwesomeIcon fontSize="small" />
             </IconButton>
           </Tooltip>
+          {!partnerCheckedInToday && (
+            <Tooltip title={nudgeSent ? 'Nudge sent!' : "Nudge partner to check in"}>
+              <IconButton
+                size="small"
+                disabled={nudgeSent}
+                onClick={async () => {
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session?.access_token || !user2Id) return;
+                    await axios.post(`${API_URL}/notifications/nudge/${user2Id}`, {}, {
+                      headers: { Authorization: `Bearer ${session.access_token}` },
+                    });
+                    setNudgeSent(true);
+                    toast.success(`Nudge sent to ${receiverName}!`);
+                  } catch (e: any) {
+                    const msg = e?.response?.data?.message;
+                    toast.error(msg === 'Already nudged today.' ? 'Already nudged today.' : 'Failed to nudge.');
+                  }
+                }}
+                sx={{ color: nudgeSent ? 'text.disabled' : '#F59E0B', '&:hover': { color: '#FCD34D' } }}
+              >
+                <NotificationsActiveIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title={muted ? 'Unmute notifications from this user' : 'Mute notifications from this user'}>
             <IconButton
               size="small"

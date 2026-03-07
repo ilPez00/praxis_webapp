@@ -96,6 +96,12 @@ const Navbar: React.FC = () => {
   const [searchValue, setSearchValue] = useState('');
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
   const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(null);
+  // New matches indicator — true if user hasn't visited /matches in 24h
+  const [showMatchesBadge, setShowMatchesBadge] = useState(() => {
+    const last = localStorage.getItem('praxis_matches_last_visit');
+    if (!last) return true;
+    return Date.now() - parseInt(last, 10) > 24 * 60 * 60 * 1000;
+  });
   // Notifications
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -261,20 +267,41 @@ const Navbar: React.FC = () => {
                     { label: 'Chat', to: '/communication' },
                   ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
+                    const isMatches = to === '/matches';
                     return (
                       <Button
                         key={label}
                         component={RouterLink}
                         to={to}
+                        onClick={() => {
+                          if (isMatches) {
+                            localStorage.setItem('praxis_matches_last_visit', String(Date.now()));
+                            setShowMatchesBadge(false);
+                          }
+                        }}
                         sx={{
                           color: active ? 'text.primary' : 'text.secondary',
                           fontWeight: active ? 700 : 500,
                           borderRadius: '8px',
                           px: 1.5,
+                          position: 'relative',
                           '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' },
                         }}
                       >
                         {label}
+                        {isMatches && showMatchesBadge && !active && (
+                          <Box sx={{
+                            position: 'absolute', top: 6, right: 6,
+                            width: 7, height: 7, borderRadius: '50%',
+                            bgcolor: '#F59E0B',
+                            boxShadow: '0 0 6px #F59E0B',
+                            animation: 'pulse 2s infinite',
+                            '@keyframes pulse': {
+                              '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                              '50%': { opacity: 0.5, transform: 'scale(1.4)' },
+                            },
+                          }} />
+                        )}
                       </Button>
                     );
                   })}

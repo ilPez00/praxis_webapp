@@ -11,6 +11,60 @@ import { bumpDomainProficiency } from '../utils/proficiency';
 
 const embeddingService = new EmbeddingService();
 
+const MILESTONE_THRESHOLDS = [25, 50, 75, 100];
+const MILESTONE_MESSAGES: Record<number, string> = {
+  25: "Making moves — 25% through",
+  50: "Halfway there on",
+  75: "75% done with",
+  100: "Just completed",
+};
+
+/**
+ * Fire-and-forget: creates a feed post when a goal node crosses a milestone threshold.
+ * Uses marketplace_transactions to track which milestones have already been posted.
+ */
+async function autoPostMilestone(
+  userId: string,
+  nodeId: string,
+  nodeName: string,
+  domain: string,
+  oldProgress: number,
+  newProgress: number,
+): Promise<void> {
+  const oldPct = Math.round(oldProgress * 100);
+  const newPct = Math.round(newProgress * 100);
+  for (const threshold of MILESTONE_THRESHOLDS) {
+    if (oldPct < threshold && newPct >= threshold) {
+      // Check if already posted for this milestone
+      const { data: existing } = await supabase
+        .from('marketplace_transactions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('item_type', 'milestone_post')
+        .contains('metadata', { node_id: nodeId, milestone: threshold })
+        .maybeSingle();
+      if (existing) continue;
+
+      const verb = threshold === 100 ? 'completed' : `${threshold}% through`;
+      const body = `${MILESTONE_MESSAGES[threshold]} "${nodeName}" ${threshold < 100 ? '— still going!' : ''}`.trim();
+
+      await supabase.from('posts').insert({
+        user_id: userId,
+        body,
+        context: userId,
+        metadata: { milestone: true, node_id: nodeId, threshold, domain },
+      });
+      await supabase.from('marketplace_transactions').insert({
+        user_id: userId,
+        item_type: 'milestone_post',
+        cost: 0,
+        metadata: { node_id: nodeId, milestone: threshold },
+      });
+      logger.info(`Milestone post created: user=${userId} node=${nodeName} @${threshold}%`);
+    }
+  }
+}
+
 /**
  * @description Computes the new streak values based on last activity date.
  * Rules:
@@ -222,6 +276,15 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       bumpDomainProficiency(userId, domain, 1.0).catch(() => {});
     }
   }
+
+  // Auto-post milestone progress to feed (fire-and-forget)
+  for (const newNode of nodes) {
+    const oldNode = existingNodes.find((n: any) => n.id === newNode.id);
+    const oldProgress = oldNode?.progress ?? 0;
+    if (newNode.progress !== oldProgress) {
+      autoPostMilestone(userId, newNode.id, newNode.name, newNode.domain || '', oldProgress, newNode.progress).catch(() => {});
+    }
+  }
   // --- End Achievement Creation Logic ---
 
 
@@ -362,6 +425,8 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
   if (updateErr) throw new InternalServerError(`Failed to update node: ${updateErr.message}`);
 
   // Award PP + proficiency + achievement if newly completed (0→100%)
+  const oldNode = nodes.find(n => n.id === nodeId);
+  const oldProgress = oldNode?.progress ?? 0;
   if (!wasComplete && progress === 100) {
     const node = updatedNodes.find(n => n.id === nodeId);
     const { data: profile } = await supabase
@@ -376,6 +441,12 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
       // Auto-create achievement + community feed post (fire-and-forget)
       createAchievementFromGoal(node, userId as string, profile.name, profile.avatar_url ?? undefined).catch(() => {});
     }
+  }
+
+  // Auto-post milestone to feed (fire-and-forget)
+  const updatedNode = updatedNodes.find(n => n.id === nodeId);
+  if (updatedNode) {
+    autoPostMilestone(String(userId), String(nodeId), updatedNode.name, targetDomain, oldProgress, progress / 100).catch(() => {});
   }
 
   res.json({ success: true, nodeId, progress });

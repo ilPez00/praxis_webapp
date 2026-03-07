@@ -146,3 +146,51 @@ export const deleteNotification = catchAsync(async (req: Request, res: Response)
 
   res.json({ ok: true });
 });
+
+// ---------------------------------------------------------------------------
+// POST /notifications/nudge/:targetId
+// Send a "nudge" to a chat partner who hasn't checked in today
+// Rate-limited: one nudge per sender→target per calendar day (best-effort)
+// ---------------------------------------------------------------------------
+
+export const nudgePartner = catchAsync(async (req: Request, res: Response) => {
+  const senderId = req.user?.id;
+  if (!senderId) throw new UnauthorizedError('Not authenticated.');
+  const { targetId } = req.params;
+  if (!targetId || targetId === senderId) {
+    return res.status(400).json({ message: 'Invalid target.' });
+  }
+
+  // Best-effort rate limit: one nudge per day per pair
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const { data: existing } = await supabase
+    .from('notifications')
+    .select('id')
+    .eq('user_id', targetId)
+    .eq('actor_id', senderId)
+    .eq('type', 'nudge')
+    .gte('created_at', `${todayStr}T00:00:00Z`)
+    .maybeSingle();
+
+  if (existing) {
+    return res.status(429).json({ message: 'Already nudged today.' });
+  }
+
+  // Get sender's name for the notification
+  const { data: sender } = await supabase
+    .from('profiles')
+    .select('name')
+    .eq('id', senderId)
+    .single();
+
+  await pushNotification({
+    userId: String(targetId),
+    type: 'nudge',
+    title: `${sender?.name ?? 'Your partner'} is nudging you!`,
+    body: "They noticed you haven't checked in today. Don't break the streak!",
+    link: `/chat`,
+    actorId: senderId,
+  });
+
+  res.json({ ok: true });
+});

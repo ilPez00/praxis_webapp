@@ -13,6 +13,7 @@ import SiteTour from '../../components/common/SiteTour';
 import { DOMAIN_COLORS } from '../../types/goal';
 import CheckInWidget from './components/CheckInWidget';
 import BalanceWidget from './components/BalanceWidget';
+import AccountabilityNetworkWidget from './components/AccountabilityNetworkWidget';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
@@ -355,6 +356,9 @@ const DashboardPage: React.FC = () => {
             </Grid>
           </GlassCard>
         </Box>
+
+        {/* Accountability Network — friends + their check-in status */}
+        {currentUserId && <AccountabilityNetworkWidget userId={currentUserId} />}
 
         {/* Community Challenges Section */}
         <Box sx={{ mt: 6 }}>
