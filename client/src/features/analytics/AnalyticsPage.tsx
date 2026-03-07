@@ -323,19 +323,42 @@ const AnalyticsPage: React.FC = () => {
 
           <Grid size={{ xs: 12, md: 6 }}>
             <StatCard icon={<CompareArrowsIcon />} title="Community Comparison" glowColor="rgba(245,158,11,0.1)">
-              {comparisonData ? (
-                <Box>
-                  <Alert severity="info" sx={{ mb: 2, fontSize: '0.8rem' }}>
-                    Placeholder data — real aggregation coming in Step 15.
-                  </Alert>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2, bgcolor: 'rgba(255,255,255,0.04)', borderRadius: 2 }}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                        {Math.round((comparisonData.globalAverageProgress || 0) * 100)}%
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">Global Avg Progress</Typography>
-                    </Box>
-                  </Box>
+              {comparisonData?.percentiles ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  {[
+                    { label: 'Streak', key: 'streak', suffix: 'd', color: '#F59E0B' },
+                    { label: 'Reliability', key: 'reliability', suffix: '', color: '#10B981' },
+                    { label: 'Praxis Points', key: 'praxis_points', suffix: ' PP', color: '#A78BFA' },
+                    { label: 'Honor Score', key: 'honor_score', suffix: '', color: '#FBBF24' },
+                  ].map(({ label, key, suffix, color }) => {
+                    const userVal = comparisonData.user?.[key] ?? 0;
+                    const communityAvg = comparisonData.community?.[key]?.avg ?? 0;
+                    const percentile = comparisonData.percentiles?.[key] ?? 50;
+                    return (
+                      <Box key={key}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.4 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>{label}</Typography>
+                          <Box sx={{ display: 'flex', gap: 1.5 }}>
+                            <Typography variant="caption" sx={{ color, fontWeight: 700 }}>
+                              You: {userVal}{suffix}
+                            </Typography>
+                            <Typography variant="caption" color="text.disabled">
+                              Avg: {communityAvg}{suffix}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: percentile >= 50 ? '#10B981' : '#F59E0B', fontWeight: 700 }}>
+                              Top {100 - percentile}%
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ height: 4, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                          <Box sx={{ height: '100%', width: `${percentile}%`, bgcolor: color, borderRadius: 2, transition: 'width 0.6s ease' }} />
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                  <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5 }}>
+                    Based on {comparisonData.community?.total_users ?? 0} community members
+                  </Typography>
                 </Box>
               ) : (
                 <Typography color="text.secondary" variant="body2">No comparison data available.</Typography>

@@ -53,6 +53,10 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EventIcon from '@mui/icons-material/Event';
+import ForumIcon from '@mui/icons-material/Forum';
+import CasinoIcon from '@mui/icons-material/Casino';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 
 interface AppNotification {
   id: string;
@@ -548,6 +552,22 @@ const Navbar: React.FC = () => {
                       <StorefrontIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Marketplace</Typography>
                     </MenuItem>
+                    <MenuItem onClick={() => handleNav('/boards')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <ForumIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Boards</Typography>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleNav('/events')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <EventIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Events</Typography>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleNav('/betting')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <CasinoIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Goal Staking</Typography>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleNav('/coaching')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <PsychologyIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">AI Coaching</Typography>
+                    </MenuItem>
 
                     {user.is_admin && (
                       <MenuItem onClick={() => handleNav('/admin')} sx={{ gap: 1.5, py: 1.25 }}>
@@ -680,6 +700,11 @@ const Navbar: React.FC = () => {
                 { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
                 { label: 'Matches', to: '/matches', icon: <ExploreIcon /> },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon /> },
+                { label: 'Boards', to: '/boards', icon: <ForumIcon /> },
+                { label: 'Events', to: '/events', icon: <EventIcon /> },
+                { label: 'Goal Staking', to: '/betting', icon: <CasinoIcon /> },
+                { label: 'AI Coaching', to: '/coaching', icon: <PsychologyIcon /> },
+                { label: 'Friends', to: '/friends', icon: <PeopleIcon /> },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon /> },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon /> },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon /> },

@@ -17,6 +17,26 @@ import {
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+
+function checkinDotColor(lastCheckinDate?: string | null): string {
+    if (!lastCheckinDate) return '#4B5563';
+    const today = new Date().toISOString().slice(0, 10);
+    const last = lastCheckinDate.slice(0, 10);
+    if (last === today) return '#10B981';
+    const diffDays = Math.round((Date.parse(today) - Date.parse(last)) / 86400000);
+    if (diffDays <= 2) return '#F59E0B';
+    return '#4B5563';
+}
+
+function checkinDotTitle(lastCheckinDate?: string | null): string {
+    if (!lastCheckinDate) return 'No check-ins yet';
+    const today = new Date().toISOString().slice(0, 10);
+    const last = lastCheckinDate.slice(0, 10);
+    if (last === today) return 'Checked in today';
+    const diffDays = Math.round((Date.parse(today) - Date.parse(last)) / 86400000);
+    if (diffDays === 1) return 'Missed today — checked in yesterday';
+    return `Last checked in ${diffDays}d ago`;
+}
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
@@ -27,6 +47,8 @@ interface ConversationSummary {
     lastMessage: string;
     lastMessageTime: string; // This would ideally be a Date object
     unreadCount: number;
+    lastCheckinDate?: string | null;
+    currentStreak?: number;
 }
 
 const ChatPage: React.FC = () => {
@@ -72,7 +94,7 @@ const ChatPage: React.FC = () => {
                 if (otherUserIds.length > 0) {
                     const { data: profiles } = await supabase
                         .from('profiles')
-                        .select('id, name')
+                        .select('id, name, current_streak, last_checkin_date')
                         .in('id', otherUserIds);
                     for (const p of profiles || []) {
                         profileMap.set(p.id, p);
@@ -88,6 +110,8 @@ const ChatPage: React.FC = () => {
                         lastMessage: message.content,
                         lastMessageTime: new Date(message.timestamp || message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                         unreadCount: 0,
+                        lastCheckinDate: (profile as any)?.last_checkin_date ?? null,
+                        currentStreak: (profile as any)?.current_streak ?? 0,
                     });
                 }
                 setConversations(convList);
@@ -204,16 +228,27 @@ const ChatPage: React.FC = () => {
                                 sx={{ py: 2, textDecoration: 'none', color: 'inherit' }}
                             >
                                 <ListItemAvatar>
-                                    <Badge
-                                        badgeContent={conv.unreadCount}
-                                        color="error"
-                                        overlap="circular"
-                                        invisible={conv.unreadCount === 0}
-                                    >
-                                        <Avatar>
-                                            {conv.otherUserName.charAt(0)}
-                                        </Avatar>
-                                    </Badge>
+                                    <Tooltip title={checkinDotTitle(conv.lastCheckinDate)} placement="right">
+                                        <Badge
+                                            badgeContent={conv.unreadCount}
+                                            color="error"
+                                            overlap="circular"
+                                            invisible={conv.unreadCount === 0}
+                                        >
+                                            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                                                <Avatar>
+                                                    {conv.otherUserName.charAt(0)}
+                                                </Avatar>
+                                                <Box sx={{
+                                                    position: 'absolute', bottom: 1, right: 1,
+                                                    width: 10, height: 10, borderRadius: '50%',
+                                                    bgcolor: checkinDotColor(conv.lastCheckinDate),
+                                                    border: '2px solid #111827',
+                                                    boxShadow: `0 0 4px ${checkinDotColor(conv.lastCheckinDate)}`,
+                                                }} />
+                                            </Box>
+                                        </Badge>
+                                    </Tooltip>
                                 </ListItemAvatar>
                                 <ListItemText
                                     primary={

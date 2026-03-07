@@ -209,43 +209,70 @@ export const getAchievementRate = catchAsync(async (req: Request, res: Response,
 });
 
 /**
- * @description Provides comparative insights with anonymized similar users.
- * TODO: This endpoint is a PLACEHOLDER and returns simulated aggregate data.
- * A real implementation would require:
- *   1. A periodic aggregation job (e.g. pg_cron) to compute anonymized averages
- *      across all users, grouped by domain or goal category.
- *   2. Differential privacy measures to ensure no individual's data is exposed.
- *   3. A dedicated `aggregated_stats` table to serve pre-computed values efficiently.
- * See whitepaper §6 (Anonymized Trend Analytics API) for the full design intent.
+ * @description Provides comparative insights with anonymized community averages.
+ * Returns the user's stats vs. the community median/average across streak,
+ * reliability, PP, and honor — plus percentile positions.
  */
-export const getComparisonData = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+export const getComparisonData = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const userId = req.params.userId as string;
-  if (!userId) {
-    throw new BadRequestError('User ID is required.');
-  }
+  if (!userId) throw new BadRequestError('User ID is required.');
 
   if (!(await isUserPremium(userId))) {
     throw new ForbiddenError('Advanced Analytics is a premium feature.');
   }
 
-  // Placeholder for fetching anonymized aggregate data.
-  // In a real system, this would involve querying aggregate statistics from all users,
-  // potentially filtered by domain or other similar characteristics.
-  const averageProgressAcrossAllUsers = 0.65; // Simulated average
-  const averageGoalsPerDomain = {
-      [FeedbackGrade.SUCCEEDED]: 10,
-      [FeedbackGrade.DISTRACTED]: 5,
-      [FeedbackGrade.LEARNED]: 8,
-      [FeedbackGrade.ADAPTED]: 7,
-      [FeedbackGrade.NOT_APPLICABLE]: 2,
-      // ... other grades
-  };
+  // Fetch user's own stats + all community stats in parallel
+  const [userRes, communityRes] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('current_streak, reliability_score, praxis_points, honor_score')
+      .eq('id', userId)
+      .single(),
+    supabase
+      .from('profiles')
+      .select('current_streak, reliability_score, praxis_points, honor_score')
+      .limit(1000),
+  ]);
 
+  if (userRes.error) throw new InternalServerError('Failed to fetch user stats.');
+
+  const user = userRes.data;
+  const community = (communityRes.data ?? []).filter((p: any) => p.praxis_points !== null);
+
+  const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+  const median = (arr: number[]) => {
+    if (!arr.length) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  };
+  const pct = (arr: number[], val: number) =>
+    arr.length ? Math.round((arr.filter(x => x < val).length / arr.length) * 100) : 50;
+
+  const streaks = community.map((p: any) => p.current_streak ?? 0);
+  const reliabilities = community.map((p: any) => p.reliability_score ?? 0);
+  const points = community.map((p: any) => p.praxis_points ?? 0);
+  const honors = community.map((p: any) => p.honor_score ?? 0);
 
   res.json({
-    message: 'This is a placeholder for comparison data with anonymized similar users. Implement specific aggregation logic here.',
-    globalAverageProgress: averageProgressAcrossAllUsers,
-    globalAverageFeedbackDistribution: averageGoalsPerDomain,
-    // ... more comparison metrics
+    user: {
+      streak: user.current_streak ?? 0,
+      reliability: user.reliability_score ?? 0,
+      praxis_points: user.praxis_points ?? 0,
+      honor_score: user.honor_score ?? 0,
+    },
+    community: {
+      total_users: community.length,
+      streak:       { avg: Math.round(avg(streaks)),   median: Math.round(median(streaks)) },
+      reliability:  { avg: Math.round(avg(reliabilities) * 100) / 100, median: Math.round(median(reliabilities) * 100) / 100 },
+      praxis_points: { avg: Math.round(avg(points)),  median: Math.round(median(points)) },
+      honor_score:  { avg: Math.round(avg(honors) * 10) / 10, median: Math.round(median(honors) * 10) / 10 },
+    },
+    percentiles: {
+      streak:       pct(streaks, user.current_streak ?? 0),
+      reliability:  pct(reliabilities, user.reliability_score ?? 0),
+      praxis_points: pct(points, user.praxis_points ?? 0),
+      honor_score:  pct(honors, user.honor_score ?? 0),
+    },
   });
 });
