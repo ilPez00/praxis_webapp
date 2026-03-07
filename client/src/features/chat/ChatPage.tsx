@@ -14,14 +14,9 @@ import {
     Divider,
     Chip,
     Tooltip,
-    Tabs,
-    Tab,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
-import ChatIcon from '@mui/icons-material/Chat';
-import PlaceIcon from '@mui/icons-material/Place';
-import PlacesTab from '../places/PlacesTab';
 
 function checkinDotColor(lastCheckinDate?: string | null): string {
     if (!lastCheckinDate) return '#4B5563';
@@ -61,8 +56,6 @@ const ChatPage: React.FC = () => {
     const [conversations, setConversations] = useState<ConversationSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [mutualStreaks, setMutualStreaks] = useState<Record<string, number>>({});
-    const [tab, setTab] = useState(0);
-
     useEffect(() => {
         const fetchConversations = async () => {
             if (!currentUser || currentUserLoading) return;
@@ -172,18 +165,7 @@ const ChatPage: React.FC = () => {
                 Chat
             </Typography>
 
-            <Tabs
-                value={tab}
-                onChange={(_, v) => setTab(v)}
-                sx={{ mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)' }}
-            >
-                <Tab icon={<ChatIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Messages" />
-                <Tab icon={<PlaceIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Places" />
-            </Tabs>
-
-            {tab === 1 && <PlacesTab currentUserId={currentUser?.id} />}
-
-            {tab === 0 && <List sx={{ bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+            <List sx={{ bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
                 {/* Master Roshi — always pinned at top */}
                 <ListItem
                     component={RouterLink}
@@ -309,7 +291,7 @@ const ChatPage: React.FC = () => {
                         </ListItemText>
                     </ListItem>
                 )}
-            </List>}
+            </List>
         </Container>
     );
 };
