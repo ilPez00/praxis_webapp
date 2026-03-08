@@ -6,7 +6,7 @@ import { Domain } from '../models/Domain';
 import { createAchievementFromGoal } from './achievementController';
 import { EmbeddingService } from '../services/EmbeddingService';
 import logger from '../utils/logger';
-import { catchAsync, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors';
+import { catchAsync, NotFoundError, ForbiddenError, BadRequestError, InternalServerError } from '../utils/appErrors';
 import { bumpDomainProficiency } from '../utils/proficiency';
 
 const embeddingService = new EmbeddingService();
@@ -301,6 +301,12 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   }
 
   if (existingTree) {
+    // Bulk PUT is only allowed for the very first save (editCount === 0).
+    // After that, use per-node PATCH/POST/DELETE endpoints.
+    if (editCount > 0) {
+      throw new ForbiddenError('Use per-node editing after initial setup.');
+    }
+
     // Re-edit gate: non-premium, non-admin users only get one free re-edit after their initial setup.
     // editCount === 0 → free re-edit (initial setup doesn't count against the limit)
     // editCount >= 1 → must be premium or admin
@@ -450,4 +456,205 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
   }
 
   res.json({ success: true, nodeId, progress });
+});
+
+// ─── Per-node CRUD with 25 PP gate ───────────────────────────────────────────
+
+const NODE_EDIT_COST = 25;
+
+/**
+ * POST /goals/:userId/node
+ * Create a new goal node. Costs 25 PP.
+ */
+export const createGoalNode = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId } = req.params;
+  const requesterId = (req as any).user?.id;
+  if (requesterId !== userId) throw new ForbiddenError('You can only modify your own goals.');
+
+  const { name, description, domain, targetDate, completionMetric, parentId } = req.body;
+  if (!name || typeof name !== 'string' || name.trim() === '') {
+    throw new BadRequestError('name is required.');
+  }
+
+  // 1. Check balance
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('praxis_points, goal_tree_edit_count')
+    .eq('id', userId)
+    .single();
+  if (profileErr || !profile) throw new InternalServerError('Failed to fetch user profile.');
+
+  const currentPoints: number = profile.praxis_points ?? 0;
+  if (currentPoints < NODE_EDIT_COST) {
+    throw new ForbiddenError(`Insufficient Praxis Points. Creating a node costs ${NODE_EDIT_COST} PP (you have ${currentPoints}).`);
+  }
+
+  // 2. Load existing tree
+  const { data: tree, error: treeErr } = await supabase
+    .from('goal_trees')
+    .select('nodes')
+    .eq('userId', userId)
+    .single();
+  if (treeErr || !tree) throw new NotFoundError('Goal tree not found. Create your initial tree first.');
+
+  const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
+
+  // 3. Build new node
+  const newNode: GoalNode & Record<string, any> = {
+    id: crypto.randomUUID(),
+    name: name.trim(),
+    customDetails: description ?? undefined,
+    domain: domain ?? 'General',
+    targetDate: targetDate ?? undefined,
+    completionMetric: completionMetric ?? undefined,
+    parentId: parentId ?? undefined,
+    progress: 0,
+    weight: 1,
+    created_at: new Date().toISOString(),
+  };
+
+  const updatedNodes = [...nodes, newNode];
+
+  // 4. Save updated nodes
+  const { error: saveErr } = await supabase
+    .from('goal_trees')
+    .update({ nodes: updatedNodes })
+    .eq('userId', userId);
+  if (saveErr) throw new InternalServerError(`Failed to save new node: ${saveErr.message}`);
+
+  // 5. Increment edit count + deduct PP
+  const editCount: number = profile.goal_tree_edit_count ?? 0;
+  const { error: profileUpdateErr } = await supabase
+    .from('profiles')
+    .update({
+      praxis_points: currentPoints - NODE_EDIT_COST,
+      goal_tree_edit_count: editCount + 1,
+    })
+    .eq('id', userId);
+  if (profileUpdateErr) throw new InternalServerError('Failed to deduct PP.');
+
+  const newBalance = currentPoints - NODE_EDIT_COST;
+  res.status(201).json({ node: newNode, newBalance });
+});
+
+/**
+ * PATCH /goals/:userId/node/:nodeId
+ * Edit fields on an existing goal node. Costs 25 PP.
+ */
+export const updateGoalNode = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId, nodeId } = req.params;
+  const requesterId = (req as any).user?.id;
+  if (requesterId !== userId) throw new ForbiddenError('You can only modify your own goals.');
+
+  const { name, description, domain, targetDate, completionMetric } = req.body;
+
+  // 1. Check balance
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('praxis_points, goal_tree_edit_count')
+    .eq('id', userId)
+    .single();
+  if (profileErr || !profile) throw new InternalServerError('Failed to fetch user profile.');
+
+  const currentPoints: number = profile.praxis_points ?? 0;
+  if (currentPoints < NODE_EDIT_COST) {
+    throw new ForbiddenError(`Insufficient Praxis Points. Editing a node costs ${NODE_EDIT_COST} PP (you have ${currentPoints}).`);
+  }
+
+  // 2. Load existing tree
+  const { data: tree, error: treeErr } = await supabase
+    .from('goal_trees')
+    .select('nodes')
+    .eq('userId', userId)
+    .single();
+  if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
+
+  const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
+
+  // 3. Find and merge
+  const idx = nodes.findIndex((n: GoalNode) => n.id === nodeId);
+  if (idx === -1) throw new NotFoundError('Goal node not found in tree.');
+
+  const existing = nodes[idx];
+  const patch: Record<string, any> = {};
+  if (name !== undefined) patch.name = String(name).trim();
+  if (description !== undefined) patch.customDetails = description;
+  if (domain !== undefined) patch.domain = domain;
+  if (targetDate !== undefined) patch.targetDate = targetDate;
+  if (completionMetric !== undefined) patch.completionMetric = completionMetric;
+
+  const updatedNode = { ...existing, ...patch };
+  const updatedNodes = [...nodes];
+  updatedNodes[idx] = updatedNode;
+
+  // 4. Save
+  const { error: saveErr } = await supabase
+    .from('goal_trees')
+    .update({ nodes: updatedNodes })
+    .eq('userId', userId);
+  if (saveErr) throw new InternalServerError(`Failed to save node update: ${saveErr.message}`);
+
+  // 5. Increment edit count + deduct PP
+  const editCount: number = profile.goal_tree_edit_count ?? 0;
+  const { error: profileUpdateErr } = await supabase
+    .from('profiles')
+    .update({
+      praxis_points: currentPoints - NODE_EDIT_COST,
+      goal_tree_edit_count: editCount + 1,
+    })
+    .eq('id', userId);
+  if (profileUpdateErr) throw new InternalServerError('Failed to deduct PP.');
+
+  const newBalance = currentPoints - NODE_EDIT_COST;
+  res.json({ node: updatedNode, newBalance });
+});
+
+/**
+ * DELETE /goals/:userId/node/:nodeId
+ * Delete a goal node and all its descendants. FREE (no PP cost).
+ */
+export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId, nodeId } = req.params;
+  const targetNodeId = String(nodeId);
+  const requesterId = (req as any).user?.id;
+  if (requesterId !== userId) throw new ForbiddenError('You can only modify your own goals.');
+
+  // 1. Load existing tree
+  const { data: tree, error: treeErr } = await supabase
+    .from('goal_trees')
+    .select('nodes')
+    .eq('userId', userId)
+    .single();
+  if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
+
+  const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
+
+  if (!nodes.find((n: GoalNode) => n.id === targetNodeId)) {
+    throw new NotFoundError('Goal node not found in tree.');
+  }
+
+  // 2. Collect all descendant IDs recursively
+  const toDelete = new Set<string>();
+  toDelete.add(targetNodeId);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const n of nodes) {
+      if (n.parentId && toDelete.has(n.parentId) && !toDelete.has(n.id)) {
+        toDelete.add(n.id);
+        changed = true;
+      }
+    }
+  }
+
+  const updatedNodes = nodes.filter((n: GoalNode) => !toDelete.has(n.id));
+
+  // 3. Save
+  const { error: saveErr } = await supabase
+    .from('goal_trees')
+    .update({ nodes: updatedNodes })
+    .eq('userId', userId);
+  if (saveErr) throw new InternalServerError(`Failed to delete node: ${saveErr.message}`);
+
+  res.json({ message: 'Node deleted.', deletedCount: toDelete.size });
 });
