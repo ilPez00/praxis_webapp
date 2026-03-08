@@ -204,3 +204,116 @@ export const removeRsvp = catchAsync(async (req: Request, res: Response, _next: 
 
   res.json({ message: 'RSVP removed.' });
 });
+
+import crypto from 'crypto';
+
+const QR_CHECKIN_AWARD = 50; // PP awarded per event check-in
+const CHECKIN_WINDOW_HOURS = 24; // Token valid for 24h after event start
+
+function getAppSecret(): string {
+  const secret = process.env.APP_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'praxis-dev-secret';
+  return secret;
+}
+
+function signToken(payload: string): string {
+  return crypto.createHmac('sha256', getAppSecret()).update(payload).digest('hex');
+}
+
+/**
+ * GET /events/:id/checkin-token
+ * Returns a signed check-in token for the organizer to display as QR code.
+ * Token encodes { eventId, exp } and is valid for CHECKIN_WINDOW_HOURS after event start.
+ */
+export const getCheckinToken = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ForbiddenError('Authentication required.');
+
+  const eventId = String(req.params.id);
+
+  const { data: event, error } = await supabase
+    .from('events')
+    .select('id, creator_id, event_date, event_time')
+    .eq('id', eventId)
+    .single();
+
+  if (error || !event) throw new NotFoundError('Event not found.');
+  if (event.creator_id !== userId) throw new ForbiddenError('Only the event organizer can generate a check-in token.');
+
+  // Token expires 24h after event start (or 24h from now if start is in the past)
+  const eventStart = event.event_date
+    ? new Date(`${event.event_date}T${event.event_time || '00:00:00'}`)
+    : new Date();
+  const exp = Math.max(eventStart.getTime(), Date.now()) + CHECKIN_WINDOW_HOURS * 3600 * 1000;
+
+  const payload = Buffer.from(JSON.stringify({ eventId, exp })).toString('base64url');
+  const sig = signToken(payload);
+  const token = `${payload}.${sig}`;
+
+  res.json({ token, exp });
+});
+
+/**
+ * POST /events/:id/checkin
+ * Body: { token }
+ * Verifies the HMAC token, prevents duplicate check-ins, awards 50 PP.
+ */
+export const checkinEvent = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ForbiddenError('Authentication required.');
+
+  const eventId = String(req.params.id);
+  const { token } = req.body as { token?: string };
+  if (!token) throw new BadRequestError('token is required.');
+
+  // Parse and verify token
+  const parts = token.split('.');
+  if (parts.length !== 2) throw new BadRequestError('Invalid token format.');
+  const [payload, sig] = parts;
+  const expectedSig = signToken(payload);
+  if (!crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expectedSig, 'hex'))) {
+    throw new BadRequestError('Invalid or tampered token.');
+  }
+
+  let parsed: { eventId: string; exp: number };
+  try {
+    parsed = JSON.parse(Buffer.from(payload, 'base64url').toString());
+  } catch {
+    throw new BadRequestError('Malformed token payload.');
+  }
+
+  if (parsed.eventId !== eventId) throw new BadRequestError('Token does not match this event.');
+  if (Date.now() > parsed.exp) throw new BadRequestError('Check-in token has expired.');
+
+  // Check for duplicate attendance
+  const { data: existing } = await supabase
+    .from('event_attendees')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    const { data: profile } = await supabase.from('profiles').select('praxis_points').eq('id', userId).single();
+    return res.json({ success: true, alreadyCheckedIn: true, newBalance: profile?.praxis_points ?? 0 });
+  }
+
+  // Record attendance
+  const { error: insertErr } = await supabase
+    .from('event_attendees')
+    .insert({ event_id: eventId, user_id: userId });
+
+  if (insertErr) {
+    if (SCHEMA_MISSING(insertErr.message)) {
+      return res.status(503).json({ message: 'Event attendees table not yet enabled. Run DB migrations.' });
+    }
+    logger.error('Error recording event attendance:', insertErr.message);
+    throw new InternalServerError('Failed to record check-in.');
+  }
+
+  // Award PP
+  const { data: profileRow } = await supabase.from('profiles').select('praxis_points').eq('id', userId).single();
+  const newBalance = (profileRow?.praxis_points ?? 0) + QR_CHECKIN_AWARD;
+  await supabase.from('profiles').update({ praxis_points: newBalance }).eq('id', userId);
+
+  res.json({ success: true, alreadyCheckedIn: false, newBalance });
+});
