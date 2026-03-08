@@ -17,36 +17,65 @@ const RECIPIENT_AWARD = 20; // PP awarded to recipient
  *   0-60 days:   weight 1.0
  *   61-120 days: weight 0.5
  *   >120 days:   excluded
+ *
+ * Returns null on DB error (callers skip the notification body in that case).
  */
-async function computeHonorScore(targetId: string): Promise<number> {
-  const { data: votes, error } = await supabase
+async function computeHonorScore(targetId: string): Promise<number | null> {
+  // Fetch all votes for this target
+  const { data: votes, error: votesError } = await supabase
     .from('honor_votes')
-    .select('voter_id, created_at, profiles!honor_votes_voter_id_fkey(reliability_score)')
+    .select('voter_id, created_at')
     .eq('target_id', targetId);
 
-  if (error) {
-    logger.error('computeHonorScore fetch error:', error.message);
+  if (votesError) {
+    logger.error('computeHonorScore fetch votes error:', votesError.message);
+    return null;
+  }
+
+  if (!votes || votes.length === 0) {
+    await supabase.from('profiles').update({ honor_score: 0 }).eq('id', targetId);
     return 0;
+  }
+
+  // Fetch giver reliability scores in a single batch query
+  const voterIds = votes.map(v => v.voter_id);
+  const { data: givers, error: giversError } = await supabase
+    .from('profiles')
+    .select('id, reliability_score')
+    .in('id', voterIds);
+
+  if (giversError) {
+    logger.error('computeHonorScore fetch givers error:', giversError.message);
+    return null;
+  }
+
+  const reliabilityMap = new Map<string, number>();
+  for (const g of givers ?? []) {
+    reliabilityMap.set(g.id, g.reliability_score ?? 0);
   }
 
   const now = Date.now();
   let score = 0;
-
-  for (const vote of votes ?? []) {
-    const giverReliability: number = (vote.profiles as any)?.reliability_score ?? 0;
-    const ageMs = now - new Date(vote.created_at).getTime();
-    const ageDays = ageMs / 86400000;
+  for (const vote of votes) {
+    const reliability = reliabilityMap.get(vote.voter_id) ?? 0;
+    const ageDays = (now - new Date(vote.created_at).getTime()) / 86400000;
 
     let weight: number;
     if (ageDays <= 60) weight = 1.0;
     else if (ageDays <= 120) weight = 0.5;
     else continue; // older than 120d — excluded
 
-    score += giverReliability * weight;
+    score += reliability * weight;
   }
 
   const rounded = Math.round(score * 100) / 100;
-  await supabase.from('profiles').update({ honor_score: rounded }).eq('id', targetId);
+
+  // Only write if the score has meaningfully changed
+  const { data: current } = await supabase.from('profiles').select('honor_score').eq('id', targetId).single();
+  if (Math.abs(rounded - ((current?.honor_score as number) ?? 0)) > 0.01) {
+    await supabase.from('profiles').update({ honor_score: rounded }).eq('id', targetId);
+  }
+
   return rounded;
 }
 
@@ -65,7 +94,7 @@ export const giveHonor = catchAsync(async (req: Request, res: Response, _next: N
   // Check target exists
   const { data: target, error: targetError } = await supabase
     .from('profiles')
-    .select('id, name')
+    .select('id')
     .eq('id', targetId)
     .single();
   if (targetError || !target) throw new NotFoundError('User not found.');
@@ -76,7 +105,8 @@ export const giveHonor = catchAsync(async (req: Request, res: Response, _next: N
     .select('praxis_points')
     .eq('id', voterId)
     .single();
-  const voterPP = voter?.praxis_points ?? 0;
+  if (!voter) throw new NotFoundError('Your profile was not found.');
+  const voterPP = voter.praxis_points ?? 0;
   if (voterPP < HONOR_COST) {
     throw new BadRequestError(`Not enough PP — you need ${HONOR_COST} PP to give honor.`);
   }
@@ -109,16 +139,18 @@ export const giveHonor = catchAsync(async (req: Request, res: Response, _next: N
   // Recompute weighted honor score
   const newScore = await computeHonorScore(targetId);
 
-  pushNotification({
-    userId: targetId,
-    type: 'honor',
-    title: 'Someone honoured you',
-    body: `Your honor score is now ${newScore.toFixed(2)}.`,
-    link: `/profile/${targetId}`,
-    actorId: voterId,
-  }).catch(() => {});
+  if (newScore !== null) {
+    pushNotification({
+      userId: targetId,
+      type: 'honor',
+      title: 'Someone honoured you',
+      body: `Your honor score is now ${newScore.toFixed(2)}.`,
+      link: `/profile/${targetId}`,
+      actorId: voterId,
+    }).catch(() => {});
+  }
 
-  res.json({ message: 'Honor given.', honor_score: newScore });
+  res.json({ message: 'Honor given.', honor_score: newScore ?? 0 });
 });
 
 /**
@@ -156,7 +188,7 @@ export const revokeHonor = catchAsync(async (req: Request, res: Response, _next:
   // Recompute weighted honor score
   const newScore = await computeHonorScore(targetId);
 
-  res.json({ message: 'Honor revoked.', honor_score: newScore });
+  res.json({ message: 'Honor revoked.', honor_score: newScore ?? 0 });
 });
 
 /**
@@ -189,5 +221,5 @@ export const getHonor = catchAsync(async (req: Request, res: Response, _next: Ne
     hasHonored = !!vote;
   }
 
-  res.json({ honor_score: honorScore, has_honored: hasHonored });
+  res.json({ honor_score: honorScore ?? 0, has_honored: hasHonored });
 });
