@@ -28,8 +28,232 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import FlagIcon from '@mui/icons-material/Flag';
 import { DOMAIN_COLORS } from '../../types/goal';
 import ProBanner from '../../components/common/ProBanner';
+
+// ── Habit Calendar ─────────────────────────────────────────────────────────────
+
+interface DayData {
+  date: string;        // YYYY-MM-DD
+  count: number;       // number of tracker logs that day
+  trackers: string[];  // tracker types logged
+}
+
+interface GoalDate {
+  date: string;  // YYYY-MM-DD
+  label: string;
+  emoji: string;
+  color: string;
+}
+
+const WEEKS = 16; // ~4 months of history
+
+function HabitCalendar({ dayData, goalDates }: { dayData: DayData[]; goalDates: GoalDate[] }) {
+  // Build the full 16-week grid ending today
+  const today = new Date();
+  // Align to Sunday of current week
+  const endDate = new Date(today);
+  endDate.setHours(23, 59, 59, 999);
+  const startDate = new Date(endDate);
+  startDate.setDate(startDate.getDate() - (WEEKS * 7 - 1));
+
+  // Build columns (each column = 1 week, Sun→Sat)
+  const dayMap: Record<string, DayData> = {};
+  for (const d of dayData) dayMap[d.date] = d;
+
+  const goalDateMap: Record<string, GoalDate[]> = {};
+  for (const g of goalDates) {
+    if (!goalDateMap[g.date]) goalDateMap[g.date] = [];
+    goalDateMap[g.date].push(g);
+  }
+
+  const columns: { date: Date; key: string }[][] = [];
+  let current = new Date(startDate);
+  // Move to Sunday
+  const dayOfWeek = current.getDay(); // 0=Sun
+  if (dayOfWeek !== 0) current.setDate(current.getDate() - dayOfWeek);
+
+  while (current <= endDate) {
+    const col: { date: Date; key: string }[] = [];
+    for (let d = 0; d < 7; d++) {
+      col.push({ date: new Date(current), key: current.toISOString().slice(0, 10) });
+      current.setDate(current.getDate() + 1);
+    }
+    columns.push(col);
+  }
+
+  // Month labels — figure out where each month starts
+  const monthLabels: { col: number; label: string }[] = [];
+  let lastMonth = -1;
+  columns.forEach((col, ci) => {
+    const m = col[0].date.getMonth();
+    if (m !== lastMonth) {
+      monthLabels.push({ col: ci, label: col[0].date.toLocaleDateString('en', { month: 'short' }) });
+      lastMonth = m;
+    }
+  });
+
+  const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const CELL = 13; // px
+  const GAP = 3;   // px
+
+  return (
+    <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+        <TrendingUpIcon sx={{ color: 'primary.main', fontSize: 22 }} />
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>Habit Calendar</Typography>
+        <Chip label={`${dayData.filter(d => d.count > 0).length} active days`} size="small"
+          sx={{ height: 20, fontSize: '0.62rem', bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }} />
+      </Box>
+
+      <Box sx={{ overflowX: 'auto', pb: 1 }}>
+        {/* Month header */}
+        <Box sx={{ display: 'flex', ml: `${CELL + GAP + 4}px`, mb: 0.5 }}>
+          {columns.map((col, ci) => {
+            const ml = monthLabels.find(m => m.col === ci);
+            return (
+              <Box key={ci} sx={{ width: CELL, flexShrink: 0, mr: `${GAP}px` }}>
+                {ml && (
+                  <Typography sx={{ fontSize: '0.58rem', color: 'text.disabled', whiteSpace: 'nowrap', lineHeight: 1 }}>
+                    {ml.label}
+                  </Typography>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Grid */}
+        <Box sx={{ display: 'flex', gap: `${GAP}px` }}>
+          {/* Day-of-week labels */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${GAP}px`, pt: 0, mr: '4px' }}>
+            {DAY_LABELS.map((lbl, i) => (
+              <Box key={i} sx={{ width: CELL, height: CELL, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {(i === 1 || i === 3 || i === 5) && (
+                  <Typography sx={{ fontSize: '0.52rem', color: 'text.disabled', lineHeight: 1 }}>{lbl}</Typography>
+                )}
+              </Box>
+            ))}
+          </Box>
+
+          {/* Week columns */}
+          {columns.map((col, ci) => (
+            <Box key={ci} sx={{ display: 'flex', flexDirection: 'column', gap: `${GAP}px` }}>
+              {col.map(({ date, key }) => {
+                const data = dayMap[key];
+                const isToday = key === today.toISOString().slice(0, 10);
+                const isFuture = date > today;
+                const goalsOnDay = goalDateMap[key] ?? [];
+                const hasGoal = goalsOnDay.length > 0;
+                const count = data?.count ?? 0;
+                const opacity = count === 0 ? 0 : count === 1 ? 0.45 : count === 2 ? 0.65 : count <= 4 ? 0.82 : 1;
+                const bg = isFuture
+                  ? 'transparent'
+                  : count > 0
+                    ? `rgba(245,158,11,${opacity})`
+                    : 'rgba(255,255,255,0.06)';
+
+                const tooltipTitle = isFuture ? '' : (
+                  [
+                    count > 0 ? `${count} log${count !== 1 ? 's' : ''}` : 'No logs',
+                    ...goalsOnDay.map(g => `🎯 ${g.label} deadline`),
+                    date.toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+                  ].join(' · ')
+                );
+
+                return (
+                  <Tooltip key={key} title={tooltipTitle} placement="top" arrow>
+                    <Box sx={{
+                      width: CELL, height: CELL,
+                      borderRadius: '3px',
+                      bgcolor: bg,
+                      border: isToday
+                        ? '1.5px solid rgba(245,158,11,0.8)'
+                        : hasGoal
+                          ? `1.5px solid ${goalsOnDay[0].color}cc`
+                          : 'none',
+                      position: 'relative',
+                      flexShrink: 0,
+                      cursor: count > 0 || hasGoal ? 'pointer' : 'default',
+                      // Goal date: small flag dot at top-right
+                      '&::after': hasGoal ? {
+                        content: '""', position: 'absolute',
+                        top: -2, right: -2, width: 5, height: 5,
+                        borderRadius: '50%', bgcolor: goalsOnDay[0].color,
+                        border: '1px solid rgba(13,14,26,0.8)',
+                      } : {},
+                    }} />
+                  </Tooltip>
+                );
+              })}
+            </Box>
+          ))}
+        </Box>
+
+        {/* Legend */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled' }}>Less</Typography>
+            {[0, 0.3, 0.55, 0.75, 1].map((op, i) => (
+              <Box key={i} sx={{ width: CELL, height: CELL, borderRadius: '3px', bgcolor: op === 0 ? 'rgba(255,255,255,0.06)' : `rgba(245,158,11,${op})` }} />
+            ))}
+            <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled' }}>More</Typography>
+          </Box>
+          {goalDates.length > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#F59E0B' }} />
+              <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled' }}>Goal deadline</Typography>
+            </Box>
+          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ width: CELL, height: CELL, borderRadius: '3px', border: '1.5px solid rgba(245,158,11,0.8)' }} />
+            <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled' }}>Today</Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Goal deadlines list */}
+      {goalDates.length > 0 && (
+        <Box sx={{ mt: 2.5, pt: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1 }}>
+            Goal Deadlines
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {goalDates
+              .sort((a, b) => a.date.localeCompare(b.date))
+              .map((g, i) => {
+                const d = new Date(g.date);
+                const isPast = d < today;
+                const daysAway = Math.ceil((d.getTime() - today.getTime()) / 86400000);
+                return (
+                  <Box key={i} sx={{
+                    display: 'flex', alignItems: 'center', gap: 0.75,
+                    px: 1.5, py: 0.75, borderRadius: '10px',
+                    bgcolor: `${g.color}10`,
+                    border: `1px solid ${g.color}25`,
+                  }}>
+                    <Typography sx={{ fontSize: '0.9rem' }}>{g.emoji}</Typography>
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: g.color, lineHeight: 1.2 }}>
+                        {g.label}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: isPast ? '#EF4444' : 'text.disabled', fontSize: '0.6rem' }}>
+                        <FlagIcon sx={{ fontSize: 9, verticalAlign: 'middle', mr: 0.25 }} />
+                        {d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {!isPast && ` · ${daysAway}d`}
+                        {isPast && ' · Passed'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              })}
+          </Box>
+        </Box>
+      )}
+    </GlassCard>
+  );
+}
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -90,12 +314,72 @@ const AnalyticsPage: React.FC = () => {
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [lbFilter, setLbFilter] = useState<'all' | 'aligned'>('all');
 
+  // Calendar data (available to all users, not premium-gated)
+  const [calendarDays, setCalendarDays] = useState<DayData[]>([]);
+  const [goalDates, setGoalDates] = useState<GoalDate[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(true);
+
+  // Fetch calendar data independently (available to everyone)
+  useEffect(() => {
+    if (userLoading || !user) return;
+    const load = async () => {
+      setCalendarLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const authH = { headers: { Authorization: `Bearer ${session?.access_token}` } };
+
+        // Fetch 112 days of tracker entries
+        const [trackersRes, goalRes] = await Promise.allSettled([
+          axios.get(`${API_URL}/trackers/my?days=112`, authH),
+          axios.get(`${API_URL}/goals/tree/${user.id}`, authH),
+        ]);
+
+        // Build day map from trackers
+        if (trackersRes.status === 'fulfilled') {
+          const trackers: any[] = Array.isArray(trackersRes.value.data) ? trackersRes.value.data : [];
+          const dayMap: Record<string, { count: number; trackers: string[] }> = {};
+          for (const tracker of trackers) {
+            for (const entry of (tracker.entries ?? [])) {
+              const day = entry.logged_at.slice(0, 10);
+              if (!dayMap[day]) dayMap[day] = { count: 0, trackers: [] };
+              dayMap[day].count++;
+              if (!dayMap[day].trackers.includes(tracker.type)) {
+                dayMap[day].trackers.push(tracker.type);
+              }
+            }
+          }
+          setCalendarDays(Object.entries(dayMap).map(([date, v]) => ({ date, ...v })));
+        }
+
+        // Extract goal target dates from goal tree nodes
+        if (goalRes.status === 'fulfilled') {
+          const tree = goalRes.value.data;
+          const nodes: any[] = Array.isArray(tree?.nodes) ? tree.nodes : [];
+          const DOMAIN_EMOJI: Record<string, string> = {
+            'Fitness': '🏋️', 'Career': '💼', 'Investing / Financial Growth': '📈',
+            'Academics': '📚', 'Mental Health': '🧘', 'Philosophical Development': '🔭',
+            'Culture / Hobbies': '🎨', 'Intimacy / Romantic': '💞',
+            'Friendship / Social Engagement': '👥', 'Personal Goals': '🌟',
+          };
+          const dates: GoalDate[] = nodes
+            .filter((n: any) => n.targetDate)
+            .map((n: any) => ({
+              date: n.targetDate.slice(0, 10),
+              label: n.name ?? n.title ?? 'Goal',
+              emoji: DOMAIN_EMOJI[n.domain ?? ''] ?? '🎯',
+              color: (DOMAIN_COLORS as Record<string, string>)[n.domain ?? ''] ?? '#F59E0B',
+            }));
+          setGoalDates(dates);
+        }
+      } catch { /* non-fatal */ }
+      finally { setCalendarLoading(false); }
+    };
+    load();
+  }, [user, userLoading]);
+
   useEffect(() => {
     if (userLoading) return;
-    if (!user || !user.is_premium) {
-      navigate('/upgrade');
-      return;
-    }
+    if (!user || !user.is_premium) return; // Premium check handled in render
 
     const fetchAnalyticsData = async () => {
       setLoadingAnalytics(true);
@@ -135,7 +419,7 @@ const AnalyticsPage: React.FC = () => {
     fetchAnalyticsData();
   }, [user, userLoading, navigate]);
 
-  if (userLoading || loadingAnalytics) {
+  if (userLoading) {
     return (
       <Container sx={{ mt: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         <CircularProgress />
@@ -152,13 +436,7 @@ const AnalyticsPage: React.FC = () => {
     );
   }
 
-  if (!user || !user.is_premium) {
-    return (
-      <Container maxWidth="sm" sx={{ mt: 8 }}>
-        <ProBanner message="Advanced Analytics — deep goal insights, domain performance, feedback trends, and peer comparison — is a Praxis Pro feature." />
-      </Container>
-    );
-  }
+  const isPremium = user?.is_premium ?? false;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, pb: 6 }}>
@@ -167,15 +445,35 @@ const AnalyticsPage: React.FC = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
           <InsightsIcon sx={{ color: 'primary.main', fontSize: 28 }} />
           <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            Advanced Analytics
+            Analytics
           </Typography>
-          <Chip label="PREMIUM" size="small" sx={{ bgcolor: 'rgba(245,158,11,0.15)', color: 'primary.main', fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)' }} />
+          {isPremium && (
+            <Chip label="PREMIUM" size="small" sx={{ bgcolor: 'rgba(245,158,11,0.15)', color: 'primary.main', fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)' }} />
+          )}
         </Box>
         <Typography color="text.secondary">
-          Deep insights into your goal progress and peer interactions.
+          Your habit log, goal deadlines, and performance insights.
         </Typography>
       </Box>
 
+      {/* ── Habit Calendar — visible to all users ── */}
+      {calendarLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress size={24} />
+        </Box>
+      ) : (
+        <Box sx={{ mb: 3 }}>
+          <HabitCalendar dayData={calendarDays} goalDates={goalDates} />
+        </Box>
+      )}
+
+      {/* ── Premium analytics gate ── */}
+      {!isPremium ? (
+        <ProBanner message="Advanced Analytics — deep goal insights, domain performance, feedback trends, and peer comparison — is a Praxis Pro feature." />
+      ) : loadingAnalytics ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={24} /></Box>
+      ) : (
+      <>
       <Stack spacing={3}>
         {/* Row 1: Progress + Achievement Rate */}
         <Grid container spacing={3}>
@@ -370,6 +668,7 @@ const AnalyticsPage: React.FC = () => {
 
       {/* Leaderboard */}
       <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ p: 3, mt: 3 }}>
+
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <LeaderboardIcon sx={{ color: 'primary.main' }} />
@@ -455,6 +754,8 @@ const AnalyticsPage: React.FC = () => {
           </Stack>
         )}
       </GlassCard>
+      </>
+      )}  {/* end premium block */}
     </Container>
   );
 };

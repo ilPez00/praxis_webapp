@@ -1053,21 +1053,25 @@ function MiniChart({ entries, chartKey, color, unit }: {
     const label = i === 6 ? 'Today' : d.toLocaleDateString('en', { weekday: 'short' });
     const total = entries.filter(e => e.logged_at.slice(0, 10) === key)
       .reduce((s, e) => s + (Number(e.data[chartKey]) || 0), 0);
-    return { label, total };
+    const logged = entries.some(e => e.logged_at.slice(0, 10) === key);
+    return { label, total, logged };
   });
   const max = Math.max(...days.map(d => d.total), 1);
   return (
-    <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: 40, my: 1.5 }}>
+    <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: 52, mt: 1.5, mb: 0.5 }}>
       {days.map((day, i) => (
-        <Tooltip key={i} title={`${day.label}: ${day.total} ${unit}`} placement="top">
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1 }}>
+        <Tooltip key={i} title={`${day.label}: ${day.total > 0 ? `${day.total} ${unit}` : day.logged ? 'Logged' : 'No entry'}`} placement="top">
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flex: 1 }}>
             <Box sx={{
-              width: '100%', borderRadius: '3px 3px 0 0',
-              height: `${Math.max((day.total / max) * 30, day.total > 0 ? 4 : 2)}px`,
-              bgcolor: day.total > 0 ? color : 'rgba(255,255,255,0.05)',
-              opacity: i === 6 ? 1 : 0.6,
+              width: '100%', borderRadius: '4px 4px 0 0',
+              height: `${Math.max((day.total / max) * 38, day.logged ? 6 : 2)}px`,
+              bgcolor: day.logged
+                ? i === 6 ? color : `${color}99`
+                : 'rgba(255,255,255,0.06)',
+              transition: 'height 0.3s ease',
+              boxShadow: i === 6 && day.logged ? `0 0 6px ${color}66` : 'none',
             }} />
-            <Typography sx={{ fontSize: '0.52rem', color: 'text.disabled', lineHeight: 1 }}>
+            <Typography sx={{ fontSize: '0.54rem', color: i === 6 ? 'text.primary' : 'text.disabled', fontWeight: i === 6 ? 700 : 400, lineHeight: 1 }}>
               {day.label.slice(0, 3)}
             </Typography>
           </Box>
@@ -1182,10 +1186,16 @@ function TrackerCard({ config, tracker, onLogged, onObjectiveSaved }: {
   const [logOpen, setLogOpen] = useState(false);
 
   const todayKey = new Date().toISOString().slice(0, 10);
-  const todayEntries = (tracker?.entries ?? []).filter(e => e.logged_at.slice(0, 10) === todayKey);
+  const allEntries = tracker?.entries ?? [];
+  const todayEntries = allEntries.filter(e => e.logged_at.slice(0, 10) === todayKey);
   const loggedToday = todayEntries.length > 0;
+  // Most recent today entry for display
+  const latestEntry = todayEntries[0];
   const todayTotal = todayEntries.reduce((s, e) => s + (Number(e.data[config.chartKey]) || 0), 0);
   const currentGoal = tracker?.goal ?? {};
+
+  // Default-open the form when never logged today
+  const showForm = logOpen || !loggedToday;
 
   const handleLog = async () => {
     const data: Record<string, any> = {};
@@ -1211,39 +1221,95 @@ function TrackerCard({ config, tracker, onLogged, onObjectiveSaved }: {
   return (
     <GlassCard sx={{
       p: 2.5, borderRadius: '16px',
-      border: `1px solid ${config.color}20`,
-      background: `linear-gradient(150deg, ${config.color}07 0%, rgba(13,14,26,0.7) 100%)`,
-      '&:hover': { borderColor: `${config.color}38` },
+      border: `1px solid ${loggedToday ? config.color + '40' : config.color + '18'}`,
+      background: `linear-gradient(150deg, ${config.color}${loggedToday ? '10' : '07'} 0%, rgba(13,14,26,0.75) 100%)`,
       transition: 'border-color 0.2s',
     }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography sx={{ fontSize: '1.5rem', lineHeight: 1 }}>{config.emoji}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Typography sx={{ fontSize: '2rem', lineHeight: 1 }}>{config.emoji}</Typography>
           <Box>
-            <Typography variant="body2" sx={{ fontWeight: 800, color: config.color, lineHeight: 1.2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: config.color, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
               {config.label}
             </Typography>
-            {loggedToday && todayTotal > 0 && (
-              <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700, fontSize: '0.62rem' }}>
-                ✓ {todayTotal} {config.chartUnit} today
-              </Typography>
-            )}
-            {loggedToday && todayTotal === 0 && (
-              <Typography variant="caption" sx={{ color: '#10B981', fontSize: '0.62rem' }}>✓ Logged today</Typography>
-            )}
+            <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem' }}>
+              {allEntries.length > 0
+                ? `${allEntries.length} log${allEntries.length !== 1 ? 's' : ''} · last 14d`
+                : 'No logs yet'}
+            </Typography>
           </Box>
         </Box>
-        <Tooltip title={logOpen ? 'Close' : 'Log now'}>
-          <IconButton
-            size="small"
-            onClick={() => setLogOpen(v => !v)}
-            sx={{ bgcolor: logOpen ? `${config.color}22` : 'rgba(255,255,255,0.04)', color: config.color, '&:hover': { bgcolor: `${config.color}33` }, width: 28, height: 28 }}
-          >
-            {logOpen ? <CloseIcon sx={{ fontSize: 14 }} /> : <AddIcon sx={{ fontSize: 14 }} />}
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {loggedToday && (
+            <Chip
+              label="✓ Today"
+              size="small"
+              sx={{ height: 20, fontSize: '0.6rem', fontWeight: 700, bgcolor: '#10B98118', color: '#10B981', border: '1px solid #10B98133' }}
+            />
+          )}
+          {loggedToday && (
+            <Tooltip title={logOpen ? 'Close' : 'Log again'}>
+              <IconButton
+                size="small"
+                onClick={() => setLogOpen(v => !v)}
+                sx={{ bgcolor: 'rgba(255,255,255,0.04)', color: config.color, '&:hover': { bgcolor: `${config.color}22` }, width: 26, height: 26 }}
+              >
+                {logOpen ? <CloseIcon sx={{ fontSize: 13 }} /> : <AddIcon sx={{ fontSize: 13 }} />}
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
       </Box>
+
+      {/* ── Today's register — shown prominently when logged ── */}
+      {loggedToday && latestEntry && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.62rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>
+            Today's entry
+          </Typography>
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${Math.min(config.fields.filter(f => latestEntry.data[f.key] !== undefined && latestEntry.data[f.key] !== '').length, 4)}, 1fr)`,
+            gap: 1, mt: 0.75,
+          }}>
+            {config.fields.map(f => {
+              const val = latestEntry.data[f.key];
+              if (val === undefined || val === null || val === '') return null;
+              const isText = f.type === 'text';
+              return (
+                <Box
+                  key={f.key}
+                  sx={{
+                    textAlign: 'center', px: 1, py: 1.25,
+                    bgcolor: `${config.color}12`,
+                    borderRadius: '10px',
+                    border: `1px solid ${config.color}25`,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: isText ? '0.72rem' : '1.5rem',
+                      fontWeight: 800, color: config.color, lineHeight: 1,
+                      mb: 0.25, wordBreak: 'break-word',
+                    }}
+                  >
+                    {String(val)}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.58rem', display: 'block', lineHeight: 1 }}>
+                    {f.unit || f.label}
+                  </Typography>
+                </Box>
+              );
+            }).filter(Boolean)}
+          </Box>
+          {todayEntries.length > 1 && (
+            <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', mt: 0.5, display: 'block' }}>
+              + {todayEntries.length - 1} more entr{todayEntries.length === 2 ? 'y' : 'ies'} today
+            </Typography>
+          )}
+        </Box>
+      )}
 
       {/* Objectives */}
       <ObjectiveRow
@@ -1252,14 +1318,15 @@ function TrackerCard({ config, tracker, onLogged, onObjectiveSaved }: {
         onSave={(goal) => onObjectiveSaved(config.type, goal)}
       />
 
-      {/* 7-day chart */}
-      {(tracker?.entries ?? []).length > 0 && (
-        <MiniChart entries={tracker!.entries} chartKey={config.chartKey} color={config.color} unit={config.chartUnit} />
-      )}
+      {/* 7-day chart — always shown */}
+      <MiniChart entries={allEntries} chartKey={config.chartKey} color={config.color} unit={config.chartUnit} />
 
-      {/* Log form */}
-      <Collapse in={logOpen}>
-        <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 1.5, mt: 0.5 }} />
+      {/* Log form — always visible when no entry today; collapsible when already logged */}
+      <Collapse in={showForm}>
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 1.5, mt: 1 }} />
+        <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.62rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700, mb: 1, display: 'block' }}>
+          {loggedToday ? 'Log again' : "Log today's session"}
+        </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
           {config.fields.map(f => (
             <TextField
@@ -1272,25 +1339,24 @@ function TrackerCard({ config, tracker, onLogged, onObjectiveSaved }: {
               onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
               inputProps={{ min: f.min, max: f.max, step: f.step ?? (f.type === 'number' ? 1 : undefined) }}
               sx={{
-                flex: f.type === 'text' ? '1 1 130px' : '0 1 80px',
-                '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.8rem' },
-                '& .MuiInputLabel-root': { fontSize: '0.76rem' },
+                flex: f.type === 'text' ? '1 1 130px' : '0 1 90px',
+                '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.82rem' },
+                '& .MuiInputLabel-root': { fontSize: '0.77rem' },
               }}
             />
           ))}
         </Box>
         <Button
-          variant="contained" size="small" onClick={handleLog} disabled={saving}
-          endIcon={saving ? <CircularProgress size={12} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: '13px !important' }} />}
+          variant="contained" fullWidth onClick={handleLog} disabled={saving}
+          endIcon={saving ? <CircularProgress size={12} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: '14px !important' }} />}
           sx={{
-            borderRadius: '8px', fontWeight: 800, fontSize: '0.73rem',
+            borderRadius: '10px', fontWeight: 800, fontSize: '0.8rem', py: 1,
             background: `linear-gradient(135deg, ${config.color} 0%, ${config.color}bb 100%)`,
-            color: '#0A0B14', float: 'right', px: 2,
+            color: '#0A0B14',
           }}
         >
-          Log +5⚡
+          {loggedToday ? 'Log again +5⚡' : 'Log +5⚡'}
         </Button>
-        <Box sx={{ clear: 'both' }} />
       </Collapse>
     </GlassCard>
   );

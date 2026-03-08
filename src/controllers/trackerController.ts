@@ -9,13 +9,15 @@ const PP_PER_LOG = 5; // Praxis Points awarded per tracker log
 
 /**
  * GET /trackers/my
- * Returns the authenticated user's trackers, each with the last 14 days of entries.
+ * Returns the authenticated user's trackers, each with the last N days of entries.
+ * Query param: ?days=N (default 14, max 365)
  */
 export const getMyTrackers = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated.');
 
-  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const days = Math.min(Math.max(Number(req.query.days ?? 14), 1), 365);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: trackers, error: trackerErr } = await supabase
     .from('trackers')
