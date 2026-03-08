@@ -123,6 +123,19 @@ export const createEvent = catchAsync(async (req: Request, res: Response, _next:
     throw new InternalServerError(`Failed to create event: ${error.message}`);
   }
 
+  // Fire-and-forget: create a linked group chat room for this event
+  if (event?.id) {
+    supabase.from('chat_rooms').insert({
+      name: event.title,
+      description: `Group for event: ${event.title}`,
+      creator_id: userId,
+      type: 'event',
+      event_id: event.id,
+    }).then(({ error: roomErr }) => {
+      if (roomErr) logger.warn('Could not auto-create event group room:', roomErr.message);
+    });
+  }
+
   res.status(201).json(event);
 });
 
