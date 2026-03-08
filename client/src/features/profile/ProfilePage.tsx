@@ -823,10 +823,11 @@ const ProfilePage: React.FC = () => {
                 })()}
                 {(() => {
                   const k = profile.karma_score ?? 0;
-                  const label = `${k >= 0 ? '+' : ''}${k} karma`;
-                  const color = k > 0 ? '#10B981' : k < 0 ? '#EF4444' : '#6B7280';
-                  const bg = k > 0 ? 'rgba(16,185,129,0.1)' : k < 0 ? 'rgba(239,68,68,0.1)' : 'rgba(107,114,128,0.1)';
-                  const border = k > 0 ? 'rgba(16,185,129,0.25)' : k < 0 ? 'rgba(239,68,68,0.25)' : 'rgba(107,114,128,0.2)';
+                  if (k === 0) return null;
+                  const label = `${k > 0 ? '+' : ''}${k} karma`;
+                  const color = k > 0 ? '#10B981' : '#EF4444';
+                  const bg = k > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+                  const border = k > 0 ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)';
                   return (
                     <Tooltip title="Post karma — net score of all posts">
                       <Chip label={label} size="small" sx={{ bgcolor: bg, border: `1px solid ${border}`, color, fontWeight: 600 }} />
