@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Box, Typography, Button, TextField, Chip, CircularProgress,
-  Tooltip, IconButton, Stack, Collapse, Divider,
+  Tooltip, IconButton, Stack, Collapse, Divider, LinearProgress,
+  Popover, Slider,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -18,10 +20,11 @@ import FlagIcon from '@mui/icons-material/Flag';
 import GlassCard from '../../../components/common/GlassCard';
 import { supabase } from '../../../lib/supabase';
 import { API_URL } from '../../../lib/api';
+import { DOMAIN_COLORS } from '../../../types/goal';
 
 // ── Shared types ───────────────────────────────────────────────────────────────
 
-interface GoalNode { id: string; name: string; domain?: string; category?: string; progress?: number }
+interface GoalNode { id: string; name: string; domain?: string; category?: string; progress?: number; parentId?: string }
 interface TrackerEntry { tracker_id: string; data: Record<string, any>; logged_at: string }
 interface Tracker { id: string; type: string; goal: Record<string, any>; entries: TrackerEntry[] }
 interface ActiveBet { id: string; goal_node_id: string; stake_points: number; deadline: string }
@@ -31,6 +34,7 @@ interface Props {
   allNodes: GoalNode[];
   activeBets?: ActiveBet[];
   activeChallenges?: ActiveChallenge[];
+  onProgressUpdate?: (nodeId: string, newProgress: number) => void;
 }
 
 interface FieldConfig {
@@ -1173,31 +1177,39 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
   );
 }
 
-// ── Single tracker card ────────────────────────────────────────────────────────
+// ── Unified goal card — progress + tracker + commitment in one ─────────────────
 
-function TrackerCard({ config, tracker, onLogged, onObjectiveSaved }: {
-  config: WidgetConfig;
+function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjectiveSaved, onProgressUpdate }: {
+  node: GoalNode;
+  config: WidgetConfig | null;
   tracker?: Tracker;
+  bet?: ActiveBet;
+  userId: string;
   onLogged: () => void;
   onObjectiveSaved: (type: string, goal: Record<string, any>) => Promise<void>;
+  onProgressUpdate: (nodeId: string, newProgress: number) => void;
 }) {
   const [form, setForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [sliderVal, setSliderVal] = useState(Math.round((node.progress ?? 0) * 100));
+  const [progressSaving, setProgressSaving] = useState(false);
+
+  const domainColor = (DOMAIN_COLORS as Record<string, string>)[node.domain ?? ''] ?? '#8B5CF6';
+  const accentColor = config?.color ?? domainColor;
+  const pct = Math.round((node.progress ?? 0) * 100);
 
   const todayKey = new Date().toISOString().slice(0, 10);
   const allEntries = tracker?.entries ?? [];
   const todayEntries = allEntries.filter(e => e.logged_at.slice(0, 10) === todayKey);
   const loggedToday = todayEntries.length > 0;
-  // Most recent today entry for display
   const latestEntry = todayEntries[0];
-  const todayTotal = todayEntries.reduce((s, e) => s + (Number(e.data[config.chartKey]) || 0), 0);
   const currentGoal = tracker?.goal ?? {};
-
-  // Default-open the form when never logged today
   const showForm = logOpen || !loggedToday;
 
   const handleLog = async () => {
+    if (!config) return;
     const data: Record<string, any> = {};
     for (const f of config.fields) {
       const val = form[f.key];
@@ -1210,7 +1222,7 @@ function TrackerCard({ config, tracker, onLogged, onObjectiveSaved }: {
       await axios.post(`${API_URL}/trackers/log`, { type: config.type, data }, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      toast.success(`${config.emoji} ${config.label} logged! +5⚡`);
+      toast.success(`${config.emoji} Logged! +5⚡`);
       setForm({});
       setLogOpen(false);
       onLogged();
@@ -1218,175 +1230,224 @@ function TrackerCard({ config, tracker, onLogged, onObjectiveSaved }: {
     finally { setSaving(false); }
   };
 
+  const handleProgressSave = async () => {
+    setProgressSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await axios.patch(
+        `${API_URL}/goals/${userId}/node/${node.id}/progress`,
+        { progress: sliderVal },
+        { headers: { Authorization: `Bearer ${session?.access_token}` } },
+      );
+      onProgressUpdate(node.id, sliderVal / 100);
+      toast.success(`Updated to ${sliderVal}%`);
+      setAnchorEl(null);
+    } catch { toast.error('Failed to update progress.'); }
+    finally { setProgressSaving(false); }
+  };
+
+  const betDaysLeft = bet ? Math.ceil((new Date(bet.deadline).getTime() - Date.now()) / 86400000) : null;
+
   return (
     <GlassCard sx={{
-      p: 2.5, borderRadius: '16px',
-      border: `1px solid ${loggedToday ? config.color + '40' : config.color + '18'}`,
-      background: `linear-gradient(150deg, ${config.color}${loggedToday ? '10' : '07'} 0%, rgba(13,14,26,0.75) 100%)`,
+      p: 0, borderRadius: '18px', overflow: 'hidden',
+      border: `1px solid ${loggedToday ? accentColor + '40' : accentColor + '1a'}`,
+      background: `linear-gradient(160deg, ${accentColor}${loggedToday ? '0d' : '07'} 0%, rgba(13,14,26,0.8) 100%)`,
       transition: 'border-color 0.2s',
     }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Typography sx={{ fontSize: '2rem', lineHeight: 1 }}>{config.emoji}</Typography>
-          <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: config.color, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-              {config.label}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem' }}>
-              {allEntries.length > 0
-                ? `${allEntries.length} log${allEntries.length !== 1 ? 's' : ''} · last 14d`
-                : 'No logs yet'}
-            </Typography>
+      {/* ── Goal header ── */}
+      <Box sx={{ px: 2.5, pt: 2.5, pb: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+          {/* Domain color bar */}
+          <Box sx={{ width: 4, minHeight: 38, borderRadius: 2, bgcolor: domainColor, flexShrink: 0, mt: 0.25, opacity: 0.9 }} />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              {config && <Typography sx={{ fontSize: '1.3rem', lineHeight: 1, flexShrink: 0 }}>{config.emoji}</Typography>}
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em' }} noWrap>
+                {node.name}
+              </Typography>
+              {loggedToday && (
+                <Chip label="✓" size="small" sx={{ height: 18, fontSize: '0.58rem', fontWeight: 700, ml: 'auto', flexShrink: 0, bgcolor: '#10B98118', color: '#10B981', border: '1px solid #10B98133' }} />
+              )}
+            </Box>
+            {node.domain && (
+              <Typography variant="caption" sx={{ color: domainColor, fontSize: '0.6rem', fontWeight: 600, opacity: 0.8 }}>
+                {node.domain}
+              </Typography>
+            )}
           </Box>
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          {loggedToday && (
-            <Chip
-              label="✓ Today"
-              size="small"
-              sx={{ height: 20, fontSize: '0.6rem', fontWeight: 700, bgcolor: '#10B98118', color: '#10B981', border: '1px solid #10B98133' }}
-            />
-          )}
-          {loggedToday && (
-            <Tooltip title={logOpen ? 'Close' : 'Log again'}>
-              <IconButton
-                size="small"
-                onClick={() => setLogOpen(v => !v)}
-                sx={{ bgcolor: 'rgba(255,255,255,0.04)', color: config.color, '&:hover': { bgcolor: `${config.color}22` }, width: 26, height: 26 }}
-              >
-                {logOpen ? <CloseIcon sx={{ fontSize: 13 }} /> : <AddIcon sx={{ fontSize: 13 }} />}
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-      </Box>
 
-      {/* ── Today's register — shown prominently when logged ── */}
-      {loggedToday && latestEntry && (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.62rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>
-            Today's entry
-          </Typography>
-          <Box sx={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${Math.min(config.fields.filter(f => latestEntry.data[f.key] !== undefined && latestEntry.data[f.key] !== '').length, 4)}, 1fr)`,
-            gap: 1, mt: 0.75,
-          }}>
-            {config.fields.map(f => {
-              const val = latestEntry.data[f.key];
-              if (val === undefined || val === null || val === '') return null;
-              const isText = f.type === 'text';
-              return (
-                <Box
-                  key={f.key}
-                  sx={{
-                    textAlign: 'center', px: 1, py: 1.25,
-                    bgcolor: `${config.color}12`,
-                    borderRadius: '10px',
-                    border: `1px solid ${config.color}25`,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontSize: isText ? '0.72rem' : '1.5rem',
-                      fontWeight: 800, color: config.color, lineHeight: 1,
-                      mb: 0.25, wordBreak: 'break-word',
-                    }}
-                  >
-                    {String(val)}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.58rem', display: 'block', lineHeight: 1 }}>
-                    {f.unit || f.label}
-                  </Typography>
-                </Box>
-              );
-            }).filter(Boolean)}
-          </Box>
-          {todayEntries.length > 1 && (
-            <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', mt: 0.5, display: 'block' }}>
-              + {todayEntries.length - 1} more entr{todayEntries.length === 2 ? 'y' : 'ies'} today
-            </Typography>
-          )}
-        </Box>
-      )}
-
-      {/* Objectives */}
-      <ObjectiveRow
-        config={config}
-        currentGoal={currentGoal}
-        onSave={(goal) => onObjectiveSaved(config.type, goal)}
-      />
-
-      {/* 7-day chart — always shown */}
-      <MiniChart entries={allEntries} chartKey={config.chartKey} color={config.color} unit={config.chartUnit} />
-
-      {/* Log form — always visible when no entry today; collapsible when already logged */}
-      <Collapse in={showForm}>
-        <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 1.5, mt: 1 }} />
-        <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.62rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700, mb: 1, display: 'block' }}>
-          {loggedToday ? 'Log again' : "Log today's session"}
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
-          {config.fields.map(f => (
-            <TextField
-              key={f.key}
-              size="small"
-              label={f.unit ? `${f.label} (${f.unit})` : f.label}
-              type={f.type}
-              placeholder={f.placeholder}
-              value={form[f.key] ?? ''}
-              onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-              inputProps={{ min: f.min, max: f.max, step: f.step ?? (f.type === 'number' ? 1 : undefined) }}
+        {/* Progress bar + % */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1.5 }}>
+          <Box sx={{ flex: 1 }}>
+            <LinearProgress
+              variant="determinate"
+              value={pct}
               sx={{
-                flex: f.type === 'text' ? '1 1 130px' : '0 1 90px',
-                '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.82rem' },
-                '& .MuiInputLabel-root': { fontSize: '0.77rem' },
+                height: 7, borderRadius: 4,
+                bgcolor: 'rgba(255,255,255,0.07)',
+                '& .MuiLinearProgress-bar': { borderRadius: 4, bgcolor: domainColor },
               }}
             />
+          </Box>
+          <Typography variant="body2" sx={{ fontWeight: 800, color: domainColor, minWidth: 36, textAlign: 'right', fontSize: '0.85rem' }}>
+            {pct}%
+          </Typography>
+          <Tooltip title="Update progress">
+            <IconButton
+              size="small"
+              onClick={e => { setSliderVal(pct); setAnchorEl(e.currentTarget); }}
+              sx={{ color: 'text.disabled', '&:hover': { color: domainColor }, width: 24, height: 24 }}
+            >
+              <EditIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Commitment badge (if staked) */}
+        {bet && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1.25, px: 1, py: 0.6, borderRadius: '8px', bgcolor: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.18)' }}>
+            <VerifiedIcon sx={{ fontSize: 12, color: '#8B5CF6' }} />
+            <Typography variant="caption" sx={{ color: '#8B5CF6', fontWeight: 700, fontSize: '0.62rem' }}>
+              {bet.stake_points} PP staked
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', ml: 0.5 }}>
+              · {betDaysLeft !== null && betDaysLeft > 0 ? `${betDaysLeft}d left` : betDaysLeft === 0 ? 'Due today' : 'Deadline passed'}
+            </Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* Progress edit popover */}
+      <Popover
+        open={Boolean(anchorEl)} anchorEl={anchorEl} onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{ paper: { sx: { p: 2.5, minWidth: 280, borderRadius: '16px', bgcolor: '#1A1B2E', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' } } }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>Update: {node.name}</Typography>
+        <Box sx={{ px: 1, mb: 1 }}>
+          <Slider
+            value={sliderVal} onChange={(_, v) => setSliderVal(v as number)}
+            min={0} max={100} step={5} valueLabelDisplay="auto"
+            valueLabelFormat={v => `${v}%`}
+            sx={{ color: domainColor, '& .MuiSlider-thumb': { width: 20, height: 20 } }}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          {[0, 25, 50, 75, 100].map(v => (
+            <Button key={v} size="small" variant={sliderVal === v ? 'contained' : 'text'}
+              onClick={() => setSliderVal(v)}
+              sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: '0.7rem', borderRadius: '6px' }}>
+              {v}%
+            </Button>
           ))}
         </Box>
-        <Button
-          variant="contained" fullWidth onClick={handleLog} disabled={saving}
-          endIcon={saving ? <CircularProgress size={12} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: '14px !important' }} />}
-          sx={{
-            borderRadius: '10px', fontWeight: 800, fontSize: '0.8rem', py: 1,
-            background: `linear-gradient(135deg, ${config.color} 0%, ${config.color}bb 100%)`,
-            color: '#0A0B14',
-          }}
-        >
-          {loggedToday ? 'Log again +5⚡' : 'Log +5⚡'}
-        </Button>
-      </Collapse>
-    </GlassCard>
-  );
-}
+        <Stack direction="row" spacing={1}>
+          <Button fullWidth variant="outlined" size="small" onClick={() => setAnchorEl(null)} sx={{ borderRadius: '10px' }}>Cancel</Button>
+          <Button fullWidth variant="contained" size="small" onClick={handleProgressSave} disabled={progressSaving} sx={{ borderRadius: '10px' }}>
+            {progressSaving ? 'Saving…' : 'Save'}
+          </Button>
+        </Stack>
+      </Popover>
 
-// ── Challenges + Commitments ───────────────────────────────────────────────────
+      {/* ── Tracker section (only if config exists) ── */}
+      {config && (
+        <Box sx={{ px: 2.5, pb: 2.5 }}>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 2 }} />
 
-function SideCard({ title, color, icon, children, onNavigate }: {
-  title: string; color: string; icon: React.ReactNode;
-  children: React.ReactNode; onNavigate: () => void;
-}) {
-  return (
-    <GlassCard sx={{ p: 2.5, borderRadius: '16px', border: `1px solid ${color}18`, height: '100%' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {icon}
-          <Typography variant="body2" sx={{ fontWeight: 800, color }}>{title}</Typography>
+          {/* Today's logged data — prominent stat boxes */}
+          {loggedToday && latestEntry && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>
+                Today's entry
+              </Typography>
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.min(config.fields.filter(f => latestEntry.data[f.key] !== undefined && latestEntry.data[f.key] !== '').length, 4)}, 1fr)`,
+                gap: 1, mt: 0.75,
+              }}>
+                {config.fields.map(f => {
+                  const val = latestEntry.data[f.key];
+                  if (val === undefined || val === null || val === '') return null;
+                  return (
+                    <Box key={f.key} sx={{ textAlign: 'center', px: 1, py: 1.25, bgcolor: `${accentColor}12`, borderRadius: '10px', border: `1px solid ${accentColor}25` }}>
+                      <Typography sx={{ fontSize: f.type === 'text' ? '0.72rem' : '1.4rem', fontWeight: 800, color: accentColor, lineHeight: 1, mb: 0.25, wordBreak: 'break-word' }}>
+                        {String(val)}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.58rem', display: 'block', lineHeight: 1 }}>
+                        {f.unit || f.label}
+                      </Typography>
+                    </Box>
+                  );
+                }).filter(Boolean)}
+              </Box>
+              {todayEntries.length > 1 && (
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', mt: 0.5, display: 'block' }}>
+                  + {todayEntries.length - 1} more entr{todayEntries.length === 2 ? 'y' : 'ies'} today
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {/* Objectives */}
+          <ObjectiveRow config={config} currentGoal={currentGoal} onSave={goal => onObjectiveSaved(config.type, goal)} />
+
+          {/* 7-day chart */}
+          <MiniChart entries={allEntries} chartKey={config.chartKey} color={accentColor} unit={config.chartUnit} />
+
+          {/* Log form */}
+          <Collapse in={showForm}>
+            <Box sx={{ mt: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>
+                  {loggedToday ? 'Log again' : "Log today's session"}
+                </Typography>
+                {loggedToday && (
+                  <IconButton size="small" onClick={() => setLogOpen(v => !v)} sx={{ color: 'text.disabled', width: 20, height: 20 }}>
+                    {logOpen ? <CloseIcon sx={{ fontSize: 12 }} /> : <AddIcon sx={{ fontSize: 12 }} />}
+                  </IconButton>
+                )}
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+                {config.fields.map(f => (
+                  <TextField
+                    key={f.key}
+                    size="small"
+                    label={f.unit ? `${f.label} (${f.unit})` : f.label}
+                    type={f.type}
+                    placeholder={f.placeholder}
+                    value={form[f.key] ?? ''}
+                    onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    inputProps={{ min: f.min, max: f.max, step: f.step ?? (f.type === 'number' ? 1 : undefined) }}
+                    sx={{
+                      flex: f.type === 'text' ? '1 1 130px' : '0 1 90px',
+                      '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.82rem' },
+                      '& .MuiInputLabel-root': { fontSize: '0.77rem' },
+                    }}
+                  />
+                ))}
+              </Box>
+              <Button
+                variant="contained" fullWidth onClick={handleLog} disabled={saving}
+                endIcon={saving ? <CircularProgress size={12} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: '14px !important' }} />}
+                sx={{ borderRadius: '10px', fontWeight: 800, fontSize: '0.8rem', py: 1, background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}bb 100%)`, color: '#0A0B14' }}
+              >
+                {loggedToday ? 'Log again +5⚡' : 'Log +5⚡'}
+              </Button>
+            </Box>
+          </Collapse>
         </Box>
-        <IconButton size="small" onClick={onNavigate} sx={{ color: 'text.disabled', '&:hover': { color }, width: 22, height: 22 }}>
-          <OpenInNewIcon sx={{ fontSize: 13 }} />
-        </IconButton>
-      </Box>
-      {children}
+      )}
     </GlassCard>
   );
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], activeChallenges = [] }) => {
+const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], onProgressUpdate }) => {
+  const navigate = useNavigate();
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1414,21 +1475,12 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], activ
     } catch { toast.error('Failed to save objective.'); }
   };
 
-  // Deduplicate: one widget per unique config.type from matched nodes
-  const seen = new Set<string>();
-  const widgetConfigs: WidgetConfig[] = [];
-  for (const node of allNodes) {
-    const w = findWidget(node);
-    if (w && !seen.has(w.type)) {
-      seen.add(w.type);
-      widgetConfigs.push(w);
-    }
-  }
-
+  // One card per root node (no parentId)
+  const rootNodes = allNodes.filter(n => !n.parentId);
   const trackerMap = Object.fromEntries(trackers.map(t => [t.type, t]));
-  const nodeMap = Object.fromEntries(allNodes.map(n => [n.id, n]));
+  const betByNodeId = Object.fromEntries(activeBets.map(b => [b.goal_node_id, b]));
 
-  if (widgetConfigs.length === 0 && activeBets.length === 0 && activeChallenges.length === 0) return null;
+  if (rootNodes.length === 0) return null;
 
   return (
     <Box sx={{ mb: 4 }}>
@@ -1436,10 +1488,15 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], activ
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
         <TrendingUpIcon sx={{ fontSize: 18, color: 'primary.main' }} />
         <Typography variant="body1" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
-          Today's Tracking
+          Your Goals
         </Typography>
+        <Tooltip title="Open goal tree">
+          <IconButton size="small" onClick={() => navigate('/goal-tree')} sx={{ color: 'text.disabled', width: 22, height: 22 }}>
+            <OpenInNewIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
         <Chip
-          label={`${widgetConfigs.length} tracker${widgetConfigs.length !== 1 ? 's' : ''}`}
+          label={`${rootNodes.length} goal${rootNodes.length !== 1 ? 's' : ''}`}
           size="small"
           sx={{ height: 18, fontSize: '0.6rem', bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}
         />
@@ -1448,68 +1505,26 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], activ
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress size={24} /></Box>
       ) : (
-        <Stack spacing={3}>
-          {/* Tracker widgets */}
-          {widgetConfigs.length > 0 && (
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
-              {widgetConfigs.map(config => (
-                <TrackerCard
-                  key={config.type}
-                  config={config}
-                  tracker={trackerMap[config.type]}
-                  onLogged={fetchTrackers}
-                  onObjectiveSaved={handleObjectiveSaved}
-                />
-              ))}
-            </Box>
-          )}
-
-          {/* Challenges + Commitments */}
-          {(activeChallenges.length > 0 || activeBets.length > 0) && (
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-              {activeChallenges.length > 0 && (
-                <SideCard title="Active Challenges" color="#F59E0B" icon={<EmojiEventsIcon sx={{ fontSize: 15, color: '#F59E0B' }} />} onNavigate={() => { window.location.href = '/challenges'; }}>
-                  <Stack spacing={1}>
-                    {activeChallenges.slice(0, 3).map(c => (
-                      <Box key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <EmojiEventsIcon sx={{ fontSize: 15, color: '#F59E0B', flexShrink: 0 }} />
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }} noWrap>{c.title}</Typography>
-                          {c.end_date && <Typography variant="caption" color="text.disabled">Ends {new Date(c.end_date).toLocaleDateString('en', { month: 'short', day: 'numeric' })}</Typography>}
-                        </Box>
-                      </Box>
-                    ))}
-                  </Stack>
-                </SideCard>
-              )}
-              {activeBets.length > 0 && (
-                <SideCard title="Commitments" color="#8B5CF6" icon={<VerifiedIcon sx={{ fontSize: 15, color: '#8B5CF6' }} />} onNavigate={() => { window.location.href = '/commitments'; }}>
-                  <Stack spacing={1}>
-                    {activeBets.slice(0, 3).map(bet => {
-                      const node = nodeMap[bet.goal_node_id];
-                      const daysLeft = Math.ceil((new Date(bet.deadline).getTime() - Date.now()) / 86400000);
-                      const progress = Math.round((node?.progress ?? 0) * 100);
-                      return (
-                        <Box key={bet.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }} noWrap>{node?.name ?? 'Goal'}</Typography>
-                            <Typography variant="caption" sx={{ color: '#8B5CF6', fontWeight: 700, fontSize: '0.62rem', flexShrink: 0, ml: 1 }}>{progress}%</Typography>
-                          </Box>
-                          <Box sx={{ height: 4, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.07)', overflow: 'hidden', mb: 0.25 }}>
-                            <Box sx={{ height: '100%', width: `${progress}%`, bgcolor: '#8B5CF6', borderRadius: 2 }} />
-                          </Box>
-                          <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem' }}>
-                            ⚡ {bet.stake_points} PP · {daysLeft > 0 ? `${daysLeft}d left` : 'Deadline passed'}
-                          </Typography>
-                        </Box>
-                      );
-                    })}
-                  </Stack>
-                </SideCard>
-              )}
-            </Box>
-          )}
-        </Stack>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
+          {rootNodes.map(node => {
+            const config = findWidget(node);
+            const tracker = config ? trackerMap[config.type] : undefined;
+            const bet = betByNodeId[node.id];
+            return (
+              <UnifiedGoalCard
+                key={node.id}
+                node={node}
+                config={config}
+                tracker={tracker}
+                bet={bet}
+                userId={userId}
+                onLogged={fetchTrackers}
+                onObjectiveSaved={handleObjectiveSaved}
+                onProgressUpdate={onProgressUpdate ?? (() => {})}
+              />
+            );
+          })}
+        </Box>
       )}
     </Box>
   );

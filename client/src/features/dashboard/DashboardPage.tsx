@@ -14,7 +14,6 @@ import { DOMAIN_COLORS } from '../../types/goal';
 import CheckInWidget from './components/CheckInWidget';
 import BalanceWidget from './components/BalanceWidget';
 import AccountabilityNetworkWidget from './components/AccountabilityNetworkWidget';
-import GoalProgressWidget from './components/GoalProgressWidget';
 import GoalWidgets from './components/GoalWidgets';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
@@ -274,7 +273,7 @@ const DashboardPage: React.FC = () => {
           </ErrorBoundary>
         )}
 
-        {/* Goal Tracking Widgets */}
+        {/* Goal Tracking Widgets — unified cards: progress + tracker + commitment */}
         {currentUserId && hasGoals && (
           <ErrorBoundary fallback={null}>
             <GoalWidgets
@@ -284,6 +283,15 @@ const DashboardPage: React.FC = () => {
               activeChallenges={challenges.filter((c: any) =>
                 c.participants?.some((p: any) => p.user_id === currentUserId)
               )}
+              onProgressUpdate={(nodeId, newProgress) => {
+                setGoalTree(prev => {
+                  if (!prev) return prev;
+                  const updatedNodes = prev.nodes.map((n: any) =>
+                    n.id === nodeId ? { ...n, progress: newProgress } : n
+                  );
+                  return { ...prev, nodes: updatedNodes };
+                });
+              }}
             />
           </ErrorBoundary>
         )}
@@ -451,22 +459,6 @@ const DashboardPage: React.FC = () => {
         />
         </ErrorBoundary>
 
-        {/* Quick goal progress updates */}
-        {currentUserId && hasGoals && (
-          <GoalProgressWidget
-            userId={currentUserId}
-            nodes={allNodes}
-            onProgressUpdate={(nodeId, newProgress) => {
-              setGoalTree(prev => {
-                if (!prev) return prev;
-                const updatedNodes = prev.nodes.map((n: any) =>
-                  n.id === nodeId ? { ...n, progress: newProgress } : n
-                );
-                return { ...prev, nodes: updatedNodes };
-              });
-            }}
-          />
-        )}
 
         {/* Accountability Network — friends + their check-in status */}
         {currentUserId && <AccountabilityNetworkWidget userId={currentUserId} />}
