@@ -326,11 +326,8 @@ const Navbar: React.FC = () => {
                     slotProps={{ paper: { sx: { mt: 1, minWidth: 180, bgcolor: '#1F2937', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', overflow: 'hidden' } } }}
                   >
                     {[
-                      { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon fontSize="small" /> },
+                      { label: 'Groups', to: '/groups', icon: <EmojiEventsIcon fontSize="small" /> },
                       { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon fontSize="small" /> },
-                      { label: 'Services', to: '/services', icon: <HandshakeIcon fontSize="small" /> },
-                      { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon fontSize="small" /> },
-                      { label: 'Leaderboard', to: '/leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
                       { label: 'Analytics', to: '/analytics', icon: <BarChartIcon fontSize="small" /> },
                     ].map(({ label, to, icon }) => (
                       <MenuItem key={label} onClick={() => { setMoreMenuAnchor(null); handleNav(to); }} sx={{ gap: 1.5, py: 1.25 }}>
@@ -721,10 +718,8 @@ const Navbar: React.FC = () => {
                 { label: 'Home', to: '/dashboard', icon: <DashboardIcon />, primary: true },
                 { label: 'Discover', to: '/matches', icon: <ExploreIcon />, primary: true },
                 { label: 'Connect', to: '/communication', icon: <ChatIcon />, primary: true },
-                { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon />, primary: false },
+                { label: 'Groups', to: '/groups', icon: <EmojiEventsIcon />, primary: true },
                 { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon />, primary: false },
-                { label: 'Services', to: '/services', icon: <HandshakeIcon />, primary: false },
-                { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon />, primary: false },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
                 { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: false },
