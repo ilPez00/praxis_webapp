@@ -23,6 +23,7 @@
     "@types/react-dom": "^18.2.0",
     "axios": "^1.13.4",
     "framer-motion": "^12.34.2",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.6.0",

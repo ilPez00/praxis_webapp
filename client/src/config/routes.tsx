@@ -34,6 +34,7 @@ const LeaderboardPage = React.lazy(() => import('../features/leaderboard/Leaderb
 const ServicesPage = React.lazy(() => import('../features/services/ServicesPage'));
 const BettingPage = React.lazy(() => import('../features/betting/BettingPage'));
 const EventsPage = React.lazy(() => import('../features/events/EventsPage'));
+const EventCheckinPage = React.lazy(() => import('../features/events/EventCheckinPage'));
 const FriendsPage = React.lazy(() => import('../features/friends/FriendsPage'));
 const PostThreadPage = React.lazy(() => import('../features/posts/PostThreadPage'));
 const SettingsPage = React.lazy(() => import('../features/settings/SettingsPage'));
@@ -86,6 +87,7 @@ const routes: RouteConfig[] = [
   { path: '/commitments', element: BettingPage, private: true },
   { path: '/words', element: WordsPage, private: true },
   { path: '/events', element: EventsPage, private: true },
+  { path: '/events/checkin', element: EventCheckinPage, private: false },
   { path: '/friends', element: FriendsPage, private: true },
   { path: '/posts/:postId', element: PostThreadPage, private: true },
   { path: '/settings', element: SettingsPage, private: true },

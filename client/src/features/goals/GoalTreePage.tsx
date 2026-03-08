@@ -5,6 +5,7 @@ import axios from 'axios';
 import { supabase } from '../../lib/supabase';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
 import GoalTreeVisualization from './components/GoalTreeVisualization';
+import TrackerSection from '../trackers/TrackerSection';
 import toast from 'react-hot-toast';
 import {
   Container,
@@ -32,6 +33,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import Slider from '@mui/material/Slider';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ShareIcon from '@mui/icons-material/Share';
 
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   const nodeMap = new Map<string, FrontendGoalNode>();
@@ -440,33 +442,57 @@ const GoalTreePage: React.FC = () => {
         </Box>
       )}
 
-      {/* Mark Complete — claim achievement dialog */}
-      <Dialog open={!!achieveNode} onClose={() => setAchieveNode(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <EmojiEventsIcon sx={{ color: '#F59E0B' }} />
-            Post Achievement
-          </Box>
+      {/* Daily Trackers — workout logs, journals, etc. */}
+      {isOwnTree && currentUserId && (
+        <Box sx={{ mt: 5 }}>
+          <TrackerSection userId={currentUserId} />
+        </Box>
+      )}
+
+      {/* Mark Complete — claim achievement dialog with celebration */}
+      <Dialog open={!!achieveNode} onClose={() => setAchieveNode(null)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: '20px', border: '1px solid rgba(245,158,11,0.3)', background: 'linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(139,92,246,0.06) 100%)' } }}>
+        <DialogTitle sx={{ fontWeight: 700, textAlign: 'center', pt: 3 }}>
+          <Typography variant="h2" sx={{ mb: 1 }}>🏆</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 800, background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Goal Completed!
+          </Typography>
         </DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            <strong style={{ color: '#F59E0B' }}>{achieveNode?.title}</strong> is 100% complete!
-            Share this win with the Praxis community?
+          <Typography variant="body1" sx={{ textAlign: 'center', fontWeight: 600, mb: 0.5 }}>
+            {achieveNode?.title}
           </Typography>
-          <Typography variant="caption" color="text.disabled">
-            It will appear in the Global Achievements feed on the Dashboard.
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mb: 2.5 }}>
+            You finished this. Share the win and inspire your network.
           </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setAchieveNode(null)}>Not now</Button>
           <Button
-            variant="contained"
+            fullWidth variant="outlined" size="small"
+            startIcon={<ShareIcon />}
+            sx={{ borderRadius: '10px', mb: 1, borderColor: 'rgba(245,158,11,0.4)', color: 'primary.main' }}
+            onClick={() => {
+              const text = `Just completed "${achieveNode?.title}" on Praxis. Consistent effort pays off. 🏆 praxis.app`;
+              if (navigator.share) {
+                navigator.share({ text }).catch(() => {});
+              } else {
+                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+              }
+            }}
+          >
+            Share your win
+          </Button>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, flexDirection: 'column', gap: 1 }}>
+          <Button
+            fullWidth variant="contained"
             onClick={handleClaimAchievement}
             disabled={claimingAchievement}
             startIcon={<EmojiEventsIcon />}
-            sx={{ background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)' }}
+            sx={{ borderRadius: '12px', py: 1.25, background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)', fontWeight: 700 }}
           >
-            {claimingAchievement ? 'Posting…' : 'Post to Feed'}
+            {claimingAchievement ? 'Posting…' : 'Post to Community Feed'}
+          </Button>
+          <Button onClick={() => setAchieveNode(null)} sx={{ color: 'text.disabled', fontSize: '0.8rem' }}>
+            Not now
           </Button>
         </DialogActions>
       </Dialog>

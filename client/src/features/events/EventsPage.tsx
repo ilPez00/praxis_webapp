@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { API_URL } from '../../lib/api';
@@ -19,6 +20,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
+import QrCodeIcon from '@mui/icons-material/QrCode2';
 import PeopleIcon from '@mui/icons-material/People';
 
 interface EventRsvp {
@@ -68,6 +70,7 @@ const EventsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [qrDialog, setQrDialog] = useState<{ open: boolean; token: string; eventTitle: string; eventId: string }>({ open: false, token: '', eventTitle: '', eventId: '' });
 
   // Geo filter
   const [nearbyMode, setNearbyMode] = useState(false);
@@ -91,6 +94,17 @@ const EventsPage: React.FC = () => {
   const getAuthHeader = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  };
+
+  const handleShowQR = async (eventId: string, eventTitle: string) => {
+    try {
+      const headers = await getAuthHeader();
+      const res = await axios.get(`${API_URL}/events/${eventId}/checkin-token`, { headers });
+      const { token } = res.data as { token: string };
+      setQrDialog({ open: true, token, eventTitle, eventId });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not generate check-in QR.');
+    }
   };
 
   const fetchEvents = useCallback(async (geo?: { lat: number; lng: number }) => {
@@ -293,11 +307,18 @@ const EventsPage: React.FC = () => {
                         </Typography>
                       </Box>
                       {isCreator && (
-                        <Tooltip title="Delete event">
-                          <IconButton size="small" onClick={() => handleDelete(event.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="Show Check-in QR">
+                            <IconButton size="small" onClick={() => handleShowQR(event.id, event.title)} sx={{ opacity: 0.6, '&:hover': { opacity: 1, color: '#10B981' } }}>
+                              <QrCodeIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete event">
+                            <IconButton size="small" onClick={() => handleDelete(event.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
                       )}
                     </Box>
 
@@ -394,6 +415,28 @@ const EventsPage: React.FC = () => {
           </Grid>
         )}
       </Container>
+
+      {/* Check-in QR Dialog */}
+      <Dialog open={qrDialog.open} onClose={() => setQrDialog(q => ({ ...q, open: false }))} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>
+          Check-in QR
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{qrDialog.eventTitle}</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, pb: 3 }}>
+          <Box sx={{ bgcolor: '#fff', p: 2, borderRadius: 2 }}>
+            <QRCodeSVG
+              value={`${window.location.origin}/events/checkin?token=${qrDialog.token}&eventId=${qrDialog.eventId}`}
+              size={220}
+            />
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+            Attendees scan this code to check in and receive +50 PP.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button onClick={() => setQrDialog(q => ({ ...q, open: false }))} variant="outlined">Close</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Create Event Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>

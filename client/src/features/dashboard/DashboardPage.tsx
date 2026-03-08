@@ -258,6 +258,38 @@ const DashboardPage: React.FC = () => {
           );
         })()}
 
+        {/* Weekly Wins — 7-day snapshot of progress */}
+        {hasGoals && (() => {
+          const streak = localStreak ?? (user?.current_streak ?? 0);
+          const pts = localPoints ?? (user?.praxis_points ?? 0);
+          const completedGoals = allNodes.filter((n: any) => n.progress >= 1).length;
+          const inProgressGoals = allNodes.filter((n: any) => n.progress > 0 && n.progress < 1).length;
+          const weekStats = [
+            { label: 'Day streak', value: streak, icon: '🔥', color: '#F59E0B' },
+            { label: 'Praxis Points', value: pts, icon: '⚡', color: '#A78BFA' },
+            { label: 'Completed', value: completedGoals, icon: '✅', color: '#10B981' },
+            { label: 'In Progress', value: inProgressGoals, icon: '📈', color: '#3B82F6' },
+          ];
+          return (
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+              {weekStats.map(stat => (
+                <GlassCard key={stat.label} sx={{
+                  p: 2, flex: '1 1 120px', minWidth: 110, borderRadius: '16px', textAlign: 'center',
+                  border: `1px solid ${stat.color}22`,
+                }}>
+                  <Typography sx={{ fontSize: '1.5rem', lineHeight: 1, mb: 0.5 }}>{stat.icon}</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 900, color: stat.color, lineHeight: 1, mb: 0.25 }}>
+                    {stat.value}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    {stat.label}
+                  </Typography>
+                </GlassCard>
+              ))}
+            </Box>
+          );
+        })()}
+
         {/* Daily Axiom micro-message — free tier, deterministic (no API call) */}
         {(() => {
           const streak = localStreak ?? (user?.current_streak ?? 0);
