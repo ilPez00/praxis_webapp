@@ -266,7 +266,7 @@ const Navbar: React.FC = () => {
                   {[
                     { label: 'Dashboard', to: '/dashboard' },
                     { label: 'Matches', to: '/matches' },
-                    { label: 'Chat', to: '/communication' },
+                    { label: 'Connect', to: '/communication' },
                   ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
                     const isMatches = to === '/matches';
@@ -724,7 +724,7 @@ const Navbar: React.FC = () => {
               {[
                 { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon />, primary: true },
                 { label: 'Matches', to: '/matches', icon: <ExploreIcon />, primary: true },
-                { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
+                { label: 'Connect', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon />, primary: false },
                 { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon />, primary: false },
                 { label: 'Friends', to: '/friends', icon: <PeopleIcon />, primary: false },

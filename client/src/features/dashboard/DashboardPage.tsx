@@ -239,8 +239,7 @@ const DashboardPage: React.FC = () => {
 
         {/* Check-in Widget */}
         {currentUserId && (
-          <Box sx={{ mb: 3 }}>
-            <ErrorBoundary fallback={null}>
+          <ErrorBoundary fallback={null}>
             <CheckInWidget
               userId={currentUserId}
               currentStreak={localStreak ?? (user?.current_streak ?? 0)}
@@ -251,8 +250,7 @@ const DashboardPage: React.FC = () => {
                 setLocalPoints(newPoints);
               }}
             />
-            </ErrorBoundary>
-          </Box>
+          </ErrorBoundary>
         )}
 
         {/* Profile Completion Widget — shown only when score < 100% */}
