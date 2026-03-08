@@ -15,6 +15,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import DeleteIcon from '@mui/icons-material/Delete';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import GlassCard from '../../components/common/GlassCard';
+import LocationMap from '../../components/common/LocationMap';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 
@@ -235,6 +236,19 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
           Add place
         </Button>
       </Box>
+
+      {/* Map */}
+      <LocationMap
+        markers={places
+          .filter(p => p.latitude != null && p.longitude != null)
+          .map(p => ({
+            id: p.id,
+            title: p.name,
+            subtitle: p.city || p.address || undefined,
+            lat: p.latitude!,
+            lng: p.longitude!,
+          }))}
+      />
 
       {places.length === 0 ? (
         <GlassCard sx={{ p: 5, textAlign: 'center' }}>

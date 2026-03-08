@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import GlassCard from '../../components/common/GlassCard';
+import LocationMap from '../../components/common/LocationMap';
 import {
   Container, Box, Typography, Button, Stack, Chip, Grid,
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -265,6 +266,19 @@ const EventsPage: React.FC = () => {
             </Button>
           </Stack>
         </Box>
+
+        {/* Map */}
+        <LocationMap
+          markers={events
+            .filter(e => e.latitude != null && e.longitude != null)
+            .map(e => ({
+              id: e.id,
+              title: e.title,
+              subtitle: `${formatDate(e.event_date)}${e.city ? ' · ' + e.city : ''}`,
+              lat: e.latitude!,
+              lng: e.longitude!,
+            }))}
+        />
 
         {/* Events grid */}
         {events.length === 0 ? (
