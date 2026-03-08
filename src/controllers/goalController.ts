@@ -6,7 +6,7 @@ import { Domain } from '../models/Domain';
 import { createAchievementFromGoal } from './achievementController';
 import { EmbeddingService } from '../services/EmbeddingService';
 import logger from '../utils/logger';
-import { catchAsync, NotFoundError, ForbiddenError, BadRequestError, InternalServerError } from '../utils/appErrors';
+import { catchAsync, AppError, NotFoundError, ForbiddenError, BadRequestError, InternalServerError } from '../utils/appErrors';
 import { bumpDomainProficiency } from '../utils/proficiency';
 
 const embeddingService = new EmbeddingService();
@@ -468,7 +468,7 @@ const NODE_EDIT_COST = 25;
  */
 export const createGoalNode = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId } = req.params;
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
   if (requesterId !== userId) throw new ForbiddenError('You can only modify your own goals.');
 
   const { name, description, domain, targetDate, completionMetric, parentId } = req.body;
@@ -486,18 +486,24 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
 
   const currentPoints: number = profile.praxis_points ?? 0;
   if (currentPoints < NODE_EDIT_COST) {
-    throw new ForbiddenError(`Insufficient Praxis Points. Creating a node costs ${NODE_EDIT_COST} PP (you have ${currentPoints}).`);
+    throw new AppError(`Insufficient Praxis Points. Creating a node costs ${NODE_EDIT_COST} PP (you have ${currentPoints}).`, 402);
   }
 
   // 2. Load existing tree
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
-    .select('nodes')
+    .select('nodes, "rootNodes"')
     .eq('userId', userId)
     .single();
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found. Create your initial tree first.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
+  const rootNodes: GoalNode[] = Array.isArray(tree['rootNodes']) ? tree['rootNodes'] : [];
+
+  // Validate parentId if supplied
+  if (parentId && !nodes.find((n: GoalNode) => n.id === parentId)) {
+    throw new BadRequestError('parentId does not match any existing node.');
+  }
 
   // 3. Build new node
   const newNode: GoalNode & Record<string, any> = {
@@ -514,11 +520,13 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   };
 
   const updatedNodes = [...nodes, newNode];
+  // Root nodes = nodes with no parentId; append if this is a root node
+  const updatedRootNodes = parentId ? rootNodes : [...rootNodes, newNode];
 
-  // 4. Save updated nodes
+  // 4. Save updated nodes + rootNodes
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes })
+    .update({ nodes: updatedNodes, 'rootNodes': updatedRootNodes })
     .eq('userId', userId);
   if (saveErr) throw new InternalServerError(`Failed to save new node: ${saveErr.message}`);
 
@@ -543,7 +551,7 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
  */
 export const updateGoalNode = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId, nodeId } = req.params;
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
   if (requesterId !== userId) throw new ForbiddenError('You can only modify your own goals.');
 
   const { name, description, domain, targetDate, completionMetric } = req.body;
@@ -558,18 +566,19 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
 
   const currentPoints: number = profile.praxis_points ?? 0;
   if (currentPoints < NODE_EDIT_COST) {
-    throw new ForbiddenError(`Insufficient Praxis Points. Editing a node costs ${NODE_EDIT_COST} PP (you have ${currentPoints}).`);
+    throw new AppError(`Insufficient Praxis Points. Editing a node costs ${NODE_EDIT_COST} PP (you have ${currentPoints}).`, 402);
   }
 
   // 2. Load existing tree
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
-    .select('nodes')
+    .select('nodes, "rootNodes"')
     .eq('userId', userId)
     .single();
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
+  const rootNodes: GoalNode[] = Array.isArray(tree['rootNodes']) ? tree['rootNodes'] : [];
 
   // 3. Find and merge
   const idx = nodes.findIndex((n: GoalNode) => n.id === nodeId);
@@ -587,10 +596,13 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const updatedNodes = [...nodes];
   updatedNodes[idx] = updatedNode;
 
+  // Also keep rootNodes in sync
+  const updatedRootNodes = rootNodes.map((n: GoalNode) => n.id === nodeId ? updatedNode : n);
+
   // 4. Save
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes })
+    .update({ nodes: updatedNodes, 'rootNodes': updatedRootNodes })
     .eq('userId', userId);
   if (saveErr) throw new InternalServerError(`Failed to save node update: ${saveErr.message}`);
 
@@ -616,18 +628,19 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
 export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId, nodeId } = req.params;
   const targetNodeId = String(nodeId);
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
   if (requesterId !== userId) throw new ForbiddenError('You can only modify your own goals.');
 
   // 1. Load existing tree
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
-    .select('nodes')
+    .select('nodes, "rootNodes"')
     .eq('userId', userId)
     .single();
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
+  const rootNodes: GoalNode[] = Array.isArray(tree['rootNodes']) ? tree['rootNodes'] : [];
 
   if (!nodes.find((n: GoalNode) => n.id === targetNodeId)) {
     throw new NotFoundError('Goal node not found in tree.');
@@ -648,11 +661,12 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   }
 
   const updatedNodes = nodes.filter((n: GoalNode) => !toDelete.has(n.id));
+  const updatedRootNodes = rootNodes.filter((n: GoalNode) => !toDelete.has(n.id));
 
   // 3. Save
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes })
+    .update({ nodes: updatedNodes, 'rootNodes': updatedRootNodes })
     .eq('userId', userId);
   if (saveErr) throw new InternalServerError(`Failed to delete node: ${saveErr.message}`);
 
