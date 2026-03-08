@@ -71,6 +71,7 @@ interface Profile {
   social_telegram?: string;
   current_streak?: number;
   last_activity_date?: string | null;
+  karma_score?: number;
 }
 
 function activityChip(profile: Profile): { label: string; color: string; bg: string; border: string } | null {
@@ -819,6 +820,18 @@ const ProfilePage: React.FC = () => {
                       sx={{ bgcolor: ac.bg, border: `1px solid ${ac.border}`, color: ac.color, fontWeight: 600 }}
                     />
                   ) : null;
+                })()}
+                {(() => {
+                  const k = profile.karma_score ?? 0;
+                  const label = `${k >= 0 ? '+' : ''}${k} karma`;
+                  const color = k > 0 ? '#10B981' : k < 0 ? '#EF4444' : '#6B7280';
+                  const bg = k > 0 ? 'rgba(16,185,129,0.1)' : k < 0 ? 'rgba(239,68,68,0.1)' : 'rgba(107,114,128,0.1)';
+                  const border = k > 0 ? 'rgba(16,185,129,0.25)' : k < 0 ? 'rgba(239,68,68,0.25)' : 'rgba(107,114,128,0.2)';
+                  return (
+                    <Tooltip title="Post karma — net score of all posts">
+                      <Chip label={label} size="small" sx={{ bgcolor: bg, border: `1px solid ${border}`, color, fontWeight: 600 }} />
+                    </Tooltip>
+                  );
                 })()}
               </Box>
 
