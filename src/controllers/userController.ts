@@ -214,12 +214,23 @@ export const getNearbyUsers = catchAsync(async (req: Request, res: Response, _ne
 export const completeOnboarding = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId } = req.body;
   if (!userId) throw new BadRequestError('userId is required.');
+  // Check if already onboarded (idempotent — don't double-grant PP)
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('onboarding_completed, praxis_points')
+    .eq('id', userId)
+    .single();
+
+  const alreadyOnboarded = existing?.onboarding_completed === true;
+  const currentPP = existing?.praxis_points ?? 0;
+  const grant = alreadyOnboarded ? 0 : 200;
+
   const { error } = await supabase
     .from('profiles')
-    .update({ onboarding_completed: true })
+    .update({ onboarding_completed: true, praxis_points: currentPP + grant })
     .eq('id', userId);
   if (error) throw new InternalServerError(`Failed to complete onboarding: ${error.message}`);
-  res.status(200).json({ message: 'Onboarding complete.' });
+  res.status(200).json({ message: 'Onboarding complete.', pointsGranted: grant });
 });
 
 /**
