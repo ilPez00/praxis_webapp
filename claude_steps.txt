@@ -1406,3 +1406,59 @@ CREATE TABLE IF NOT EXISTS public.duels (
 
 ### TypeScript: ✅ 0 errors (backend + frontend)
 ### Commit: 437a48f
+
+---
+
+## Session 55 (2026-03-08) — Dashboard Unification + Habit Calendar + Social Cleanup
+
+### Dashboard: Goal-Tracking Widgets (commit `ed8dab7`)
+- **GoalWidgets.tsx** redesigned: domain-adaptive widget configs (60+ presets) per goal domain
+- Each root goal gets a tracker widget with a 7-day mini bar chart (glow on today's bar)
+- Tracker logs shown as large colored stat boxes ("today's register well visible")
+- Log form pre-opens if no entry exists for today
+- `src/controllers/trackerController.ts`: added `?days=N` query param (default 14, max 365) for calendar fetching
+
+### Dashboard: Subcategory Goal Widgets (commit `5693693`)
+- Widget configs expanded to 60+ presets covering all subcategories
+- Editable objectives (ObjectiveRow) with inline PATCH to `/goals/:userId/node/:nodeId/progress`
+- `GoalNode` interface extended with `parentId?` for root-node detection
+
+### Analytics: Habit Calendar (commit `35cb6ad`)
+- **HabitCalendar** component: 16-week GitHub-style contribution heatmap
+- Cell opacity: amber tiers at 0.45/0.65/0.82/1.0 based on log count
+- Goal deadlines shown as colored border + dot overlay on calendar cells
+- Month labels + M/W/F day labels; today ring
+- Fetches `/trackers/my?days=112` + `/goals/tree/:userId` — available to all users (not Pro-gated)
+- Advanced analytics (deep stats) remain behind ProBanner inline gate
+
+### Dashboard Unification (commit `dfa0ab4`)
+- **Problem**: goals shown 3× — TrackerCard + Commitments SideCard + GoalProgressWidget
+- **Solution**: replaced all with `UnifiedGoalCard` (one card per root goal):
+  - Domain color bar + emoji + goal name + "✓ Today" chip
+  - `LinearProgress` bar + % + inline Slider popover (0/25/50/75/100%)
+  - Commitment badge (PP staked + days remaining) if bet exists
+  - Today's stat boxes + MiniChart + log form
+- Removed `GoalProgressWidget` import and Community Challenges section from DashboardPage
+- Removed Near You widget from DashboardPage
+
+### Social Density Cleanup (commit `0471182`)
+- **Navbar**: Desktop More menu keeps only `[Groups, Commitments, Analytics]`
+- **Mobile drawer primary**: `[Home, Discover, Connect, Groups]`
+- **Mobile drawer secondary**: `[Commitments, Analytics, My Profile, Goal Tree, Settings]`
+- Removed from nav: Challenges, Services, Marketplace, Leaderboard (routes preserved)
+- Rationale: features that require many users (leaderboard, challenges, marketplace) create
+  empty-state signals that harm early retention; hidden until user density justifies them
+
+### CEO Product Critique (documented, not committed)
+- Strengths: goal-tracking + peer accountability core loop is differentiated
+- Weaknesses: empty social features signal ghost town; needs 10k+ users before re-enabling
+- Next priority: polish the solo experience (dashboard, analytics, AI coaching) so it's
+  compelling even with zero connections
+
+### TypeScript: ✅ 0 errors (backend + frontend)
+### Commits: ed8dab7, 5693693, 35cb6ad, dfa0ab4, 0471182
+
+## Pending (manual):
+- [ ] Run Supabase migration: `ALTER TABLE public.trackers ADD COLUMN IF NOT EXISTS goal JSONB NOT NULL DEFAULT '{}';`
+- [ ] Fix SUPABASE_SERVICE_ROLE_KEY on Railway (all writes failing in production)
+- [ ] Set VITE_GOOGLE_MAPS_KEY in client/.env + Vercel
