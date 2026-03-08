@@ -20,6 +20,7 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  LinearProgress,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -154,120 +155,91 @@ const StatusBar: React.FC<StatusBarProps> = ({
         : '1px solid rgba(255,255,255,0.07)',
       transition: 'border-color 0.3s ease',
     }}>
-      <Box sx={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 2, flexWrap: 'wrap',
-      }}>
 
-        {/* Left: greeting + axiom quote */}
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
-            <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>
-              Hey,{' '}
-              <Box component="span" sx={{
-                background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)',
-                backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              }}>
-                {userName}
-              </Box>
-            </Typography>
-            {hasGoals && avgProgress > 0 && (
-              <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.72rem' }}>
-                {avgProgress}% avg progress
-              </Typography>
-            )}
-          </Box>
-          <Typography variant="caption" sx={{
-            color: 'text.secondary', fontStyle: 'italic', lineHeight: 1.5, fontSize: '0.78rem', display: 'block',
+      {/* ── Row 1: greeting (left) + check-in (right) ── */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
+        <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>
+          Hey,{' '}
+          <Box component="span" sx={{
+            background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)',
+            backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>
-            <Box component="span" sx={{ color: '#F59E0B', fontWeight: 700, fontStyle: 'normal', mr: 0.5 }}>⚡</Box>
-            {quote}
-          </Typography>
-        </Box>
+            {userName}
+          </Box>
+        </Typography>
 
-        {/* Right: stats + check-in */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap' }}>
           {/* Streak */}
-          {streak > 0 && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <LocalFireDepartmentIcon sx={{
-                color: '#F97316', fontSize: 20,
-                filter: 'drop-shadow(0 0 4px rgba(249,115,22,0.5))',
-              }} />
-              <Typography sx={{ fontWeight: 900, color: '#F97316', fontSize: '1rem', lineHeight: 1 }}>
-                {streak}
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.disabled' }}>d</Typography>
-            </Box>
-          )}
-
-          {/* Tier chip */}
-          {streak >= 3 && (
-            <Chip
-              label={tier.label}
-              size="small"
-              sx={{
-                height: 20, fontSize: '0.62rem', fontWeight: 700,
-                bgcolor: `${tier.color}15`, color: tier.color, border: `1px solid ${tier.color}33`,
-              }}
-            />
-          )}
-
-          {/* Points */}
-          {points > 0 && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
-              <ElectricBoltIcon sx={{ color: '#A78BFA', fontSize: 13 }} />
-              <Typography variant="caption" sx={{ fontWeight: 700, color: '#A78BFA' }}>
-                {points.toLocaleString()} PP
-              </Typography>
-            </Box>
-          )}
-
-          {/* At-risk warning */}
-          {atRisk && !checkedIn && (
-            <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, fontSize: '0.7rem' }}>
-              ⚠️ Streak at risk
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <LocalFireDepartmentIcon sx={{ color: streak > 0 ? '#F97316' : 'text.disabled', fontSize: 18 }} />
+            <Typography sx={{ fontWeight: 900, color: streak > 0 ? '#F97316' : 'text.disabled', fontSize: '0.95rem', lineHeight: 1 }}>
+              {streak}d
             </Typography>
+          </Box>
+
+          {streak >= 3 && (
+            <Chip label={tier.label} size="small" sx={{ height: 20, fontSize: '0.6rem', fontWeight: 700, bgcolor: `${tier.color}15`, color: tier.color, border: `1px solid ${tier.color}30` }} />
           )}
 
-          {/* Check-in button */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+            <ElectricBoltIcon sx={{ color: '#A78BFA', fontSize: 13 }} />
+            <Typography variant="caption" sx={{ fontWeight: 700, color: '#A78BFA' }}>
+              {points.toLocaleString()} PP
+            </Typography>
+          </Box>
+
+          {atRisk && !checkedIn && (
+            <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700 }}>⚠️ at risk</Typography>
+          )}
+
           {!checkingStatus && (
             checkedIn ? (
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
-                disabled
-                sx={{
-                  borderRadius: '10px', fontWeight: 700, fontSize: '0.72rem',
-                  borderColor: '#10B98155', color: '#10B981',
-                  '&.Mui-disabled': { borderColor: '#10B98140', color: '#10B98188' },
-                }}
-              >
+              <Button size="small" variant="outlined" startIcon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />} disabled
+                sx={{ borderRadius: '10px', fontWeight: 700, fontSize: '0.72rem', borderColor: '#10B98155', color: '#10B981', '&.Mui-disabled': { borderColor: '#10B98140', color: '#10B98188' } }}>
                 Done
               </Button>
             ) : (
-              <Button
-                size="small"
-                variant="contained"
-                onClick={handleCheckIn}
-                disabled={loading}
-                sx={{
-                  borderRadius: '10px', fontWeight: 800, fontSize: '0.75rem', px: 2,
-                  background: 'linear-gradient(135deg, #F97316, #F59E0B)',
-                  color: '#0A0B14',
-                  boxShadow: '0 4px 16px rgba(249,115,22,0.35)',
-                  '&:hover': { boxShadow: '0 6px 20px rgba(249,115,22,0.5)', transform: 'translateY(-1px)' },
-                  '&:active': { transform: 'none' },
-                  transition: 'all 0.15s ease',
-                }}
-              >
+              <Button size="small" variant="contained" onClick={handleCheckIn} disabled={loading}
+                sx={{ borderRadius: '10px', fontWeight: 800, fontSize: '0.75rem', px: 2, background: 'linear-gradient(135deg, #F97316, #F59E0B)', color: '#0A0B14', boxShadow: '0 4px 14px rgba(249,115,22,0.35)', '&:hover': { boxShadow: '0 6px 20px rgba(249,115,22,0.5)', transform: 'translateY(-1px)' }, transition: 'all 0.15s ease' }}>
                 {loading ? '…' : 'Check in 🔥'}
               </Button>
             )
           )}
         </Box>
       </Box>
+
+      {/* ── Row 2: progress bar (always shown when hasGoals) ── */}
+      {hasGoals && (
+        <Box sx={{ mb: 1.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.75 }}>
+            <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+              Overall progress
+            </Typography>
+            <Typography variant="caption" sx={{ fontWeight: 900, color: '#F59E0B', fontSize: '0.8rem' }}>
+              {avgProgress}%
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={avgProgress}
+            sx={{
+              height: 8, borderRadius: 4,
+              bgcolor: 'rgba(255,255,255,0.06)',
+              '& .MuiLinearProgress-bar': {
+                borderRadius: 4,
+                background: 'linear-gradient(90deg, #F59E0Baa, #8B5CF6)',
+                boxShadow: avgProgress > 0 ? '0 0 10px rgba(245,158,11,0.4)' : 'none',
+              },
+            }}
+          />
+        </Box>
+      )}
+
+      {/* ── Row 3: axiom quote ── */}
+      <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', lineHeight: 1.5, fontSize: '0.76rem', display: 'block' }}>
+        <Box component="span" sx={{ color: '#F59E0B', fontWeight: 700, fontStyle: 'normal', mr: 0.5 }}>⚡</Box>
+        {quote}
+      </Typography>
     </GlassCard>
   );
 };
