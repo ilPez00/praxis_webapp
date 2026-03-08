@@ -19,7 +19,7 @@ export const getMyTrackers = catchAsync(async (req: Request, res: Response) => {
 
   const { data: trackers, error: trackerErr } = await supabase
     .from('trackers')
-    .select('id, type, created_at')
+    .select('id, type, goal, created_at')
     .eq('user_id', userId);
 
   if (trackerErr) {
@@ -49,6 +49,43 @@ export const getMyTrackers = catchAsync(async (req: Request, res: Response) => {
   }));
 
   res.json(result);
+});
+
+/**
+ * PATCH /trackers/:type/objective
+ * Body: { goal: Record<string, any> }
+ * Saves user-defined objective targets on the tracker row.
+ */
+export const updateObjective = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const { type } = req.params;
+  const { goal } = req.body as { goal?: Record<string, any> };
+  if (!goal || typeof goal !== 'object') throw new BadRequestError('goal must be an object.');
+
+  // Upsert tracker (create if not exists) then set goal
+  const { data: tracker, error: upsertErr } = await supabase
+    .from('trackers')
+    .upsert({ user_id: userId, type }, { onConflict: 'user_id,type' })
+    .select('id')
+    .single();
+
+  if (upsertErr) {
+    if (SCHEMA_MISSING(upsertErr.message)) {
+      return res.status(503).json({ message: 'Trackers table not set up. Run migrations.' });
+    }
+    throw new Error(upsertErr.message);
+  }
+
+  const { error: updateErr } = await supabase
+    .from('trackers')
+    .update({ goal })
+    .eq('id', tracker.id);
+
+  if (updateErr) throw new Error(updateErr.message);
+
+  res.json({ ok: true });
 });
 
 /**

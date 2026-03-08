@@ -1199,3 +1199,6 @@ CREATE POLICY "Subscriptions own" ON public.user_subscriptions FOR ALL USING (au
 
 CREATE INDEX IF NOT EXISTS user_subscriptions_user_idx   ON public.user_subscriptions (user_id);
 CREATE INDEX IF NOT EXISTS user_subscriptions_status_idx ON public.user_subscriptions (status);
+
+-- Add objective column to trackers (stores user-defined targets per tracker)
+ALTER TABLE public.trackers ADD COLUMN IF NOT EXISTS goal JSONB NOT NULL DEFAULT '{}';
