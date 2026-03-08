@@ -23,7 +23,7 @@ import {
   Box,
   Typography,
   Button,
-  Stack,
+
   CircularProgress,
   Alert,
   Avatar,
@@ -34,7 +34,7 @@ import {
   Collapse,
 } from '@mui/material';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GroupsIcon from '@mui/icons-material/Groups';
 import PlaceIcon from '@mui/icons-material/Place';
@@ -193,9 +193,53 @@ const DashboardPage: React.FC = () => {
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 8 }}>
       <Container maxWidth="xl">
+
+        {/* Welcome Banner — greet user first */}
+        <Box sx={{ pt: 3, mb: 3 }}>
+          <GlassCard
+            sx={{
+              p: 3,
+              position: 'relative',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(139,92,246,0.08) 100%)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: '20px',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+                  Hey,{' '}
+                  <Box component="span" sx={{
+                    background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)',
+                    backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  }}>
+                    {userName}
+                  </Box>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {hasGoals
+                    ? `Tracking ${allNodes.length} goal${allNodes.length !== 1 ? 's' : ''} · ${avgProgress}% avg progress`
+                    : 'Set up your goal tree to start matching with driven people.'}
+                </Typography>
+              </Box>
+              {hasGoals && (
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h3" sx={{ fontWeight: 900, lineHeight: 1, color: 'primary.main' }}>
+                    {avgProgress}<Typography component="span" variant="h6" sx={{ fontWeight: 900, opacity: 0.5 }}>%</Typography>
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', letterSpacing: '0.05em' }}>
+                    completion
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </GlassCard>
+        </Box>
+
         {/* Check-in Widget */}
         {currentUserId && (
-          <Box sx={{ pt: 3 }}>
+          <Box sx={{ mb: 3 }}>
             <ErrorBoundary fallback={null}>
             <CheckInWidget
               userId={currentUserId}
@@ -373,61 +417,6 @@ const DashboardPage: React.FC = () => {
           onTakeZenDay={() => toast('Take a Zen Day: update a goal in a neglected domain today.', { icon: '🧘', duration: 6000 })}
         />
         </ErrorBoundary>
-
-        {/* Welcome Banner */}
-        <Box sx={{ py: 4 }}>
-          <GlassCard
-            sx={{
-              p: 4,
-              position: 'relative',
-              overflow: 'hidden',
-              background: 'linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(139,92,246,0.1) 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '24px',
-            }}
-          >
-            <Grid container alignItems="center" spacing={3}>
-              <Grid size={{ xs: 12, md: 8 }}>
-                <Typography variant="h3" sx={{ fontWeight: 900, mb: 1.5, letterSpacing: '-0.03em' }}>
-                  Hey,{' '}
-                  <Box component="span" sx={{
-                    background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)',
-                    backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                  }}>
-                    {userName}
-                  </Box>
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, mb: 3 }}>
-                  {hasGoals
-                    ? `You're tracking ${allNodes.length} goal${allNodes.length !== 1 ? 's' : ''} at ${avgProgress}% average progress. Keep the momentum going.`
-                    : 'Set up your goal tree to start matching with driven people who share your ambitions.'}
-                </Typography>
-                <Stack direction="row" spacing={2} flexWrap="wrap">
-                  <Chip
-                    icon={<TrackChangesIcon sx={{ color: 'primary.main !important' }} />}
-                    label={`${allNodes.length} Goals`}
-                    sx={{ bgcolor: 'rgba(245,158,11,0.1)', fontWeight: 700, p: 1 }}
-                  />
-                  <Chip
-                    icon={<TrendingUpIcon sx={{ color: 'secondary.main !important' }} />}
-                    label={`${avgProgress}% Avg Progress`}
-                    sx={{ bgcolor: 'rgba(139,92,246,0.1)', fontWeight: 700, p: 1 }}
-                  />
-                </Stack>
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { md: 'flex-end', xs: 'flex-start' } }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h2" sx={{ fontWeight: 900, lineHeight: 1, color: 'primary.main' }}>
-                    {avgProgress}<Typography component="span" variant="h5" sx={{ fontWeight: 900, opacity: 0.6 }}>%</Typography>
-                  </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.1em', color: 'text.secondary' }}>
-                    OVERALL COMPLETION
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </GlassCard>
-        </Box>
 
         {/* Quick goal progress updates */}
         {currentUserId && hasGoals && (

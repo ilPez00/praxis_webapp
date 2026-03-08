@@ -57,6 +57,7 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 
 interface AppNotification {
   id: string;
@@ -329,8 +330,10 @@ const Navbar: React.FC = () => {
                     {[
                       { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon fontSize="small" /> },
                       { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon fontSize="small" /> },
+                      { label: 'Friends', to: '/friends', icon: <PeopleIcon fontSize="small" /> },
                       { label: 'Services', to: '/services', icon: <HandshakeIcon fontSize="small" /> },
                       { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon fontSize="small" /> },
+                      { label: 'Coaching', to: '/coaching', icon: <SchoolIcon fontSize="small" /> },
                       { label: 'Leaderboard', to: '/leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
                       { label: 'Analytics', to: '/analytics', icon: <BarChartIcon fontSize="small" /> },
                     ].map(({ label, to, icon }) => (
@@ -582,21 +585,9 @@ const Navbar: React.FC = () => {
                       <AccountCircleIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">My Profile</Typography>
                     </MenuItem>
-                    <MenuItem onClick={() => handleNav('/analytics')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <BarChartIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Analytics</Typography>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleNav('/services')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <HandshakeIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Services</Typography>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleNav('/marketplace')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <StorefrontIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Marketplace</Typography>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleNav('/commitments')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <VerifiedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Commitments</Typography>
+                    <MenuItem onClick={() => handleNav('/goals')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <TrackChangesIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Goal Tree</Typography>
                     </MenuItem>
                     <MenuItem onClick={() => handleNav('/settings')} sx={{ gap: 1.5, py: 1.25 }}>
                       <SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
@@ -736,10 +727,13 @@ const Navbar: React.FC = () => {
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon />, primary: false },
                 { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon />, primary: false },
+                { label: 'Friends', to: '/friends', icon: <PeopleIcon />, primary: false },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon />, primary: false },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon />, primary: false },
+                { label: 'Coaching', to: '/coaching', icon: <SchoolIcon />, primary: false },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
+                { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: false },
                 { label: 'Settings', to: '/settings', icon: <SettingsIcon />, primary: false },
               ].map(({ label, to, icon, primary }, idx, arr) => (
                 <React.Fragment key={label}>
