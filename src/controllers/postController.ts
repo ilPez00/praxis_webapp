@@ -75,7 +75,7 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
   // 4. Load author profiles + goal trees in parallel
   const [authorProfilesRes, authorTreesRes] = await Promise.allSettled([
     authorIds.length > 0
-      ? supabase.from('profiles').select('id, honor_score, reliability_score, latitude, longitude').in('id', authorIds)
+      ? supabase.from('profiles').select('id, honor_score, karma_score, reliability_score, latitude, longitude').in('id', authorIds)
       : Promise.resolve({ data: [] as any[], error: null }),
     authorIds.length > 0
       ? supabase.from('goal_trees').select('userId, nodes').in('userId', authorIds)
@@ -94,7 +94,12 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
     domainMap.set(tree.userId, domains);
   }
 
-  const maxHonor = Math.max(1, ...authorProfiles.map((p) => p.honor_score ?? 0));
+  // Combined rep = honor_score + log(1 + max(karma_score, 0))
+  const combinedReps = authorProfiles.map((p) => (p.honor_score ?? 0) + Math.log1p(Math.max(p.karma_score ?? 0, 0)));
+  const maxCombinedRep = Math.max(1, ...combinedReps);
+  const combinedRepMap = new Map<string, number>();
+  authorProfiles.forEach((p, i) => combinedRepMap.set(p.id, combinedReps[i]));
+
   const maxReliability = Math.max(0.01, ...authorProfiles.map((p) => p.reliability_score ?? 0));
 
   const now = Date.now();
@@ -122,8 +127,8 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
       proximity = dist < 10 ? 1.0 : dist < 50 ? 0.8 : dist < 100 ? 0.5 : dist < 500 ? 0.2 : 0.05;
     }
 
-    // Honor — 20%
-    const honor = (authorProfile?.honor_score ?? 0) / maxHonor;
+    // Combined rep (honor + karma) — 20%
+    const honor = (combinedRepMap.get(p.user_id) ?? 0) / maxCombinedRep;
 
     // Reliability — 15%
     const reliability = (authorProfile?.reliability_score ?? 0) / maxReliability;
