@@ -20,6 +20,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
+import CoachingMarketplace from '../coaching/CoachingMarketplace';
 import { supabase } from '../../lib/supabase';
 import { DOMAIN_COLORS } from '../../types/goal';
 import { Domain } from '../../models/Domain';
@@ -326,6 +327,7 @@ const ServicesPage: React.FC = () => {
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <Tab label="Browse All" />
         {user && <Tab label="My Listings" />}
+        <Tab label="Coaching" />
       </Tabs>
 
       {/* ── Tab 0: Browse ── */}
@@ -409,6 +411,9 @@ const ServicesPage: React.FC = () => {
           )}
         </>
       )}
+
+      {/* ── Tab 2: Coaching ── */}
+      {tab === 2 && <CoachingMarketplace />}
 
       {/* ── Create / Edit dialog ── */}
       <Dialog open={formOpen} onClose={() => !saving && setFormOpen(false)} maxWidth="sm" fullWidth>

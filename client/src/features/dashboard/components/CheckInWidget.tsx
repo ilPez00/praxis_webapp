@@ -169,21 +169,23 @@ const CheckInWidget: React.FC<Props> = ({
           {checkingStatus ? null : checkedIn ? (
             <Stack direction="row" spacing={1} alignItems="center">
               <Tooltip title="You've checked in today">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<CheckCircleIcon />}
-                  disabled
-                  sx={{
-                    borderRadius: '10px',
-                    borderColor: '#10B981',
-                    color: '#10B981',
-                    fontWeight: 700,
-                    '&.Mui-disabled': { borderColor: '#10B98166', color: '#10B981aa' },
-                  }}
-                >
-                  Checked In ✓
-                </Button>
+                <span>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<CheckCircleIcon />}
+                    disabled
+                    sx={{
+                      borderRadius: '10px',
+                      borderColor: '#10B981',
+                      color: '#10B981',
+                      fontWeight: 700,
+                      '&.Mui-disabled': { borderColor: '#10B98166', color: '#10B981aa' },
+                    }}
+                  >
+                    Checked In ✓
+                  </Button>
+                </span>
               </Tooltip>
               {currentStreak >= 3 && (
                 <Tooltip title="Share your streak">

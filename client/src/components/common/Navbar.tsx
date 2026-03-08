@@ -40,7 +40,6 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ChatIcon from '@mui/icons-material/Chat';
-import SchoolIcon from '@mui/icons-material/School';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -48,7 +47,6 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
-import PeopleIcon from '@mui/icons-material/People';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
@@ -264,8 +262,8 @@ const Navbar: React.FC = () => {
               {user && (
                 <>
                   {[
-                    { label: 'Dashboard', to: '/dashboard' },
-                    { label: 'Matches', to: '/matches' },
+                    { label: 'Home', to: '/dashboard' },
+                    { label: 'Discover', to: '/matches' },
                     { label: 'Connect', to: '/communication' },
                   ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
@@ -330,10 +328,8 @@ const Navbar: React.FC = () => {
                     {[
                       { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon fontSize="small" /> },
                       { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon fontSize="small" /> },
-                      { label: 'Friends', to: '/friends', icon: <PeopleIcon fontSize="small" /> },
                       { label: 'Services', to: '/services', icon: <HandshakeIcon fontSize="small" /> },
                       { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon fontSize="small" /> },
-                      { label: 'Coaching', to: '/coaching', icon: <SchoolIcon fontSize="small" /> },
                       { label: 'Leaderboard', to: '/leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
                       { label: 'Analytics', to: '/analytics', icon: <BarChartIcon fontSize="small" /> },
                     ].map(({ label, to, icon }) => (
@@ -722,15 +718,13 @@ const Navbar: React.FC = () => {
 
             <List disablePadding>
               {[
-                { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon />, primary: true },
-                { label: 'Matches', to: '/matches', icon: <ExploreIcon />, primary: true },
+                { label: 'Home', to: '/dashboard', icon: <DashboardIcon />, primary: true },
+                { label: 'Discover', to: '/matches', icon: <ExploreIcon />, primary: true },
                 { label: 'Connect', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Challenges', to: '/challenges', icon: <EmojiEventsIcon />, primary: false },
                 { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon />, primary: false },
-                { label: 'Friends', to: '/friends', icon: <PeopleIcon />, primary: false },
                 { label: 'Services', to: '/services', icon: <HandshakeIcon />, primary: false },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontIcon />, primary: false },
-                { label: 'Coaching', to: '/coaching', icon: <SchoolIcon />, primary: false },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
                 { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: false },
