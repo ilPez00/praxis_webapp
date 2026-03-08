@@ -7,27 +7,81 @@ import { pushNotification } from './notificationController';
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('does not exist') || msg?.includes('42P01');
 
+const HONOR_COST = 10;      // PP deducted from giver
+const GIVER_REBATE = 5;     // PP returned to giver (net cost = 5)
+const RECIPIENT_AWARD = 20; // PP awarded to recipient
+
+/**
+ * Recomputes the weighted, age-decaying honor score for a user and writes it back.
+ * honor_score = SUM(giver_reliability * age_weight) over active votes where:
+ *   0-60 days:   weight 1.0
+ *   61-120 days: weight 0.5
+ *   >120 days:   excluded
+ */
+async function computeHonorScore(targetId: string): Promise<number> {
+  const { data: votes, error } = await supabase
+    .from('honor_votes')
+    .select('voter_id, created_at, profiles!honor_votes_voter_id_fkey(reliability_score)')
+    .eq('target_id', targetId);
+
+  if (error) {
+    logger.error('computeHonorScore fetch error:', error.message);
+    return 0;
+  }
+
+  const now = Date.now();
+  let score = 0;
+
+  for (const vote of votes ?? []) {
+    const giverReliability: number = (vote.profiles as any)?.reliability_score ?? 0;
+    const ageMs = now - new Date(vote.created_at).getTime();
+    const ageDays = ageMs / 86400000;
+
+    let weight: number;
+    if (ageDays <= 60) weight = 1.0;
+    else if (ageDays <= 120) weight = 0.5;
+    else continue; // older than 120d — excluded
+
+    score += giverReliability * weight;
+  }
+
+  const rounded = Math.round(score * 100) / 100;
+  await supabase.from('profiles').update({ honor_score: rounded }).eq('id', targetId);
+  return rounded;
+}
+
 /**
  * POST /honor/:targetId
- * Give honor to another user. Each user can honor each target at most once.
- * Increments honor_score on the target's profile.
+ * Give honor to another user.
+ * Cost: -10 PP from giver, +5 PP rebate to giver (net -5), +20 PP to recipient.
  */
 export const giveHonor = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const voterId = req.user?.id;
   if (!voterId) throw new ForbiddenError('Authentication required.');
 
-  const { targetId } = req.params;
+  const { targetId } = req.params as Record<string, string>;
   if (targetId === voterId) throw new BadRequestError('You cannot honor yourself.');
 
   // Check target exists
   const { data: target, error: targetError } = await supabase
     .from('profiles')
-    .select('id, honor_score')
+    .select('id, name')
     .eq('id', targetId)
     .single();
   if (targetError || !target) throw new NotFoundError('User not found.');
 
-  // Insert vote (unique constraint will reject duplicates)
+  // Check giver has enough PP
+  const { data: voter } = await supabase
+    .from('profiles')
+    .select('praxis_points')
+    .eq('id', voterId)
+    .single();
+  const voterPP = voter?.praxis_points ?? 0;
+  if (voterPP < HONOR_COST) {
+    throw new BadRequestError(`Not enough PP — you need ${HONOR_COST} PP to give honor.`);
+  }
+
+  // Insert vote (unique constraint rejects duplicates)
   const { error: voteError } = await supabase
     .from('honor_votes')
     .insert({ voter_id: voterId, target_id: targetId });
@@ -36,32 +90,30 @@ export const giveHonor = catchAsync(async (req: Request, res: Response, _next: N
     if (SCHEMA_MISSING(voteError.message)) {
       return res.status(503).json({ message: 'Honor system not yet enabled. Run DB migrations.' });
     }
-    if (voteError.code === '23505') {
-      throw new BadRequestError('You have already honored this user.');
-    }
+    if (voteError.code === '23505') throw new BadRequestError('You have already honored this user.');
     logger.error('Error giving honor:', voteError.message);
     throw new InternalServerError('Failed to give honor.');
   }
 
-  // Increment honor_score + award +15 PP to target
-  const newScore = (target.honor_score ?? 0) + 1;
-  const { data: targetPP } = await supabase.from('profiles').select('praxis_points').eq('id', targetId).single();
+  // Deduct cost from giver, return rebate (net: -HONOR_COST + GIVER_REBATE)
   await supabase.from('profiles').update({
-    honor_score: newScore,
-    praxis_points: (targetPP?.praxis_points ?? 0) + 15,
+    praxis_points: voterPP - HONOR_COST + GIVER_REBATE,
+  }).eq('id', voterId);
+
+  // Award PP to recipient
+  const { data: recipientRow } = await supabase.from('profiles').select('praxis_points').eq('id', targetId).single();
+  await supabase.from('profiles').update({
+    praxis_points: (recipientRow?.praxis_points ?? 0) + RECIPIENT_AWARD,
   }).eq('id', targetId);
 
-  // Award +15 PP to voter for mutual grading
-  const { data: voterPP } = await supabase.from('profiles').select('praxis_points').eq('id', voterId).single();
-  if (voterPP) {
-    await supabase.from('profiles').update({ praxis_points: (voterPP.praxis_points ?? 0) + 15 }).eq('id', voterId);
-  }
+  // Recompute weighted honor score
+  const newScore = await computeHonorScore(targetId);
 
   pushNotification({
-    userId: targetId as string,
+    userId: targetId,
     type: 'honor',
     title: 'Someone honoured you',
-    body: `Your honor score is now ${newScore}.`,
+    body: `Your honor score is now ${newScore.toFixed(2)}.`,
     link: `/profile/${targetId}`,
     actorId: voterId,
   }).catch(() => {});
@@ -72,12 +124,13 @@ export const giveHonor = catchAsync(async (req: Request, res: Response, _next: N
 /**
  * DELETE /honor/:targetId
  * Revoke a previously given honor vote.
+ * Refunds HONOR_COST PP to giver; deducts RECIPIENT_AWARD PP from recipient.
  */
 export const revokeHonor = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const voterId = req.user?.id;
   if (!voterId) throw new ForbiddenError('Authentication required.');
 
-  const { targetId } = req.params;
+  const { targetId } = req.params as Record<string, string>;
 
   const { error, count } = await supabase
     .from('honor_votes')
@@ -88,31 +141,42 @@ export const revokeHonor = catchAsync(async (req: Request, res: Response, _next:
   if (error) throw new InternalServerError('Failed to revoke honor.');
   if ((count ?? 0) === 0) throw new NotFoundError('No honor vote found to revoke.');
 
-  // Decrement honor_score (floor at 0)
-  const { data: target } = await supabase.from('profiles').select('honor_score').eq('id', targetId).single();
-  if (target) {
-    const newScore = Math.max(0, (target.honor_score ?? 0) - 1);
-    await supabase.from('profiles').update({ honor_score: newScore }).eq('id', targetId);
-  }
+  // Refund HONOR_COST to giver
+  const { data: voterRow } = await supabase.from('profiles').select('praxis_points').eq('id', voterId).single();
+  await supabase.from('profiles').update({
+    praxis_points: (voterRow?.praxis_points ?? 0) + HONOR_COST,
+  }).eq('id', voterId);
 
-  res.json({ message: 'Honor revoked.' });
+  // Deduct RECIPIENT_AWARD from recipient (floor PP at 0)
+  const { data: recipientRow } = await supabase.from('profiles').select('praxis_points').eq('id', targetId).single();
+  await supabase.from('profiles').update({
+    praxis_points: Math.max(0, (recipientRow?.praxis_points ?? 0) - RECIPIENT_AWARD),
+  }).eq('id', targetId);
+
+  // Recompute weighted honor score
+  const newScore = await computeHonorScore(targetId);
+
+  res.json({ message: 'Honor revoked.', honor_score: newScore });
 });
 
 /**
  * GET /honor/:userId
- * Get honor score + whether the requesting user has already honored this user.
+ * Returns the on-demand computed honor score + whether the requester has honored this user.
  */
 export const getHonor = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const requesterId = req.user?.id;
-  const { userId } = req.params;
+  const { userId } = req.params as Record<string, string>;
 
+  // Verify user exists
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('honor_score')
+    .select('id')
     .eq('id', userId)
     .single();
-
   if (error || !profile) throw new NotFoundError('User not found.');
+
+  // Recompute on demand
+  const honorScore = await computeHonorScore(userId);
 
   let hasHonored = false;
   if (requesterId && requesterId !== userId) {
@@ -125,8 +189,5 @@ export const getHonor = catchAsync(async (req: Request, res: Response, _next: Ne
     hasHonored = !!vote;
   }
 
-  res.json({
-    honor_score: profile.honor_score ?? 0,
-    has_honored: hasHonored,
-  });
+  res.json({ honor_score: honorScore, has_honored: hasHonored });
 });

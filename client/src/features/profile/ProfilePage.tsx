@@ -473,7 +473,7 @@ const ProfilePage: React.FC = () => {
         await axios.post(`${API_URL}/honor/${paramId}`, {}, { headers });
         setHasHonored(true);
         setHonorScore(s => (s ?? 0) + 1);
-        toast.success('Honor given! +15 PP awarded to both of you.');
+        toast.success('Honor given! +20 PP awarded to them (−5 PP net cost to you).');
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Could not update honor.');
@@ -633,7 +633,7 @@ const ProfilePage: React.FC = () => {
                   />
                 )}
                 {paramId && honorScore !== null && (
-                  <Tooltip title={hasHonored ? 'Remove your honor vote' : 'Give honor — recognise this person\'s integrity (+15 PP each)'}>
+                  <Tooltip title={hasHonored ? 'Remove your honor vote' : 'Give honor (costs 5 PP net — they receive +20 PP)'}>
                     <Button
                       variant="outlined"
                       size="small"
