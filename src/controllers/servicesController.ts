@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
-import { catchAsync, BadRequestError, NotFoundError } from '../utils/appErrors';
+import { catchAsync, AppError, BadRequestError, NotFoundError } from '../utils/appErrors';
 
 /**
  * GET /services
@@ -85,9 +85,15 @@ export const createService = catchAsync(async (req: Request, res: Response) => {
   // Fetch user profile for denormalization
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, avatar_url')
+    .select('name, avatar_url, praxis_points')
     .eq('id', userId)
     .single();
+
+  const SERVICE_POST_COST = 30;
+  const currentPP: number = (profile as any)?.praxis_points ?? 0;
+  if (currentPP < SERVICE_POST_COST) {
+    throw new AppError(`Not enough PP — posting a service costs ${SERVICE_POST_COST} PP (you have ${currentPP}).`, 402);
+  }
 
   const { data, error } = await supabase
     .from('services')
