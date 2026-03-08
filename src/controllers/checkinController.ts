@@ -98,10 +98,11 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   });
 
   // Compute Reliability Score R using the whitepaper formula:
-  //   R = 0.65*C + 0.25*V + 0.10*S
+  //   R = 0.50*C + 0.25*V + 0.10*S + 0.15*K
   //   C = Check-in Consistency: checkins in last 30 days / 30
   //   V = Verified Completion rate: approved completion_requests / total requested (last 90 days)
   //   S = Streak Stability: min(streak, 30) / 30
+  //   K = Karma signal: tanh(karma_score / 50), bounded (-1, 1)
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const ninetyDaysAgo = new Date();
@@ -134,7 +135,12 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   const C = Math.min(((recentCount ?? 0) + 1) / 30, 1);
   const V = verificationRate;
   const S = Math.min(streakUpdate.current_streak, 30) / 30;
-  const reliabilityScore = 0.65 * C + 0.25 * V + 0.10 * S;
+
+  // K: karma signal — read from current profile row (written by vote handler)
+  const { data: karmaRow } = await supabase.from('profiles').select('karma_score').eq('id', userId).single();
+  const K = Math.tanh((karmaRow?.karma_score ?? 0) / 50);
+
+  const reliabilityScore = Math.max(0, Math.min(1, 0.50 * C + 0.25 * V + 0.10 * S + 0.15 * K));
 
   // Update profile (clear streak shield if it was consumed)
   const profileUpdate: Record<string, unknown> = {
