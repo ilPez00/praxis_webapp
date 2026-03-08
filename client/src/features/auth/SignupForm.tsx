@@ -122,7 +122,7 @@ const SignupForm: React.FC = () => {
                 value={password} onChange={(e) => setPassword(e.target.value)} />
               <TextField fullWidth required label="Age" type="number" inputProps={{ min: 13, max: 120 }}
                 value={age} onChange={(e) => setAge(e.target.value)} />
-              <TextField fullWidth required label="Short Bio" multiline rows={3} placeholder="What drives you?"
+              <TextField fullWidth label="Short Bio (optional)" multiline rows={2} placeholder="What drives you? (you can add this later)"
                 value={bio} onChange={(e) => setBio(e.target.value)} />
             </Stack>
 

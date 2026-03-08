@@ -43,7 +43,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId: _userId }) =
       icon: <ChatIcon sx={{ fontSize: 32 }} />,
       title: 'Start a conversation',
       description: 'Message your top match. Real accountability starts with one conversation.',
-      cta: 'Open chat →',
+      cta: 'Connect →',
       to: '/communication',
       color: '#10B981',
     },

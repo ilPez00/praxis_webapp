@@ -27,7 +27,7 @@ const TESTIMONIALS = [
 ];
 
 const TestimonialStrip: React.FC = () => (
-  <Box sx={{ mt: 8 }}>
+  <Box sx={{ mt: 5 }}>
     <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'text.disabled', mb: 3 }}>
       What members say
     </Typography>
