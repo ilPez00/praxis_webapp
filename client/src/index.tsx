@@ -61,19 +61,19 @@ const theme = createTheme({
   },
 
   shape: {
-    borderRadius: 16,
+    borderRadius: 12,
   },
 
   components: {
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(139,92,246,0.06) 0%, transparent 60%), radial-gradient(ellipse at 80% 10%, rgba(245,158,11,0.06) 0%, transparent 60%)',
+          backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(139,92,246,0.04) 0%, transparent 55%), radial-gradient(ellipse at 80% 10%, rgba(245,158,11,0.04) 0%, transparent 55%)',
           backgroundAttachment: 'fixed',
           scrollbarWidth: 'thin',
           '&::-webkit-scrollbar': { width: '6px' },
           '&::-webkit-scrollbar-track': { background: '#0A0B14' },
-          '&::-webkit-scrollbar-thumb': { background: '#374151', borderRadius: '3px' },
+          '&::-webkit-scrollbar-thumb': { background: '#4B5563', borderRadius: '3px', '&:hover': { background: '#6B7280' } },
         },
       },
     },
@@ -82,9 +82,9 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           textTransform: 'none',
-          borderRadius: 12,
+          borderRadius: 10,
           fontWeight: 600,
-          transition: 'all 0.2s ease',
+          transition: 'all 0.18s ease',
         },
         containedPrimary: {
           background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
@@ -158,7 +158,7 @@ const theme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          background: 'rgba(10,11,20,0.8)',
+          background: 'rgba(10,11,20,0.88)',
           backdropFilter: 'blur(20px)',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
           boxShadow: 'none',

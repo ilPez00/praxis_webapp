@@ -39,17 +39,22 @@ const GlassCard: React.FC<GlassCardProps> = ({
     <Paper
       {...rest}
       sx={{
-        background: 'rgba(17,24,39,0.75)',
+        background: 'rgba(17,24,39,0.82)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: '16px',
         boxShadow: resolvedGlow,
-        transition: 'box-shadow 0.3s ease, transform 0.2s ease',
+        transition: 'box-shadow 0.25s ease, transform 0.2s ease',
         '&:hover': {
+          transform: 'translateY(-2px)',
           boxShadow: glowColor
-            ? `0 0 56px ${glowColor}, 0 12px 40px rgba(0,0,0,0.5)`
-            : resolvedGlow,
+            ? `0 0 56px ${glowColor}, 0 16px 40px rgba(0,0,0,0.5)`
+            : glow === 'primary'
+            ? '0 0 50px rgba(245,158,11,0.22), 0 16px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)'
+            : glow === 'secondary'
+            ? '0 0 50px rgba(139,92,246,0.22), 0 16px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)'
+            : '0 16px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.09)',
         },
         ...sx,
       }}

@@ -5,9 +5,9 @@
  * or http://localhost:3001/api for local development.
  */
 const getBaseUrl = () => {
-  if (process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL;
-  }
+  // Vite exposes env vars via import.meta.env, not process.env
+  const envUrl = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_API_URL : undefined;
+  if (envUrl) return envUrl;
 
   // If we are in the browser
   if (typeof window !== 'undefined') {

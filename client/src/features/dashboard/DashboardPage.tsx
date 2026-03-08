@@ -274,14 +274,14 @@ const DashboardPage: React.FC = () => {
             <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
               {weekStats.map(stat => (
                 <GlassCard key={stat.label} sx={{
-                  p: 2, flex: '1 1 120px', minWidth: 110, borderRadius: '16px', textAlign: 'center',
+                  p: 2.5, flex: '1 1 120px', minWidth: 110, textAlign: 'center',
                   border: `1px solid ${stat.color}22`,
                 }}>
                   <Typography sx={{ fontSize: '1.5rem', lineHeight: 1, mb: 0.5 }}>{stat.icon}</Typography>
                   <Typography variant="h5" sx={{ fontWeight: 900, color: stat.color, lineHeight: 1, mb: 0.25 }}>
                     {stat.value}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.01em' }}>
                     {stat.label}
                   </Typography>
                 </GlassCard>

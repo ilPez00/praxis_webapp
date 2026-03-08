@@ -69,12 +69,12 @@ const HomePage: React.FC = () => {
         }}
       />
 
-      <Container component="main" maxWidth="lg" sx={{ position: 'relative', zIndex: 1, py: 10 }}>
+      <Container component="main" maxWidth="lg" sx={{ position: 'relative', zIndex: 1, py: { xs: 6, md: 8 } }}>
         <Box sx={{ maxWidth: 760, mx: 'auto', textAlign: 'center' }}>
           {/* Badge */}
           <Chip
             icon={<BoltIcon sx={{ color: '#F59E0B !important', fontSize: 16 }} />}
-            label="Goal-Aligned Social Network"
+            label="goal-aligned social network"
             sx={{
               mb: 4,
               px: 1,
@@ -82,9 +82,8 @@ const HomePage: React.FC = () => {
               border: '1px solid rgba(245,158,11,0.3)',
               color: '#F59E0B',
               fontWeight: 600,
-              letterSpacing: '0.05em',
-              fontSize: '0.75rem',
-              textTransform: 'uppercase',
+              letterSpacing: '0.02em',
+              fontSize: '0.8rem',
             }}
           />
 
@@ -122,7 +121,7 @@ const HomePage: React.FC = () => {
           <Typography
             variant="h5"
             color="text.secondary"
-            sx={{ mb: 5, fontWeight: 400, lineHeight: 1.6, maxWidth: 580, mx: 'auto' }}
+            sx={{ mb: 4, fontWeight: 400, lineHeight: 1.6, maxWidth: 560, mx: 'auto' }}
           >
             Praxis is a goal-aligned social OS. We connect you with driven individuals who share
             your ambitions — so you build real-world momentum together.
@@ -140,10 +139,10 @@ const HomePage: React.FC = () => {
                 px: 4,
                 py: 1.75,
                 fontSize: '1rem',
-                animation: 'ctaPulse 3s ease-in-out infinite',
+                animation: 'ctaPulse 3s ease-in-out 2',
                 '@keyframes ctaPulse': {
                   '0%, 100%': { boxShadow: '0 4px 20px rgba(245,158,11,0.3)' },
-                  '50%': { boxShadow: '0 8px 40px rgba(245,158,11,0.6)' },
+                  '50%': { boxShadow: '0 8px 40px rgba(245,158,11,0.55)' },
                 },
               }}
             >
@@ -162,11 +161,11 @@ const HomePage: React.FC = () => {
 
           {/* Live stats strip */}
           {stats && (
-            <Stack direction="row" spacing={4} justifyContent="center" sx={{ mt: 8, flexWrap: 'wrap', gap: 3 }}>
+            <Stack direction="row" spacing={4} justifyContent="center" sx={{ mt: 6, flexWrap: 'wrap', gap: 3 }}>
               {[
                 { value: stats.userCount.toLocaleString(), label: 'members' },
                 { value: stats.goalsTracked.toLocaleString(), label: 'goal trees built' },
-                { value: stats.checkInsThisWeek.toLocaleString(), label: 'check-ins this week' },
+                ...(stats.checkInsThisWeek > 0 ? [{ value: stats.checkInsThisWeek.toLocaleString(), label: 'check-ins this week' }] : []),
               ].map((s) => (
                 <Box key={s.label} sx={{ textAlign: 'center' }}>
                   <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', lineHeight: 1 }}>{s.value}</Typography>

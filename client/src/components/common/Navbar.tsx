@@ -56,6 +56,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 interface AppNotification {
   id: string;
@@ -280,12 +281,16 @@ const Navbar: React.FC = () => {
                           }
                         }}
                         sx={{
-                          color: active ? 'text.primary' : 'text.secondary',
+                          color: active ? 'primary.main' : 'text.secondary',
                           fontWeight: active ? 700 : 500,
                           borderRadius: '8px',
                           px: 1.5,
                           position: 'relative',
-                          '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' },
+                          borderBottom: active ? '2px solid' : '2px solid transparent',
+                          borderColor: active ? 'primary.main' : 'transparent',
+                          borderBottomLeftRadius: 0,
+                          borderBottomRightRadius: 0,
+                          '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.04)' },
                         }}
                       >
                         {label}
@@ -308,9 +313,10 @@ const Navbar: React.FC = () => {
                   {/* More dropdown — secondary nav items */}
                   <Button
                     onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
+                    endIcon={<KeyboardArrowDownIcon sx={{ fontSize: '1rem !important', opacity: 0.7, transition: 'transform 0.2s', transform: Boolean(moreMenuAnchor) ? 'rotate(180deg)' : 'none' }} />}
                     sx={{ color: 'text.secondary', fontWeight: 500, borderRadius: '8px', px: 1.5, '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' } }}
                   >
-                    More ▾
+                    More
                   </Button>
                   <Menu
                     anchorEl={moreMenuAnchor}
