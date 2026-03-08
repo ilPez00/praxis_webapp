@@ -15,6 +15,7 @@ import CheckInWidget from './components/CheckInWidget';
 import BalanceWidget from './components/BalanceWidget';
 import AccountabilityNetworkWidget from './components/AccountabilityNetworkWidget';
 import GoalProgressWidget from './components/GoalProgressWidget';
+import GoalWidgets from './components/GoalWidgets';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
@@ -60,6 +61,9 @@ const DashboardPage: React.FC = () => {
   // Nearby users state
   const [nearbyUsers, setNearbyUsers] = useState<any[]>([]);
 
+  // Active bets for GoalWidgets
+  const [activeBets, setActiveBets] = useState<any[]>([]);
+
   // Weekly narrative (Pro only)
   const [weeklyNarrative, setWeeklyNarrative] = useState<string | null>(null);
 
@@ -88,6 +92,23 @@ const DashboardPage: React.FC = () => {
     };
     fetchChallenges();
   }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const fetchBets = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await axios.get(`${API_URL}/bets/${currentUserId}`, {
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+        const all = Array.isArray(res.data) ? res.data : [];
+        setActiveBets(all.filter((b: any) => b.status === 'active'));
+      } catch {
+        setActiveBets([]);
+      }
+    };
+    fetchBets();
+  }, [currentUserId]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -249,6 +270,20 @@ const DashboardPage: React.FC = () => {
                 setLocalStreak(newStreak);
                 setLocalPoints(newPoints);
               }}
+            />
+          </ErrorBoundary>
+        )}
+
+        {/* Goal Tracking Widgets */}
+        {currentUserId && hasGoals && (
+          <ErrorBoundary fallback={null}>
+            <GoalWidgets
+              userId={currentUserId}
+              allNodes={allNodes}
+              activeBets={activeBets}
+              activeChallenges={challenges.filter((c: any) =>
+                c.participants?.some((p: any) => p.user_id === currentUserId)
+              )}
             />
           </ErrorBoundary>
         )}

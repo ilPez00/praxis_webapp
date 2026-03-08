@@ -35,6 +35,7 @@ import muteRoutes from './routes/muteRoutes';
 import placesRoutes from './routes/placesRoutes';
 import offersRoutes from './routes/offersRoutes';
 import duelRoutes from './routes/duelRoutes';
+import trackerRoutes from './routes/trackerRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -101,6 +102,7 @@ apiRouter.use('/mutes', muteRoutes);
 apiRouter.use('/places', placesRoutes);
 apiRouter.use('/offers', offersRoutes);
 apiRouter.use('/duels', duelRoutes);
+apiRouter.use('/trackers', trackerRoutes);
 
 app.use('/api', apiRouter);
 
