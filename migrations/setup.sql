@@ -1106,3 +1106,96 @@ CREATE INDEX IF NOT EXISTS duels_status_idx    ON public.duels (status);
 CREATE INDEX IF NOT EXISTS duels_category_idx  ON public.duels (category);
 CREATE INDEX IF NOT EXISTS duels_creator_idx   ON public.duels (creator_id);
 CREATE INDEX IF NOT EXISTS duels_opponent_idx  ON public.duels (opponent_id);
+
+-- =============================================================================
+-- Missing tables (added 2026-03-08)
+-- =============================================================================
+
+-- event_attendees: QR-code check-in records for events
+CREATE TABLE IF NOT EXISTS public.event_attendees (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id   UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  checked_in_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (event_id, user_id)
+);
+
+ALTER TABLE public.event_attendees ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Event attendees read all"   ON public.event_attendees FOR SELECT USING (true);
+CREATE POLICY "Event attendees insert own" ON public.event_attendees FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS event_attendees_event_idx ON public.event_attendees (event_id);
+CREATE INDEX IF NOT EXISTS event_attendees_user_idx  ON public.event_attendees (user_id);
+
+-- mutes: user-level muting of other users or group rooms
+CREATE TABLE IF NOT EXISTS public.mutes (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  muted_user_id  UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  muted_room_id  UUID REFERENCES public.chat_rooms(id) ON DELETE CASCADE,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, muted_user_id),
+  UNIQUE (user_id, muted_room_id)
+);
+
+ALTER TABLE public.mutes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Mutes own"  ON public.mutes FOR ALL USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS mutes_user_idx        ON public.mutes (user_id);
+CREATE INDEX IF NOT EXISTS mutes_muted_user_idx  ON public.mutes (muted_user_id);
+
+-- notifications: in-app notification inbox
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  type       TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  body       TEXT,
+  link       TEXT,
+  actor_id   UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  read       BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Notifications own" ON public.notifications FOR ALL USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS notifications_user_idx      ON public.notifications (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS notifications_unread_idx    ON public.notifications (user_id, read) WHERE read = false;
+
+-- post_votes: upvote/downvote on posts (+1 or -1)
+CREATE TABLE IF NOT EXISTS public.post_votes (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id    UUID NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  value      SMALLINT NOT NULL CHECK (value IN (1, -1)),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (post_id, user_id)
+);
+
+ALTER TABLE public.post_votes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Post votes read all"   ON public.post_votes FOR SELECT USING (true);
+CREATE POLICY "Post votes insert own" ON public.post_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Post votes update own" ON public.post_votes FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Post votes delete own" ON public.post_votes FOR DELETE USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS post_votes_post_idx ON public.post_votes (post_id);
+CREATE INDEX IF NOT EXISTS post_votes_user_idx ON public.post_votes (user_id);
+
+-- user_subscriptions: Pro/premium plan tracking
+CREATE TABLE IF NOT EXISTS public.user_subscriptions (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  plan                TEXT NOT NULL,  -- 'premium' | 'premium_trial' | 'basic'
+  status              TEXT NOT NULL DEFAULT 'active',  -- 'active' | 'cancelled' | 'expired'
+  stripe_customer_id  TEXT,
+  stripe_sub_id       TEXT,
+  current_period_end  TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Subscriptions own" ON public.user_subscriptions FOR ALL USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS user_subscriptions_user_idx   ON public.user_subscriptions (user_id);
+CREATE INDEX IF NOT EXISTS user_subscriptions_status_idx ON public.user_subscriptions (status);

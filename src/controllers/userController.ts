@@ -132,29 +132,44 @@ export const getUserProfile = catchAsync(async (req: Request, res: Response, nex
  * @param req - The Express request object, with userId in params and updated fields in body.
  * @param res - The Express response object.
  */
-export const updateUserProfile = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.params as { id: string }; // Extract user ID from request parameters
-  const { name, age, bio, avatarUrl } = req.body; // Extract updated profile fields from the request body
+// Whitelist of profile columns that clients are allowed to update via this endpoint
+const UPDATABLE_PROFILE_FIELDS = new Set([
+  'name', 'age', 'bio', 'avatar_url', 'banner_url',
+  'latitude', 'longitude', 'city', 'location',
+  'occupation', 'education', 'sex',
+  'social_instagram', 'social_twitter', 'social_linkedin',
+  'social_whatsapp', 'social_telegram',
+  'is_public', 'match_visibility',
+]);
 
-  // Update the user's profile record in Supabase
+export const updateUserProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { id } = req.params as { id: string };
+
+  // Build update payload from whitelisted fields only
+  const payload: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(req.body)) {
+    if (UPDATABLE_PROFILE_FIELDS.has(key)) {
+      payload[key] = value;
+    }
+  }
+
+  if (Object.keys(payload).length === 0) {
+    throw new BadRequestError('No valid fields provided for update.');
+  }
+
   const { data, error } = await supabase
     .from('profiles')
-    .update({ name, age, bio, avatarUrl }) // Fields to update
-    .eq('id', id) // Filter by user ID
-    .single(); // Expect a single updated record
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
 
-  // Handle Supabase update errors
   if (error) {
     logger.error('Supabase error updating user profile:', error.message);
-    throw new InternalServerError('Failed to update user profile.');
+    throw new InternalServerError(`Failed to update user profile: ${error.message}`);
   }
 
-  // If no data is returned, the user's profile was not found or no changes were applied
-  if (!data) {
-    throw new NotFoundError('User not found or nothing to update.');
-  }
-
-  res.status(200).json({ message: 'User profile updated successfully.', user: data }); // Respond with success message and updated user data
+  res.status(200).json({ message: 'User profile updated successfully.', user: data });
 });
 
 // ---------------------------------------------------------------------------
