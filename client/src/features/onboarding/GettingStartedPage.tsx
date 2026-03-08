@@ -2,8 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Container, Typography, Button, Stack } from '@mui/material';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import ChatIcon from '@mui/icons-material/Chat';
+import TodayIcon from '@mui/icons-material/Today';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import GlassCard from '../../components/common/GlassCard';
 
 interface Step {
@@ -24,28 +24,28 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId: _userId }) =
       num: 1,
       icon: <TrackChangesIcon sx={{ fontSize: 32 }} />,
       title: 'Build your goal tree',
-      description: "Map out what you're working toward. The more specific, the better your matches.",
+      description: "Map out what you're working toward. Break big ambitions into trackable sub-goals — the more specific, the better Praxis works for you.",
       cta: 'Set up goals →',
       to: '/goal-selection',
       color: '#F59E0B',
     },
     {
       num: 2,
-      icon: <AutoAwesomeIcon sx={{ fontSize: 32 }} />,
-      title: 'See who you match with',
-      description: 'Our algorithm finds people aligned with your specific ambitions and progress pace.',
-      cta: 'View matches →',
-      to: '/matches',
-      color: '#8B5CF6',
+      icon: <TodayIcon sx={{ fontSize: 32 }} />,
+      title: 'Log your progress every day',
+      description: "Each goal gets a daily tracker widget. Take 30 seconds after each session to log what you did. The streak is real — so is the momentum.",
+      cta: 'See how it works →',
+      to: '/goal-selection',
+      color: '#10B981',
     },
     {
       num: 3,
-      icon: <ChatIcon sx={{ fontSize: 32 }} />,
-      title: 'Start a conversation',
-      description: 'Message your top match. Real accountability starts with one conversation.',
-      cta: 'Connect →',
-      to: '/communication',
-      color: '#10B981',
+      icon: <BarChartIcon sx={{ fontSize: 32 }} />,
+      title: 'Watch your habits form',
+      description: 'Your habit calendar fills in as you log. After a week you\'ll see patterns. After a month, you\'ll have proof of what you\'re capable of.',
+      cta: 'View analytics →',
+      to: '/analytics',
+      color: '#8B5CF6',
     },
   ];
 
@@ -63,7 +63,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId: _userId }) =
             </Box>
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 480, mx: 'auto', lineHeight: 1.6 }}>
-            Three steps to find people who share your ambitions and hold you accountable.
+            Build the tracking habit in three steps. No followers needed — just you and your goals.
           </Typography>
         </Box>
 

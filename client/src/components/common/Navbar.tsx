@@ -54,6 +54,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import ForumIcon from '@mui/icons-material/Forum';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 
@@ -262,9 +263,9 @@ const Navbar: React.FC = () => {
               {user && (
                 <>
                   {[
-                    { label: 'Home', to: '/dashboard' },
+                    { label: 'Today', to: '/dashboard' },
                     { label: 'Discover', to: '/matches' },
-                    { label: 'Connect', to: '/communication' },
+                    { label: 'Chat', to: '/communication' },
                   ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
                     const isMatches = to === '/matches';
@@ -326,7 +327,7 @@ const Navbar: React.FC = () => {
                     slotProps={{ paper: { sx: { mt: 1, minWidth: 180, bgcolor: '#1F2937', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', overflow: 'hidden' } } }}
                   >
                     {[
-                      { label: 'Groups', to: '/groups', icon: <EmojiEventsIcon fontSize="small" /> },
+                      { label: 'Groups', to: '/groups', icon: <ForumIcon fontSize="small" /> },
                       { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon fontSize="small" /> },
                       { label: 'Analytics', to: '/analytics', icon: <BarChartIcon fontSize="small" /> },
                     ].map(({ label, to, icon }) => (
@@ -402,8 +403,10 @@ const Navbar: React.FC = () => {
                         fontWeight: 700,
                         fontSize: '0.75rem',
                         cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        '&:hover': { bgcolor: 'rgba(167,139,250,0.18)', borderColor: 'rgba(167,139,250,0.5)' },
                       }}
-                      onClick={() => {}}
+                      onClick={() => navigate('/commitments')}
                     />
                   )}
 
@@ -715,14 +718,14 @@ const Navbar: React.FC = () => {
 
             <List disablePadding>
               {[
-                { label: 'Home', to: '/dashboard', icon: <DashboardIcon />, primary: true },
+                { label: 'Today', to: '/dashboard', icon: <DashboardIcon />, primary: true },
                 { label: 'Discover', to: '/matches', icon: <ExploreIcon />, primary: true },
-                { label: 'Connect', to: '/communication', icon: <ChatIcon />, primary: true },
-                { label: 'Groups', to: '/groups', icon: <EmojiEventsIcon />, primary: true },
+                { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
+                { label: 'Groups', to: '/groups', icon: <ForumIcon />, primary: true },
+                { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: true },
                 { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon />, primary: false },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
-                { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: false },
                 { label: 'Settings', to: '/settings', icon: <SettingsIcon />, primary: false },
               ].map(({ label, to, icon, primary }, idx, arr) => (
                 <React.Fragment key={label}>

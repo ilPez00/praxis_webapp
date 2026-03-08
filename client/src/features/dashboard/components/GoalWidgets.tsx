@@ -17,6 +17,7 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import FlagIcon from '@mui/icons-material/Flag';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import GlassCard from '../../../components/common/GlassCard';
 import { supabase } from '../../../lib/supabase';
 import { API_URL } from '../../../lib/api';
@@ -1054,33 +1055,75 @@ function MiniChart({ entries, chartKey, color, unit }: {
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(now); d.setDate(d.getDate() - (6 - i));
     const key = d.toISOString().slice(0, 10);
-    const label = i === 6 ? 'Today' : d.toLocaleDateString('en', { weekday: 'short' });
+    const label = d.toLocaleDateString('en', { weekday: 'short' });
     const total = entries.filter(e => e.logged_at.slice(0, 10) === key)
       .reduce((s, e) => s + (Number(e.data[chartKey]) || 0), 0);
     const logged = entries.some(e => e.logged_at.slice(0, 10) === key);
-    return { label, total, logged };
+    return { label, total, logged, isToday: i === 6 };
   });
   const max = Math.max(...days.map(d => d.total), 1);
+
   return (
-    <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: 52, mt: 1.5, mb: 0.5 }}>
-      {days.map((day, i) => (
-        <Tooltip key={i} title={`${day.label}: ${day.total > 0 ? `${day.total} ${unit}` : day.logged ? 'Logged' : 'No entry'}`} placement="top">
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flex: 1 }}>
-            <Box sx={{
-              width: '100%', borderRadius: '4px 4px 0 0',
-              height: `${Math.max((day.total / max) * 38, day.logged ? 6 : 2)}px`,
-              bgcolor: day.logged
-                ? i === 6 ? color : `${color}99`
-                : 'rgba(255,255,255,0.06)',
-              transition: 'height 0.3s ease',
-              boxShadow: i === 6 && day.logged ? `0 0 6px ${color}66` : 'none',
-            }} />
-            <Typography sx={{ fontSize: '0.54rem', color: i === 6 ? 'text.primary' : 'text.disabled', fontWeight: i === 6 ? 700 : 400, lineHeight: 1 }}>
-              {day.label.slice(0, 3)}
-            </Typography>
-          </Box>
-        </Tooltip>
-      ))}
+    <Box sx={{ mt: 1.5, mb: 0.5 }}>
+      {/* Bars */}
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: 72 }}>
+        {days.map((day, i) => {
+          const barH = Math.max((day.total / max) * 58, day.logged ? 10 : 3);
+          return (
+            <Tooltip key={i} title={`${day.label}: ${day.total > 0 ? `${day.total} ${unit}` : day.logged ? 'Logged' : 'No entry'}`} placement="top">
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flex: 1 }}>
+                <Box sx={{
+                  width: '100%',
+                  height: `${barH}px`,
+                  borderRadius: '5px 5px 2px 2px',
+                  background: day.logged
+                    ? day.isToday
+                      ? `linear-gradient(to bottom, ${color}, ${color}77)`
+                      : `linear-gradient(to bottom, ${color}99, ${color}33)`
+                    : 'rgba(255,255,255,0.05)',
+                  transition: 'height 0.4s cubic-bezier(0.4,0,0.2,1)',
+                  boxShadow: day.isToday && day.logged
+                    ? `0 0 12px ${color}55, 0 2px 8px ${color}33`
+                    : 'none',
+                  position: 'relative',
+                  overflow: 'visible',
+                }}>
+                  {/* Glowing cap at top of today's bar */}
+                  {day.isToday && day.logged && (
+                    <Box sx={{
+                      position: 'absolute', top: -4, left: '50%', transform: 'translateX(-50%)',
+                      width: 8, height: 8, borderRadius: '50%',
+                      bgcolor: color,
+                      boxShadow: `0 0 10px ${color}, 0 0 20px ${color}88`,
+                    }} />
+                  )}
+                </Box>
+                <Typography sx={{
+                  fontSize: '0.5rem',
+                  color: day.isToday ? 'text.primary' : 'text.disabled',
+                  fontWeight: day.isToday ? 800 : 400,
+                  lineHeight: 1,
+                  letterSpacing: day.isToday ? '0.02em' : 0,
+                }}>
+                  {day.isToday ? 'Now' : day.label.slice(0, 1)}
+                </Typography>
+              </Box>
+            </Tooltip>
+          );
+        })}
+      </Box>
+      {/* Activity dot strip */}
+      <Box sx={{ display: 'flex', gap: '3px', mt: 1 }}>
+        {days.map((day, i) => (
+          <Box key={i} sx={{
+            flex: 1, height: 3, borderRadius: 2,
+            background: day.logged
+              ? day.isToday ? color : `${color}77`
+              : 'rgba(255,255,255,0.07)',
+            transition: 'background 0.3s ease',
+          }} />
+        ))}
+      </Box>
     </Box>
   );
 }
@@ -1208,6 +1251,19 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
   const currentGoal = tracker?.goal ?? {};
   const showForm = logOpen || !loggedToday;
 
+  // Consecutive days logged (streak within this tracker)
+  const trackerStreak = (() => {
+    let count = 0;
+    const today = new Date();
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      if (allEntries.some(e => e.logged_at.slice(0, 10) === key)) count++;
+      else break;
+    }
+    return count;
+  })();
+
   const handleLog = async () => {
     if (!config) return;
     const data: Record<string, any> = {};
@@ -1250,28 +1306,76 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
 
   return (
     <GlassCard sx={{
-      p: 0, borderRadius: '18px', overflow: 'hidden',
-      border: `1px solid ${loggedToday ? accentColor + '40' : accentColor + '1a'}`,
-      background: `linear-gradient(160deg, ${accentColor}${loggedToday ? '0d' : '07'} 0%, rgba(13,14,26,0.8) 100%)`,
-      transition: 'border-color 0.2s',
+      p: 0, borderRadius: '22px', overflow: 'hidden',
+      border: `1px solid ${loggedToday ? accentColor + '50' : accentColor + '20'}`,
+      background: loggedToday
+        ? `linear-gradient(160deg, ${accentColor}14 0%, ${domainColor}08 60%, rgba(13,14,26,0.92) 100%)`
+        : `linear-gradient(160deg, ${accentColor}08 0%, rgba(13,14,26,0.95) 100%)`,
+      boxShadow: loggedToday ? `0 8px 40px ${accentColor}20, 0 0 0 1px ${accentColor}18` : 'none',
+      transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
     }}>
+      {/* ── Glowing top accent strip ── */}
+      <Box sx={{
+        height: 3,
+        background: `linear-gradient(90deg, ${domainColor}00 0%, ${domainColor} 40%, ${accentColor} 70%, ${accentColor}00 100%)`,
+        opacity: loggedToday ? 1 : 0.35,
+        transition: 'opacity 0.3s ease',
+      }} />
+
       {/* ── Goal header ── */}
-      <Box sx={{ px: 2.5, pt: 2.5, pb: 1.5 }}>
+      <Box sx={{ px: 2.5, pt: 2, pb: 1.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-          {/* Domain color bar */}
-          <Box sx={{ width: 4, minHeight: 38, borderRadius: 2, bgcolor: domainColor, flexShrink: 0, mt: 0.25, opacity: 0.9 }} />
+          {/* Domain color bar — gradient */}
+          <Box sx={{
+            width: 5, minHeight: 42, borderRadius: 3,
+            background: `linear-gradient(to bottom, ${accentColor}, ${domainColor}77)`,
+            flexShrink: 0, mt: 0.25,
+            boxShadow: `0 0 10px ${accentColor}44`,
+          }} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              {config && <Typography sx={{ fontSize: '1.3rem', lineHeight: 1, flexShrink: 0 }}>{config.emoji}</Typography>}
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em' }} noWrap>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+              {config && (
+                <Box sx={{
+                  width: 34, height: 34, borderRadius: '10px', flexShrink: 0,
+                  bgcolor: `${accentColor}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: `1px solid ${accentColor}30`,
+                  boxShadow: loggedToday ? `0 0 12px ${accentColor}30` : 'none',
+                }}>
+                  <Typography sx={{ fontSize: '1.1rem', lineHeight: 1 }}>{config.emoji}</Typography>
+                </Box>
+              )}
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em', flex: 1 }} noWrap>
                 {node.name}
               </Typography>
+              {/* Today logged chip */}
               {loggedToday && (
-                <Chip label="✓" size="small" sx={{ height: 18, fontSize: '0.58rem', fontWeight: 700, ml: 'auto', flexShrink: 0, bgcolor: '#10B98118', color: '#10B981', border: '1px solid #10B98133' }} />
+                <Chip
+                  icon={<CheckIcon sx={{ fontSize: '10px !important', color: '#10B981 !important' }} />}
+                  label="Logged"
+                  size="small"
+                  sx={{
+                    height: 20, fontSize: '0.58rem', fontWeight: 700, flexShrink: 0,
+                    bgcolor: '#10B98118', color: '#10B981', border: '1px solid #10B98133',
+                    '& .MuiChip-icon': { ml: 0.5 },
+                  }}
+                />
+              )}
+              {/* Tracker streak badge */}
+              {trackerStreak > 1 && (
+                <Chip
+                  icon={<LocalFireDepartmentIcon sx={{ fontSize: '10px !important', color: '#F59E0B !important' }} />}
+                  label={`${trackerStreak}d`}
+                  size="small"
+                  sx={{
+                    height: 20, fontSize: '0.58rem', fontWeight: 700, flexShrink: 0,
+                    bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)',
+                    '& .MuiChip-icon': { ml: 0.5 },
+                  }}
+                />
               )}
             </Box>
             {node.domain && (
-              <Typography variant="caption" sx={{ color: domainColor, fontSize: '0.6rem', fontWeight: 600, opacity: 0.8 }}>
+              <Typography variant="caption" sx={{ color: domainColor, fontSize: '0.6rem', fontWeight: 700, opacity: 0.85, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                 {node.domain}
               </Typography>
             )}
@@ -1279,26 +1383,41 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
         </Box>
 
         {/* Progress bar + % */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1.5 }}>
-          <Box sx={{ flex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1.75 }}>
+          <Box sx={{ flex: 1, position: 'relative' }}>
             <LinearProgress
               variant="determinate"
               value={pct}
               sx={{
-                height: 7, borderRadius: 4,
-                bgcolor: 'rgba(255,255,255,0.07)',
-                '& .MuiLinearProgress-bar': { borderRadius: 4, bgcolor: domainColor },
+                height: 10, borderRadius: 5,
+                bgcolor: 'rgba(255,255,255,0.06)',
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 5,
+                  background: `linear-gradient(90deg, ${domainColor}bb, ${accentColor})`,
+                  boxShadow: pct > 0 ? `0 0 10px ${accentColor}66` : 'none',
+                },
               }}
             />
+            {/* Leading edge glow dot */}
+            {pct > 2 && pct < 100 && (
+              <Box sx={{
+                position: 'absolute', top: '50%', left: `${pct}%`,
+                transform: 'translate(-50%, -50%)',
+                width: 10, height: 10, borderRadius: '50%',
+                bgcolor: accentColor,
+                boxShadow: `0 0 8px ${accentColor}, 0 0 16px ${accentColor}66`,
+                pointerEvents: 'none',
+              }} />
+            )}
           </Box>
-          <Typography variant="body2" sx={{ fontWeight: 800, color: domainColor, minWidth: 36, textAlign: 'right', fontSize: '0.85rem' }}>
+          <Typography variant="body2" sx={{ fontWeight: 900, color: accentColor, minWidth: 34, textAlign: 'right', fontSize: '0.88rem' }}>
             {pct}%
           </Typography>
           <Tooltip title="Update progress">
             <IconButton
               size="small"
               onClick={e => { setSliderVal(pct); setAnchorEl(e.currentTarget); }}
-              sx={{ color: 'text.disabled', '&:hover': { color: domainColor }, width: 24, height: 24 }}
+              sx={{ color: 'text.disabled', '&:hover': { color: accentColor, bgcolor: `${accentColor}12` }, width: 26, height: 26, borderRadius: '8px' }}
             >
               <EditIcon sx={{ fontSize: 14 }} />
             </IconButton>
@@ -1307,9 +1426,14 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
 
         {/* Commitment badge (if staked) */}
         {bet && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1.25, px: 1, py: 0.6, borderRadius: '8px', bgcolor: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.18)' }}>
-            <VerifiedIcon sx={{ fontSize: 12, color: '#8B5CF6' }} />
-            <Typography variant="caption" sx={{ color: '#8B5CF6', fontWeight: 700, fontSize: '0.62rem' }}>
+          <Box sx={{
+            display: 'flex', alignItems: 'center', gap: 0.75, mt: 1.25, px: 1.25, py: 0.75,
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.06))',
+            border: '1px solid rgba(139,92,246,0.22)',
+          }}>
+            <VerifiedIcon sx={{ fontSize: 13, color: '#8B5CF6' }} />
+            <Typography variant="caption" sx={{ color: '#8B5CF6', fontWeight: 800, fontSize: '0.64rem' }}>
               {bet.stake_points} PP staked
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', ml: 0.5 }}>
@@ -1359,24 +1483,40 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
 
           {/* Today's logged data — prominent stat boxes */}
           {loggedToday && latestEntry && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>
-                Today's entry
+            <Box sx={{ mb: 2.5 }}>
+              <Typography variant="caption" sx={{
+                color: accentColor, fontSize: '0.58rem', letterSpacing: '0.1em',
+                textTransform: 'uppercase', fontWeight: 800, opacity: 0.85,
+              }}>
+                Today
               </Typography>
               <Box sx={{
                 display: 'grid',
                 gridTemplateColumns: `repeat(${Math.min(config.fields.filter(f => latestEntry.data[f.key] !== undefined && latestEntry.data[f.key] !== '').length, 4)}, 1fr)`,
-                gap: 1, mt: 0.75,
+                gap: 1, mt: 1,
               }}>
                 {config.fields.map(f => {
                   const val = latestEntry.data[f.key];
                   if (val === undefined || val === null || val === '') return null;
                   return (
-                    <Box key={f.key} sx={{ textAlign: 'center', px: 1, py: 1.25, bgcolor: `${accentColor}12`, borderRadius: '10px', border: `1px solid ${accentColor}25` }}>
-                      <Typography sx={{ fontSize: f.type === 'text' ? '0.72rem' : '1.4rem', fontWeight: 800, color: accentColor, lineHeight: 1, mb: 0.25, wordBreak: 'break-word' }}>
+                    <Box key={f.key} sx={{
+                      textAlign: 'center', px: 1, py: 1.5,
+                      background: `linear-gradient(135deg, ${accentColor}18, ${accentColor}08)`,
+                      borderRadius: '14px',
+                      border: `1px solid ${accentColor}28`,
+                      boxShadow: `0 2px 12px ${accentColor}14, inset 0 1px 0 ${accentColor}10`,
+                    }}>
+                      <Typography sx={{
+                        fontSize: f.type === 'text' ? '0.72rem' : '1.6rem',
+                        fontWeight: 900, color: accentColor, lineHeight: 1, mb: 0.5,
+                        wordBreak: 'break-word', letterSpacing: f.type === 'number' ? '-0.03em' : 0,
+                      }}>
                         {String(val)}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.58rem', display: 'block', lineHeight: 1 }}>
+                      <Typography variant="caption" sx={{
+                        color: 'text.disabled', fontSize: '0.56rem', display: 'block',
+                        lineHeight: 1, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      }}>
                         {f.unit || f.label}
                       </Typography>
                     </Box>
@@ -1384,8 +1524,8 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
                 }).filter(Boolean)}
               </Box>
               {todayEntries.length > 1 && (
-                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', mt: 0.5, display: 'block' }}>
-                  + {todayEntries.length - 1} more entr{todayEntries.length === 2 ? 'y' : 'ies'} today
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', mt: 0.75, display: 'block' }}>
+                  +{todayEntries.length - 1} more entr{todayEntries.length === 2 ? 'y' : 'ies'} today
                 </Typography>
               )}
             </Box>
@@ -1399,18 +1539,21 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
 
           {/* Log form */}
           <Collapse in={showForm}>
-            <Box sx={{ mt: 1.5 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>
-                  {loggedToday ? 'Log again' : "Log today's session"}
+            <Box sx={{ mt: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
+                <Typography variant="caption" sx={{
+                  color: 'text.disabled', fontSize: '0.58rem', letterSpacing: '0.08em',
+                  textTransform: 'uppercase', fontWeight: 700,
+                }}>
+                  {loggedToday ? 'Log another session' : "Log today's session"}
                 </Typography>
                 {loggedToday && (
-                  <IconButton size="small" onClick={() => setLogOpen(v => !v)} sx={{ color: 'text.disabled', width: 20, height: 20 }}>
+                  <IconButton size="small" onClick={() => setLogOpen(v => !v)} sx={{ color: 'text.disabled', width: 22, height: 22, borderRadius: '6px', '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' } }}>
                     {logOpen ? <CloseIcon sx={{ fontSize: 12 }} /> : <AddIcon sx={{ fontSize: 12 }} />}
                   </IconButton>
                 )}
               </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.75 }}>
                 {config.fields.map(f => (
                   <TextField
                     key={f.key}
@@ -1422,19 +1565,34 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
                     onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
                     inputProps={{ min: f.min, max: f.max, step: f.step ?? (f.type === 'number' ? 1 : undefined) }}
                     sx={{
-                      flex: f.type === 'text' ? '1 1 130px' : '0 1 90px',
-                      '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.82rem' },
+                      flex: f.type === 'text' ? '1 1 130px' : '0 1 88px',
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '10px', fontSize: '0.82rem',
+                        '&.Mui-focused fieldset': { borderColor: accentColor },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': { color: accentColor },
                       '& .MuiInputLabel-root': { fontSize: '0.77rem' },
                     }}
                   />
                 ))}
               </Box>
               <Button
-                variant="contained" fullWidth onClick={handleLog} disabled={saving}
-                endIcon={saving ? <CircularProgress size={12} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: '14px !important' }} />}
-                sx={{ borderRadius: '10px', fontWeight: 800, fontSize: '0.8rem', py: 1, background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}bb 100%)`, color: '#0A0B14' }}
+                variant="contained"
+                fullWidth
+                onClick={handleLog}
+                disabled={saving}
+                endIcon={saving ? <CircularProgress size={13} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: '15px !important' }} />}
+                sx={{
+                  borderRadius: '12px', fontWeight: 800, fontSize: '0.82rem', py: 1.25,
+                  background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}cc 100%)`,
+                  color: '#0A0B14',
+                  boxShadow: `0 4px 20px ${accentColor}44`,
+                  '&:hover': { boxShadow: `0 6px 28px ${accentColor}55`, transform: 'translateY(-1px)' },
+                  '&:active': { transform: 'translateY(0)' },
+                  transition: 'all 0.15s ease',
+                }}
               >
-                {loggedToday ? 'Log again +5⚡' : 'Log +5⚡'}
+                {loggedToday ? 'Log again +5⚡' : 'Log today +5⚡'}
               </Button>
             </Box>
           </Collapse>
