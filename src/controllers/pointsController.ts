@@ -12,6 +12,7 @@ const SPEND_CATALOGUE: Record<string, { cost: number; label: string }> = {
   custom_icon:       { cost: 100, label: 'Custom Goal Icon / Theme'       },
   skip_grading:      { cost:  80, label: 'Skip Partner Grading Wait'      },
   bet_stake:         { cost:  50, label: 'Extra Virtual Bet Stake'        },
+  suspend_goal:      { cost:  50, label: 'Suspend a Goal (pause without deleting)' },
 };
 
 /**
@@ -60,7 +61,7 @@ export const getBalance = catchAsync(async (req: Request, res: Response) => {
  * Deducts points and applies the purchased effect.
  */
 export const spendPoints = catchAsync(async (req: Request, res: Response) => {
-  const { userId, item } = req.body as { userId?: string; item?: string };
+  const { userId, item, nodeId } = req.body as { userId?: string; item?: string; nodeId?: string };
   if (!userId) return res.status(400).json({ error: 'userId is required' });
   if (!item || !SPEND_CATALOGUE[item]) {
     throw new BadRequestError(`Unknown item "${item}". Valid items: ${Object.keys(SPEND_CATALOGUE).join(', ')}`);
@@ -96,6 +97,24 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
     const base = Math.max(existing, now);
     updates.profile_boosted_until = new Date(base + 24 * 3600 * 1000).toISOString();
   }
+  if (item === 'suspend_goal') {
+    if (!nodeId) throw new BadRequestError('nodeId is required for suspend_goal');
+
+    const { data: treeRow } = await supabase
+      .from('goal_trees')
+      .select('nodes')
+      .eq('userId', userId)
+      .maybeSingle();
+
+    if (!treeRow?.nodes) throw new NotFoundError('Goal tree not found');
+    const nodes: any[] = Array.isArray(treeRow.nodes) ? treeRow.nodes : [];
+    const nodeIndex = nodes.findIndex((n: any) => n.id === nodeId);
+    if (nodeIndex === -1) throw new BadRequestError('Node not found in goal tree');
+    nodes[nodeIndex] = { ...nodes[nodeIndex], status: 'suspended' };
+
+    await supabase.from('goal_trees').update({ nodes }).eq('userId', userId);
+  }
+
   // Other items (goal_slot, coaching_session, super_match, etc.) are logged but
   // their enforcement lives in the respective controllers. The transaction record
   // is the source of truth for "has the user purchased this."
