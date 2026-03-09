@@ -6,8 +6,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { TRACKER_MAP, DOMAIN_TRACKER_MAP, TrackerType } from './trackerTypes';
+import { searchExercises } from './exerciseLibrary';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
+import Autocomplete from '@mui/material/Autocomplete';
 import {
   Box,
   Typography,
@@ -42,6 +44,9 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
   const [logTracker, setLogTracker] = useState<(Tracker & { def: TrackerType }) | null>(null);
   const [logFields, setLogFields] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // Exercise autocomplete — computed at component level (not inside map)
+  const exerciseSuggestions = logTracker?.type === 'lift' ? searchExercises(logFields['exercise'] ?? '') : [];
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -238,7 +243,23 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
             <DialogContent>
               <Stack spacing={2} sx={{ pt: 0.5 }}>
                 {logTracker.def.fields.map(field => (
-                  field.type === 'select' ? (
+                  field.key === 'exercise' ? (
+                    <Autocomplete
+                      key={field.key}
+                      freeSolo
+                      options={exerciseSuggestions}
+                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
+                      groupBy={o => typeof o === 'string' ? '' : o.muscle}
+                      inputValue={logFields['exercise'] ?? ''}
+                      onInputChange={(_, v) => setLogFields(p => ({ ...p, exercise: v }))}
+                      onChange={(_, v) => {
+                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, exercise: v.name }));
+                      }}
+                      renderInput={params => (
+                        <TextField {...params} label="Exercise *" size="small" placeholder="e.g. Bench Press" fullWidth />
+                      )}
+                    />
+                  ) : field.type === 'select' ? (
                     <TextField
                       key={field.key}
                       select
