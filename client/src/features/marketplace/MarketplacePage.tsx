@@ -34,8 +34,9 @@ import WorkIcon from '@mui/icons-material/Work';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import hotToast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import SportsKabaddiIcon from '@mui/icons-material/SportsKabaddi';
 import ShieldIcon from '@mui/icons-material/Shield';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -185,7 +186,7 @@ const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) =>
   useEffect(() => { fetchOffers(); }, [fetchOffers]);
 
   const handleCreate = async () => {
-    if (!formTitle.trim()) { toast.error('Title is required.'); return; }
+    if (!formTitle.trim()) { hotToast.error('Title is required.'); return; }
     setSaving(true);
     try {
       const headers = await getAuthHeader();
@@ -195,12 +196,12 @@ const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) =>
         compensation: formComp.trim() || undefined, remote: formRemote,
         requirements: formReqs.trim() || undefined, contact: formContact.trim() || undefined,
       }, { headers });
-      toast.success('Offer posted!');
+      hotToast.success('Offer posted!');
       setDialogOpen(false);
       setFormTitle(''); setFormDesc(''); setFormType('job'); setFormDomain('');
       setFormCity(''); setFormComp(''); setFormRemote(false); setFormReqs(''); setFormContact('');
       fetchOffers();
-    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to post offer.'); }
+    } catch (err: any) { hotToast.error(err.response?.data?.message || 'Failed to post offer.'); }
     finally { setSaving(false); }
   };
 
@@ -208,9 +209,9 @@ const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) =>
     try {
       const headers = await getAuthHeader();
       await axios.delete(`${API_URL}/offers/${id}`, { headers });
-      toast.success('Offer removed.');
+      hotToast.success('Offer removed.');
       fetchOffers();
-    } catch { toast.error('Failed to remove offer.'); }
+    } catch { hotToast.error('Failed to remove offer.'); }
   };
 
   const typeCfg = (type: string) => OFFER_TYPES.find(t => t.value === type) ?? OFFER_TYPES[0];
@@ -373,7 +374,14 @@ const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) =>
   );
 };
 
+
 // ─────────────────────────────────────────────────────────────────────────────
+
+const PP_TIERS = [
+  { tier: 'pp_500',  pp: 500,  price: '€4.99',  label: 'Starter',    highlight: false },
+  { tier: 'pp_1100', pp: 1100, price: '€9.99',  label: 'Popular',    highlight: true  },
+  { tier: 'pp_3000', pp: 3000, price: '€24.99', label: 'Best Value', highlight: false },
+];
 
 const MarketplacePage: React.FC = () => {
   const { user, refetch } = useUser();
@@ -423,6 +431,21 @@ const MarketplacePage: React.FC = () => {
     }
   };
 
+  const handleBuyPP = async (tier: string) => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+    try {
+      const res = await axios.post(`${API_URL}/stripe/create-pp-checkout`, {
+        userId: authUser.id,
+        email: authUser.email,
+        tier,
+      });
+      window.location.href = res.data.url;
+    } catch (e: any) {
+      hotToast.error(e.response?.data?.message || 'Could not start checkout');
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -463,12 +486,12 @@ const MarketplacePage: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)' }} variant="scrollable" scrollButtons="auto">
         <Tab icon={<DiamondIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Buy Pro" />
         <Tab icon={<VerifiedIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Commitments" />
+        <Tab icon={<SportsKabaddiIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Duels" />
         <Tab label="Shop" />
         <Tab label="Offers" />
-        <Tab icon={<EmojiEventsIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Challenges" />
       </Tabs>
 
       {/* ── Tab 0: Buy Pro ── */}
@@ -618,65 +641,49 @@ const MarketplacePage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Points packs */}
-              <Typography variant="overline" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-                Or buy Praxis Points
-              </Typography>
-              <Grid container spacing={2}>
-                {[
-                  { label: 'Starter', pp: '500 PP', price: '$2.99', color: '#60A5FA' },
-                  { label: 'Growth', pp: '1,500 PP', price: '$6.99', color: '#34D399', best: true },
-                  { label: 'Elite', pp: '5,000 PP', price: '$19.99', color: '#A78BFA' },
-                ].map(pack => (
-                  <Grid size={{ xs: 12, sm: 4 }} key={pack.label}>
-                    <Card sx={{
-                      borderRadius: 3, textAlign: 'center', p: 0.5,
-                      border: `1px solid ${pack.color}30`,
-                      bgcolor: `${pack.color}08`,
-                      position: 'relative',
-                    }}>
-                      {pack.best && (
-                        <Box sx={{
-                          position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
-                          px: 1.5, py: 0.25, borderRadius: '0 0 8px 8px',
-                          bgcolor: pack.color,
-                        }}>
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#000', fontSize: '0.6rem' }}>
-                            BEST VALUE
-                          </Typography>
-                        </Box>
-                      )}
-                      <CardContent sx={{ pt: pack.best ? 3 : 2 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: pack.color }}>{pack.label}</Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 900, color: pack.color, my: 0.5 }}>
-                          {pack.pp}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{pack.price}</Typography>
-                        <Button
-                          fullWidth size="small" variant="outlined"
-                          sx={{ borderRadius: 2, borderColor: pack.color, color: pack.color, fontWeight: 700 }}
-                          onClick={() => navigate('/upgrade')}
-                        >
-                          Buy
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </Grid>
+              {/* Buy Praxis Points */}
+              <Typography variant="h6" sx={{ fontWeight: 700, mt: 3, mb: 2 }}>⚡ Buy Praxis Points</Typography>
+              <Stack direction="row" spacing={2}>
+                {PP_TIERS.map(t => (
+                  <Box key={t.tier} sx={{
+                    flex: 1, p: 2, borderRadius: 2, textAlign: 'center',
+                    border: t.highlight ? '2px solid #A78BFA' : '1px solid rgba(255,255,255,0.1)',
+                    bgcolor: t.highlight ? 'rgba(167,139,250,0.08)' : 'rgba(255,255,255,0.03)',
+                  }}>
+                    <Typography variant="caption" color="text.secondary" display="block">{t.label}</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 800, color: '#A78BFA', my: 0.5 }}>
+                      ⚡ {t.pp.toLocaleString()}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>{t.price}</Typography>
+                    <Button
+                      fullWidth
+                      variant={t.highlight ? 'contained' : 'outlined'}
+                      onClick={() => handleBuyPP(t.tier)}
+                      sx={{
+                        borderRadius: '10px',
+                        background: t.highlight ? 'linear-gradient(135deg, #8B5CF6, #A78BFA)' : undefined,
+                        borderColor: t.highlight ? undefined : '#A78BFA',
+                        color: t.highlight ? '#fff' : '#A78BFA',
+                      }}
+                    >
+                      Buy
+                    </Button>
+                  </Box>
                 ))}
-              </Grid>
-              <Typography variant="caption" color="text.disabled" sx={{ display: 'block', textAlign: 'center', mt: 2 }}>
-                Points packs coming soon — wiring up Stripe one-time payments.
-              </Typography>
+              </Stack>
             </>
           )}
         </Box>
       )}
 
-      {/* ── Tab 1: Betting ── */}
+      {/* ── Tab 1: Commitments (Betting) ── */}
       {tab === 1 && <BettingPage />}
 
-      {/* ── Tab 2: Shop ── */}
-      {tab === 2 && <>
+      {/* ── Tab 2: Duels ── */}
+      {tab === 2 && <ChallengesPage />}
+
+      {/* ── Tab 3: Shop ── */}
+      {tab === 3 && <>
 
       {/* Catalogue sections */}
       {SECTIONS.map(section => {
@@ -823,11 +830,9 @@ const MarketplacePage: React.FC = () => {
       )}
       </>}
 
-      {/* ── Tab 3: Offers ── */}
-      {tab === 3 && <OffersPanel currentUserId={user?.id} />}
+      {/* ── Tab 4: Offers ── */}
+      {tab === 4 && <OffersPanel currentUserId={user?.id} />}
 
-      {/* ── Tab 4: Challenges ── */}
-      {tab === 4 && <ChallengesPage />}
     </Box>
   );
 };
