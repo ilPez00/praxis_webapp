@@ -101,6 +101,10 @@ const GoalTreePage: React.FC = () => {
   // Node action chooser state (click < 100%)
   const [actionNode, setActionNode] = useState<FrontendGoalNode | null>(null);
 
+  // Suspend goal dialog state
+  const [suspendNode, setSuspendNode] = useState<FrontendGoalNode | null>(null);
+  const [suspending, setSuspending] = useState(false);
+
   // Countdown tick — re-renders every minute so timers stay live
   const [, setTick] = useState(0);
 
@@ -659,10 +663,58 @@ const GoalTreePage: React.FC = () => {
             >
               Place a bet on this goal
             </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="warning"
+              onClick={() => { setActionNode(null); setSuspendNode(actionNode); }}
+              sx={{ borderRadius: '10px', justifyContent: 'flex-start', pl: 2, mt: 1 }}
+            >
+              ⏸ Suspend Goal (50 PP)
+            </Button>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setActionNode(null)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Suspend goal confirmation */}
+      <Dialog open={!!suspendNode} onClose={() => setSuspendNode(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Suspend Goal</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Suspending <strong>{suspendNode?.title}</strong> will pause it without deleting it. Costs <strong>50 PP</strong>.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setSuspendNode(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={suspending}
+            onClick={async () => {
+              if (!suspendNode || !currentUserId) return;
+              setSuspending(true);
+              try {
+                await axios.post(`${API_URL}/points/spend`, {
+                  userId: currentUserId,
+                  item: 'suspend_goal',
+                  nodeId: suspendNode.id,
+                });
+                toast.success('Goal suspended!');
+                setSuspendNode(null);
+                window.location.reload();
+              } catch (e: any) {
+                toast.error(e.response?.data?.message || 'Failed to suspend goal');
+              } finally {
+                setSuspending(false);
+              }
+            }}
+            sx={{ borderRadius: '10px' }}
+          >
+            {suspending ? <CircularProgress size={18} color="inherit" /> : 'Confirm (50 PP)'}
+          </Button>
         </DialogActions>
       </Dialog>
 
