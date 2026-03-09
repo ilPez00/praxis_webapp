@@ -468,6 +468,28 @@ PROBLEM: is_premium not updated after payment
 FIX: Check Railway logs for webhook delivery; ensure STRIPE_WEBHOOK_SECRET is set
 
 ================================================================================
+SQL MIGRATIONS TO RUN (Session 57 — Admin flag + Goal-tree editing for gio)
+================================================================================
+
+Run in Supabase → SQL Editor:
+
+  -- Grant gio unlimited goal-tree editing (is_admin bypass)
+  UPDATE public.profiles
+  SET is_admin = true
+  WHERE id = (SELECT id FROM auth.users WHERE email = 'pezzingiovaniantonio@gmail.com');
+
+  -- Reset edit count so gio starts fresh
+  UPDATE public.profiles
+  SET goal_tree_edit_count = 0
+  WHERE id = (SELECT id FROM auth.users WHERE email = 'pezzingiovaniantonio@gmail.com');
+
+SUCCESS: profiles row for pezzingiovaniantonio@gmail.com has is_admin = true, goal_tree_edit_count = 0
+
+Also ensure Railway env vars include:
+  CLIENT_URL = https://your-vercel-domain.vercel.app   (needed for Stripe redirect URLs)
+  STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET already set
+
+================================================================================
 SQL MIGRATIONS TO RUN (Session 51 — Places + Offers + Privacy columns)
 ================================================================================
 

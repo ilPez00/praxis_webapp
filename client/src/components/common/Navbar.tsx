@@ -40,23 +40,19 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ChatIcon from '@mui/icons-material/Chat';
-import StorefrontIcon from '@mui/icons-material/Storefront';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import LeaderboardIcon from '@mui/icons-material/Leaderboard';
-import HandshakeIcon from '@mui/icons-material/Handshake';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import VerifiedIcon from '@mui/icons-material/Verified';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ForumIcon from '@mui/icons-material/Forum';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 
 interface AppNotification {
   id: string;
@@ -96,7 +92,6 @@ const Navbar: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
-  const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(null);
   // New matches indicator — true if user hasn't visited /matches in 24h
   const [showMatchesBadge, setShowMatchesBadge] = useState(() => {
     const last = localStorage.getItem('praxis_matches_last_visit');
@@ -310,33 +305,6 @@ const Navbar: React.FC = () => {
                       </Button>
                     );
                   })}
-                  {/* More dropdown — secondary nav items */}
-                  <Button
-                    onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
-                    endIcon={<KeyboardArrowDownIcon sx={{ fontSize: '1rem !important', opacity: 0.7, transition: 'transform 0.2s', transform: Boolean(moreMenuAnchor) ? 'rotate(180deg)' : 'none' }} />}
-                    sx={{ color: 'text.secondary', fontWeight: 500, borderRadius: '8px', px: 1.5, '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' } }}
-                  >
-                    More
-                  </Button>
-                  <Menu
-                    anchorEl={moreMenuAnchor}
-                    open={Boolean(moreMenuAnchor)}
-                    onClose={() => setMoreMenuAnchor(null)}
-                    transformOrigin={{ horizontal: 'left', vertical: 'top' }}
-                    anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
-                    slotProps={{ paper: { sx: { mt: 1, minWidth: 180, bgcolor: '#1F2937', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', overflow: 'hidden' } } }}
-                  >
-                    {[
-                      { label: 'Groups', to: '/groups', icon: <ForumIcon fontSize="small" /> },
-                      { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon fontSize="small" /> },
-                      { label: 'Analytics', to: '/analytics', icon: <BarChartIcon fontSize="small" /> },
-                    ].map(({ label, to, icon }) => (
-                      <MenuItem key={label} onClick={() => { setMoreMenuAnchor(null); handleNav(to); }} sx={{ gap: 1.5, py: 1.25 }}>
-                        <Box sx={{ color: 'text.secondary' }}>{icon}</Box>
-                        <Typography variant="body2">{label}</Typography>
-                      </MenuItem>
-                    ))}
-                  </Menu>
                 </>
               )}
             </Box>
@@ -585,6 +553,10 @@ const Navbar: React.FC = () => {
                       <TrackChangesIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Goal Tree</Typography>
                     </MenuItem>
+                    <MenuItem onClick={() => handleNav('/marketplace')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <StorefrontOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Marketplace</Typography>
+                    </MenuItem>
                     <MenuItem onClick={() => handleNav('/settings')} sx={{ gap: 1.5, py: 1.25 }}>
                       <SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Settings</Typography>
@@ -723,7 +695,7 @@ const Navbar: React.FC = () => {
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Groups', to: '/groups', icon: <ForumIcon />, primary: true },
                 { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: true },
-                { label: 'Commitments', to: '/commitments', icon: <VerifiedIcon />, primary: false },
+                { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
                 { label: 'Settings', to: '/settings', icon: <SettingsIcon />, primary: false },
