@@ -186,9 +186,20 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
 
   const isAdmin = profile?.is_admin || false;
 
+  // Count extra goal slots purchased via marketplace (200 PP each)
+  const { count: extraSlots } = await supabase
+    .from('marketplace_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('item_type', 'goal_slot');
+
+  const effectiveLimit = rootGoalLimit + (extraSlots ?? 0);
+
   // Enforce root goal limit for non-premium, non-admin users
-  if (!isPremium && !isAdmin && safeRootNodes.length > rootGoalLimit) {
-    throw new ForbiddenError(`Non-premium users are limited to ${rootGoalLimit} primary goals. Upgrade to premium for unlimited goals.`);
+  if (!isPremium && !isAdmin && safeRootNodes.length > effectiveLimit) {
+    throw new ForbiddenError(
+      `You are limited to ${effectiveLimit} primary goals. Purchase an Extra Goal Slot (200 PP) or upgrade to premium.`
+    );
   }
 
   // --- Achievement Creation Logic ---
