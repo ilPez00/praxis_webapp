@@ -135,6 +135,33 @@ export const handleWebhook = async (req: Request, res: Response) => {
         const ppAmount = parseInt(session.metadata.pp ?? '0', 10);
         const ppUserId = session.metadata.userId;
         if (ppUserId && ppAmount > 0) {
+          // Idempotency check: see if we already processed this session
+          const { data: existing } = await supabase
+            .from('marketplace_transactions')
+            .select('id')
+            .eq('user_id', ppUserId)
+            .eq('item_type', 'pp_purchase')
+            .contains('metadata', { stripe_session_id: session.id })
+            .maybeSingle();
+
+          if (existing) {
+            logger.info(`PP webhook duplicate skipped: session ${session.id}`);
+            return res.json({ received: true });
+          }
+
+          // Record transaction first
+          await supabase.from('marketplace_transactions').insert({
+            user_id: ppUserId,
+            item_type: 'pp_purchase',
+            cost: 0,
+            metadata: {
+              label: `${ppAmount} PP via Stripe`,
+              stripe_session_id: session.id,
+              pp_amount: ppAmount,
+            },
+          });
+
+          // Credit PP
           const { data: profile } = await supabase
             .from('profiles')
             .select('praxis_points')
@@ -142,7 +169,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
             .single();
           const current = profile?.praxis_points ?? 0;
           await supabase.from('profiles').update({ praxis_points: current + ppAmount }).eq('id', ppUserId);
-          logger.info(`Credited ${ppAmount} PP to user ${ppUserId}`);
+          logger.info(`Credited ${ppAmount} PP to user ${ppUserId} (session ${session.id})`);
         }
         return res.json({ received: true });
       }
