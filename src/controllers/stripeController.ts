@@ -11,6 +11,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2026-01-28.clover' as any, // Use the version requested by TS for now
 });
 
+const PP_TIERS: Record<string, { pp: number; amountCents: number; label: string }> = {
+  pp_500:  { pp: 500,  amountCents: 499,  label: '500 Praxis Points' },
+  pp_1100: { pp: 1100, amountCents: 999,  label: '1100 Praxis Points' },
+  pp_3000: { pp: 3000, amountCents: 2499, label: '3000 Praxis Points' },
+};
+
 /**
  * @description Creates a Stripe Checkout Session for a new subscription.
  * This endpoint is called from the frontend when a user initiates the premium upgrade.
@@ -58,6 +64,34 @@ export const createCheckoutSession = catchAsync(async (req: Request, res: Respon
   res.status(200).json({ sessionId: session.id, url: session.url });
 });
 
+export const createPPCheckout = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId, email, tier } = req.body as { userId?: string; email?: string; tier?: string };
+  if (!userId || !email || !tier) throw new BadRequestError('userId, email, and tier are required');
+  if (!PP_TIERS[tier]) throw new BadRequestError(`Invalid tier. Valid: ${Object.keys(PP_TIERS).join(', ')}`);
+
+  const { amountCents, pp, label } = PP_TIERS[tier];
+
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: [{
+      price_data: {
+        currency: 'eur',
+        unit_amount: amountCents,
+        product_data: { name: label, description: 'Praxis Points — spend in marketplace' },
+      },
+      quantity: 1,
+    }],
+    mode: 'payment',
+    success_url: `${process.env.CLIENT_URL}/dashboard?pp_purchased=${pp}`,
+    cancel_url: `${process.env.CLIENT_URL}/dashboard`,
+    client_reference_id: userId,
+    customer_email: email,
+    metadata: { userId, pp: String(pp), purchase_type: 'pp' },
+  });
+
+  res.status(200).json({ sessionId: session.id, url: session.url });
+});
+
 /**
  * @description Handles Stripe webhook events to keep our database synchronized with Stripe.
  * This function verifies the webhook signature for security and processes various event types.
@@ -95,6 +129,23 @@ export const handleWebhook = async (req: Request, res: Response) => {
       const customerId = session.customer as string;
       const subscriptionId = session.subscription as string;
       const userId = session.metadata?.userId; // Retrieve our internal userId from session metadata
+
+      // PP one-time purchase
+      if (session.metadata?.purchase_type === 'pp') {
+        const ppAmount = parseInt(session.metadata.pp ?? '0', 10);
+        const ppUserId = session.metadata.userId;
+        if (ppUserId && ppAmount > 0) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('praxis_points')
+            .eq('id', ppUserId)
+            .single();
+          const current = profile?.praxis_points ?? 0;
+          await supabase.from('profiles').update({ praxis_points: current + ppAmount }).eq('id', ppUserId);
+          logger.info(`Credited ${ppAmount} PP to user ${ppUserId}`);
+        }
+        return res.json({ received: true });
+      }
 
       // Critical data validation
       if (!userId || !subscriptionId || !customerId) {
