@@ -90,6 +90,21 @@ export const TRACKER_TYPES: TrackerType[] = [
     entryLabel: d => `${d.activity || '?'} · ${d.duration}min${d.distance ? ` / ${d.distance}km` : ''}`,
   },
   {
+    id: 'steps',
+    label: 'Step Counter',
+    icon: '👟',
+    description: 'Track daily steps toward your activity goal',
+    color: '#F97316',
+    bg: 'rgba(249,115,22,0.08)',
+    border: 'rgba(249,115,22,0.25)',
+    fields: [
+      { key: 'steps', label: 'Steps', type: 'number', placeholder: '10000' },
+      { key: 'goal', label: 'Daily Goal', type: 'number', placeholder: '10000', optional: true },
+      { key: 'source', label: 'Source', type: 'select', options: ['Manual', 'Apple Health', 'Garmin', 'Fitbit', 'Google Fit'], optional: true },
+    ],
+    entryLabel: (d) => `${Number(d.steps).toLocaleString()} steps${d.goal ? ` / ${Number(d.goal).toLocaleString()} goal` : ''}`,
+  },
+  {
     id: 'study',
     label: 'Study Tracker',
     icon: '📚',
@@ -227,7 +242,7 @@ export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
  * activated when a user has goals in that domain.
  */
 export const DOMAIN_TRACKER_MAP: Record<string, string[]> = {
-  [Domain.FITNESS]:                          ['lift', 'cardio', 'meal'],
+  [Domain.FITNESS]:                          ['lift', 'cardio', 'meal', 'steps'],
   [Domain.ACADEMICS]:                        ['study'],
   [Domain.MENTAL_HEALTH]:                    ['sleep', 'meditation', 'journal'],
   [Domain.PHILOSOPHICAL_DEVELOPMENT]:        ['meditation', 'journal'],
