@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { TRACKER_MAP, DOMAIN_TRACKER_MAP, TrackerType } from './trackerTypes';
 import { searchExercises } from './exerciseLibrary';
+import { searchFoods, fetchCaloriesFromOFF } from './foodLibrary';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -47,6 +48,22 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
 
   // Exercise autocomplete — computed at component level (not inside map)
   const exerciseSuggestions = logTracker?.type === 'lift' ? searchExercises(logFields['exercise'] ?? '') : [];
+
+  // Food autocomplete state — declared at component level (hook rules)
+  const [foodSuggestions, setFoodSuggestions] = useState<{ name: string; kcalPer100g: number }[]>([]);
+  const [foodSearching, setFoodSearching] = useState(false);
+
+  useEffect(() => {
+    const foodQuery = logTracker?.type === 'meal' ? (logFields['food'] ?? '') : '';
+    if (!foodQuery.trim()) { setFoodSuggestions([]); return; }
+    const local = searchFoods(foodQuery).map(f => ({ name: f.name, kcalPer100g: f.kcalPer100g }));
+    if (local.length > 0) { setFoodSuggestions(local); return; }
+    // Fallback to Open Food Facts
+    setFoodSearching(true);
+    let active = true;
+    fetchCaloriesFromOFF(foodQuery).then(r => { if (active) { setFoodSuggestions(r); setFoodSearching(false); } });
+    return () => { active = false; };
+  }, [logTracker?.type, logFields['food']]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -243,7 +260,25 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
             <DialogContent>
               <Stack spacing={2} sx={{ pt: 0.5 }}>
                 {logTracker.def.fields.map(field => (
-                  field.key === 'exercise' ? (
+                  field.key === 'food' ? (
+                    <Autocomplete
+                      key={field.key}
+                      freeSolo
+                      loading={foodSearching}
+                      options={foodSuggestions}
+                      getOptionLabel={o => typeof o === 'string' ? o : `${o.name} (${o.kcalPer100g} kcal/100g)`}
+                      inputValue={logFields['food'] ?? ''}
+                      onInputChange={(_, v) => setLogFields(p => ({ ...p, food: v }))}
+                      onChange={(_, v) => {
+                        if (v && typeof v !== 'string') {
+                          setLogFields(p => ({ ...p, food: v.name, calories: String(v.kcalPer100g) }));
+                        }
+                      }}
+                      renderInput={params => (
+                        <TextField {...params} label="What did you eat? *" size="small" fullWidth />
+                      )}
+                    />
+                  ) : field.key === 'exercise' ? (
                     <Autocomplete
                       key={field.key}
                       freeSolo
