@@ -11,6 +11,7 @@ export interface GoalNode {
     targetDate?: string;       // ISO date string deadline
     weight: number; // 0-100, importance percentage within parent
     progress: number; // 0-100, completion percentage
+    status?: 'active' | 'suspended' | 'completed';
     children: GoalNode[];
     domain?: Domain; // Only on top-level nodes for categorization
 }

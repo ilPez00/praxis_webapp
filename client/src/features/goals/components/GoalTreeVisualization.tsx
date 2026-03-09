@@ -358,6 +358,8 @@ const GoalTreeVisualization: React.FC<Props> = ({
           const labelY = ln.y + ln.r + (ln.depth === 1 ? 15 : 12);
           const pillW = label.length * labelFs * 0.58 + 12;
 
+          const isSuspended = ln.node.status === 'suspended';
+
           const strokeOpacity = isDomainNode
             ? (isActive ? 0.8 : 0.35)
             : (isDone ? 1 : isHov ? 0.9 : 0.6);
@@ -367,7 +369,8 @@ const GoalTreeVisualization: React.FC<Props> = ({
               key={ln.node.id}
               style={{
                 cursor: (!isDomainNode && onNodeClick) ? 'pointer' : 'default',
-                opacity: isInactive ? 0.3 : 1,
+                opacity: isSuspended ? 0.35 : isInactive ? 0.3 : 1,
+                filter: isSuspended ? 'grayscale(0.8)' : undefined,
               }}
               onClick={() => !isDomainNode && onNodeClick ? onNodeClick(ln.node) : undefined}
               onMouseEnter={() => setHovered(ln.node.id)}
@@ -492,6 +495,12 @@ const GoalTreeVisualization: React.FC<Props> = ({
                         {label}
                       </text>
                     </>
+                  )}
+                  {isSuspended && (
+                    <text x={ln.x} y={labelY + labelFs + 4} textAnchor="middle"
+                      fontSize="10" fontFamily="inherit">
+                      ⏸
+                    </text>
                   )}
                 </>
               )}
