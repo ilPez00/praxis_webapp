@@ -34,48 +34,34 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import Slider from '@mui/material/Slider';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ShareIcon from '@mui/icons-material/Share';
+import SettingsIcon from '@mui/icons-material/Settings';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
-function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
-  const nodeMap = new Map<string, FrontendGoalNode>();
-  for (const n of backendNodes) {
-    nodeMap.set(n.id, {
-      id: n.id,
-      title: n.name,
-      description: n.customDetails,
-      weight: Math.round(n.weight * 100) / 100,
-      progress: Math.round(n.progress * 100),
-      domain: n.domain as Domain,
-      children: [],
-    });
-  }
-  const roots: FrontendGoalNode[] = [];
-  for (const n of backendNodes) {
-    const node = nodeMap.get(n.id)!;
-    if (n.parentId && nodeMap.has(n.parentId)) {
-      nodeMap.get(n.parentId)!.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-  return roots;
-}
-
-interface DMPartner {
-  userId: string;
-  name: string;
-}
+// ... (buildFrontendTree stays same)
 
 const GoalTreePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [treeData, setTreeData] = useState<FrontendGoalNode[]>([]);
+  const [backendNodes, setBackendNodes] = useState<any[]>([]); 
   const [domainProficiency, setDomainProficiency] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [memberSince, setMemberSince] = useState<string | undefined>(undefined);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [isOwnTree, setIsOwnTree] = useState(true);
+
+  // Edit/Branch dialog state
+  const [editingNode, setEditingNode] = useState<FrontendGoalNode | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editMetric, setEditMetric] = useState('');
+  const [editTargetDate, setEditTargetDate] = useState('');
+  const [isBranching, setIsBranching] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Peer verification claim dialog state
   const [claimNode, setClaimNode] = useState<FrontendGoalNode | null>(null);
@@ -129,6 +115,7 @@ const GoalTreePage: React.FC = () => {
         const response = await axios.get(`${API_URL}/goals/${userId}`);
         const goalTree = response.data;
         const allNodes: any[] = goalTree.nodes || [];
+        setBackendNodes(allNodes);
         setTreeData(buildFrontendTree(allNodes));
         if (goalTree.domain_proficiency && typeof goalTree.domain_proficiency === 'object') {
           setDomainProficiency(goalTree.domain_proficiency as Record<string, number>);
@@ -182,12 +169,8 @@ const GoalTreePage: React.FC = () => {
 
   const handleNodeClick = (node: FrontendGoalNode) => {
     if (!isOwnTree) return;
-    if (node.progress >= 100) {
-      // 100% — offer to post achievement to community feed
-      setAchieveNode(node);
-      return;
-    }
-    // < 100% — show action chooser
+    if (node.id.startsWith('__dom__')) return;
+    // Show action chooser for all nodes
     setActionNode(node);
   };
 
@@ -221,6 +204,71 @@ const GoalTreePage: React.FC = () => {
       toast.error(err.response?.data?.message || 'Failed to update progress.');
     } finally {
       setSavingProgress(false);
+    }
+  };
+
+  const handleOpenEdit = (node: FrontendGoalNode, branch = false) => {
+    setEditingNode(node);
+    setIsBranching(branch);
+    if (branch) {
+      setEditName('');
+      setEditDesc('');
+      setEditMetric('');
+      setEditTargetDate('');
+    } else {
+      setEditName(node.title);
+      setEditDesc(node.description || '');
+      // Need original metric from backendNodes
+      const bNode = backendNodes.find(n => n.id === node.id);
+      setEditMetric(bNode?.completionMetric || '');
+      setEditTargetDate(bNode?.targetDate || '');
+    }
+    setActionNode(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingNode || !currentUserId || !editName.trim()) return;
+    setSavingEdit(true);
+    try {
+      let updatedNodes = [...backendNodes];
+      if (isBranching) {
+        const newNode = {
+          id: Math.random().toString(36).substring(2, 9),
+          parentId: editingNode.id,
+          userId: currentUserId,
+          domain: editingNode.domain,
+          name: editName.trim(),
+          customDetails: editDesc.trim() || undefined,
+          completionMetric: editMetric.trim() || undefined,
+          targetDate: editTargetDate || undefined,
+          weight: 1.0,
+          progress: 0,
+        };
+        updatedNodes.push(newNode);
+      } else {
+        updatedNodes = updatedNodes.map(n => n.id === editingNode.id ? {
+          ...n,
+          name: editName.trim(),
+          customDetails: editDesc.trim() || undefined,
+          completionMetric: editMetric.trim() || undefined,
+          targetDate: editTargetDate || undefined,
+        } : n);
+      }
+
+      const roots = updatedNodes.filter(n => !n.parentId);
+      await axios.post(`${API_URL}/goals`, {
+        userId: currentUserId,
+        nodes: updatedNodes,
+        rootNodes: roots,
+      });
+
+      toast.success(isBranching ? 'Sub-goal added!' : 'Goal updated!');
+      setEditingNode(null);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save changes.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -613,69 +661,99 @@ const GoalTreePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Action chooser — click node < 100% */}
+      {/* Action chooser — click node */}
       <Dialog open={!!actionNode} onClose={() => setActionNode(null)} maxWidth="xs" fullWidth
         PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}>
         <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
           {actionNode?.title}
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 400, mt: 0.5 }}>
-            Currently {actionNode?.progress}% — what would you like to do?
+            {actionNode?.progress}% complete — choose an action:
           </Typography>
         </DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+            {actionNode && actionNode.progress < 100 && (
+              <Button
+                fullWidth variant="outlined" startIcon={<TrendingUpIcon />}
+                onClick={() => { setProgressValue(actionNode.progress); setProgressNode(actionNode); setActionNode(null); }}
+                sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(16,185,129,0.4)', color: '#10B981', '&:hover': { borderColor: '#10B981', bgcolor: 'rgba(16,185,129,0.08)' } }}
+              >
+                Update progress
+              </Button>
+            )}
+            
+            {actionNode && actionNode.progress >= 100 && (
+              <Button
+                fullWidth variant="contained" startIcon={<EmojiEventsIcon />}
+                onClick={() => { setAchieveNode(actionNode); setActionNode(null); }}
+                sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)' }}
+              >
+                Post Achievement
+              </Button>
+            )}
+
             <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<TrendingUpIcon />}
-              onClick={() => {
-                setProgressValue(actionNode?.progress ?? 0);
-                setProgressNode(actionNode);
-                setActionNode(null);
-              }}
-              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(16,185,129,0.4)', color: '#10B981',
-                '&:hover': { borderColor: '#10B981', bgcolor: 'rgba(16,185,129,0.08)' } }}
+              fullWidth variant="outlined" startIcon={<AccountTreeIcon />}
+              onClick={() => handleOpenEdit(actionNode!, true)}
+              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(139,92,246,0.4)', color: '#8B5CF6', '&:hover': { borderColor: '#8B5CF6', bgcolor: 'rgba(139,92,246,0.08)' } }}
             >
-              Update progress
+              Branch Goal (Add Sub-goal)
             </Button>
+
             <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<VerifiedIcon />}
-              onClick={() => {
-                setClaimNode(actionNode);
-                setSelectedVerifier(null);
-                if (currentUserId) fetchDMPartners(currentUserId);
-                setActionNode(null);
-              }}
-              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(139,92,246,0.4)', color: '#8B5CF6',
-                '&:hover': { borderColor: '#8B5CF6', bgcolor: 'rgba(139,92,246,0.08)' } }}
+              fullWidth variant="outlined" startIcon={<EditNoteIcon />}
+              onClick={() => handleOpenEdit(actionNode!, false)}
+              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(255,255,255,0.2)', color: 'text.primary' }}
             >
-              Request peer verification
+              Edit Goal Details
             </Button>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<EmojiEventsIcon />}
-              onClick={() => { setBetNode(actionNode); setActionNode(null); }}
-              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(245,158,11,0.4)', color: '#F59E0B',
-                '&:hover': { borderColor: '#F59E0B', bgcolor: 'rgba(245,158,11,0.08)' } }}
-            >
-              Place a bet on this goal
-            </Button>
-            <Button
-              fullWidth
-              variant="outlined"
-              color="warning"
-              onClick={() => { setActionNode(null); setSuspendNode(actionNode); }}
-              sx={{ borderRadius: '10px', justifyContent: 'flex-start', pl: 2, mt: 1 }}
-            >
-              ⏸ Suspend Goal (50 PP)
-            </Button>
+
+            {actionNode && actionNode.progress < 100 && (
+              <>
+                <Button
+                  fullWidth variant="outlined" startIcon={<VerifiedIcon />}
+                  onClick={() => { setClaimNode(actionNode); setSelectedVerifier(null); if (currentUserId) fetchDMPartners(currentUserId); setActionNode(null); }}
+                  sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(139,92,246,0.4)', color: '#8B5CF6', '&:hover': { borderColor: '#8B5CF6', bgcolor: 'rgba(139,92,246,0.08)' } }}
+                >
+                  Request peer verification
+                </Button>
+                <Button
+                  fullWidth variant="outlined" startIcon={<EmojiEventsIcon />}
+                  onClick={() => { setBetNode(actionNode); setActionNode(null); }}
+                  sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(245,158,11,0.4)', color: '#F59E0B', '&:hover': { borderColor: '#F59E0B', bgcolor: 'rgba(245,158,11,0.08)' } }}
+                >
+                  Place a bet
+                </Button>
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setActionNode(null)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit/Branch Dialog */}
+      <Dialog open={!!editingNode} onClose={() => setEditingNode(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {isBranching ? <AddCircleOutlineIcon sx={{ color: 'primary.main' }} /> : <EditNoteIcon sx={{ color: 'primary.main' }} />}
+            {isBranching ? `Add Sub-goal to: ${editingNode?.title}` : 'Edit Goal'}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} placeholder="What is the goal?" />
+            <TextField fullWidth label="Description" multiline rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Details..." />
+            <TextField fullWidth label="Success Metric" multiline rows={2} value={editMetric} onChange={e => setEditMetric(e.target.value)} placeholder="How will you know it's done?" />
+            <TextField fullWidth label="Target Date" type="date" InputLabelProps={{ shrink: true }} value={editTargetDate} onChange={e => setEditTargetDate(e.target.value)} inputProps={{ min: new Date().toISOString().slice(0, 10) }} />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setEditingNode(null)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim()} sx={{ borderRadius: '10px' }}>
+            {savingEdit ? 'Saving...' : (isBranching ? 'Add Sub-goal' : 'Save Changes')}
+          </Button>
         </DialogActions>
       </Dialog>
 

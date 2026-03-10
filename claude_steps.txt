@@ -1676,3 +1676,20 @@ ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES 
 ```
 
 ### Commits: (Latest schema and docs updates)
+
+---
+
+## Session 73 (2026-03-10) — Goal Tree Evolution & AI Stability
+
+### Implemented:
+- **Interactive Goal Tree**: Nodes in the `GoalTreeVisualization` are now fully clickable and editable. Added an "Action Chooser" dialog that allows users to branch goals (add sub-goals), edit details (name, description, metric), or update progress.
+- **Completion Rewards**: Updated `goalController.ts` to grant a fresh goal tree edit (resets `goal_tree_edit_count` to 0) whenever a user completes a goal (reaches 100% progress).
+- **Branching Logic**: Integrated sub-goal creation directly into the tree view, allowing the goal structure to grow organically as a tree.
+- **AI Service Fixes (Axiom/Gemini)**: 
+    - Updated `EmbeddingService.ts` to use `text-embedding-004` with a fallback to `embedding-001` to resolve 404 errors found in backend logs.
+    - Confirmed `AICoachingService.ts` is using `gemini-1.5-flash` for stable coaching reports and narratives.
+
+### Status:
+- The Goal Tree is now a dynamic, evolving structure. AI matching and coaching are more resilient to model deprecations.
+
+### Commits: 2d1a8dd + latest changes

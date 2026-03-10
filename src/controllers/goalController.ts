@@ -483,6 +483,13 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
       if (targetDomain) bumpDomainProficiency(userId as string, targetDomain, 1.0).catch(() => {});
       // Auto-create achievement + community feed post (fire-and-forget)
       createAchievementFromGoal(node, userId as string, profile.name, profile.avatar_url ?? undefined).catch(() => {});
+      
+      // ── GRANT REWARD: Free Edit ──
+      // Completion grants a fresh edit session by resetting the count
+      await supabase.from('profiles')
+        .update({ goal_tree_edit_count: 0 })
+        .eq('id', userId);
+      logger.info(`Granted free edit to ${userId} for completing node ${nodeId}`);
     }
   }
 

@@ -30,8 +30,8 @@ export class EmbeddingService {
       return;
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    // embedding-001: 768-dimensional dense vector, suitable for semantic similarity.
-    this.embeddingModel = this.genAI.getGenerativeModel({ model: "embedding-001" });
+    // text-embedding-004 is the newer, more robust embedding model.
+    this.embeddingModel = this.genAI.getGenerativeModel({ model: "text-embedding-004" });
     this.available = true;
   }
 
@@ -46,13 +46,21 @@ export class EmbeddingService {
       throw new Error('EmbeddingService: Gemini model not available. Check GEMINI_API_KEY.');
     }
     try {
+      // taskType "RETRIEVAL_DOCUMENT" is standard for indexing content for search/matching
       const result = await this.embeddingModel.embedContent({
         content: { parts: [{ text }] },
-        taskType: "SEMANTIC_SIMILARITY",
+        taskType: "RETRIEVAL_DOCUMENT",
       });
       return result.embedding.values;
-    } catch (error) {
-      logger.error('Error generating embedding:', error);
+    } catch (error: any) {
+      logger.error('Error generating embedding:', error.message);
+      // Fallback to older model name if newer one fails (some projects only have access to 001)
+      if (error.message?.includes('not found')) {
+        logger.info('text-embedding-004 not found, falling back to embedding-001...');
+        const fallbackModel = this.genAI!.getGenerativeModel({ model: "embedding-001" });
+        const result = await fallbackModel.embedContent(text);
+        return result.embedding.values;
+      }
       throw error;
     }
   }
