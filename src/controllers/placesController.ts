@@ -122,14 +122,55 @@ export const leavePlace = catchAsync(async (req: Request, res: Response, _next: 
   res.json({ success: true });
 });
 
+export const updatePlace = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ForbiddenError('Authentication required.');
+  const { id } = req.params;
+  const { name, type, address, city, latitude, longitude, description, website, schedule, tags } = req.body;
+
+  // Check if owner or admin
+  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
+  const { data: place } = await supabase.from('places').select('owner_id').eq('id', id).single();
+
+  if (!place) throw new NotFoundError('Place not found.');
+  if (place.owner_id !== userId && !profile?.is_admin) {
+    throw new ForbiddenError('Only the owner or an admin can update this place.');
+  }
+
+  const { data, error } = await supabase
+    .from('places')
+    .update({
+      name: name?.trim() || undefined,
+      type: type?.trim() || undefined,
+      address: address?.trim() || null,
+      city: city?.trim() || null,
+      latitude: latitude ?? null,
+      longitude: longitude ?? null,
+      description: description?.trim() || null,
+      website: website?.trim() || null,
+      schedule: schedule?.trim() || null,
+      tags: tags ?? undefined,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new InternalServerError('Failed to update place.');
+  res.json(data);
+});
+
 export const deletePlace = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const userId = req.user?.id;
   if (!userId) throw new ForbiddenError('Authentication required.');
   const { id } = req.params;
 
+  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
   const { data: place } = await supabase.from('places').select('owner_id').eq('id', id).single();
+
   if (!place) throw new NotFoundError('Place not found.');
-  if (place.owner_id !== userId) throw new ForbiddenError('Only the owner can delete this place.');
+  if (place.owner_id !== userId && !profile?.is_admin) {
+    throw new ForbiddenError('Only the owner or an admin can delete this place.');
+  }
 
   const { error } = await supabase.from('places').delete().eq('id', id);
   if (error) throw new InternalServerError('Failed to delete place.');

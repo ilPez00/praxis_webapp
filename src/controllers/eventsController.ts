@@ -149,6 +149,7 @@ export const deleteEvent = catchAsync(async (req: Request, res: Response, _next:
 
   const { id } = req.params;
 
+  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
   const { data: event, error: fetchError } = await supabase
     .from('events')
     .select('creator_id')
@@ -156,7 +157,9 @@ export const deleteEvent = catchAsync(async (req: Request, res: Response, _next:
     .single();
 
   if (fetchError || !event) throw new NotFoundError('Event not found.');
-  if (event.creator_id !== userId) throw new ForbiddenError('Only the creator can delete this event.');
+  if (event.creator_id !== userId && !profile?.is_admin) {
+    throw new ForbiddenError('Only the creator or an admin can delete this event.');
+  }
 
   const { error } = await supabase.from('events').delete().eq('id', id);
   if (error) throw new InternalServerError('Failed to delete event.');

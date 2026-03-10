@@ -14,6 +14,7 @@ import MyLocationIcon from '@mui/icons-material/MyLocation';
 import PeopleIcon from '@mui/icons-material/People';
 import DeleteIcon from '@mui/icons-material/Delete';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import EditIcon from '@mui/icons-material/Edit';
 import GlassCard from '../../components/common/GlassCard';
 import LocationMap from '../../components/common/LocationMap';
 import { supabase } from '../../lib/supabase';
@@ -88,6 +89,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
   const [saving, setSaving] = useState(false);
 
   // Form
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formType, setFormType] = useState('gym');
   const [formAddress, setFormAddress] = useState('');
@@ -98,6 +100,17 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
   const [formWebsite, setFormWebsite] = useState('');
   const [formSchedule, setFormSchedule] = useState('');
   const [formRemote, setFormRemote] = useState(false);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!currentUserId) return;
+      const { data } = await supabase.from('profiles').select('is_admin').eq('id', currentUserId).single();
+      setIsAdmin(!!data?.is_admin);
+    };
+    checkAdmin();
+  }, [currentUserId]);
 
   const getAuthHeader = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -141,24 +154,51 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
     );
   };
 
-  const handleCreate = async () => {
+  const openEditDialog = (place: Place) => {
+    setEditingId(place.id);
+    setFormName(place.name);
+    setFormType(place.type);
+    setFormAddress(place.address || '');
+    setFormCity(place.city || '');
+    setFormLat(place.latitude ? String(place.latitude) : '');
+    setFormLng(place.longitude ? String(place.longitude) : '');
+    setFormDesc(place.description || '');
+    setFormWebsite(place.website || '');
+    setFormSchedule(place.schedule || '');
+    setDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormName(''); setFormType('gym'); setFormAddress(''); setFormCity('');
+    setFormLat(''); setFormLng(''); setFormDesc(''); setFormWebsite(''); setFormSchedule(''); setFormRemote(false);
+  };
+
+  const handleSave = async () => {
     if (!formName.trim()) { toast.error('Name is required.'); return; }
     setSaving(true);
     try {
       const headers = await getAuthHeader();
-      await axios.post(`${API_URL}/places`, {
+      const payload = {
         name: formName.trim(), type: formType,
-        address: formAddress.trim() || undefined, city: formCity.trim() || undefined,
-        latitude: formLat ? parseFloat(formLat) : undefined, longitude: formLng ? parseFloat(formLng) : undefined,
-        description: formDesc.trim() || undefined, website: formWebsite.trim() || undefined,
-        schedule: formSchedule.trim() || undefined,
-      }, { headers });
-      toast.success('Place added!');
+        address: formAddress.trim() || null, city: formCity.trim() || null,
+        latitude: formLat ? parseFloat(formLat) : null, longitude: formLng ? parseFloat(formLng) : null,
+        description: formDesc.trim() || null, website: formWebsite.trim() || null,
+        schedule: formSchedule.trim() || null,
+      };
+
+      if (editingId) {
+        await axios.put(`${API_URL}/places/${editingId}`, payload, { headers });
+        toast.success('Place updated!');
+      } else {
+        await axios.post(`${API_URL}/places`, payload, { headers });
+        toast.success('Place added!');
+      }
+      
       setDialogOpen(false);
-      setFormName(''); setFormType('gym'); setFormAddress(''); setFormCity('');
-      setFormLat(''); setFormLng(''); setFormDesc(''); setFormWebsite(''); setFormSchedule(''); setFormRemote(false);
+      resetForm();
       fetchPlaces(nearbyMode && userGeo ? userGeo : undefined);
-    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to add place.'); }
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to save place.'); }
     finally { setSaving(false); }
   };
 
@@ -251,6 +291,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
             const cfg = typeConfig(place.type);
             const isMember = place.members.some(m => m.user_id === currentUserId);
             const isOwner = place.owner_id === currentUserId;
+            const canManage = isOwner || isAdmin;
             return (
               <Grid key={place.id} size={{ xs: 12, sm: 6, md: 4 }}>
                 <GlassCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -260,12 +301,19 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
                       size="small"
                       sx={{ bgcolor: `${cfg.color}18`, color: cfg.color, fontWeight: 700, fontSize: '0.72rem' }}
                     />
-                    {isOwner && (
-                      <Tooltip title="Delete place">
-                        <IconButton size="small" onClick={() => handleDelete(place.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                    {canManage && (
+                      <Stack direction="row" spacing={0.5}>
+                        <Tooltip title="Edit place">
+                          <IconButton size="small" onClick={() => openEditDialog(place)} sx={{ opacity: 0.5, '&:hover': { opacity: 1, color: 'primary.main' } }}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete place">
+                          <IconButton size="small" onClick={() => handleDelete(place.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     )}
                   </Box>
 
@@ -343,11 +391,11 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
         </Grid>
       )}
 
-      {/* Add Place Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      {/* Add/Edit Place Dialog */}
+      <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); resetForm(); }} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <PlaceIcon sx={{ color: 'primary.main' }} /> Add a Place
+            <PlaceIcon sx={{ color: 'primary.main' }} /> {editingId ? 'Edit Place' : 'Add a Place'}
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -387,15 +435,15 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
           <Button
             variant="contained"
-            onClick={handleCreate}
+            onClick={handleSave}
             disabled={saving || !formName.trim()}
-            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <AddCircleOutlineIcon />}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : (editingId ? <EditIcon /> : <AddCircleOutlineIcon />)}
             sx={{ borderRadius: '10px', fontWeight: 800 }}
           >
-            {saving ? 'Adding…' : 'Add place'}
+            {saving ? (editingId ? 'Saving…' : 'Adding…') : (editingId ? 'Save changes' : 'Add place')}
           </Button>
         </DialogActions>
       </Dialog>

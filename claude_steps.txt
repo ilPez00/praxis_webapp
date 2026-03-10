@@ -1583,3 +1583,17 @@ ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";
 - Configuration docs aligned with current architecture.
 
 ### Commit: 4da3cb1
+
+---
+
+## Session 68 (2026-03-10) — Admin & Creator Privileges Expansion
+
+### Implemented:
+- **Place Management**: Admins and owners can now edit and delete places directly from the `PlacesTab`. Added a new `PUT /api/places/:id` endpoint to handle updates.
+- **Event Management**: Admins can now delete any event and generate check-in QR codes, previously restricted to creators. Updated `EventsPage.tsx` and `eventsController.ts` with `is_admin` permission checks.
+- **UI Improvements**: Added `EditIcon` to place cards for authorized users and modified the "Add Place" dialog to serve as an edit dialog when needed.
+
+### Status:
+- Admins have full oversight over community spaces and events.
+
+### Commits: (Multiple across controllers, routes, and features)

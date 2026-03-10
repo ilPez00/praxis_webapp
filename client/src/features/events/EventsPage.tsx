@@ -88,8 +88,16 @@ const EventsPage: React.FC = () => {
   const [formLat, setFormLat] = useState('');
   const [formLng, setFormLng] = useState('');
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => setCurrentUserId(u?.id));
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      setCurrentUserId(u?.id);
+      if (u?.id) {
+        supabase.from('profiles').select('is_admin').eq('id', u.id).single()
+          .then(({ data }) => setIsAdmin(!!data?.is_admin));
+      }
+    });
   }, []);
 
   const getAuthHeader = async () => {
@@ -299,6 +307,7 @@ const EventsPage: React.FC = () => {
               const going = event.rsvps?.filter(r => r.status === 'going').length ?? 0;
               const maybe = event.rsvps?.filter(r => r.status === 'maybe').length ?? 0;
               const isCreator = event.creator_id === currentUserId;
+              const canManage = isCreator || isAdmin;
 
               return (
                 <Grid key={event.id} size={{ xs: 12, md: 6, lg: 4 }}>
@@ -320,7 +329,7 @@ const EventsPage: React.FC = () => {
                           {formatDate(event.event_date)}
                         </Typography>
                       </Box>
-                      {isCreator && (
+                      {canManage && (
                         <Stack direction="row" spacing={0.5}>
                           <Tooltip title="Show Check-in QR">
                             <IconButton size="small" onClick={() => handleShowQR(event.id, event.title)} sx={{ opacity: 0.6, '&:hover': { opacity: 1, color: '#10B981' } }}>
