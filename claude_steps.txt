@@ -1543,3 +1543,18 @@ ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";
 - Webapp should now load correctly. Discovery Hub and Communication Hub are both functional.
 
 ### Commit: 2e8b9a1
+
+---
+
+## Session 65 (2026-03-10) — OpenStreetMap Migration
+
+### Accomplished:
+- **OSM Migration**: Replaced Google Maps with **OpenStreetMap** using **Leaflet** and **React-Leaflet**. This removes the dependency on `VITE_GOOGLE_MAPS_KEY` and provides a fully open-source mapping solution.
+- **Dark Theme Integration**: Integrated CartoDB "Dark Matter" tiles to maintain the Praxis premium dark aesthetic.
+- **Component Refactor**: Updated `LocationMap.tsx` with auto-fitting bounds and custom marker handling. Updated `PlacesTab.tsx` to point external map links to OpenStreetMap.
+- **Build Verified**: Confirmed successful production build with Vite after the migration.
+
+### Status:
+- Maps are now functional without an API key.
+
+### Commit: 021602d
