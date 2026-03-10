@@ -1,9 +1,20 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
-import { Box, Typography, CircularProgress } from '@mui/material';
-import MapIcon from '@mui/icons-material/Map';
+import React, { useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { Box, Typography } from '@mui/material';
+import 'leaflet/dist/leaflet.css';
 
-const GMAPS_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_KEY as string | undefined;
+// Fix for default marker icons not showing in production
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 export interface MapMarker {
   id: string;
@@ -18,163 +29,76 @@ interface LocationMapProps {
   height?: number;
 }
 
-// Dark map style matching the app theme
-const DARK_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#0d0e1a' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d0e1a' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1f2937' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#111827' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#374151' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a1628' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3b82f6' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#111827' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0f2a1a' }] },
-  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1f2937' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#374151' }] },
-  { featureType: 'administrative.country', elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
-  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d1d5db' }] },
-];
-
-const MAP_OPTIONS: google.maps.MapOptions = {
-  styles: DARK_STYLE,
-  disableDefaultUI: false,
-  zoomControl: true,
-  mapTypeControl: false,
-  streetViewControl: false,
-  fullscreenControl: true,
-  clickableIcons: false,
-};
-
-function computeCenter(markers: MapMarker[]): { lat: number; lng: number } {
-  const lat = markers.reduce((s, m) => s + m.lat, 0) / markers.length;
-  const lng = markers.reduce((s, m) => s + m.lng, 0) / markers.length;
-  return { lat, lng };
+// Helper component to auto-fit bounds when markers change
+function MapAutoFit({ markers }: { markers: MapMarker[] }) {
+  const map = useMap();
+  React.useEffect(() => {
+    if (markers.length === 0) return;
+    if (markers.length === 1) {
+      map.setView([markers[0].lat, markers[0].lng], 14);
+    } else {
+      const bounds = L.latLngBounds(markers.map(m => [m.lat, m.lng]));
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [map, markers]);
+  return null;
 }
 
-// Inner component — only rendered when GMAPS_KEY exists, so useJsApiLoader is
-// never called with an empty key (which would fire the NoApiKeys console warning).
-const LocationMapInner: React.FC<LocationMapProps & { gmapsKey: string }> = ({ markers, height = 340, gmapsKey }) => {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'praxis-google-map',
-    googleMapsApiKey: gmapsKey,
-  });
-
-  const onLoad = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-    if (markers.length > 1) {
-      const bounds = new window.google.maps.LatLngBounds();
-      markers.forEach(m => bounds.extend({ lat: m.lat, lng: m.lng }));
-      map.fitBounds(bounds, 60);
-    }
-  }, [markers]);
-
-  const onUnmount = useCallback(() => { mapRef.current = null; }, []);
-
+const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340 }) => {
   const validMarkers = markers.filter(m => m.lat != null && m.lng != null);
-
-  if (loadError) return null;
-
-  if (!isLoaded) {
-    return (
-      <Box sx={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.02)', mb: 3 }}>
-        <CircularProgress size={28} />
-      </Box>
-    );
-  }
 
   if (validMarkers.length === 0) return null;
 
-  const center = validMarkers.length === 1
-    ? { lat: validMarkers[0].lat, lng: validMarkers[0].lng }
-    : computeCenter(validMarkers);
-
-  const selected = selectedId ? validMarkers.find(m => m.id === selectedId) : null;
+  const center: [number, number] = validMarkers.length === 1 
+    ? [validMarkers[0].lat, validMarkers[0].lng]
+    : [
+        validMarkers.reduce((s, m) => s + m.lat, 0) / validMarkers.length,
+        validMarkers.reduce((s, m) => s + m.lng, 0) / validMarkers.length
+      ];
 
   return (
-    <Box sx={{ borderRadius: '16px', overflow: 'hidden', mb: 3, border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
-      <GoogleMap
-        mapContainerStyle={{ width: '100%', height }}
-        center={center}
-        zoom={validMarkers.length === 1 ? 14 : 10}
-        options={MAP_OPTIONS}
-        onLoad={onLoad}
-        onUnmount={onUnmount}
+    <Box sx={{ 
+      borderRadius: '16px', 
+      overflow: 'hidden', 
+      mb: 3, 
+      height,
+      border: '1px solid rgba(255,255,255,0.07)', 
+      boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+      zIndex: 1 // Ensure Leaflet doesn't overlap app navigation
+    }}>
+      <MapContainer 
+        center={center} 
+        zoom={validMarkers.length === 1 ? 14 : 10} 
+        style={{ width: '100%', height: '100%' }}
+        scrollWheelZoom={false}
       >
-        {validMarkers.map(m => (
-          <Marker
-            key={m.id}
-            position={{ lat: m.lat, lng: m.lng }}
-            title={m.title}
-            onClick={() => setSelectedId(prev => prev === m.id ? null : m.id)}
-            options={{
-              icon: {
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: '#F59E0B',
-                fillOpacity: 1,
-                strokeColor: '#0A0B14',
-                strokeWeight: 2,
-              },
-            }}
-          />
-        ))}
+        {/* CartoDB Dark Matter — perfectly matches Praxis dark theme */}
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        />
+        
+        <MapAutoFit markers={validMarkers} />
 
-        {selected && (
-          <InfoWindow
-            position={{ lat: selected.lat, lng: selected.lng }}
-            onCloseClick={() => setSelectedId(null)}
-            options={{ pixelOffset: new window.google.maps.Size(0, -14) }}
-          >
-            <Box sx={{ color: '#0A0B14', maxWidth: 180 }}>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.82rem', lineHeight: 1.3 }}>
-                {selected.title}
-              </Typography>
-              {selected.subtitle && (
-                <Typography variant="caption" sx={{ color: '#374151', display: 'block', mt: 0.25 }}>
-                  {selected.subtitle}
+        {validMarkers.map(m => (
+          <Marker key={m.id} position={[m.lat, m.lng]}>
+            <Popup>
+              <Box sx={{ color: '#0A0B14', minWidth: 120, p: 0.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
+                  {m.title}
                 </Typography>
-              )}
-            </Box>
-          </InfoWindow>
-        )}
-      </GoogleMap>
+                {m.subtitle && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                    {m.subtitle}
+                  </Typography>
+                )}
+              </Box>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
     </Box>
   );
-};
-
-// Outer component — checks for API key before mounting the inner component.
-// This ensures useJsApiLoader (and the Google Maps script tag) is never injected
-// without a valid key, preventing the NoApiKeys console warning.
-const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340 }) => {
-  if (!GMAPS_KEY) {
-    return (
-      <Box sx={{
-        height,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 1,
-        borderRadius: '16px',
-        border: '1px dashed rgba(255,255,255,0.1)',
-        bgcolor: 'rgba(255,255,255,0.02)',
-        mb: 3,
-      }}>
-        <MapIcon sx={{ fontSize: 40, color: 'text.disabled', opacity: 0.4 }} />
-        <Typography variant="body2" color="text.disabled">
-          Add <code>VITE_GOOGLE_MAPS_KEY</code> to enable map view
-        </Typography>
-      </Box>
-    );
-  }
-
-  return <LocationMapInner markers={markers} height={height} gmapsKey={GMAPS_KEY} />;
 };
 
 export default LocationMap;

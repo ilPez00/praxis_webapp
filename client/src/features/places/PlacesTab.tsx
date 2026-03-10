@@ -53,38 +53,22 @@ interface Place {
   members: { user_id: string }[];
 }
 
-// Optional Google Maps embed
-const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
-
+// Optional OpenStreetMap link
 function MapsFrame({ lat, lng, name }: { lat: number; lng: number; name: string }) {
-  if (!GMAPS_KEY) {
-    return (
-      <Box
-        component="a"
-        href={`https://www.google.com/maps/search/${encodeURIComponent(name)}/@${lat},${lng},15z`}
-        target="_blank"
-        rel="noopener noreferrer"
-        sx={{
-          display: 'flex', alignItems: 'center', gap: 0.5,
-          color: '#60A5FA', fontSize: '0.75rem', textDecoration: 'none',
-          '&:hover': { textDecoration: 'underline' },
-        }}
-      >
-        <OpenInNewIcon sx={{ fontSize: 14 }} /> Open in Google Maps
-      </Box>
-    );
-  }
   return (
-    <Box sx={{ borderRadius: '10px', overflow: 'hidden', height: 160, mt: 1 }}>
-      <iframe
-        title={name}
-        width="100%"
-        height="160"
-        style={{ border: 0 }}
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        src={`https://www.google.com/maps/embed/v1/place?key=${GMAPS_KEY}&q=${lat},${lng}&zoom=15`}
-      />
+    <Box
+      component="a"
+      href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      sx={{
+        display: 'flex', alignItems: 'center', gap: 0.5,
+        color: '#60A5FA', fontSize: '0.75rem', textDecoration: 'none',
+        mt: 1,
+        '&:hover': { textDecoration: 'underline' },
+      }}
+    >
+      <OpenInNewIcon sx={{ fontSize: 14 }} /> View on OpenStreetMap
     </Box>
   );
 }
