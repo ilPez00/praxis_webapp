@@ -468,6 +468,16 @@ PROBLEM: is_premium not updated after payment
 FIX: Check Railway logs for webhook delivery; ensure STRIPE_WEBHOOK_SECRET is set
 
 ================================================================================
+SQL MIGRATIONS TO RUN (Session 60 — Places Tags)
+================================================================================
+
+Run in Supabase SQL Editor:
+
+ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
+
+SUCCESS: no error; places table now supports domain tagging.
+
+================================================================================
 SQL MIGRATIONS TO RUN (Session 59 — CheckIn mood + win columns)
 ================================================================================
 

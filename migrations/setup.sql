@@ -1009,6 +1009,7 @@ CREATE TABLE IF NOT EXISTS public.places (
   description TEXT,
   website     TEXT,
   schedule    TEXT,                   -- e.g. "Mon-Fri 6am-10pm"
+  tags        TEXT[] DEFAULT '{}',    -- goal domain tags
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
