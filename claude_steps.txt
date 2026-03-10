@@ -1500,3 +1500,14 @@ ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";
 
 ### TypeScript: ✅ 0 errors (backend + frontend)
 ### Commit: 7656844
+
+---
+
+## Session 62 (2026-03-10) — Debugging Blank Screen
+
+### Fixed:
+- **ErrorBoundary Resilience**: Removed `Link` component from the root `ErrorBoundary.tsx`. This component was causing a secondary crash (`TypeError: C.useContext(...) is null`) when trying to render a navigation link outside the `Router` context during a primary crash, resulting in a blank screen.
+- **DiscoverPage Tab Stability**: Switched sub-pages in `DiscoverPage.tsx` (`MatchesPage`, `PlacesTab`, `EventsPage`) to `React.lazy`. This aligns with the global routing strategy and prevents potential initialization race conditions or circular dependencies when these pages are imported both eagerly and lazily.
+
+### TypeScript: ✅ 0 errors (backend + frontend)
+### Commit: 5f6888e
