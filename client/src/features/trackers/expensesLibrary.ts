@@ -92,7 +92,7 @@ export const MERCHANT_LIBRARY: MerchantEntry[] = [
   { name: 'Disney+',        category: 'Streaming' },
   { name: 'YouTube Premium',category: 'Streaming' },
   { name: 'Amazon Prime',   category: 'Streaming' },
-  { name: 'Amazon',         category: 'Shopping' },
+  { name: 'Amazon',         category: 'Electronics' },
   { name: 'Zara',           category: 'Clothing' },
   { name: 'H&M',            category: 'Clothing' },
   { name: 'IKEA',           category: 'Furniture' },
@@ -100,8 +100,8 @@ export const MERCHANT_LIBRARY: MerchantEntry[] = [
   { name: 'Electric bill',  category: 'Utilities' },
   { name: 'Gas bill',       category: 'Utilities' },
   { name: 'Water bill',     category: 'Utilities' },
-  { name: 'PayPal',         category: 'Finance' },
-  { name: 'Revolut',        category: 'Finance' },
+  { name: 'PayPal',         category: 'Loan Repayment' },
+  { name: 'Revolut',        category: 'Subscriptions' },
 ];
 
 export function searchCategories(query: string): ExpenseCategory[] {

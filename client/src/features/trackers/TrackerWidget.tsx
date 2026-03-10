@@ -275,7 +275,6 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
                       freeSolo
                       options={expenseCategorySuggestions}
                       getOptionLabel={o => typeof o === 'string' ? o : `${o.emoji} ${o.name}`}
-                      groupBy={o => typeof o === 'string' ? '' : o.group}
                       inputValue={logFields['category'] ?? ''}
                       onInputChange={(_, v) => setLogFields(p => ({ ...p, category: v }))}
                       onChange={(_, v) => {
