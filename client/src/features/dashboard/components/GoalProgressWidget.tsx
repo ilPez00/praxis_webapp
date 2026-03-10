@@ -17,6 +17,7 @@ import {
 import Slider from '@mui/material/Slider';
 import EditIcon from '@mui/icons-material/Edit';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import GlassCard from '../../../components/common/GlassCard';
 import { DOMAIN_COLORS } from '../../../types/goal';
 import { Domain } from '../../../models/Domain';
@@ -57,6 +58,25 @@ const GoalProgressWidget: React.FC<Props> = ({ userId, nodes, onProgressUpdate }
   const handleClose = () => {
     setAnchorEl(null);
     setActiveNode(null);
+  };
+
+  const handleQuickIncrement = async (node: BackendNode) => {
+    const newPct = Math.min(100, Math.round(node.progress * 100) + 10);
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await axios.patch(
+        `${API_URL}/goals/${userId}/node/${node.id}/progress`,
+        { progress: newPct },
+        { headers: { Authorization: `Bearer ${session?.access_token}` } },
+      );
+      onProgressUpdate(node.id, newPct / 100);
+      toast.success(`+10% → ${newPct}%`);
+    } catch {
+      toast.error('Failed to update');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSave = async () => {
@@ -137,6 +157,20 @@ const GoalProgressWidget: React.FC<Props> = ({ userId, nodes, onProgressUpdate }
                 >
                   <EditIcon sx={{ fontSize: 16 }} />
                 </IconButton>
+              </Tooltip>
+
+              {/* Quick +10% button */}
+              <Tooltip title="+10%">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleQuickIncrement(node)}
+                    disabled={saving || Math.round(node.progress * 100) >= 100}
+                    sx={{ color: color, opacity: Math.round(node.progress * 100) >= 100 ? 0.3 : 0.7, '&:hover': { color } }}
+                  >
+                    <TrendingUpIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </span>
               </Tooltip>
             </Box>
           );
