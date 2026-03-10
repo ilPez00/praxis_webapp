@@ -92,9 +92,9 @@ const Navbar: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
-  // New matches indicator — true if user hasn't visited /matches in 24h
+  // New matches indicator — true if user hasn't visited /discover in 24h
   const [showMatchesBadge, setShowMatchesBadge] = useState(() => {
-    const last = localStorage.getItem('praxis_matches_last_visit');
+    const last = localStorage.getItem('praxis_discover_last_visit');
     if (!last) return true;
     return Date.now() - parseInt(last, 10) > 24 * 60 * 60 * 1000;
   });
@@ -259,19 +259,19 @@ const Navbar: React.FC = () => {
                 <>
                   {[
                     { label: 'Today', to: '/dashboard' },
-                    { label: 'Discover', to: '/matches' },
+                    { label: 'Discover', to: '/discover' },
                     { label: 'Chat', to: '/communication' },
                   ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
-                    const isMatches = to === '/matches';
+                    const isDiscover = to === '/discover';
                     return (
                       <Button
                         key={label}
                         component={RouterLink}
                         to={to}
                         onClick={() => {
-                          if (isMatches) {
-                            localStorage.setItem('praxis_matches_last_visit', String(Date.now()));
+                          if (isDiscover) {
+                            localStorage.setItem('praxis_discover_last_visit', String(Date.now()));
                             setShowMatchesBadge(false);
                           }
                         }}
@@ -691,7 +691,7 @@ const Navbar: React.FC = () => {
             <List disablePadding>
               {[
                 { label: 'Today', to: '/dashboard', icon: <DashboardIcon />, primary: true },
-                { label: 'Discover', to: '/matches', icon: <ExploreIcon />, primary: true },
+                { label: 'Discover', to: '/discover', icon: <ExploreIcon />, primary: true },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Groups', to: '/groups', icon: <ForumIcon />, primary: true },
                 { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: true },

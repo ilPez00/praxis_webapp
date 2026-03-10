@@ -11,6 +11,7 @@ import MobileWidget from '../features/widgets/MobileWidget';
 
 // Private Pages — lazy loaded (code-split per route, loaded on demand)
 const DashboardPage = React.lazy(() => import('../features/dashboard/DashboardPage'));
+const DiscoverPage = React.lazy(() => import('../features/discover/DiscoverPage'));
 const ProfilePage = React.lazy(() => import('../features/profile/ProfilePage'));
 const MatchesPage = React.lazy(() => import('../features/matches/MatchesPage'));
 const ChatPage = React.lazy(() => import('../features/chat/ChatPage'));
@@ -60,6 +61,7 @@ const routes: RouteConfig[] = [
   // Private Routes
 
   { path: '/dashboard', element: DashboardPage, private: true },
+  { path: '/discover', element: DiscoverPage, private: true },
   { path: '/profile', element: ProfilePage, private: true },
   { path: '/profile/:id', element: ProfilePage, private: true, param: 'id' },
   { path: '/matches', element: MatchesPage, private: true },
