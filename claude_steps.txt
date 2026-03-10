@@ -1483,3 +1483,20 @@ ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";
 
 ### TypeScript: ✅ 0 errors (backend + frontend)
 ### Commits: f36e394, 83599ae, 260feba
+
+---
+
+## Session 61 (2026-03-10) — Discover Hub Refactor + Verona Seeding Fallback
+
+### Implemented:
+- **Discover Hub**: Created `DiscoverPage.tsx` at `/discover`, consolidating **People** (Matches), **Places**, and **Events** into a single tabbed interface for better UX and centralized exploration.
+- **Communication Cleanup**: Refactored `CommunicationPage.tsx` to focus exclusively on direct **Messages** and **Groups**, removing redundant tabs.
+- **Global Navigation Update**: Updated `Navbar.tsx` (desktop and mobile) to feature "Discover" as a primary destination, including a smart badge indicator for new matches.
+- **Routing Alignment**: Updated `routes.tsx` to prioritize the new `/discover` hub while maintaining standalone routes for direct accessibility.
+- **Verona Seeding (Fallback)**: Successfully populated the `places` table with 15 verified Verona locations. Used a fallback seeding script to ensure data availability even before the `tags` schema migration is manually applied by the user.
+
+### Manual Actions Required:
+- Run the SQL migration in Supabase to enable tagging: `ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";`
+
+### TypeScript: ✅ 0 errors (backend + frontend)
+### Commit: 7656844
