@@ -9,8 +9,11 @@ import GlassCard from '../../components/common/GlassCard';
 import PostFeed from '../posts/PostFeed';
 import SiteTour from '../../components/common/SiteTour';
 import GoalWidgets from './components/GoalWidgets';
+import CommonWordsWidget from './components/CommonWordsWidget';
+import TrackerSection from '../trackers/TrackerSection';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
+import InsightsIcon from '@mui/icons-material/Insights';
 
 import {
   Container,
@@ -248,6 +251,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
 const DashboardPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
+  const navigate = useNavigate();
 
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [localStreak, setLocalStreak] = useState<number | null>(null);
@@ -332,9 +336,28 @@ const DashboardPage: React.FC = () => {
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 8 }}>
       <Container maxWidth="xl">
 
+        {/* ── Header with Analytics link ── */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 3, mb: 1 }}>
+          <Typography variant="h4" sx={{ fontWeight: 900, letterSpacing: '-0.02em' }}>
+            Dashboard
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<InsightsIcon />}
+            onClick={() => navigate('/analytics')}
+            sx={{ borderRadius: '10px', fontWeight: 700 }}
+          >
+            Analytics
+          </Button>
+        </Box>
+
+        {/* ── Juicy Words analysis ── */}
+        {currentUserId && <CommonWordsWidget />}
+
         {/* ── Goal widgets ── */}
         {currentUserId && hasGoals && (
-          <Box sx={{ pt: 3 }}>
+          <Box sx={{ mb: 4 }}>
             <ErrorBoundary fallback={null}>
               <GoalWidgets
                 userId={currentUserId}
@@ -353,6 +376,15 @@ const DashboardPage: React.FC = () => {
                 }}
               />
             </ErrorBoundary>
+          </Box>
+        )}
+
+        {/* ── Trackers Hub ── */}
+        {currentUserId && (
+          <Box sx={{ mb: 4 }}>
+            <GlassCard glowColor="rgba(245,158,11,0.05)" sx={{ p: 3 }}>
+              <TrackerSection userId={currentUserId} />
+            </GlassCard>
           </Box>
         )}
 

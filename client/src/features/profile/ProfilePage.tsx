@@ -936,13 +936,6 @@ const ProfilePage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Trackers — own profile only */}
-      {isOwnProfile && (
-        <GlassCard glowColor="rgba(245,158,11,0.08)" sx={{ p: 3 }}>
-          <TrackerSection userId={user!.id} />
-        </GlassCard>
-      )}
-
       {/* Goal Tree shortcut */}
       <GlassCard glowColor="rgba(139,92,246,0.12)" sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
