@@ -16,7 +16,7 @@ function friendlyAiError(err: any): { message: string; code: string } {
   if (msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('too many requests')) {
     return {
       code: 'QUOTA_EXCEEDED',
-      message: "Axiom is resting — the AI service has hit its daily limit. He'll be back soon. (Upgrade the Gemini API plan to remove this limit.)",
+      message: "Axiom is resting — the AI service has hit its daily limit. If this persists, verify the GEMINI_API_KEY plan or billing in AI Studio.",
     };
   }
   if (msg.includes('GEMINI_API_KEY') || msg.toLowerCase().includes('api key')) {
