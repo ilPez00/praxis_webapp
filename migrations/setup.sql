@@ -1081,6 +1081,7 @@ CREATE TABLE IF NOT EXISTS public.duels (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   creator_id          UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   opponent_id         UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  goal_node_id        TEXT,                   -- Reference to specific goal node
   title               TEXT NOT NULL,
   description         TEXT,
   category            TEXT NOT NULL,          -- goal domain / category

@@ -1693,3 +1693,18 @@ ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES 
 - The Goal Tree is now a dynamic, evolving structure. AI matching and coaching are more resilient to model deprecations.
 
 ### Commits: 2d1a8dd + latest changes
+
+---
+
+## Session 74 (2026-03-10) — Targeted Duels Feature
+
+### Implemented:
+- **Targeted Duel Flow**: Added a "Duel" button to user profiles (for others). This opens a `DuelDialog` that fetches the opponent's public goals and compares them with the user's own goals, highlighting shared domains.
+- **Goal-Linked Duels**: Updated `createDuel` backend (`duelController.ts`) and database schema (`migrations/setup.sql`) to include a `goal_node_id`, allowing challenges to be explicitly tied to a specific objective.
+- **Stake & Deadline Logic**: Users can choose an opponent's goal to duel on, or enter a custom title, set a Praxis Point stake (min 10), and a duration (1-90 days).
+- **SQL Migration**: Added `ALTER TABLE public.duels ADD COLUMN IF NOT EXISTS goal_node_id TEXT;` to `manual_actions.txt`. 
+
+### Status:
+- Users can now initiate direct, goal-aligned competition with their peers.
+
+### Commits: (Latest changes across backend and profile page)

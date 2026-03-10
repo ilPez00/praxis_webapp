@@ -161,7 +161,7 @@ export const createDuel = catchAsync(async (req: Request, res: Response, _next: 
   const creatorId = req.user?.id;
   if (!creatorId) throw new ForbiddenError('Authentication required.');
 
-  const { title, description, category, stakePP, deadlineDays, opponentId } = req.body;
+  const { title, description, category, stakePP, deadlineDays, opponentId, goalNodeId } = req.body;
 
   if (!title?.trim() || !category?.trim()) {
     throw new BadRequestError('title and category are required.');
@@ -183,6 +183,7 @@ export const createDuel = catchAsync(async (req: Request, res: Response, _next: 
     .insert({
       creator_id: creatorId,
       opponent_id: opponentId || null,
+      goal_node_id: goalNodeId || null,
       title: title.trim(),
       description: description?.trim() || null,
       category: category.trim(),

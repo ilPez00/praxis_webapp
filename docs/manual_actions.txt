@@ -466,7 +466,11 @@ ALTER TABLE public.events
 ALTER TABLE public.chat_rooms
   ADD COLUMN IF NOT EXISTS event_id  UUID REFERENCES public.events(id) ON DELETE SET NULL;
 
-SUCCESS: no error; Event creation will now succeed with full geo data and auto-room creation.
+-- 3. Add Goal Node ID to Duels
+ALTER TABLE public.duels
+  ADD COLUMN IF NOT EXISTS goal_node_id TEXT;
+
+SUCCESS: no error; Event creation will now succeed with full geo data and auto-room creation. Duels can now link to specific goals.
 
 ================================================================================
 SQL MIGRATIONS TO RUN (Session 60 — Places Tags)

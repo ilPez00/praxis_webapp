@@ -46,6 +46,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import ArticleIcon from '@mui/icons-material/Article';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import SecurityIcon from '@mui/icons-material/Security';
+import DuelDialog from '../duels/components/DuelDialog';
 import { DOMAIN_COLORS } from '../../types/goal';
 import toast from 'react-hot-toast';
 
@@ -212,6 +214,9 @@ const ProfilePage: React.FC = () => {
 
   // Achievements
   const [achievements, setAchievements] = useState<any[]>([]);
+
+  // Duel
+  const [duelDialogOpen, setDuelDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -655,6 +660,25 @@ const ProfilePage: React.FC = () => {
                     </Button>
                   </Tooltip>
                 )}
+                {paramId && paramId !== user?.id && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<SecurityIcon />}
+                    onClick={() => setDuelDialogOpen(true)}
+                    sx={{
+                      fontWeight: 600,
+                      borderColor: 'rgba(245,158,11,0.3)',
+                      color: '#F59E0B',
+                      '&:hover': {
+                        borderColor: '#F59E0B',
+                        bgcolor: 'rgba(245,158,11,0.05)',
+                      },
+                    }}
+                  >
+                    Duel
+                  </Button>
+                )}
               </Stack>
             )}
           </Box>
@@ -1031,6 +1055,16 @@ const ProfilePage: React.FC = () => {
         </Box>
         <PostFeed context="general" profileUserId={paramId || user?.id} />
       </GlassCard>
+
+      {/* Duel Dialog */}
+      {paramId && profile && (
+        <DuelDialog
+          open={duelDialogOpen}
+          onClose={() => setDuelDialogOpen(false)}
+          opponentId={paramId}
+          opponentName={profile.name}
+        />
+      )}
     </Container>
   );
 };
