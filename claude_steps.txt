@@ -1558,3 +1558,16 @@ ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";
 - Maps are now functional without an API key.
 
 ### Commit: 021602d
+
+---
+
+## Session 66 (2026-03-10) — Build Compatibility Fix
+
+### Fixed:
+- **React-Leaflet Version Alignment**: Downgraded `react-leaflet` from v5 to **v4.2.1**. Version 5 requires React 19, which caused peer dependency conflicts and build failures on Vercel as the project currently uses React 18.
+- **Dependency Cleanup**: Fully uninstalled `@react-google-maps/api` and removed it from `package.json`.
+
+### Status:
+- Local build successful. Vercel deployment should now proceed without peer dependency errors.
+
+### Commit: 82491ce
