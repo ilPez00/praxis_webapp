@@ -9,6 +9,7 @@ import { TRACKER_MAP, DOMAIN_TRACKER_MAP, TrackerType } from './trackerTypes';
 import { searchExercises } from './exerciseLibrary';
 import { searchFoods, fetchCaloriesFromOFF } from './foodLibrary';
 import { searchCategories, searchMerchants } from './expensesLibrary';
+import { searchAssets } from './investmentsLibrary';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -56,6 +57,11 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
     : [];
   const merchantSuggestions = logTracker?.type === 'expenses'
     ? searchMerchants(logFields['merchant'] ?? '')
+    : [];
+
+  // Investments autocomplete — computed at component level
+  const assetSuggestions = logTracker?.type === 'investments'
+    ? searchAssets(logFields['asset'] ?? '')
     : [];
 
   // Food autocomplete state — declared at component level (hook rules)
@@ -296,6 +302,19 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
                         }
                       }}
                       renderInput={params => <TextField {...params} label="Merchant / Description (optional)" size="small" fullWidth />}
+                    />
+                  ) : field.key === 'asset' && logTracker?.type === 'investments' ? (
+                    <Autocomplete
+                      key={field.key}
+                      freeSolo
+                      options={assetSuggestions}
+                      getOptionLabel={o => typeof o === 'string' ? o : `${o.ticker} — ${o.name}`}
+                      inputValue={logFields['asset'] ?? ''}
+                      onInputChange={(_, v) => setLogFields(p => ({ ...p, asset: v }))}
+                      onChange={(_, v) => {
+                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, asset: `${v.ticker} — ${v.name}` }));
+                      }}
+                      renderInput={params => <TextField {...params} label="Asset *" size="small" fullWidth />}
                     />
                   ) : field.key === 'food' ? (
                     <Autocomplete
