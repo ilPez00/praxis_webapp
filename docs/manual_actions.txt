@@ -468,6 +468,21 @@ PROBLEM: is_premium not updated after payment
 FIX: Check Railway logs for webhook delivery; ensure STRIPE_WEBHOOK_SECRET is set
 
 ================================================================================
+SQL MIGRATIONS TO RUN (Session 59 — CheckIn mood + win columns)
+================================================================================
+
+Run in Supabase SQL Editor:
+
+ALTER TABLE public.checkins
+  ADD COLUMN IF NOT EXISTS mood            TEXT,
+  ADD COLUMN IF NOT EXISTS win_of_the_day  TEXT;
+
+-- (optional) index for future mood analytics
+CREATE INDEX IF NOT EXISTS idx_checkins_mood ON public.checkins(mood) WHERE mood IS NOT NULL;
+
+SUCCESS: no error; checkins table now accepts mood + win_of_the_day on insert.
+
+================================================================================
 SQL MIGRATIONS TO RUN (Session 58 — Tracker UPDATE RLS + feedback fix)
 ================================================================================
 

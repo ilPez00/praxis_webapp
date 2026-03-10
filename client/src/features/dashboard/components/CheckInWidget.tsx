@@ -68,12 +68,12 @@ const CheckInWidget: React.FC<Props> = ({
 
         const { data: recentCheckins } = await supabase
           .from('checkins')
-          .select('created_at')
+          .select('checked_in_at')
           .eq('user_id', userId)
-          .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString())
-          .order('created_at', { ascending: false });
+          .gte('checked_in_at', new Date(Date.now() - 7 * 86400000).toISOString())
+          .order('checked_in_at', { ascending: false });
 
-        const checkinDates = new Set((recentCheckins ?? []).map((c: any) => c.created_at.slice(0, 10)));
+        const checkinDates = new Set((recentCheckins ?? []).map((c: any) => c.checked_in_at.slice(0, 10)));
         const last7 = Array.from({ length: 7 }, (_, i) => {
           const d = new Date();
           d.setDate(d.getDate() - (6 - i));

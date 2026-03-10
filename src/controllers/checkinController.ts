@@ -41,7 +41,7 @@ function computeStreakUpdate(
  * Awards 10 praxis_points and updates streak.
  */
 export const checkIn = catchAsync(async (req: Request, res: Response) => {
-  const { userId } = req.body as { userId?: string };
+  const { userId, mood, winOfTheDay } = req.body as { userId?: string; mood?: string; winOfTheDay?: string };
   if (!userId) {
     return res.status(400).json({ error: 'userId is required' });
   }
@@ -95,6 +95,8 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   await supabase.from('checkins').insert({
     user_id: userId,
     streak_day: streakUpdate.current_streak,
+    ...(mood ? { mood } : {}),
+    ...(winOfTheDay ? { win_of_the_day: winOfTheDay } : {}),
   });
 
   // Compute Reliability Score R using the whitepaper formula:
