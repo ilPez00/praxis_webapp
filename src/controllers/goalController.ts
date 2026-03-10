@@ -441,6 +441,32 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
 
   if (updateErr) throw new InternalServerError(`Failed to update node: ${updateErr.message}`);
 
+  // ── Log to Tracker (for Calendar/Analytics) ──
+  // Ensures that updating goal progress counts as an activity dot on the calendar.
+  try {
+    const { data: tracker } = await supabase
+      .from('trackers')
+      .upsert({ user_id: userId, type: 'progress' }, { onConflict: 'user_id,type' })
+      .select('id')
+      .single();
+
+    if (tracker) {
+      const node = updatedNodes.find(n => n.id === nodeId);
+      await supabase.from('tracker_entries').insert({
+        tracker_id: tracker.id,
+        user_id: userId,
+        data: { 
+          node_id: nodeId, 
+          node_name: node?.name || 'Goal', 
+          progress_pct: progress,
+          domain: targetDomain 
+        }
+      });
+    }
+  } catch (err) {
+    logger.warn('Failed to log progress to tracker (non-fatal):', err);
+  }
+
   // Award PP + proficiency + achievement if newly completed (0→100%)
   const oldNode = nodes.find(n => n.id === nodeId);
   const oldProgress = oldNode?.progress ?? 0;

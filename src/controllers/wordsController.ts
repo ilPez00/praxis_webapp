@@ -23,6 +23,12 @@ const STOP_WORDS = new Set([
   'become','became','becomes','becoming','actually','basically','literally','simply','really',
   'already','always','almost','often','maybe','perhaps','probably','usually','never','sometimes',
   'looking','look','find','finding','start','starting','begun','began','begin','keep','kept',
+  'using','used','uses','work','working','works','going','went','gone','come','came','comes',
+  'take','taken','took','give','given','gave','better','best','great','good','nice','cool',
+  'more','most','less','least','much','many','some','every','each','all','both','neither',
+  'either','other','another','such','very','quite','rather','really','enough','too','very',
+  'new','old','first','last','next','previous','early','late','high','low','big','small',
+  'large','long','short','far','near','different','same','important','possible','likely',
 ]);
 
 /**

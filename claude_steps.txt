@@ -1612,3 +1612,18 @@ ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";
 - Dashboard is now the primary command center for daily activity.
 
 ### Commits: (Multiple including wordsController, DashboardPage, ProfilePage)
+
+---
+
+## Session 70 (2026-03-10) — Full Dashboard & Analytics Integration
+
+### Implemented:
+- **Unified Calendar Tracking**: Updated `goalController.ts` (`updateNodeProgress`) to automatically create a `progress` tracker entry whenever a user updates a goal slider. This ensures that **both** habit logs and goal updates now populate the "activity dots" on the Analytics Habit Calendar.
+- **Frontend Tracker Definitions**: Added the `progress` tracker type to `trackerTypes.ts` to support the unified calendar view.
+- **Juicy Word Cloud Refinement**: Further expanded `STOP_WORDS` in `wordsController.ts` to filter out common verbs (work, use, go), adjectives (good, new, big), and adverbs, resulting in a much more meaningful "Your Mindset" word cloud on the dashboard.
+- **UI Consolidation**: Confirmed the Dashboard now hosts both the Goal Widgets and the full Tracker Section, with a quick shortcut to the detailed Analytics page.
+
+### Status:
+- Activity from any part of the app now feeds into long-term analytics.
+
+### Commit: 3d04d7e + latest changes

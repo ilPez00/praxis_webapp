@@ -300,6 +300,20 @@ export const TRACKER_TYPES: TrackerType[] = [
     ],
     entryLabel: d => `${d.role || '?'} @ ${d.company || '?'} — ${d.status || '?'}`,
   },
+  {
+    id: 'progress',
+    label: 'Progress Update',
+    icon: '🎯',
+    description: 'System-generated updates from your goal tree',
+    color: '#8B5CF6',
+    bg: 'rgba(139,92,246,0.08)',
+    border: 'rgba(139,92,246,0.25)',
+    fields: [
+      { key: 'node_name', label: 'Goal', type: 'text' },
+      { key: 'progress_pct', label: 'New Progress %', type: 'number' },
+    ],
+    entryLabel: d => `${d.node_name || 'Goal'}: ${d.progress_pct}%`,
+  },
 ];
 
 export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
