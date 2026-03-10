@@ -1462,3 +1462,24 @@ CREATE TABLE IF NOT EXISTS public.duels (
 - [ ] Run Supabase migration: `ALTER TABLE public.trackers ADD COLUMN IF NOT EXISTS goal JSONB NOT NULL DEFAULT '{}';`
 - [ ] Fix SUPABASE_SERVICE_ROLE_KEY on Railway (all writes failing in production)
 - [ ] Set VITE_GOOGLE_MAPS_KEY in client/.env + Vercel
+
+---
+
+## Session 60 (2026-03-10) — AI Model Switch + Domain Intersections + Verona Places & Tags
+
+### Implemented:
+- **AI Coaching Model Switch**: Changed `gemini-2.0-flash` to `gemini-1.5-flash` in `AICoachingService.ts` to resolve persistent 429 quota errors in the experimental preview.
+- **Friendly AI Errors**: Updated `aiCoachingController.ts` to provide more actionable advice (billing/AI Studio check) on quota exceeded errors.
+- **Domain Intersections**: Created 45 new chat rooms for all possible intersections between the 10 life domains (e.g., "Workplace Love" for Career + Intimacy, "Wealth Engineering" for Career + Investing).
+- **Verona Places**: Populated the `places` table with 15 key locations in Verona, Italy (Arena, Biblioteca Civica, Università, etc.), including full address, geo-coordinates, and descriptions.
+- **Goal Alignment Tags**: Added a `tags` column to the `places` table (migration added to `setup.sql` and `manual_actions.txt`) and updated the Verona seeding script to tag each location with relevant goal domains (e.g., McFIT tagged with "Fitness").
+- **Map Key Safety**: Refactored `LocationMap.tsx` to prevent loading the Google Maps script without a valid API key, eliminating console warnings for users without `VITE_GOOGLE_MAPS_KEY`.
+
+### DB Migrations Required (Session 60):
+```sql
+-- Add tags column to places
+ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";
+```
+
+### TypeScript: ✅ 0 errors (backend + frontend)
+### Commits: f36e394, 83599ae, 260feba
