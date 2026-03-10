@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { TRACKER_MAP, DOMAIN_TRACKER_MAP, TrackerType } from './trackerTypes';
 import { searchExercises } from './exerciseLibrary';
 import { searchFoods, fetchCaloriesFromOFF } from './foodLibrary';
+import { searchCategories, searchMerchants } from './expensesLibrary';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -48,6 +49,14 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
 
   // Exercise autocomplete — computed at component level (not inside map)
   const exerciseSuggestions = logTracker?.type === 'lift' ? searchExercises(logFields['exercise'] ?? '') : [];
+
+  // Expenses autocomplete — computed at component level
+  const expenseCategorySuggestions = logTracker?.type === 'expenses'
+    ? searchCategories(logFields['category'] ?? '')
+    : [];
+  const merchantSuggestions = logTracker?.type === 'expenses'
+    ? searchMerchants(logFields['merchant'] ?? '')
+    : [];
 
   // Food autocomplete state — declared at component level (hook rules)
   const [foodSuggestions, setFoodSuggestions] = useState<{ name: string; kcalPer100g: number }[]>([]);
@@ -260,7 +269,36 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
             <DialogContent>
               <Stack spacing={2} sx={{ pt: 0.5 }}>
                 {logTracker.def.fields.map(field => (
-                  field.key === 'food' ? (
+                  field.key === 'category' && logTracker?.type === 'expenses' ? (
+                    <Autocomplete
+                      key={field.key}
+                      freeSolo
+                      options={expenseCategorySuggestions}
+                      getOptionLabel={o => typeof o === 'string' ? o : `${o.emoji} ${o.name}`}
+                      groupBy={o => typeof o === 'string' ? '' : o.group}
+                      inputValue={logFields['category'] ?? ''}
+                      onInputChange={(_, v) => setLogFields(p => ({ ...p, category: v }))}
+                      onChange={(_, v) => {
+                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, category: v.name }));
+                      }}
+                      renderInput={params => <TextField {...params} label="Category *" size="small" fullWidth />}
+                    />
+                  ) : field.key === 'merchant' && logTracker?.type === 'expenses' ? (
+                    <Autocomplete
+                      key={field.key}
+                      freeSolo
+                      options={merchantSuggestions}
+                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
+                      inputValue={logFields['merchant'] ?? ''}
+                      onInputChange={(_, v) => setLogFields(p => ({ ...p, merchant: v }))}
+                      onChange={(_, v) => {
+                        if (v && typeof v !== 'string') {
+                          setLogFields(p => ({ ...p, merchant: v.name, category: p['category'] || v.category }));
+                        }
+                      }}
+                      renderInput={params => <TextField {...params} label="Merchant / Description (optional)" size="small" fullWidth />}
+                    />
+                  ) : field.key === 'food' ? (
                     <Autocomplete
                       key={field.key}
                       freeSolo
