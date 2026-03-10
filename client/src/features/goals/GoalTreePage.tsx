@@ -39,7 +39,35 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
-// ... (buildFrontendTree stays same)
+function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
+  const nodeMap = new Map<string, FrontendGoalNode>();
+  for (const n of backendNodes) {
+    nodeMap.set(n.id, {
+      id: n.id,
+      title: n.name,
+      description: n.customDetails,
+      weight: Math.round(n.weight * 100) / 100,
+      progress: Math.round(n.progress * 100),
+      domain: n.domain as Domain,
+      children: [],
+    });
+  }
+  const roots: FrontendGoalNode[] = [];
+  for (const n of backendNodes) {
+    const node = nodeMap.get(n.id)!;
+    if (n.parentId && nodeMap.has(n.parentId)) {
+      nodeMap.get(n.parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  return roots;
+}
+
+interface DMPartner {
+  userId: string;
+  name: string;
+}
 
 const GoalTreePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
