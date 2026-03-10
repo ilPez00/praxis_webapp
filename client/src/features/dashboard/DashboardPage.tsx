@@ -379,36 +379,21 @@ const DashboardPage: React.FC = () => {
             </ErrorBoundary>
           </Box>
         )}
-{/* ── Trackers Hub ── */}
-{currentUserId && (
-  <Box sx={{ mb: 4 }}>
-    <GlassCard glowColor="rgba(245,158,11,0.05)" sx={{ p: 3 }}>
-      <TrackerSection userId={currentUserId} />
-    </GlassCard>
-  </Box>
-)}
 
-{/* ── Status bar ── */}
-{currentUserId && (
-  <StatusBar
-    userName={userName}
-    streak={localStreak ?? (user?.current_streak ?? 0)}
-    points={localPoints ?? (user?.praxis_points ?? 0)}
-    avgProgress={avgProgress}
-    hasGoals={hasGoals}
-    userId={currentUserId}
-    lastActivityDate={user?.last_activity_date}
-    onCheckIn={(s, p) => { setLocalStreak(s); setLocalPoints(p); }}
-  />
-)}
+        {/* ── Trackers Hub ── */}
+        {currentUserId && (
+          <Box sx={{ mb: 4 }}>
+            <GlassCard glowColor="rgba(245,158,11,0.05)" sx={{ p: 3 }}>
+              <TrackerSection userId={currentUserId} />
+            </GlassCard>
+          </Box>
+        )}
 
-{/* ── Feed ── */}
-<Box>
-  <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: '0.1em', fontSize: '0.65rem' }}>
-    Your Feed
-  </Typography>
-  <PostFeed context="general" feedUserId={currentUserId} personalized />
-</Box>
+        {/* ── Status bar ── */}
+        {currentUserId && (
+          <StatusBar
+            userName={userName}
+            streak={localStreak ?? (user?.current_streak ?? 0)}
             points={localPoints ?? (user?.praxis_points ?? 0)}
             avgProgress={avgProgress}
             hasGoals={hasGoals}

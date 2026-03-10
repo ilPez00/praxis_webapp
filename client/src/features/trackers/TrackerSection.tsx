@@ -251,8 +251,8 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>Trackers</Typography>
-          {trackers.length > 0 && (
-            <Chip label={trackers.length} size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'rgba(255,255,255,0.08)' }} />
+          {trackers.filter(t => t.type !== 'progress').length > 0 && (
+            <Chip label={trackers.filter(t => t.type !== 'progress').length} size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'rgba(255,255,255,0.08)' }} />
           )}
         </Box>
         {available.length > 0 && (
@@ -287,7 +287,7 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
         </Box>
       ) : (
         <Stack spacing={2}>
-          {trackers.map(tracker => {
+          {trackers.filter(t => t.type !== 'progress').map(tracker => {
             const def = TRACKER_MAP[tracker.type];
             if (!def) return null;
             const trackerEntries = entries[tracker.id] ?? [];
