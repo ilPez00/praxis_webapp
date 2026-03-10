@@ -12,6 +12,7 @@ import { searchExercises } from './exerciseLibrary';
 import { searchFoods, fetchCaloriesFromOFF } from './foodLibrary';
 import { searchCategories, searchMerchants } from './expensesLibrary';
 import { searchAssets } from './investmentsLibrary';
+import { searchCompanies } from './companiesLibrary';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -82,6 +83,11 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
   // Investments autocomplete — computed at component level
   const assetSuggestions = logTracker?.type === 'investments'
     ? searchAssets(logFields['asset'] ?? '')
+    : [];
+
+  // Job applications autocomplete — computed at component level
+  const companySuggestions = logTracker?.type === 'job-apps'
+    ? searchCompanies(logFields['company'] ?? '')
     : [];
 
   // Food autocomplete state — declared at component level (hook rules)
@@ -440,6 +446,19 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
                         if (v && typeof v !== 'string') setLogFields(p => ({ ...p, asset: `${v.ticker} — ${v.name}` }));
                       }}
                       renderInput={params => <TextField {...params} label="Asset *" size="small" fullWidth />}
+                    />
+                  ) : field.key === 'company' && logTracker?.type === 'job-apps' ? (
+                    <Autocomplete
+                      key={field.key}
+                      freeSolo
+                      options={companySuggestions}
+                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
+                      inputValue={logFields['company'] ?? ''}
+                      onInputChange={(_, v) => setLogFields(p => ({ ...p, company: v }))}
+                      onChange={(_, v) => {
+                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, company: v.name }));
+                      }}
+                      renderInput={params => <TextField {...params} label="Company *" size="small" fullWidth />}
                     />
                   ) : field.key === 'food' ? (
                     <Autocomplete
