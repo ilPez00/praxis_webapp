@@ -289,7 +289,7 @@ const Navbar: React.FC = () => {
                         }}
                       >
                         {label}
-                        {isMatches && showMatchesBadge && !active && (
+                        {isDiscover && showMatchesBadge && !active && (
                           <Box sx={{
                             position: 'absolute', top: 6, right: 6,
                             width: 7, height: 7, borderRadius: '50%',
