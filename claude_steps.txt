@@ -1708,3 +1708,23 @@ ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES 
 - Users can now initiate direct, goal-aligned competition with their peers.
 
 ### Commits: (Latest changes across backend and profile page)
+
+---
+
+## Session 75 (2026-03-10) — Targeted Duels & AI Fortification
+
+### Implemented:
+- **Profile Duels**: Users can now challenge others directly from their profile pages. A new `DuelDialog` fetches and displays the opponent's public goals, highlighting shared interests to encourage goal-aligned competition.
+- **Axiom (Gemini) Stability**: Explicitly set the Google AI SDK to use the `v1` API version in both `EmbeddingService.ts` and `AICoachingService.ts`. Added multi-layer fallbacks (model name retry, API version fallback) to resolve 404 and 503 errors found in production logs.
+- **Schema Update**: Added `goal_node_id` to the `duels` table to support direct goal linkage.
+
+### Status:
+- Master Roshi (Axiom) should now be back online and more resilient to model deprecations.
+- Community engagement is enhanced with direct person-to-person challenges.
+
+### SQL Migration (Reminder):
+```sql
+ALTER TABLE public.duels ADD COLUMN IF NOT EXISTS goal_node_id TEXT;
+```
+
+### Commits: e2d5266, dc24880 + latest changes

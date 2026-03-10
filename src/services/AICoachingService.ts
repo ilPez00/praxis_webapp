@@ -75,10 +75,11 @@ export class AICoachingService {
       throw new Error('GEMINI_API_KEY is not configured on this server.');
     }
     try {
+      // Use v1 for stability
       const model = this.genAI.getGenerativeModel({
         model: this.MODEL,
         generationConfig: { responseMimeType: 'application/json' },
-      });
+      }, { apiVersion: 'v1' });
 
       const prompt = this.buildReportPrompt(context);
       const result = await model.generateContent(prompt);
@@ -95,7 +96,21 @@ export class AICoachingService {
       }
       return parsed;
     } catch (error: any) {
-      logger.error('Error generating coaching report:', error);
+      logger.error('Error generating coaching report:', error.message);
+      
+      // Fallback: try v1beta if v1 fails (some models/regions)
+      if (error.message?.includes('not found') || error.message?.includes('404')) {
+        try {
+          const altModel = this.genAI.getGenerativeModel({
+            model: this.MODEL,
+            generationConfig: { responseMimeType: 'application/json' },
+          });
+          const res = await altModel.generateContent(this.buildReportPrompt(context));
+          const cleaned = res.response.text().trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+          return JSON.parse(cleaned) as CoachingReport;
+        } catch {}
+      }
+      
       throw new Error(error.message || 'Failed to generate coaching report.');
     }
   }
@@ -134,11 +149,11 @@ Write 2-3 short sentences in Axiom's voice that:
 Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: this.MODEL });
+      const model = this.genAI.getGenerativeModel({ model: this.MODEL }, { apiVersion: 'v1' });
       const result = await model.generateContent(prompt);
       return result.response.text().trim();
     } catch (error: any) {
-      logger.error('Error generating weekly narrative:', error);
+      logger.error('Error generating weekly narrative:', error.message);
       throw new Error(error.message || 'Failed to generate weekly narrative.');
     }
   }
@@ -152,12 +167,12 @@ Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
       throw new Error('GEMINI_API_KEY is not configured on this server.');
     }
     try {
-      const model = this.genAI.getGenerativeModel({ model: this.MODEL });
+      const model = this.genAI.getGenerativeModel({ model: this.MODEL }, { apiVersion: 'v1' });
       const prompt = this.buildFollowUpPrompt(userPrompt, context);
       const result = await model.generateContent(prompt);
       return result.response.text();
     } catch (error: any) {
-      logger.error('Error generating coaching response:', error);
+      logger.error('Error generating coaching response:', error.message);
       throw new Error(error.message || 'Failed to generate coaching response.');
     }
   }
