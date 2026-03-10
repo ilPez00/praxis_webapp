@@ -619,10 +619,12 @@ ALTER TABLE public.trackers ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Own trackers select" ON public.trackers;
 DROP POLICY IF EXISTS "Own trackers insert" ON public.trackers;
+DROP POLICY IF EXISTS "Own trackers update" ON public.trackers;
 DROP POLICY IF EXISTS "Own trackers delete" ON public.trackers;
 
 CREATE POLICY "Own trackers select" ON public.trackers FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Own trackers insert" ON public.trackers FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Own trackers update" ON public.trackers FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Own trackers delete" ON public.trackers FOR DELETE USING (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS public.tracker_entries (

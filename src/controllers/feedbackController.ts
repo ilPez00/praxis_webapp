@@ -66,7 +66,7 @@ export const submitFeedback = catchAsync(async (req: Request, res: Response, nex
     let receiverGoalTree: GoalTree = receiverGoalTreeData as GoalTree;
 
     // 3. Update the weight of the specific goalNodeId within that tree
-    const updatedNodes = receiverGoalTree.nodes.map(node => {
+    const updatedNodes = (receiverGoalTree.nodes ?? []).map(node => {
       if (node.id === goalNodeId) {
         return updateWeightFromGrade(node, grade);
       }
@@ -74,7 +74,7 @@ export const submitFeedback = catchAsync(async (req: Request, res: Response, nex
     });
 
     // Also update rootNodes if the goalNodeId is a root node
-    const updatedRootNodes = receiverGoalTree.rootNodes.map(node => {
+    const updatedRootNodes = (receiverGoalTree.rootNodes ?? []).map(node => {
       if (node.id === goalNodeId) {
         return updateWeightFromGrade(node, grade);
       }

@@ -54,13 +54,15 @@ function computeCenter(markers: MapMarker[]): { lat: number; lng: number } {
   return { lat, lng };
 }
 
-const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340 }) => {
+// Inner component — only rendered when GMAPS_KEY exists, so useJsApiLoader is
+// never called with an empty key (which would fire the NoApiKeys console warning).
+const LocationMapInner: React.FC<LocationMapProps & { gmapsKey: string }> = ({ markers, height = 340, gmapsKey }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'praxis-google-map',
-    googleMapsApiKey: GMAPS_KEY ?? '',
+    googleMapsApiKey: gmapsKey,
   });
 
   const onLoad = useCallback((map: google.maps.Map) => {
@@ -75,28 +77,6 @@ const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340 }) => {
   const onUnmount = useCallback(() => { mapRef.current = null; }, []);
 
   const validMarkers = markers.filter(m => m.lat != null && m.lng != null);
-
-  if (!GMAPS_KEY) {
-    return (
-      <Box sx={{
-        height,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 1,
-        borderRadius: '16px',
-        border: '1px dashed rgba(255,255,255,0.1)',
-        bgcolor: 'rgba(255,255,255,0.02)',
-        mb: 3,
-      }}>
-        <MapIcon sx={{ fontSize: 40, color: 'text.disabled', opacity: 0.4 }} />
-        <Typography variant="body2" color="text.disabled">
-          Add <code>VITE_GOOGLE_MAPS_KEY</code> to enable map view
-        </Typography>
-      </Box>
-    );
-  }
 
   if (loadError) return null;
 
@@ -166,6 +146,35 @@ const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340 }) => {
       </GoogleMap>
     </Box>
   );
+};
+
+// Outer component — checks for API key before mounting the inner component.
+// This ensures useJsApiLoader (and the Google Maps script tag) is never injected
+// without a valid key, preventing the NoApiKeys console warning.
+const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340 }) => {
+  if (!GMAPS_KEY) {
+    return (
+      <Box sx={{
+        height,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 1,
+        borderRadius: '16px',
+        border: '1px dashed rgba(255,255,255,0.1)',
+        bgcolor: 'rgba(255,255,255,0.02)',
+        mb: 3,
+      }}>
+        <MapIcon sx={{ fontSize: 40, color: 'text.disabled', opacity: 0.4 }} />
+        <Typography variant="body2" color="text.disabled">
+          Add <code>VITE_GOOGLE_MAPS_KEY</code> to enable map view
+        </Typography>
+      </Box>
+    );
+  }
+
+  return <LocationMapInner markers={markers} height={height} gmapsKey={GMAPS_KEY} />;
 };
 
 export default LocationMap;

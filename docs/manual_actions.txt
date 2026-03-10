@@ -468,6 +468,29 @@ PROBLEM: is_premium not updated after payment
 FIX: Check Railway logs for webhook delivery; ensure STRIPE_WEBHOOK_SECRET is set
 
 ================================================================================
+SQL MIGRATIONS TO RUN (Session 58 — Tracker UPDATE RLS + feedback fix)
+================================================================================
+
+Run in Supabase → SQL Editor:
+
+  -- Add missing UPDATE policy so PATCH /trackers/:type/objective works
+  -- (upsert ON CONFLICT DO UPDATE requires an UPDATE policy)
+  DROP POLICY IF EXISTS "Own trackers update" ON public.trackers;
+  CREATE POLICY "Own trackers update" ON public.trackers
+    FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+  -- Verify goal column exists (if not already run)
+  ALTER TABLE public.trackers ADD COLUMN IF NOT EXISTS goal JSONB NOT NULL DEFAULT '{}';
+
+ROOT CAUSE of /feedback 500: feedbackController.ts called .rootNodes.map() without
+guarding against null when receiver has no goal tree or old row missing "rootNodes" column.
+FIXED in code — no SQL needed.
+
+ROOT CAUSE of /trackers/:type/objective 500: missing UPDATE RLS policy on trackers table.
+Run the SQL above to fix. Also verify Railway SUPABASE_SERVICE_ROLE_KEY starts with "eyJ"
+(service-role JWT), NOT "sb_" (publishable/anon key).
+
+================================================================================
 SQL MIGRATIONS TO RUN (Session 57 — Admin flag + Goal-tree editing for gio)
 ================================================================================
 

@@ -85,7 +85,12 @@ export const updateObjective = catchAsync(async (req: Request, res: Response) =>
     .update({ goal })
     .eq('id', tracker.id);
 
-  if (updateErr) throw new Error(updateErr.message);
+  if (updateErr) {
+    if (SCHEMA_MISSING(updateErr.message) || updateErr.message?.includes('42703')) {
+      return res.status(503).json({ message: 'Tracker goal column missing. Run: ALTER TABLE public.trackers ADD COLUMN IF NOT EXISTS goal JSONB NOT NULL DEFAULT \'{}\';' });
+    }
+    throw new Error(updateErr.message);
+  }
 
   res.json({ ok: true });
 });
