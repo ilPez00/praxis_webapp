@@ -3,7 +3,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
 import { API_URL } from '../../../lib/api';
-import { Box, Typography, Button, Chip, Stack, Tooltip } from '@mui/material';
+import { Box, Typography, Button, Chip, Stack, Tooltip, TextField } from '@mui/material';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -48,6 +48,10 @@ const CheckInWidget: React.FC<Props> = ({
   const [checkedIn, setCheckedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
+  const [recentDays, setRecentDays] = useState<boolean[]>([]);  // last 7 days, true = checked in
+  const [mood, setMood] = useState<string | null>(null);
+  const [winText, setWinText] = useState('');
+  const [showWinInput, setShowWinInput] = useState(false);
 
   // Check if already checked in today
   useEffect(() => {
@@ -61,6 +65,21 @@ const CheckInWidget: React.FC<Props> = ({
           headers,
         });
         setCheckedIn(res.data.checkedIn);
+
+        const { data: recentCheckins } = await supabase
+          .from('checkins')
+          .select('created_at')
+          .eq('user_id', userId)
+          .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString())
+          .order('created_at', { ascending: false });
+
+        const checkinDates = new Set((recentCheckins ?? []).map((c: any) => c.created_at.slice(0, 10)));
+        const last7 = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          return checkinDates.has(d.toISOString().slice(0, 10));
+        });
+        setRecentDays(last7);
       } catch {
         // silently ignore — UI degrades gracefully
       } finally {
@@ -75,7 +94,7 @@ const CheckInWidget: React.FC<Props> = ({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-      const res = await axios.post(`${API_URL}/checkins`, { userId }, { headers });
+      const res = await axios.post(`${API_URL}/checkins`, { userId, mood, winOfTheDay: winText }, { headers });
       const { alreadyCheckedIn, streak, totalPoints, shieldConsumed } = res.data;
       if (!alreadyCheckedIn) {
         setCheckedIn(true);
@@ -228,6 +247,72 @@ const CheckInWidget: React.FC<Props> = ({
         </Stack>
 
       </Stack>
+
+      {/* 7-day mini calendar */}
+      <Box sx={{ display: 'flex', gap: 0.75, mt: 2 }}>
+        {['M','T','W','T','F','S','S'].map((day, i) => (
+          <Box key={i} sx={{ textAlign: 'center', flex: 1 }}>
+            <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', display: 'block', mb: 0.5 }}>
+              {day}
+            </Typography>
+            <Box sx={{
+              width: 24, height: 24, borderRadius: '50%', mx: 'auto',
+              bgcolor: recentDays[i] ? '#F97316' : 'rgba(255,255,255,0.06)',
+              border: i === 6 ? '2px solid rgba(249,115,22,0.4)' : 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {recentDays[i] && <CheckCircleIcon sx={{ fontSize: 12, color: '#fff' }} />}
+            </Box>
+          </Box>
+        ))}
+      </Box>
+
+      {/* Mood selector — only show before check-in */}
+      {!checkedIn && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>How are you feeling?</Typography>
+          <Stack direction="row" spacing={1} sx={{ mt: 0.75 }}>
+            {['😤','😐','🙂','😊','🔥'].map(emoji => (
+              <Box
+                key={emoji}
+                onClick={() => setMood(emoji)}
+                sx={{
+                  fontSize: '1.4rem', cursor: 'pointer', p: 0.5, borderRadius: 2,
+                  border: mood === emoji ? '2px solid #F97316' : '2px solid transparent',
+                  bgcolor: mood === emoji ? 'rgba(249,115,22,0.1)' : 'transparent',
+                  transition: 'all 0.15s',
+                  '&:hover': { bgcolor: 'rgba(249,115,22,0.08)' },
+                }}
+              >
+                {emoji}
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+      )}
+
+      {/* Win of the day */}
+      {!checkedIn && (
+        <Box sx={{ mt: 1.5 }}>
+          {showWinInput ? (
+            <TextField
+              size="small" fullWidth multiline rows={2}
+              placeholder="What's your win today? (optional)"
+              value={winText}
+              onChange={e => setWinText(e.target.value)}
+              inputProps={{ maxLength: 140 }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '0.82rem' } }}
+            />
+          ) : (
+            <Button size="small" variant="text"
+              onClick={() => setShowWinInput(true)}
+              sx={{ fontSize: '0.72rem', color: 'text.secondary', p: 0 }}
+            >
+              + Add a win for today
+            </Button>
+          )}
+        </Box>
+      )}
     </GlassCard>
   );
 };
