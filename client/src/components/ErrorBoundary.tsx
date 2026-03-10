@@ -1,6 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
-import { Link } from 'react-router-dom';
 // import logger from '../../src/utils/logger'; // Removed as this is a frontend component
 
 interface Props {
@@ -67,7 +66,7 @@ class ErrorBoundary extends Component<Props, State> {
             <Typography variant="body1" color="text.secondary" paragraph>
               We're sorry for the inconvenience. Our team has been notified, and we're working to fix the issue.
             </Typography>
-            <Button variant="contained" color="primary" component={Link} to="/" sx={{ mt: 2, mr: 2 }}>
+            <Button variant="contained" color="primary" onClick={() => window.location.href = '/'} sx={{ mt: 2, mr: 2 }}>
               Go to Home
             </Button>
             <Button variant="outlined" onClick={() => window.location.reload()} sx={{ mt: 2 }}>

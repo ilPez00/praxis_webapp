@@ -1,13 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Box, Tabs, Tab, Container } from '@mui/material';
+import { Box, Tabs, Tab, Container, CircularProgress } from '@mui/material';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import PlaceIcon from '@mui/icons-material/Place';
 import EventIcon from '@mui/icons-material/Event';
-import MatchesPage from '../matches/MatchesPage';
-import PlacesTab from '../places/PlacesTab';
-import EventsPage from '../events/EventsPage';
 import { useUser } from '../../hooks/useUser';
+
+const MatchesPage = lazy(() => import('../matches/MatchesPage'));
+const PlacesTab = lazy(() => import('../places/PlacesTab'));
+const EventsPage = lazy(() => import('../events/EventsPage'));
+
+const TabLoader = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+    <CircularProgress />
+  </Box>
+);
 
 const DiscoverPage: React.FC = () => {
   const { user } = useUser();
@@ -69,9 +76,11 @@ const DiscoverPage: React.FC = () => {
 
       {/* Tab content */}
       <Box sx={{ mt: 2 }}>
-        {tab === 0 && <MatchesPage />}
-        {tab === 1 && <PlacesTab currentUserId={user?.id} />}
-        {tab === 2 && <EventsPage />}
+        <Suspense fallback={<TabLoader />}>
+          {tab === 0 && <MatchesPage />}
+          {tab === 1 && <PlacesTab currentUserId={user?.id} />}
+          {tab === 2 && <EventsPage />}
+        </Suspense>
       </Box>
     </Box>
   );
