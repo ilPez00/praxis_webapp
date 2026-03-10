@@ -268,6 +268,23 @@ export const TRACKER_TYPES: TrackerType[] = [
     entryLabel: d => `${d.project || '?'}: ${d.milestone || '?'} (${d.time_spent}min)`,
   },
   {
+    id: 'music',
+    label: 'Music Practice',
+    icon: '🎵',
+    description: 'Track instrument practice sessions and repertoire progress',
+    color: '#A855F7',
+    bg: 'rgba(168,85,247,0.08)',
+    border: 'rgba(168,85,247,0.25)',
+    fields: [
+      { key: 'instrument', label: 'Instrument', type: 'text', placeholder: 'Guitar, Piano…' },
+      { key: 'piece', label: 'Piece / Song', type: 'text', placeholder: 'Moonlight Sonata, Wonderwall…' },
+      { key: 'duration_min', label: 'Duration (min)', type: 'number', placeholder: '30' },
+      { key: 'focus', label: 'Focus area', type: 'select', options: ['Technique', 'Sight-reading', 'Memorisation', 'Expression', 'Repertoire', 'Improvisation', 'Theory'] },
+      { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
+    ],
+    entryLabel: (d: Record<string,string>) => `${d.instrument || '?'}: "${d.piece || '?'}" · ${d.duration_min}min [${d.focus || '?'}]`,
+  },
+  {
     id: 'job-apps',
     label: 'Job Applications',
     icon: '💼',

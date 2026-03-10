@@ -14,6 +14,8 @@ import { searchBooks } from './booksLibrary';
 import { searchCategories, searchMerchants } from './expensesLibrary';
 import { searchAssets } from './investmentsLibrary';
 import { searchCompanies } from './companiesLibrary';
+import { searchSubjects } from './subjectsLibrary';
+import { searchInstruments } from './musicLibrary';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -89,6 +91,16 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
   // Job applications autocomplete — computed at component level
   const companySuggestions = logTracker?.type === 'job-apps'
     ? searchCompanies(logFields['company'] ?? '')
+    : [];
+
+  // Study subject autocomplete — computed at component level
+  const subjectSuggestions = logTracker?.type === 'study'
+    ? searchSubjects(logFields['subject'] ?? '')
+    : [];
+
+  // Music instrument autocomplete — computed at component level
+  const instrumentSuggestions = logTracker?.type === 'music'
+    ? searchInstruments(logFields['instrument'] ?? '')
     : [];
 
   // Food autocomplete state — declared at component level (hook rules)
@@ -494,6 +506,32 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
                         }
                       }}
                       renderInput={params => <TextField {...params} label="Book title *" size="small" fullWidth />}
+                    />
+                  ) : field.key === 'subject' && logTracker?.type === 'study' ? (
+                    <Autocomplete
+                      key={field.key}
+                      freeSolo
+                      options={subjectSuggestions}
+                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
+                      inputValue={logFields['subject'] ?? ''}
+                      onInputChange={(_, v) => setLogFields(p => ({ ...p, subject: v }))}
+                      onChange={(_, v) => {
+                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, subject: v.name }));
+                      }}
+                      renderInput={params => <TextField {...params} label="Subject *" size="small" fullWidth />}
+                    />
+                  ) : field.key === 'instrument' && logTracker?.type === 'music' ? (
+                    <Autocomplete
+                      key={field.key}
+                      freeSolo
+                      options={instrumentSuggestions}
+                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
+                      inputValue={logFields['instrument'] ?? ''}
+                      onInputChange={(_, v) => setLogFields(p => ({ ...p, instrument: v }))}
+                      onChange={(_, v) => {
+                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, instrument: v.name }));
+                      }}
+                      renderInput={params => <TextField {...params} label="Instrument *" size="small" fullWidth />}
                     />
                   ) : field.key === 'food' ? (
                     <Autocomplete
