@@ -451,6 +451,24 @@ STRIPE PRODUCTION SETUP (Praxis Pro)
 SUCCESS: Run a test transaction. Once redirected back, profiles.is_premium should be true.
 
 ================================================================================
+SQL MIGRATIONS TO RUN (Session 72 — Event Geo + Linked Rooms)
+================================================================================
+
+Run in Supabase SQL Editor:
+
+-- 1. Add Geo columns to Events
+ALTER TABLE public.events 
+  ADD COLUMN IF NOT EXISTS city      TEXT,
+  ADD COLUMN IF NOT EXISTS latitude  FLOAT,
+  ADD COLUMN IF NOT EXISTS longitude FLOAT;
+
+-- 2. Add Linked Event ID to Chat Rooms
+ALTER TABLE public.chat_rooms
+  ADD COLUMN IF NOT EXISTS event_id  UUID REFERENCES public.events(id) ON DELETE SET NULL;
+
+SUCCESS: no error; Event creation will now succeed with full geo data and auto-room creation.
+
+================================================================================
 SQL MIGRATIONS TO RUN (Session 60 — Places Tags)
 ================================================================================
 

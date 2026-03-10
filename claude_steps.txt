@@ -1656,3 +1656,23 @@ ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";
 - Webapp is functional, integrated, and optimized for data-driven discovery.
 
 ### Commits: 7656844, 5f6888e, 021602d, 82491ce, d55b393, 76313c2, 7cf4ca4
+
+---
+
+## Session 72 (2026-03-10) — Event Infrastructure Fix
+
+### Fixed:
+- **Event Creation 503**: Identified that the backend was failing to create events due to missing `city`, `latitude`, and `longitude` columns in the `events` table, and a missing `event_id` column in the `chat_rooms` table. 
+- **Schema Alignment**: Updated `migrations/setup.sql` to include these columns in the base definition. 
+- **Manual Migration Path**: Added a dedicated "Session 72" section to `docs/manual_actions.txt` with the specific SQL `ALTER TABLE` commands required to fix the live database.
+
+### Status:
+- Once the user runs the provided SQL in Supabase, event creation and auto-group-room generation will be fully functional.
+
+### SQL to Run:
+```sql
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS city TEXT, ADD COLUMN IF NOT EXISTS latitude FLOAT, ADD COLUMN IF NOT EXISTS longitude FLOAT;
+ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES public.events(id) ON DELETE SET NULL;
+```
+
+### Commits: (Latest schema and docs updates)

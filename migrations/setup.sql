@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS public.chat_rooms (
 ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS domain      TEXT;
 ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS type        TEXT DEFAULT 'board';
+ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS event_id    UUID REFERENCES public.events(id) ON DELETE SET NULL;
 UPDATE public.chat_rooms SET type = 'board' WHERE type IS NULL;
 
 ALTER TABLE public.chat_rooms ENABLE ROW LEVEL SECURITY;
@@ -820,6 +821,9 @@ CREATE TABLE IF NOT EXISTS public.events (
   event_date  DATE NOT NULL,
   event_time  TIME,
   location    TEXT,
+  city        TEXT,
+  latitude    FLOAT,
+  longitude   FLOAT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
