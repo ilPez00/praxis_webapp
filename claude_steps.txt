@@ -1571,3 +1571,15 @@ ALTER TABLE public.places ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT "{}";
 - Local build successful. Vercel deployment should now proceed without peer dependency errors.
 
 ### Commit: 82491ce
+
+---
+
+## Session 67 (2026-03-10) — Documentation Update
+
+### Updated:
+- **Manual Actions Documentation**: Replaced the Google Maps setup section with **OpenStreetMap** details, noting that it is now plug-and-play without API keys. Refined and clarified the **Stripe Pro** production setup steps, providing a clear path for live keys, webhooks, and environment variable configuration.
+
+### Status:
+- Configuration docs aligned with current architecture.
+
+### Commit: 4da3cb1

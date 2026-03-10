@@ -400,72 +400,55 @@ TROUBLESHOOTING
 ================================================================================
 
 ================================================================================
-GOOGLE MAPS API SETUP (for Places tab embedded map previews)
+OPENSTREETMAP SETUP (Standard for Places & Events)
 ================================================================================
 
-1. Go to https://console.cloud.google.com/
-2. Create a project (or use existing)
-3. Enable "Maps JavaScript API" and "Maps Embed API" from the API Library
-4. Go to "Credentials" → "Create Credentials" → "API Key"
-5. Restrict the key:
-   - Application restrictions: "HTTP referrers (websites)"
-   - Add your domains: https://your-app.vercel.app/*, http://localhost:3000/*
-   - API restrictions: restrict to "Maps JavaScript API" + "Maps Embed API"
-6. Copy the key
+OpenStreetMap (OSM) is the default mapping provider for Praxis via Leaflet.
+It is plug-and-play and does NOT require an API key.
 
-Configure in development:
-  Add to client/.env:
-    VITE_GOOGLE_MAPS_KEY=your_key_here
-
-Configure in production (Vercel):
-  Dashboard → Your Project → Settings → Environment Variables
-  Name: VITE_GOOGLE_MAPS_KEY
-  Value: your_key_here
-
-Without the key: map previews fall back to a "Open in Google Maps" text link.
-The Places tab works fully without the key — only embedded map previews are affected.
+- VITE_GOOGLE_MAPS_KEY: Obsolete. You can remove this from .env files.
+- Tiles: Uses CartoDB Dark Matter tiles by default to match the app theme.
+- Location: Map previews in the Places tab now link directly to OpenStreetMap.
 
 ================================================================================
-STRIPE PRODUCTION SETUP
+STRIPE PRODUCTION SETUP (Praxis Pro)
 ================================================================================
 
 1. Go to https://dashboard.stripe.com/
-2. Switch to LIVE mode (top-left toggle)
+2. Switch to LIVE mode (top-left toggle).
 
-3. Create a product:
-   - Products → Add product
-   - Name: "Praxis Premium" (or "Pro")
-   - Pricing: recurring, monthly, your price (e.g. €9.99/mo)
-   - Copy the Price ID: price_XXXXXXXXXXXXXXXXXXXXXXXX
+3. Create your "Praxis Pro" product:
+   - Go to "Products" → "Add product"
+   - Name: "Praxis Pro"
+   - Pricing: Recurring, Monthly, e.g., €9.99
+   - Click "Save product"
+   - Copy the "API ID" (starts with price_...)
 
-4. Set environment variables on Railway:
-   STRIPE_SECRET_KEY=sk_live_...      (from Stripe Dashboard → Developers → API Keys)
-   STRIPE_PRICE_ID=price_...          (from step 3)
-   STRIPE_WEBHOOK_SECRET=whsec_...    (from step 5 below)
-   CLIENT_URL=https://your-app.vercel.app
+4. Get your Secret Key:
+   - Go to "Developers" → "API keys"
+   - Copy the "Secret key" (starts with sk_live_...)
 
-5. Register webhook:
-   - Stripe Dashboard → Developers → Webhooks → Add endpoint
-   - Endpoint URL: https://your-railway-app.railway.app/api/stripe/webhook
-   - Events to listen for:
+5. Register the Production Webhook:
+   - Go to "Developers" → "Webhooks" → "Add endpoint"
+   - Endpoint URL: https://<your-backend-railway-url>/api/stripe/webhook
+   - Select events:
      • checkout.session.completed
      • customer.subscription.deleted
      • invoice.payment_failed
-   - Copy the Signing Secret (whsec_...) → set as STRIPE_WEBHOOK_SECRET
+   - Click "Add endpoint"
+   - Click "Reveal" under "Signing secret" and copy it (starts with whsec_...)
 
-6. Test flow in production:
-   - Log in to Praxis → Marketplace → Buy Pro → click Upgrade
-   - Complete checkout with a real card (or test card 4242 4242 4242 4242)
-   - After redirect back, verify is_premium = true in Supabase profiles table
+6. Configure Environment Variables on Railway:
+   - STRIPE_SECRET_KEY: <your_live_secret_key>
+   - STRIPE_PRICE_ID: <your_live_price_id>
+   - STRIPE_WEBHOOK_SECRET: <your_live_webhook_signing_secret>
+   - CLIENT_URL: https://praxis-webapp.vercel.app (your production frontend URL)
 
-PROBLEM: "No such price" error
-FIX: STRIPE_PRICE_ID must be a live-mode price ID (starts with price_), not test mode
+7. Frontend Public Key (Vercel):
+   - In Vercel → Settings → Environment Variables:
+   - REACT_APP_STRIPE_PUBLISHABLE_KEY: <your_live_publishable_key> (pk_live_...)
 
-PROBLEM: Webhook signature verification fails
-FIX: STRIPE_WEBHOOK_SECRET must match the endpoint's signing secret exactly
-
-PROBLEM: is_premium not updated after payment
-FIX: Check Railway logs for webhook delivery; ensure STRIPE_WEBHOOK_SECRET is set
+SUCCESS: Run a test transaction. Once redirected back, profiles.is_premium should be true.
 
 ================================================================================
 SQL MIGRATIONS TO RUN (Session 60 — Places Tags)
