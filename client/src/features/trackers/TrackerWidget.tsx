@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { TRACKER_MAP, DOMAIN_TRACKER_MAP, TrackerType } from './trackerTypes';
 import { searchExercises } from './exerciseLibrary';
 import { searchFoods, fetchCaloriesFromOFF } from './foodLibrary';
+import { searchBooks } from './booksLibrary';
 import { searchCategories, searchMerchants } from './expensesLibrary';
 import { searchAssets } from './investmentsLibrary';
 import { searchCompanies } from './companiesLibrary';
@@ -85,6 +86,19 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
     fetchCaloriesFromOFF(foodQuery).then(r => { if (active) { setFoodSuggestions(r); setFoodSearching(false); } });
     return () => { active = false; };
   }, [logTracker?.type, logFields['food']]);
+
+  // Book autocomplete state — declared at component level (hook rules)
+  const [bookResults, setBookResults] = useState<{ title: string; author: string; totalPages: number | null }[]>([]);
+  const [bookSearching, setBookSearching] = useState(false);
+
+  useEffect(() => {
+    const bookQuery = logTracker?.type === 'books' ? (logFields['title'] ?? '') : '';
+    if (!bookQuery.trim()) { setBookResults([]); return; }
+    let active = true;
+    setBookSearching(true);
+    searchBooks(bookQuery).then(r => { if (active) { setBookResults(r); setBookSearching(false); } });
+    return () => { active = false; };
+  }, [logTracker?.type, logFields['title']]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -334,6 +348,27 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
                         if (v && typeof v !== 'string') setLogFields(p => ({ ...p, company: v.name }));
                       }}
                       renderInput={params => <TextField {...params} label="Company *" size="small" fullWidth />}
+                    />
+                  ) : field.key === 'title' && logTracker?.type === 'books' ? (
+                    <Autocomplete
+                      key={field.key}
+                      freeSolo
+                      loading={bookSearching}
+                      options={bookResults}
+                      getOptionLabel={o => typeof o === 'string' ? o : `${o.title} — ${o.author}`}
+                      inputValue={logFields['title'] ?? ''}
+                      onInputChange={(_, v) => setLogFields(p => ({ ...p, title: v }))}
+                      onChange={(_, v) => {
+                        if (v && typeof v !== 'string') {
+                          setLogFields(p => ({
+                            ...p,
+                            title: v.title,
+                            author: v.author,
+                            total_pages: v.totalPages ? String(v.totalPages) : p['total_pages'],
+                          }));
+                        }
+                      }}
+                      renderInput={params => <TextField {...params} label="Book title *" size="small" fullWidth />}
                     />
                   ) : field.key === 'food' ? (
                     <Autocomplete

@@ -121,6 +121,24 @@ export const TRACKER_TYPES: TrackerType[] = [
     entryLabel: d => `${d.subject || '?'}: ${d.topic || '?'} (${d.duration}min)`,
   },
   {
+    id: 'books',
+    label: 'Reading Tracker',
+    icon: '📖',
+    description: "Track books you're reading with page progress",
+    color: '#6366F1',
+    bg: 'rgba(99,102,241,0.08)',
+    border: 'rgba(99,102,241,0.25)',
+    fields: [
+      { key: 'title', label: 'Book title', type: 'text', placeholder: 'Search a book...' },
+      { key: 'author', label: 'Author', type: 'text', placeholder: 'Auto-filled', optional: true },
+      { key: 'pages_read', label: 'Pages read today', type: 'number', placeholder: '30' },
+      { key: 'total_pages', label: 'Total pages', type: 'number', placeholder: '300', optional: true },
+      { key: 'rating', label: 'Rating (1–5)', type: 'number', placeholder: '5', optional: true },
+      { key: 'notes', label: 'Notes / Highlights', type: 'text', placeholder: 'optional', optional: true },
+    ],
+    entryLabel: (d: Record<string,string>) => `"${d.title || '?'}" — ${d.pages_read}p read${d.total_pages ? ` (of ${d.total_pages})` : ''}`,
+  },
+  {
     id: 'sleep',
     label: 'Sleep Tracker',
     icon: '🛌',
@@ -277,13 +295,13 @@ export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
  */
 export const DOMAIN_TRACKER_MAP: Record<string, string[]> = {
   [Domain.FITNESS]:                          ['lift', 'cardio', 'meal', 'steps'],
-  [Domain.ACADEMICS]:                        ['study'],
+  [Domain.ACADEMICS]:                        ['study', 'books'],
   [Domain.MENTAL_HEALTH]:                    ['sleep', 'meditation', 'journal'],
   [Domain.PHILOSOPHICAL_DEVELOPMENT]:        ['meditation', 'journal'],
   [Domain.INVESTING]:                        ['budget', 'expenses', 'investments'],
   [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]:     ['hangout'],
   [Domain.INTIMACY_ROMANTIC_EXPLORATION]:    ['hangout'],
   [Domain.CAREER]:                           ['job-apps'],
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: ['project'],
+  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: ['project', 'books', 'music'],
   [Domain.PERSONAL_GOALS]:                   ['adventure'],
 };
