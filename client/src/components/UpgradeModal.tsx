@@ -17,7 +17,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const PRO_FEATURES = [
   'Unlimited goal tree edits',
-  'Master Roshi AI coaching',
+  'Axiom AI coaching',
   'Advanced analytics & insights',
   'Unlimited match connections',
   'Priority profile visibility',

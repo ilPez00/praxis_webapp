@@ -2,7 +2,7 @@
  * KnowledgeBaseService
  *
  * Parses the PDF books in /sources at first use and caches the extracted text.
- * The extracted excerpts are injected into Master Roshi's system prompt so he
+ * The extracted excerpts are injected into Axiom's system prompt so he
  * can draw on the wisdom of Zero to One, Antifragile, Atomic Habits and BAM.
  */
 
@@ -88,7 +88,7 @@ class KnowledgeBaseService {
     const sections = this.excerpts
       .map(b => `### ${b.title}\n${b.text}`)
       .join('\n\n---\n\n');
-    return `## Master Roshi's Library — Core Texts\n${sections}`;
+    return `## Axiom's Library — Core Texts\n${sections}`;
   }
 
   isLoaded(): boolean {

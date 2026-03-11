@@ -626,7 +626,7 @@ const MarketplacePage: React.FC = () => {
                   <Stack spacing={1.5}>
                     {[
                       { icon: <AccountTreeIcon sx={{ color: '#34D399', fontSize: 20 }} />, label: 'Unlimited goals & tree depth' },
-                      { icon: <AutoAwesomeIcon sx={{ color: '#A78BFA', fontSize: 20 }} />, label: 'Master Roshi AI coaching — strategies, routines, meal plans' },
+                      { icon: <AutoAwesomeIcon sx={{ color: '#A78BFA', fontSize: 20 }} />, label: 'Axiom AI coaching — strategies, routines, meal plans' },
                       { icon: <StarIcon sx={{ color: '#F59E0B', fontSize: 20 }} />, label: 'Advanced Analytics — domain performance, feedback trends' },
                       { icon: <GroupsIcon sx={{ color: '#60A5FA', fontSize: 20 }} />, label: 'Priority matching algorithm' },
                       { icon: <DiamondIcon sx={{ color: '#A78BFA', fontSize: 20 }} />, label: 'Exclusive Pro badge on your profile' },

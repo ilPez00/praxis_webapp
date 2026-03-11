@@ -648,7 +648,7 @@ CREATE POLICY "Own tracker_entries delete" ON public.tracker_entries FOR DELETE 
 
 
 -- =============================================================================
--- 13. COACHING_BRIEFS — cached Master Roshi analysis per user
+-- 13. COACHING_BRIEFS — cached Axiom analysis per user
 -- One row per user, upserted on each background generation.
 -- =============================================================================
 

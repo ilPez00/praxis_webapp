@@ -23,7 +23,7 @@ The 90-day plan has three phases:
 ```
 TRIGGER       → "Alex just checked in. You're 18 hours behind."
 ACTION        → 1-click check-in (< 3 seconds)
-VARIABLE REWARD → "Master Roshi: 'You've been more consistent than 78% this week.'"
+VARIABLE REWARD → "Axiom: 'You've been more consistent than 78% this week.'"
 INVESTMENT    → Streak grows. Partner bond strengthens. Progress data accumulates.
 REPEAT        → Tomorrow's trigger fires because yesterday's data exists.
 ```
@@ -153,7 +153,7 @@ POST /api/reliability/recalculate      — cron job trigger (runs nightly)
 ### 1.3 AI Weekly Narrative
 
 #### Concept
-Every Monday morning, Master Roshi generates a personalized behavioral summary using Gemini. This is NOT a generic "you did X check-ins" email. It reads like a coach who has been watching you all week and has an opinion.
+Every Monday morning, Axiom generates a personalized behavioral summary using Gemini. This is NOT a generic "you did X check-ins" email. It reads like a coach who has been watching you all week and has an opinion.
 
 #### Examples
 > *"This week you showed up 6 out of 7 days. The one miss was Wednesday — your pattern shows midweek dips. Let's talk about why Thursday always bounces back stronger."*
@@ -254,7 +254,7 @@ CREATE TABLE public.notifications (
 FREE — $0/month
 ├── 3 active goals maximum
 ├── 5 AI matches per month
-├── 3 Master Roshi sessions per month
+├── 3 Axiom sessions per month
 ├── Basic check-in logging
 ├── Individual streak tracking
 └── 24h streak grace period (1× per 14 days)
@@ -262,7 +262,7 @@ FREE — $0/month
 PRO — $9.99/month (or $79.99/year → 33% savings)
 ├── Unlimited active goals
 ├── Unlimited AI matches
-├── Unlimited Master Roshi sessions
+├── Unlimited Axiom sessions
 ├── Weekly AI narrative (Monday delivery)
 ├── Reliability score + percentile display
 ├── Mutual streak system with partner
@@ -275,7 +275,7 @@ ELITE — $24.99/month (or $199.99/year → 33% savings)
 ├── Priority match algorithm (matched first in queue)
 ├── Private accountability rooms (up to 5 members)
 ├── Streak Shield (72h grace, unlimited uses)
-├── Advanced AI coaching (daily check-ins with Master Roshi)
+├── Advanced AI coaching (daily check-ins with Axiom)
 ├── Downloadable progress reports (PDF/CSV)
 ├── Reliability score API access (for journaling apps etc.)
 └── Early access to new features
@@ -363,7 +363,7 @@ These are the 6 moments when a user is most likely to convert:
 | Streak broken | "Streak broken. Elite members get Streak Shield — 72h protection." | "Protect future streaks" |
 | Reliability score computed | "You're in the top 23% of users. Unlock your percentile badge." | "Show your rank" |
 | Attempt to view analytics | Blurred graph + "See your full progress breakdown" | "Unlock analytics" |
-| Weekly narrative blurred | "Your Master Roshi brief is ready." + preview blurred | "Unlock weekly coaching" |
+| Weekly narrative blurred | "Your Axiom brief is ready." + preview blurred | "Unlock weekly coaching" |
 | After 30-day streak | "You've built a 30-day streak. Protect it with Elite." | "Add Streak Shield" |
 
 **Implementation:** Each trigger component accepts an `onUpgradeClick` prop that opens the upgrade modal. The modal knows which feature triggered it and shows relevant copy, not generic pricing.
@@ -405,7 +405,7 @@ Praxis must engineer **healthy compulsion** — the same pull as exercise, not t
 ### 3.4 Healthy Engagement Thresholds
 - If a user logs > 5 check-ins in a single day: gentle message — "You're locked in today. Don't forget: rest is part of the system."
 - If a user uses the app > 4h total in one day: soft notification — "You've been building hard. Take a breath."
-- Master Roshi won't send messages between 10pm–7am local time, even if triggered
+- Axiom won't send messages between 10pm–7am local time, even if triggered
 - Weekly narrative always includes one sentence of acknowledgment for difficulty, not just wins
 
 ### 3.5 Anti-Burnout Architecture
@@ -556,7 +556,7 @@ Praxis must engineer **healthy compulsion** — the same pull as exercise, not t
 | Streak | Individual only | Mutual + social framing |
 | Notifications | In-app banner | Push + email + quiet hours |
 | Reliability | Raw score only | Percentile + trend + tier badge |
-| Narrative | Plain text email | Beautiful in-app card with Master Roshi avatar |
+| Narrative | Plain text email | Beautiful in-app card with Axiom avatar |
 | Upgrade | Basic pricing page | Context-aware modal at trigger moment |
 
 **Rule:** Ship MVP on schedule. Polish never blocks launch.

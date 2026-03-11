@@ -264,7 +264,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
       setText('');
       clearFile();
       setPostRef(null);
-      // Fire-and-forget Roshi brief refresh
+      // Fire-and-forget Axiom brief refresh
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
         fetch(`${API_URL}/ai-coaching/trigger`, {

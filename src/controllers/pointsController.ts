@@ -7,7 +7,7 @@ import { catchAsync, BadRequestError, NotFoundError } from '../utils/appErrors';
 const SPEND_CATALOGUE: Record<string, { cost: number; label: string }> = {
   boost_visibility:  { cost: 150, label: '24h Boosted Visibility'         },
   goal_slot:         { cost: 200, label: 'Extra Root Goal Slot'           },
-  coaching_session:  { cost: 500, label: 'AI Coaching Session (Master Roshi)' },
+  coaching_session:  { cost: 500, label: 'AI Coaching Session (Axiom)' },
   super_match:       { cost: 300, label: 'Super Match (Priority Queue)'   },
   custom_icon:       { cost: 100, label: 'Custom Goal Icon / Theme'       },
   skip_grading:      { cost:  80, label: 'Skip Partner Grading Wait'      },

@@ -166,7 +166,7 @@ const ChatPage: React.FC = () => {
             </Typography>
 
             <List sx={{ bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
-                {/* Master Roshi — always pinned at top */}
+                {/* Axiom — always pinned at top */}
                 <ListItem
                     component={RouterLink}
                     to="/coaching"
@@ -195,7 +195,7 @@ const ChatPage: React.FC = () => {
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <Typography variant="h6" component="span" sx={{ color: '#F59E0B', fontWeight: 800 }}>
-                                        Master Roshi
+                                        Axiom
                                     </Typography>
                                     <Chip
                                         icon={<AutoAwesomeIcon sx={{ fontSize: '12px !important' }} />}

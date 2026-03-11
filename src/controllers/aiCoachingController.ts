@@ -248,7 +248,7 @@ export const getBrief = catchAsync(async (req: Request, res: Response, _next: Ne
 });
 
 // ---------------------------------------------------------------------------
-// GET /ai-coaching/weekly-narrative — short Roshi "this week" summary
+// GET /ai-coaching/weekly-narrative — short Axiom "this week" summary
 // ---------------------------------------------------------------------------
 
 // In-memory cache: userId → { narrative, generatedAt }

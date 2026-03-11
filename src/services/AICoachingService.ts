@@ -47,19 +47,22 @@ export interface CoachingReport {
 }
 
 // Axiom's identity — injected into every prompt
-const MASTER_ROSHI_IDENTITY = `You are Axiom — a wise, warm, and practical life coach who has spent decades helping people achieve their most important goals. You are deeply experienced in strategy, habit formation, nutrition, training, productivity, and performance — and you bring genuine enthusiasm for each person's specific situation. Your tone is friendly and direct, like a trusted mentor who happens to know a lot. You speak simply, without jargon or academic citations. You ask good questions when you need more context. You give practical, concrete guidance: weekly plans, daily routines, meal ideas, accountability systems, and next actions. When asked to analyze someone's posts, goals, groups, or services, you give honest, useful feedback. You celebrate wins without hollow cheerleading, and you name obstacles clearly without judgment. You never cite books by name or author. You just give people what they need to move forward.`;
+const AXIOM_IDENTITY = `You are Axiom — a wise, warm, and practical life coach who has spent decades helping people achieve their most important goals. You are deeply experienced in strategy, habit formation, nutrition, training, productivity, and performance — and you bring genuine enthusiasm for each person's specific situation. Your tone is friendly and direct, like a trusted mentor who happens to know a lot. You speak simply, without jargon or academic citations. You ask good questions when you need more context. You give practical, concrete guidance: weekly plans, daily routines, meal ideas, accountability systems, and next actions. When asked to analyze someone's posts, goals, groups, or services, you give honest, useful feedback. You celebrate wins without hollow cheerleading, and you name obstacles clearly without judgment. You never cite books by name or author. You just give people what they need to move forward.`;
 
 export class AICoachingService {
   private genAI: GoogleGenerativeAI | null = null;
-  private readonly MODEL: string;
+  private readonly FALLBACK_MODELS = [
+    'gemini-2.0-flash',
+    'gemini-1.5-pro',
+    'gemini-1.5-flash',
+  ];
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
-    this.MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
     if (apiKey) {
       this.genAI = new GoogleGenerativeAI(apiKey);
     } else {
-      logger.warn('[AICoachingService] GEMINI_API_KEY not set — AI coaching will be unavailable.');
+      logger.warn('[AICoachingService] GEMINI_API_KEY not set — Axiom coaching will be unavailable.');
     }
   }
 
@@ -68,24 +71,55 @@ export class AICoachingService {
   }
 
   /**
+   * Helper to attempt a generation with model fallbacks.
+   */
+  private async runWithFallback(
+    prompt: string,
+    isJson: boolean = false
+  ): Promise<string> {
+    if (!this.genAI) {
+      throw new Error('GEMINI_API_KEY is not configured on this server.');
+    }
+
+    // If user provided a specific model via env, try it first
+    const preferredModel = process.env.GEMINI_MODEL;
+    const modelsToTry = preferredModel 
+      ? [preferredModel, ...this.FALLBACK_MODELS]
+      : this.FALLBACK_MODELS;
+
+    let lastError: any = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        logger.info(`[AI Coach] Attempting generation with ${modelName}...`);
+        const model = this.genAI.getGenerativeModel({
+          model: modelName,
+          ...(isJson ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
+        }, { apiVersion: 'v1' });
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text().trim();
+        if (text) return text;
+      } catch (error: any) {
+        lastError = error;
+        logger.warn(`[AI Coach] Model ${modelName} failed: ${error.message}`);
+        // If it's a quota error, we might still want to try other models if they have separate quotas,
+        // but usually it's better to just log and continue the loop.
+      }
+    }
+
+    throw lastError || new Error('All Gemini models failed to respond.');
+  }
+
+  /**
    * Generates a full structured coaching report (motivation + per-goal strategy + network leverage).
    * Returns a parsed CoachingReport object.
    */
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
-    if (!this.genAI) {
-      throw new Error('GEMINI_API_KEY is not configured on this server.');
-    }
+    const prompt = this.buildReportPrompt(context);
     try {
-      // Use v1 for stability
-      const model = this.genAI.getGenerativeModel({
-        model: this.MODEL,
-        generationConfig: { responseMimeType: 'application/json' },
-      }, { apiVersion: 'v1' });
-
-      const prompt = this.buildReportPrompt(context);
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().trim();
-
+      const text = await this.runWithFallback(prompt, true);
+      
       // Strip markdown code fences if Gemini wraps the JSON despite responseMimeType
       const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
       let parsed: CoachingReport;
@@ -98,20 +132,6 @@ export class AICoachingService {
       return parsed;
     } catch (error: any) {
       logger.error('Error generating coaching report:', error.message);
-      
-      // Fallback: try v1beta if v1 fails (some models/regions)
-      if (error.message?.includes('not found') || error.message?.includes('404')) {
-        try {
-          const altModel = this.genAI.getGenerativeModel({
-            model: this.MODEL,
-            generationConfig: { responseMimeType: 'application/json' },
-          });
-          const res = await altModel.generateContent(this.buildReportPrompt(context));
-          const cleaned = res.response.text().trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-          return JSON.parse(cleaned) as CoachingReport;
-        } catch {}
-      }
-      
       throw new Error(error.message || 'Failed to generate coaching report.');
     }
   }
@@ -128,11 +148,8 @@ export class AICoachingService {
     topDomain?: string;
     overallProgress?: number; // avg 0-100
   }): Promise<string> {
-    if (!this.genAI) {
-      throw new Error('GEMINI_API_KEY is not configured on this server.');
-    }
     const { userName, streak, checkinsThisWeek, topGoal, topDomain, overallProgress } = stats;
-    const prompt = `${MASTER_ROSHI_IDENTITY}
+    const prompt = `${AXIOM_IDENTITY}
 
 You are writing a weekly progress narrative for ${userName}.
 
@@ -150,9 +167,7 @@ Write 2-3 short sentences in Axiom's voice that:
 Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: this.MODEL }, { apiVersion: 'v1' });
-      const result = await model.generateContent(prompt);
-      return result.response.text().trim();
+      return await this.runWithFallback(prompt);
     } catch (error: any) {
       logger.error('Error generating weekly narrative:', error.message);
       throw new Error(error.message || 'Failed to generate weekly narrative.');
@@ -164,14 +179,9 @@ Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
    * Returns plain text.
    */
   public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
-    if (!this.genAI) {
-      throw new Error('GEMINI_API_KEY is not configured on this server.');
-    }
     try {
-      const model = this.genAI.getGenerativeModel({ model: this.MODEL }, { apiVersion: 'v1' });
       const prompt = this.buildFollowUpPrompt(userPrompt, context);
-      const result = await model.generateContent(prompt);
-      return result.response.text();
+      return await this.runWithFallback(prompt);
     } catch (error: any) {
       logger.error('Error generating coaching response:', error.message);
       throw new Error(error.message || 'Failed to generate coaching response.');
@@ -211,7 +221,7 @@ Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
       ? 'Not a member of any community boards yet.'
       : ctx.boards.map(b => `- "${b.name}"${b.domain ? ` [${b.domain}]` : ''}${b.description ? `: ${b.description}` : ''}`).join('\n');
 
-    return `${MASTER_ROSHI_IDENTITY}
+    return `${AXIOM_IDENTITY}
 
 ---
 
@@ -267,7 +277,7 @@ Generate one strategy entry per goal. Every insight and step must be concrete, a
     const networkSummary = ctx.network.map(n => n.name).join(', ') || 'none';
     const boardsSummary = ctx.boards.map(b => b.name).join(', ') || 'none';
 
-    return `${MASTER_ROSHI_IDENTITY}
+    return `${AXIOM_IDENTITY}
 
 ---
 

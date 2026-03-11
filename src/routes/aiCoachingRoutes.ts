@@ -7,7 +7,7 @@ const router = Router();
 // Returns cached brief immediately (no generation)
 router.get('/brief', ...requirePro, getBrief);
 
-// Short Roshi weekly narrative (cached 7 days per user)
+// Short Axiom weekly narrative (cached 7 days per user)
 router.get('/weekly-narrative', ...requirePro, getWeeklyNarrative);
 
 // Kicks off a background brief update (rate-limited to 30 min per user)

@@ -1,5 +1,5 @@
 /**
- * AICoachPage — Axiom AI coaching interface (formerly Master Roshi).
+ * AICoachPage — Axiom AI coaching interface (formerly Axiom).
  *
  * Load order:
  *  1. GET /ai-coaching/brief   — instant cached brief (no spinner if exists)

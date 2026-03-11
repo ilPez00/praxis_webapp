@@ -15,7 +15,7 @@ interface Props {
 }
 
 /**
- * BalanceWidget — implements the Master Roshi "Balance Intervention" pillar.
+ * BalanceWidget — implements the Axiom "Balance Intervention" pillar.
  *
  * Spec (whitepaper §3.7 / Architecture of Intent):
  * If a user is active for >= 14 days (streak) but has ANY domain represented in their

@@ -98,11 +98,11 @@ const ChatRoom: React.FC = () => {
   const [pendingRef, setPendingRef] = useState<Reference | null>(null);
   const [refPickerOpen, setRefPickerOpen] = useState(false);
 
-  // Ask Roshi dialog
-  const [roshiOpen, setRoshiOpen] = useState(false);
-  const [roshiPrompt, setRoshiPrompt] = useState('');
-  const [roshiResponse, setRoshiResponse] = useState('');
-  const [roshiLoading, setRoshiLoading] = useState(false);
+  // Ask Axiom dialog
+  const [axiomOpen, setAxiomOpen] = useState(false);
+  const [axiomPrompt, setAxiomPrompt] = useState('');
+  const [axiomResponse, setAxiomResponse] = useState('');
+  const [axiomLoading, setAxiomLoading] = useState(false);
 
   // Goal-focused chat
   const [searchParams] = useSearchParams();
@@ -408,23 +408,23 @@ const ChatRoom: React.FC = () => {
     });
   };
 
-  const handleAskRoshi = async () => {
-    if (!roshiPrompt.trim() || roshiLoading) return;
-    setRoshiLoading(true);
-    setRoshiResponse('');
+  const handleAskAxiom = async () => {
+    if (!axiomPrompt.trim() || axiomLoading) return;
+    setAxiomLoading(true);
+    setAxiomResponse('');
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await axios.post(
         `${API_URL}/ai-coaching/request`,
-        { userPrompt: roshiPrompt.trim() },
+        { userPrompt: axiomPrompt.trim() },
         { headers: { Authorization: `Bearer ${session?.access_token}` } },
       );
-      setRoshiResponse(res.data.response || '…');
+      setAxiomResponse(res.data.response || '…');
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Roshi is unavailable right now.';
-      setRoshiResponse(msg);
+      const msg = err?.response?.data?.message || 'Axiom is unavailable right now.';
+      setAxiomResponse(msg);
     } finally {
-      setRoshiLoading(false);
+      setAxiomLoading(false);
     }
   };
 
@@ -869,10 +869,10 @@ const ChatRoom: React.FC = () => {
               <VideocamIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Ask Master Roshi for coaching advice">
+          <Tooltip title="Ask Axiom for coaching advice">
             <IconButton
               size="small"
-              onClick={() => { setRoshiOpen(true); setRoshiPrompt(''); setRoshiResponse(''); }}
+              onClick={() => { setAxiomOpen(true); setAxiomPrompt(''); setAxiomResponse(''); }}
               sx={{ color: 'text.secondary', '&:hover': { color: '#A78BFA' } }}
             >
               <AutoAwesomeIcon fontSize="small" />
@@ -1270,12 +1270,12 @@ const ChatRoom: React.FC = () => {
         />
       )}
 
-      {/* Ask Roshi dialog */}
-      <Dialog open={roshiOpen} onClose={() => !roshiLoading && setRoshiOpen(false)} maxWidth="sm" fullWidth>
+      {/* Ask Axiom dialog */}
+      <Dialog open={axiomOpen} onClose={() => !axiomLoading && setAxiomOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
           <AutoAwesomeIcon sx={{ color: '#A78BFA', fontSize: 20 }} />
-          Ask Master Roshi
-          <IconButton size="small" onClick={() => setRoshiOpen(false)} sx={{ ml: 'auto', color: 'text.disabled' }} disabled={roshiLoading}>
+          Ask Axiom
+          <IconButton size="small" onClick={() => setAxiomOpen(false)} sx={{ ml: 'auto', color: 'text.disabled' }} disabled={axiomLoading}>
             <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
@@ -1286,44 +1286,44 @@ const ChatRoom: React.FC = () => {
               size="small"
               multiline
               rows={3}
-              placeholder="Ask Roshi anything — strategy, accountability, mindset, next steps…"
-              value={roshiPrompt}
-              onChange={e => setRoshiPrompt(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAskRoshi(); } }}
-              disabled={roshiLoading}
+              placeholder="Ask Axiom anything — strategy, accountability, mindset, next steps…"
+              value={axiomPrompt}
+              onChange={e => setAxiomPrompt(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAskAxiom(); } }}
+              disabled={axiomLoading}
             />
-            {roshiLoading && (
+            {axiomLoading && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <CircularProgress size={16} sx={{ color: '#A78BFA' }} />
-                <Typography variant="caption" color="text.secondary">Roshi is thinking…</Typography>
+                <Typography variant="caption" color="text.secondary">Axiom is thinking…</Typography>
               </Box>
             )}
-            {roshiResponse && !roshiLoading && (
+            {axiomResponse && !axiomLoading && (
               <Box sx={{
                 p: 2, borderRadius: 2,
                 bgcolor: 'rgba(167,139,250,0.08)',
                 border: '1px solid rgba(167,139,250,0.2)',
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1 }}>
-                  <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700 }}>🥋 Master Roshi</Typography>
+                  <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700 }}>🥋 Axiom</Typography>
                 </Box>
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
-                  {roshiResponse}
+                  {axiomResponse}
                 </Typography>
               </Box>
             )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setRoshiOpen(false)} disabled={roshiLoading}>Close</Button>
+          <Button onClick={() => setAxiomOpen(false)} disabled={axiomLoading}>Close</Button>
           <Button
             variant="contained"
-            onClick={handleAskRoshi}
-            disabled={roshiLoading || !roshiPrompt.trim()}
-            startIcon={roshiLoading ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
+            onClick={handleAskAxiom}
+            disabled={axiomLoading || !axiomPrompt.trim()}
+            startIcon={axiomLoading ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
             sx={{ bgcolor: '#A78BFA', '&:hover': { bgcolor: '#8B5CF6' }, color: '#fff', borderRadius: 2 }}
           >
-            {roshiLoading ? 'Asking…' : 'Ask'}
+            {axiomLoading ? 'Asking…' : 'Ask'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,16 +1,16 @@
-# Session: March 11, 2026 - Duel Feature & AI Coaching Model Configuration
+# Session: March 11, 2026 - Axiom Rebrand & AI Fallback Logic
 
 ## Summary of Changes
-- **Duel Feature (Frontend):**
-  - Enhanced `DuelDialog.tsx` to prioritize shared goal interests.
-  - Implemented goal sorting to bring shared domain goals to the top of the selection list.
-  - Added auto-selection logic for the first shared goal.
-  - Improved UI for shared interest goals with a prominent badge and styling.
-  - Cleaned up unused variables (`sharedDomains`, `uniqueSharedDomains`).
-- **AI Coaching (Backend):**
-  - Updated `AICoachingService.ts` to allow `GEMINI_MODEL` environment variable.
-  - This allows users to override the default `gemini-1.5-flash` with models like `gemini-1.5-pro` or custom-tuned models (e.g., `duelaxiom/gemini/master roshi` if formatted correctly for the Google AI SDK).
+- **Axiom Rebrand (Full Codebase):**
+  - Renamed "Master Roshi" and "Roshi" to "Axiom" across all backend and frontend files.
+  - Updated variable names (e.g., `roshiOpen` -> `axiomOpen`, `setRoshi` -> `setAxiom`).
+  - Updated UI strings and prompts to reflect the new identity.
+- **AI Coaching Robustness (Backend):**
+  - Refactored `AICoachingService.ts` to include a `runWithFallback` method.
+  - Implemented a fallback chain: `gemini-2.0-flash` -> `gemini-1.5-pro` -> `gemini-1.5-flash`.
+  - Retained support for `GEMINI_MODEL` environment variable (tried first if present).
+  - Improved error logging and user-facing error messages ("Axiom is resting" for quota, "Axiom is unavailable" for other errors).
 
 ## Verification Status
-- Frontend UI logic updated for better UX in direct duels.
-- Backend service now supports dynamic model selection via configuration.
+- Full project search for "Roshi" confirms 0 instances in source code (only in build artifacts).
+- TypeScript type checks passed for both backend and frontend.
