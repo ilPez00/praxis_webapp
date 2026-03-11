@@ -88,6 +88,7 @@ const GoalTreePage: React.FC = () => {
   const [editDesc, setEditDesc] = useState('');
   const [editMetric, setEditMetric] = useState('');
   const [editTargetDate, setEditTargetDate] = useState('');
+  const [editProgress, setEditProgress] = useState(0);
   const [isBranching, setIsBranching] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -108,13 +109,6 @@ const GoalTreePage: React.FC = () => {
   const [placingBet, setPlacingBet] = useState(false);
   const [userBets, setUserBets] = useState<any[]>([]);
   const [praxisPoints, setPraxisPoints] = useState<number | null>(null);
-  // Progress update dialog state
-  const [progressNode, setProgressNode] = useState<FrontendGoalNode | null>(null);
-  const [progressValue, setProgressValue] = useState(0);
-  const [savingProgress, setSavingProgress] = useState(false);
-  // Node action chooser state (click < 100%)
-  const [actionNode, setActionNode] = useState<FrontendGoalNode | null>(null);
-
   // Suspend goal dialog state
   const [suspendNode, setSuspendNode] = useState<FrontendGoalNode | null>(null);
   const [suspending, setSuspending] = useState(false);
@@ -198,41 +192,7 @@ const GoalTreePage: React.FC = () => {
   const handleNodeClick = (node: FrontendGoalNode) => {
     if (!isOwnTree) return;
     if (node.id.startsWith('__dom__')) return;
-    // Show action chooser for all nodes
-    setActionNode(node);
-  };
-
-  const handleSaveProgress = async () => {
-    if (!progressNode || !currentUserId) return;
-    setSavingProgress(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.patch(
-        `${API_URL}/goals/${currentUserId}/node/${progressNode.id}/progress`,
-        { progress: progressValue },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } }
-      );
-      // Update local tree
-      const updateNode = (nodes: FrontendGoalNode[]): FrontendGoalNode[] =>
-        nodes.map(n => n.id === progressNode.id
-          ? { ...n, progress: progressValue }
-          : { ...n, children: updateNode(n.children) }
-        );
-      setTreeData(prev => updateNode(prev));
-      toast.success(progressValue === 100
-        ? '🎉 Goal completed! +50 PP awarded.'
-        : `Progress updated to ${progressValue}%.`
-      );
-      setProgressNode(null);
-      // If just hit 100%, offer achievement post
-      if (progressValue === 100) {
-        setTimeout(() => setAchieveNode({ ...progressNode, progress: 100 }), 400);
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update progress.');
-    } finally {
-      setSavingProgress(false);
-    }
+    handleOpenEdit(node, false);
   };
 
   const handleOpenEdit = (node: FrontendGoalNode, branch = false) => {
@@ -243,56 +203,82 @@ const GoalTreePage: React.FC = () => {
       setEditDesc('');
       setEditMetric('');
       setEditTargetDate('');
+      setEditProgress(0);
     } else {
       setEditName(node.title);
       setEditDesc(node.description || '');
+      setEditProgress(node.progress);
       // Need original metric from backendNodes
       const bNode = backendNodes.find(n => n.id === node.id);
       setEditMetric(bNode?.completionMetric || '');
       setEditTargetDate(bNode?.targetDate || '');
     }
-    setActionNode(null);
   };
 
   const handleSaveEdit = async () => {
     if (!editingNode || !currentUserId || !editName.trim()) return;
     setSavingEdit(true);
     try {
-      let updatedNodes = [...backendNodes];
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { Authorization: `Bearer ${session?.access_token}` };
+
       if (isBranching) {
-        const newNode = {
-          id: Math.random().toString(36).substring(2, 9),
-          parentId: editingNode.id,
-          userId: currentUserId,
-          domain: editingNode.domain,
-          name: editName.trim(),
-          customDetails: editDesc.trim() || undefined,
-          completionMetric: editMetric.trim() || undefined,
-          targetDate: editTargetDate || undefined,
-          weight: 1.0,
-          progress: 0,
-        };
-        updatedNodes.push(newNode);
+        // Costs 500 PP
+        const res = await axios.post(
+          `${API_URL}/goals/${currentUserId}/node`,
+          {
+            name: editName.trim(),
+            description: editDesc.trim() || undefined,
+            completionMetric: editMetric.trim() || undefined,
+            targetDate: editTargetDate || undefined,
+            parentId: editingNode.id,
+            domain: editingNode.domain,
+          },
+          { headers }
+        );
+        toast.success(`Sub-goal added! -500 PP`);
+        if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
       } else {
-        updatedNodes = updatedNodes.map(n => n.id === editingNode.id ? {
-          ...n,
-          name: editName.trim(),
-          customDetails: editDesc.trim() || undefined,
-          completionMetric: editMetric.trim() || undefined,
-          targetDate: editTargetDate || undefined,
-        } : n);
+        // Costs 100 PP for metadata changes
+        const bNode = backendNodes.find(n => n.id === editingNode.id);
+        const metadataChanged = 
+          editName.trim() !== bNode?.name ||
+          (editDesc.trim() || undefined) !== bNode?.customDetails ||
+          (editMetric.trim() || undefined) !== bNode?.completionMetric ||
+          (editTargetDate || undefined) !== bNode?.targetDate;
+
+        if (metadataChanged) {
+          const res = await axios.patch(
+            `${API_URL}/goals/${currentUserId}/node/${editingNode.id}`,
+            {
+              name: editName.trim(),
+              description: editDesc.trim() || undefined,
+              completionMetric: editMetric.trim() || undefined,
+              targetDate: editTargetDate || undefined,
+            },
+            { headers }
+          );
+          toast.success(`Goal details updated! -100 PP`);
+          if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
+        }
+
+        // Check if progress changed
+        if (editProgress !== editingNode.progress) {
+          await axios.patch(
+            `${API_URL}/goals/${currentUserId}/node/${editingNode.id}/progress`,
+            { progress: editProgress },
+            { headers }
+          );
+          if (!metadataChanged) toast.success(`Progress updated to ${editProgress}%`);
+          if (editProgress === 100) {
+            setTimeout(() => setAchieveNode({ ...editingNode, progress: 100 }), 400);
+          }
+        }
       }
 
-      const roots = updatedNodes.filter(n => !n.parentId);
-      await axios.post(`${API_URL}/goals`, {
-        userId: currentUserId,
-        nodes: updatedNodes,
-        rootNodes: roots,
-      });
-
-      toast.success(isBranching ? 'Sub-goal added!' : 'Goal updated!');
       setEditingNode(null);
-      window.location.reload();
+      // Reload to see updated tree
+      setTimeout(() => window.location.reload(), 1000);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save changes.');
     } finally {
@@ -689,84 +675,13 @@ const GoalTreePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Action chooser — click node */}
-      <Dialog open={!!actionNode} onClose={() => setActionNode(null)} maxWidth="xs" fullWidth
+      {/* Edit/Branch Dialog — Consolidated UI */}
+      <Dialog open={!!editingNode} onClose={() => setEditingNode(null)} maxWidth="sm" fullWidth
         PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}>
-        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
-          {actionNode?.title}
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 400, mt: 0.5 }}>
-            {actionNode?.progress}% complete — choose an action:
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
-            {actionNode && actionNode.progress < 100 && (
-              <Button
-                fullWidth variant="outlined" startIcon={<TrendingUpIcon />}
-                onClick={() => { setProgressValue(actionNode.progress); setProgressNode(actionNode); setActionNode(null); }}
-                sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(16,185,129,0.4)', color: '#10B981', '&:hover': { borderColor: '#10B981', bgcolor: 'rgba(16,185,129,0.08)' } }}
-              >
-                Update progress
-              </Button>
-            )}
-            
-            {actionNode && actionNode.progress >= 100 && (
-              <Button
-                fullWidth variant="contained" startIcon={<EmojiEventsIcon />}
-                onClick={() => { setAchieveNode(actionNode); setActionNode(null); }}
-                sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)' }}
-              >
-                Post Achievement
-              </Button>
-            )}
-
-            <Button
-              fullWidth variant="outlined" startIcon={<AccountTreeIcon />}
-              onClick={() => handleOpenEdit(actionNode!, true)}
-              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(139,92,246,0.4)', color: '#8B5CF6', '&:hover': { borderColor: '#8B5CF6', bgcolor: 'rgba(139,92,246,0.08)' } }}
-            >
-              Branch Goal (Add Sub-goal)
-            </Button>
-
-            <Button
-              fullWidth variant="outlined" startIcon={<EditNoteIcon />}
-              onClick={() => handleOpenEdit(actionNode!, false)}
-              sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(255,255,255,0.2)', color: 'text.primary' }}
-            >
-              Edit Goal Details
-            </Button>
-
-            {actionNode && actionNode.progress < 100 && (
-              <>
-                <Button
-                  fullWidth variant="outlined" startIcon={<VerifiedIcon />}
-                  onClick={() => { setClaimNode(actionNode); setSelectedVerifier(null); if (currentUserId) fetchDMPartners(currentUserId); setActionNode(null); }}
-                  sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(139,92,246,0.4)', color: '#8B5CF6', '&:hover': { borderColor: '#8B5CF6', bgcolor: 'rgba(139,92,246,0.08)' } }}
-                >
-                  Request peer verification
-                </Button>
-                <Button
-                  fullWidth variant="outlined" startIcon={<EmojiEventsIcon />}
-                  onClick={() => { setBetNode(actionNode); setActionNode(null); }}
-                  sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: '10px', borderColor: 'rgba(245,158,11,0.4)', color: '#F59E0B', '&:hover': { borderColor: '#F59E0B', bgcolor: 'rgba(245,158,11,0.08)' } }}
-                >
-                  Place a bet
-                </Button>
-              </>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setActionNode(null)} sx={{ color: 'text.secondary' }}>Cancel</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit/Branch Dialog */}
-      <Dialog open={!!editingNode} onClose={() => setEditingNode(null)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {isBranching ? <AddCircleOutlineIcon sx={{ color: 'primary.main' }} /> : <EditNoteIcon sx={{ color: 'primary.main' }} />}
-            {isBranching ? `Add Sub-goal to: ${editingNode?.title}` : 'Edit Goal'}
+            {isBranching ? `Add Sub-goal to: ${editingNode?.title}` : 'Goal Details'}
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -775,12 +690,73 @@ const GoalTreePage: React.FC = () => {
             <TextField fullWidth label="Description" multiline rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Details..." />
             <TextField fullWidth label="Success Metric" multiline rows={2} value={editMetric} onChange={e => setEditMetric(e.target.value)} placeholder="How will you know it's done?" />
             <TextField fullWidth label="Target Date" type="date" InputLabelProps={{ shrink: true }} value={editTargetDate} onChange={e => setEditTargetDate(e.target.value)} inputProps={{ min: new Date().toISOString().slice(0, 10) }} />
+            
+            {!isBranching && (
+               <Box sx={{ mt: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="body2" color="text.secondary">Progress</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: editProgress === 100 ? '#10B981' : '#F59E0B' }}>
+                      {editProgress}%
+                    </Typography>
+                  </Box>
+                  <Slider
+                    value={editProgress}
+                    onChange={(_, v) => setEditProgress(v as number)}
+                    min={0} max={100} step={5}
+                    marks={[{ value: 0, label: '0%' }, { value: 50, label: '50%' }, { value: 100, label: '100%' }]}
+                    sx={{ color: editProgress === 100 ? '#10B981' : '#F59E0B' }}
+                  />
+               </Box>
+            )}
           </Stack>
+
+          {/* Additional Actions */}
+          {!isBranching && editingNode && (
+             <Stack direction="row" spacing={1} sx={{ mt: 3, flexWrap: 'wrap', gap: 1 }}>
+                <Button size="small" variant="outlined" startIcon={<AccountTreeIcon />} 
+                  onClick={() => setIsBranching(true)}
+                  sx={{ borderRadius: '8px', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.4)' }}
+                >
+                   Add Sub-goal
+                </Button>
+                {editingNode.progress < 100 && (
+                   <>
+                      <Button size="small" variant="outlined" startIcon={<VerifiedIcon />} 
+                        onClick={() => { setClaimNode(editingNode); setSelectedVerifier(null); if (currentUserId) fetchDMPartners(currentUserId); setEditingNode(null); }}
+                        sx={{ borderRadius: '8px', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.4)' }}
+                      >
+                         Verify
+                      </Button>
+                      <Button size="small" variant="outlined" startIcon={<LocalFireDepartmentIcon />} 
+                        onClick={() => { setBetNode(editingNode); setEditingNode(null); }}
+                        sx={{ borderRadius: '8px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.4)' }}
+                      >
+                         Bet
+                      </Button>
+                   </>
+                )}
+                {editingNode.progress >= 100 && (
+                   <Button size="small" variant="contained" startIcon={<EmojiEventsIcon />} 
+                     onClick={() => { setAchieveNode(editingNode); setEditingNode(null); }}
+                     sx={{ borderRadius: '8px', background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)' }}
+                   >
+                      Post Achievement
+                   </Button>
+                )}
+             </Stack>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setEditingNode(null)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim()} sx={{ borderRadius: '10px' }}>
-            {savingEdit ? 'Saving...' : (isBranching ? 'Add Sub-goal' : 'Save Changes')}
+          <Button onClick={() => setEditingNode(null)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim()} 
+            sx={{ borderRadius: '10px' }}>
+            {savingEdit ? 'Saving...' : (isBranching ? 'Add Sub-goal (500 PP)' : (
+              (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') || 
+               editDesc.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.customDetails || '') ||
+               editMetric.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.completionMetric || '') ||
+               editTargetDate !== (backendNodes.find(n => n.id === editingNode?.id)?.targetDate || '')
+              ) ? 'Save Details (100 PP)' : 'Save Progress'
+            ))}
           </Button>
         </DialogActions>
       </Dialog>
@@ -824,52 +800,6 @@ const GoalTreePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Progress update slider */}
-      <Dialog open={!!progressNode} onClose={() => setProgressNode(null)} maxWidth="xs" fullWidth
-        PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>
-          Update Progress
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 400, mt: 0.5 }}>
-            {progressNode?.title}
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ px: 1, pt: 1 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Progress</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 700, color: progressValue === 100 ? '#10B981' : '#F59E0B' }}>
-                {progressValue}%
-              </Typography>
-            </Box>
-            <Slider
-              value={progressValue}
-              onChange={(_, v) => setProgressValue(v as number)}
-              min={0} max={100} step={5}
-              marks={[{ value: 0, label: '0%' }, { value: 50, label: '50%' }, { value: 100, label: '100%' }]}
-              sx={{
-                color: progressValue === 100 ? '#10B981' : '#F59E0B',
-                '& .MuiSlider-markLabel': { fontSize: '0.7rem', color: 'text.disabled' },
-              }}
-            />
-            {progressValue === 100 && (
-              <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 600, mt: 1, display: 'block' }}>
-                Setting to 100% will award PP and prompt you to post an achievement.
-              </Typography>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setProgressNode(null)} sx={{ color: 'text.secondary' }}>Cancel</Button>
-          <Button
-            variant="contained"
-            disabled={savingProgress}
-            onClick={handleSaveProgress}
-            sx={{ bgcolor: progressValue === 100 ? '#10B981' : '#F59E0B', '&:hover': { bgcolor: progressValue === 100 ? '#059669' : '#D97706' } }}
-          >
-            {savingProgress ? 'Saving…' : 'Save Progress'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 };

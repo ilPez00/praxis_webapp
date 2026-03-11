@@ -502,13 +502,14 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
   res.json({ success: true, nodeId, progress });
 });
 
-// ─── Per-node CRUD with 25 PP gate ───────────────────────────────────────────
+// ─── Per-node CRUD with higher PP gate ────────────────────────────────────────
 
-const NODE_EDIT_COST = 25;
+const NODE_CREATE_COST = 500;
+const NODE_EDIT_COST = 100;
 
 /**
  * POST /goals/:userId/node
- * Create a new goal node. Costs 25 PP.
+ * Create a new goal node. Costs 500 PP.
  */
 export const createGoalNode = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId } = req.params;
@@ -529,8 +530,8 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   if (profileErr || !profile) throw new InternalServerError('Failed to fetch user profile.');
 
   const currentPoints: number = profile.praxis_points ?? 0;
-  if (currentPoints < NODE_EDIT_COST) {
-    throw new AppError(`Insufficient Praxis Points. Creating a node costs ${NODE_EDIT_COST} PP (you have ${currentPoints}).`, 402);
+  if (currentPoints < NODE_CREATE_COST) {
+    throw new AppError(`Insufficient Praxis Points. Creating a node costs ${NODE_CREATE_COST} PP (you have ${currentPoints}).`, 402);
   }
 
   // 2. Load existing tree
@@ -579,19 +580,19 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const { error: profileUpdateErr } = await supabase
     .from('profiles')
     .update({
-      praxis_points: currentPoints - NODE_EDIT_COST,
+      praxis_points: currentPoints - NODE_CREATE_COST,
       goal_tree_edit_count: editCount + 1,
     })
     .eq('id', userId);
   if (profileUpdateErr) throw new InternalServerError('Failed to deduct PP.');
 
-  const newBalance = currentPoints - NODE_EDIT_COST;
+  const newBalance = currentPoints - NODE_CREATE_COST;
   res.status(201).json({ node: newNode, newBalance });
 });
 
 /**
  * PATCH /goals/:userId/node/:nodeId
- * Edit fields on an existing goal node. Costs 25 PP.
+ * Edit fields on an existing goal node. Costs 100 PP.
  */
 export const updateGoalNode = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId, nodeId } = req.params;
