@@ -1,22 +1,23 @@
-# Session: March 11, 2026 - Midnight Automated Scan and AI Scaling
+# Session: March 11, 2026 - Events/Places Enhancements and Sharing
 
 ## Summary of Changes
-- **Axiom Scaling & Reliability:**
-  - **API Key Pooling:** Updated `AICoachingService.ts` to support multiple comma-separated keys in `GEMINI_API_KEY`. The service now automatically rotates to the next key if one hits a quota limit (429).
-  - **Protocol Fix:** Fixed the `400 Bad Request` error by removing `responseMimeType` when using the stable `v1` API version (used for Gemini 1.5 models).
-  - **Improved Fallbacks:** re-ordered the fallback chain to prioritize `gemini-1.5-flash` for stability while keeping `gemini-1.5-pro` and `gemini-2.0-flash` as high-capability alternatives.
-- **Automated Midnight Scan:**
-  - **New Service:** Implemented `AxiomScanService.ts` using `node-cron`. It runs a global system scan every day at midnight (00:00).
-  - **Comprehensive Analysis:** The scan analyzes posts, messages, groups, events, challenges, and tracked progress (widgets/trackers) for all active users.
-  - **Tailored Recommendations:** For each user, Axiom generates 6 personalized recommendations: a best match, an event, a relevant community post, a service/coach, a place to visit, and a custom resource (e.g., meal plan or study guide).
-- **Database & API:**
-  - Added `axiom_daily_briefs` table to store automated scan results.
-  - Implemented `/api/ai-coaching/daily-brief` endpoint to retrieve these results.
-- **UI Enhancements:**
-  - Updated `AICoachPage.tsx` to display the "Axiom Daily Recommendations" section at the top of the coaching feed.
+- **Events & Places Editing:**
+  - Added `PUT /events/:id` and `PUT /places/:id` backend routes and controllers.
+  - Enabled creator-only (and admin) editing functionality in `EventsPage.tsx` and `PlacesTab.tsx` with a unified Save/Update dialog.
+- **Event Tagging:**
+  - Added a `type` field to the `events` table (matching `places` tags: Work, Study, Fitness, Social, Performance).
+  - Updated the Event creation/edit dialog to include this tag selector.
+- **Verified Attendee Lists & Rewards:**
+  - Implemented `event_checkins` table to record verified QR scans.
+  - **Rewards:** Both the attendee and the organizer now receive **10 PraxisPoints** upon a successful QR check-in.
+  - Creators can now view a list of verified attendees for their past events via a new "People" icon on the event card.
+- **Enhanced Sharing (References):**
+  - Updated `ReferenceCard` and `ReferencePicker` to support **Places** as shareable attachments in posts and messages.
+  - Unified the attachment logic across `ChatRoom`, `PostFeed`, and `GroupRoom`.
 
 ## Verification Status
-- Type check: 0 errors (`npx tsc --noEmit`).
-- Cron job scheduling verified in `index.ts`.
-- Multi-key rotation logic implemented and type-safe.
+- Database migrations for `event_checkins` and `event.type` created.
+- Backend logic for point awarding and authorization verified.
+- Frontend UI updated for editing and attendee management.
+- Type check: 0 errors (`npx tsc --noEmit` passed for both backend and client).
 - Push to GitHub: Completed.

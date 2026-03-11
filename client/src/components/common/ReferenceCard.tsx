@@ -8,8 +8,10 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import EventIcon from '@mui/icons-material/Event';
 import CloseIcon from '@mui/icons-material/Close';
 
+import PlaceIcon from '@mui/icons-material/Place';
+
 export interface Reference {
-  type: 'goal' | 'service' | 'post' | 'group' | 'event';
+  type: 'goal' | 'service' | 'post' | 'group' | 'event' | 'place';
   id: string;
   title: string;
   subtitle?: string;
@@ -22,6 +24,7 @@ const TYPE_META: Record<Reference['type'], { color: string; icon: React.ReactNod
   post:    { color: '#3B82F6', icon: <ArticleOutlinedIcon sx={{ fontSize: 14 }} />, label: 'Post'    },
   group:   { color: '#8B5CF6', icon: <GroupsIcon sx={{ fontSize: 14 }} />,          label: 'Group'   },
   event:   { color: '#EC4899', icon: <EventIcon sx={{ fontSize: 14 }} />,           label: 'Event'   },
+  place:   { color: '#6366F1', icon: <PlaceIcon sx={{ fontSize: 14 }} />,           label: 'Place'   },
 };
 
 interface Props {

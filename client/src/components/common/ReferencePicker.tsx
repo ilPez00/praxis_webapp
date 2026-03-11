@@ -14,6 +14,7 @@ import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import GroupsIcon from '@mui/icons-material/Groups';
 import EventIcon from '@mui/icons-material/Event';
+import PlaceIcon from '@mui/icons-material/Place';
 import SearchIcon from '@mui/icons-material/Search';
 import { API_URL } from '../../lib/api';
 import { Reference } from './ReferenceCard';
@@ -34,18 +35,20 @@ const ReferencePicker: React.FC<Props> = ({ open, userId, onSelect, onClose }) =
   const [posts, setPosts]       = useState<Reference[]>([]);
   const [groups, setGroups]     = useState<Reference[]>([]);
   const [events, setEvents]     = useState<Reference[]>([]);
+  const [places, setPlaces]     = useState<Reference[]>([]);
   const [loading, setLoading]   = useState(false);
 
   const fetchAll = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      const [goalsRes, servicesRes, postsRes, groupsRes, eventsRes] = await Promise.allSettled([
+      const [goalsRes, servicesRes, postsRes, groupsRes, eventsRes, placesRes] = await Promise.allSettled([
         fetch(`${API_URL}/goals/${userId}`).then(r => r.ok ? r.json() : null),
         fetch(`${API_URL}/services`).then(r => r.ok ? r.json() : []),
         fetch(`${API_URL}/posts?context=general&userId=${userId}`).then(r => r.ok ? r.json() : []),
         fetch(`${API_URL}/groups`).then(r => r.ok ? r.json() : []),
         fetch(`${API_URL}/events`).then(r => r.ok ? r.json() : []),
+        fetch(`${API_URL}/places`).then(r => r.ok ? r.json() : []),
       ]);
 
       // Goals: flatten tree nodes
@@ -107,6 +110,18 @@ const ReferencePicker: React.FC<Props> = ({ open, userId, onSelect, onClose }) =
           url: `/events`,
         })));
       }
+
+      // Places
+      if (placesRes.status === 'fulfilled') {
+        const all: any[] = Array.isArray(placesRes.value) ? placesRes.value : [];
+        setPlaces(all.slice(0, 30).map(p => ({
+          type: 'place' as const,
+          id: p.id,
+          title: p.name,
+          subtitle: `${p.type ?? ''}${p.city ? ` · ${p.city}` : ''}`.replace(/^·\s*/, ''),
+          url: `/discover?tab=places`,
+        })));
+      }
     } finally {
       setLoading(false);
     }
@@ -121,16 +136,17 @@ const ReferencePicker: React.FC<Props> = ({ open, userId, onSelect, onClose }) =
       ? items.filter(i => `${i.title} ${i.subtitle}`.toLowerCase().includes(search.toLowerCase()))
       : items;
 
-  const lists = [filtered(goals), filtered(services), filtered(posts), filtered(groups), filtered(events)];
+  const lists = [filtered(goals), filtered(services), filtered(posts), filtered(groups), filtered(events), filtered(places)];
   const tabIcons = [
     <FlagIcon sx={{ fontSize: 16 }} />,
     <WorkOutlineIcon sx={{ fontSize: 16 }} />,
     <ArticleOutlinedIcon sx={{ fontSize: 16 }} />,
     <GroupsIcon sx={{ fontSize: 16 }} />,
     <EventIcon sx={{ fontSize: 16 }} />,
+    <PlaceIcon sx={{ fontSize: 16 }} />,
   ];
-  const tabLabels = ['Goals', 'Services', 'Posts', 'Groups', 'Events'];
-  const tabColors = ['#10B981', '#F59E0B', '#3B82F6', '#8B5CF6', '#EC4899'];
+  const tabLabels = ['Goals', 'Services', 'Posts', 'Groups', 'Events', 'Places'];
+  const tabColors = ['#10B981', '#F59E0B', '#3B82F6', '#8B5CF6', '#EC4899', '#6366F1'];
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>

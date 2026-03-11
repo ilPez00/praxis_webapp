@@ -11,6 +11,7 @@ import {
   Container, Box, Typography, Button, Stack, Chip, Grid,
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, CircularProgress, Avatar, Tooltip, IconButton,
+  MenuItem, List, ListItem, ListItemAvatar, ListItemText,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EventIcon from '@mui/icons-material/Event';
@@ -22,6 +23,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import QrCodeIcon from '@mui/icons-material/QrCode2';
 import PeopleIcon from '@mui/icons-material/People';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -96,6 +98,9 @@ const EventsPage: React.FC = () => {
   const [qrDialog, setQrDialog] = useState<{ open: boolean; token: string; eventTitle: string; eventId: string }>({ open: false, token: '', eventTitle: '', eventId: '' });
   const [scanDialog, setScanDialog] = useState<{ open: boolean; eventId: string; eventTitle: string }>({ open: false, eventId: '', eventTitle: '' });
   const [scanning, setScanning] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [attendeeDialog, setAttendeeDialog] = useState<{ open: boolean; eventId: string; eventTitle: string; list: any[] }>({ open: false, eventId: '', eventTitle: '', list: [] });
+  const [eventType, setEventType] = useState('');
 
   // Geo filter
   const [nearbyMode, setNearbyMode] = useState(false);
@@ -229,7 +234,37 @@ const EventsPage: React.FC = () => {
     );
   };
 
-  const handleCreate = async () => {
+  const handleEdit = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setTitle(event.title);
+    setDescription(event.description || '');
+    setEventDate(event.event_date);
+    setEventTime(event.event_time || '');
+    setLocation(event.location || '');
+    setCity(event.city || '');
+    setFormLat(event.latitude?.toString() || '');
+    setFormLng(event.longitude?.toString() || '');
+    setEventType((event as any).type || '');
+    setDialogOpen(true);
+  };
+
+  const fetchAttendees = async (eventId: string, eventTitle: string) => {
+    try {
+      const headers = await getAuthHeader();
+      const res = await axios.get(`${API_URL}/events/${eventId}/attendees`, { headers });
+      setAttendeeDialog({ open: true, eventId, eventTitle, list: res.data });
+    } catch {
+      toast.error('Could not load attendee list.');
+    }
+  };
+
+  const resetForm = () => {
+    setTitle(''); setDescription(''); setEventDate(new Date().toISOString().slice(0, 10)); 
+    setEventTime(''); setLocation(''); setCity(''); setFormLat(''); setFormLng('');
+    setEventType(''); setEditingEvent(null);
+  };
+
+  const handleSave = async () => {
     if (!title.trim() || !eventDate) {
       toast.error('Title and date are required.');
       return;
@@ -237,7 +272,7 @@ const EventsPage: React.FC = () => {
     setSaving(true);
     try {
       const headers = await getAuthHeader();
-      await axios.post(`${API_URL}/events`, {
+      const payload = {
         title: title.trim(),
         description: description.trim() || undefined,
         eventDate,
@@ -246,14 +281,22 @@ const EventsPage: React.FC = () => {
         city: city.trim() || undefined,
         latitude: formLat ? parseFloat(formLat) : undefined,
         longitude: formLng ? parseFloat(formLng) : undefined,
-      }, { headers });
-      toast.success('Event created!');
+        type: eventType || undefined,
+      };
+
+      if (editingEvent) {
+        await axios.put(`${API_URL}/events/${editingEvent.id}`, payload, { headers });
+        toast.success('Event updated!');
+      } else {
+        await axios.post(`${API_URL}/events`, payload, { headers });
+        toast.success('Event created!');
+      }
+      
       setDialogOpen(false);
-      setTitle(''); setDescription(''); setEventDate(''); setEventTime(''); setLocation('');
-      setCity(''); setFormLat(''); setFormLng('');
+      resetForm();
       await fetchEvents();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to create event.');
+      toast.error(err.response?.data?.message || 'Failed to save event.');
     } finally {
       setSaving(false);
     }
@@ -388,6 +431,18 @@ const EventsPage: React.FC = () => {
                       </Box>
                       {canManage && (
                         <Stack direction="row" spacing={0.5}>
+                          {new Date(event.event_date) < new Date() && (
+                            <Tooltip title="View Verified Attendees">
+                              <IconButton size="small" onClick={() => fetchAttendees(event.id, event.title)} sx={{ opacity: 0.6, '&:hover': { opacity: 1, color: 'primary.main' } }}>
+                                <PeopleIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          <Tooltip title="Edit Event">
+                            <IconButton size="small" onClick={() => handleEdit(event)} sx={{ opacity: 0.6, '&:hover': { opacity: 1, color: 'primary.main' } }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="Show Check-in QR (for you to show)">
                             <IconButton size="small" onClick={() => handleShowQR(event.id, event.title)} sx={{ opacity: 0.6, '&:hover': { opacity: 1, color: '#10B981' } }}>
                               <QrCodeIcon fontSize="small" />
@@ -576,6 +631,20 @@ const EventsPage: React.FC = () => {
               placeholder="e.g. Morning run at Central Park"
             />
             <TextField
+              select
+              fullWidth
+              label="Event Type"
+              value={eventType}
+              onChange={e => setEventType(e.target.value)}
+            >
+              <MenuItem value=""><em>None</em></MenuItem>
+              <MenuItem value="Work">Work</MenuItem>
+              <MenuItem value="Study">Study</MenuItem>
+              <MenuItem value="Fitness">Fitness</MenuItem>
+              <MenuItem value="Social">Social</MenuItem>
+              <MenuItem value="Performance">Performance</MenuItem>
+            </TextField>
+            <TextField
               fullWidth
               label="Description"
               value={description}
@@ -661,13 +730,44 @@ const EventsPage: React.FC = () => {
           <Button onClick={() => setDialogOpen(false)} sx={{ borderRadius: '10px' }}>Cancel</Button>
           <Button
             variant="contained"
-            onClick={handleCreate}
+            onClick={handleSave}
             disabled={saving || !title.trim() || !eventDate}
-            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <AddCircleOutlineIcon />}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : (editingEvent ? <EditIcon /> : <AddCircleOutlineIcon />)}
             sx={{ borderRadius: '10px', fontWeight: 800, px: 3 }}
           >
-            {saving ? 'Creating…' : 'Create Event'}
+            {saving ? 'Saving…' : (editingEvent ? 'Save Changes' : 'Create Event')}
           </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Attendee List Dialog */}
+      <Dialog open={attendeeDialog.open} onClose={() => setAttendeeDialog(s => ({ ...s, open: false }))} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Verified Attendees
+          <Typography variant="body2" color="text.secondary">{attendeeDialog.eventTitle}</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ px: 0 }}>
+          <List>
+            {attendeeDialog.list.length === 0 ? (
+              <ListItem>
+                <Typography variant="body2" color="text.disabled">No verified check-ins yet.</Typography>
+              </ListItem>
+            ) : (
+              attendeeDialog.list.map((checkin: any) => (
+                <ListItem key={checkin.profiles.id}>
+                  <ListItemAvatar>
+                    <Avatar src={checkin.profiles.avatar_url}>{checkin.profiles.name.charAt(0)}</Avatar>
+                  </ListItemAvatar>
+                  <ListItemText 
+                    primary={checkin.profiles.name} 
+                    secondary={`Checked in ${new Date(checkin.created_at).toLocaleTimeString()}`}
+                  />
+                </ListItem>
+              ))
+            )}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAttendeeDialog(s => ({ ...s, open: false }))}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

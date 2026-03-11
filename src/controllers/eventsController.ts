@@ -287,7 +287,7 @@ export const getCheckinToken = catchAsync(async (req: Request, res: Response, _n
 /**
  * POST /events/:id/checkin
  * Body: { token }
- * Verifies the HMAC token, prevents duplicate check-ins, awards 50 PP.
+ * Verifies the HMAC token, prevents duplicate check-ins, awards 10 PP to BOTH.
  */
 export const checkinEvent = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const userId = req.user?.id;
@@ -318,7 +318,7 @@ export const checkinEvent = catchAsync(async (req: Request, res: Response, _next
 
   // Check for duplicate attendance
   const { data: existing } = await supabase
-    .from('event_attendees')
+    .from('event_checkins')
     .select('id')
     .eq('event_id', eventId)
     .eq('user_id', userId)
@@ -329,23 +329,83 @@ export const checkinEvent = catchAsync(async (req: Request, res: Response, _next
     return res.json({ success: true, alreadyCheckedIn: true, newBalance: profile?.praxis_points ?? 0 });
   }
 
+  // Get event details to find creator
+  const { data: event } = await supabase.from('events').select('creator_id').eq('id', eventId).single();
+  if (!event) throw new NotFoundError('Event not found.');
+
   // Record attendance
   const { error: insertErr } = await supabase
-    .from('event_attendees')
+    .from('event_checkins')
     .insert({ event_id: eventId, user_id: userId });
 
   if (insertErr) {
-    if (SCHEMA_MISSING(insertErr.message)) {
-      return res.status(503).json({ message: 'Event attendees table not yet enabled. Run DB migrations.' });
-    }
-    logger.error('Error recording event attendance:', insertErr.message);
+    logger.error('Error recording event checkin:', insertErr.message);
     throw new InternalServerError('Failed to record check-in.');
   }
 
-  // Award PP
-  const { data: profileRow } = await supabase.from('profiles').select('praxis_points').eq('id', userId).single();
-  const newBalance = (profileRow?.praxis_points ?? 0) + QR_CHECKIN_AWARD;
-  await supabase.from('profiles').update({ praxis_points: newBalance }).eq('id', userId);
+  // Award 10 PP to Attendee
+  const { data: attendeeProfile } = await supabase.from('profiles').select('praxis_points').eq('id', userId).single();
+  await supabase.from('profiles').update({ 
+    praxis_points: (attendeeProfile?.praxis_points ?? 0) + 10 
+  }).eq('id', userId);
 
-  res.json({ success: true, alreadyCheckedIn: false, newBalance });
+  // Award 10 PP to Creator
+  const { data: creatorProfile } = await supabase.from('profiles').select('praxis_points').eq('id', event.creator_id).single();
+  await supabase.from('profiles').update({ 
+    praxis_points: (creatorProfile?.praxis_points ?? 0) + 10 
+  }).eq('id', event.creator_id);
+
+  res.json({ success: true, alreadyCheckedIn: false });
+});
+
+/**
+ * PUT /events/:id
+ * Updates an event. Only creator or admin.
+ */
+export const updateEvent = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+  const updates = req.body;
+
+  const { data: event } = await supabase.from('events').select('creator_id').eq('id', id).single();
+  if (!event) throw new NotFoundError('Event not found.');
+
+  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
+  if (event.creator_id !== userId && !profile?.is_admin) {
+    throw new ForbiddenError('Not authorized to edit this event.');
+  }
+
+  const { data, error } = await supabase.from('events').update(updates).eq('id', id).select().single();
+  if (error) throw new InternalServerError(error.message);
+
+  res.json(data);
+});
+
+/**
+ * GET /events/:id/attendees
+ * Returns list of verified attendees. Only creator/admin.
+ */
+export const getVerifiedAttendees = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+
+  const { data: event } = await supabase.from('events').select('creator_id').eq('id', id).single();
+  if (!event) throw new NotFoundError('Event not found.');
+
+  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
+  if (event.creator_id !== userId && !profile?.is_admin) {
+    throw new ForbiddenError('Only creator can view verified attendee list.');
+  }
+
+  const { data, error } = await supabase
+    .from('event_checkins')
+    .select(`
+      user_id,
+      created_at,
+      profiles:user_id(id, name, avatar_url)
+    `)
+    .eq('event_id', id);
+
+  if (error) throw new InternalServerError(error.message);
+  res.json(data);
 });
