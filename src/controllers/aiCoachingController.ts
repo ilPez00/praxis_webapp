@@ -404,7 +404,25 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
 
   try {
     const context = await buildContext(userId);
+    
+    // Log user's question to the database
+    await supabase.from('messages').insert({
+      sender_id: userId,
+      content: userPrompt.trim(),
+      message_type: 'text'
+    });
+
     const response = await aiCoachingService.generateCoachingResponse(userPrompt.trim(), context);
+
+    // Log Axiom's answer to the database
+    await supabase.from('messages').insert({
+      sender_id: userId, // technically receiver is userId, sender is AI
+      receiver_id: userId,
+      content: response,
+      message_type: 'text',
+      is_ai: true
+    });
+
     res.json({ response });
   } catch (err: any) {
     logger.error('[AI Coach] Follow-up generation failed:', err.message);

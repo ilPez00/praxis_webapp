@@ -11,6 +11,7 @@ import PostFeed from '../posts/PostFeed';
 import SiteTour from '../../components/common/SiteTour';
 import GoalWidgets from './components/GoalWidgets';
 import CommonWordsWidget from './components/CommonWordsWidget';
+import AxiomDailyProtocol from './components/AxiomDailyProtocol';
 import TrackerSection from '../trackers/TrackerSection';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
@@ -352,6 +353,9 @@ const DashboardPage: React.FC = () => {
             Analytics
           </Button>
         </Box>
+
+        {/* ── Axiom Daily Protocol ── */}
+        {currentUserId && <AxiomDailyProtocol userId={currentUserId} />}
 
         {/* ── Juicy Words analysis ── */}
         {currentUserId && <CommonWordsWidget />}

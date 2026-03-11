@@ -1,19 +1,22 @@
-# Session: March 11, 2026 - Axiom Management and Key Strategy
+# Session: March 11, 2026 - Axiom Dash Integration & Chat Logging
 
 ## Summary of Changes
-- **Axiom Key Strategy (Backend/Frontend):**
-  - **Dynamic Strategy:** Updated `AICoachingService.ts` to fetch the `axiom_key_strategy` from the `system_config` table. Axiom now starts its key iteration based on this preference (First, Last, or Random).
-  - **Admin UI Controls:** Added a new **"API Key Pool Strategy"** section to the Admin > Axiom tab. Admins can now toggle between three modes:
-    - **Start from First:** Always starts with the first key in the `.env` list.
-    - **Start from Last:** Always starts with the last key in the `.env` list.
-    - **Balanced (Random):** Distributes load evenly (original default).
-  - **Instant Application:** Any change made in the admin panel is applied to all subsequent Axiom requests.
-- **Diagnostics & Persistence:**
-  - Improved the Admin UI to refresh all Axiom settings (prompt and strategy) every time the tab is opened.
-  - Ensured the `system_config` migration is correctly identified for these features.
+- **Dashboard Integration:**
+  - Created `AxiomDailyProtocol.tsx` component to display the automated midnight scan results directly on the Dashboard.
+  - Pinned the interactive Daily Protocol dashboard above the main feed, featuring clickable deep-links to the recommended match, event, and place.
+- **Axiom Chat Logging:**
+  - Added `is_ai` boolean column to the `messages` table via a new migration.
+  - Updated `aiCoachingController.ts` to log all conversational interactions with Axiom. Both user questions and AI responses are now stored in the database, with AI messages marked as `is_ai: true`.
+- **Axiom Trigger Optimization:**
+  - Removed all automatic triggers from posts and profile edits.
+  - Axiom now only triggers automatically during the **global midnight scan**.
+  - **Pro-only manual trigger:** Axiom refreshes a user's protocol if a Pro student explicitly initiates a chat.
+- **UI/UX Fixes:**
+  - Resolved "React Error #31" by ensuring all AI-generated fields are rendered as strings.
+  - Improved `LocationMap` to always render, providing a consistent experience in the Events and Places tabs.
 
 ## Verification Status
 - Type check: Passed.
-- Key rotation logic: Respects database strategy configuration.
-- Admin UI: Toggle buttons correctly update the backend config.
+- Database: `is_ai` column added to `messages`.
+- Frontend: Daily Protocol component verified and type-safe.
 - Push to GitHub: Completed.
