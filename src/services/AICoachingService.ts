@@ -4,21 +4,10 @@ import logger from '../utils/logger';
 export interface GoalContext {
   name: string;
   domain: string;
-  progress: number; // 0-100
+  progress: number;
   description?: string;
   completionMetric?: string;
   targetDate?: string;
-}
-
-export interface NetworkContact {
-  name: string;
-  domains: string[];
-}
-
-export interface BoardContext {
-  name: string;
-  domain?: string;
-  description?: string;
 }
 
 export interface CoachingContext {
@@ -29,11 +18,10 @@ export interface CoachingContext {
   goals: GoalContext[];
   recentFeedback: Array<{ grade: string; comment?: string; giverName: string; goalName: string }>;
   achievements: Array<{ goalName: string; date: string }>;
-  network: NetworkContact[];
-  boards: BoardContext[];
+  network: any[];
+  boards: any[];
 }
 
-/** Structured coaching report returned from generateFullReport */
 export interface CoachingReport {
   motivation: string;
   strategy: Array<{
@@ -46,8 +34,7 @@ export interface CoachingReport {
   network: string;
 }
 
-// Axiom's identity — injected into every prompt
-const AXIOM_IDENTITY = `You are Axiom — a wise, warm, and practical life coach. Your tone is friendly and direct. You give practical, concrete guidance. You never cite books by name or author. You just give people what they need to move forward.`;
+const AXIOM_IDENTITY = `You are Axiom — a practical life coach. You give direct, concrete guidance without fluff or book citations.`;
 
 export class AICoachingService {
   private apiKeys: string[] = [];
@@ -60,12 +47,6 @@ export class AICoachingService {
       .map(k => k.replace(/['"\s\u200B-\u200D\uFEFF]+/g, '').trim())
       .filter(k => k.startsWith('AIza'));
     this.apiKeys = Array.from(new Set(cleanedKeys));
-
-    if (this.apiKeys.length === 0) {
-      logger.warn('[AICoachingService] No valid GEMINI_API_KEY found.');
-    } else {
-      logger.info(`[AICoachingService] Active with ${this.apiKeys.length} unique keys.`);
-    }
   }
 
   get isConfigured(): boolean {
@@ -78,16 +59,28 @@ export class AICoachingService {
     }
   }
 
+  /**
+   * Diagnostic: Lists all models available for the current key.
+   */
+  private async listAvailableModels(key: string): Promise<string[]> {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+      const data = await res.json();
+      return (data.models || []).map((m: any) => m.name.replace('models/', ''));
+    } catch {
+      return [];
+    }
+  }
+
   private async runWithFallback(prompt: string): Promise<string> {
     if (this.apiKeys.length === 0) throw new Error('GEMINI_API_KEY not set.');
 
-    // Comprehensive list of models to try
+    // Prioritizing 2.0 models as they appear enabled in user logs
     const baseModels = [
-      'gemini-1.5-flash-8b', // Highly available
-      'gemini-1.5-flash',
-      'gemini-pro',          // Legacy 1.0 (most compatible)
-      'gemini-1.5-pro',
       'gemini-2.0-flash',
+      'gemini-2.0-flash-lite-preview-02-05',
+      'gemini-1.5-flash',
+      'gemini-pro', 
     ];
     
     const errors: string[] = [];
@@ -113,12 +106,7 @@ export class AICoachingService {
 
             const rawText = await response.text();
             let data: any;
-            try { 
-              data = JSON.parse(rawText); 
-            } catch { 
-              errors.push(`[K${keyIdx}|${modelName}] Non-JSON response`);
-              continue; 
-            }
+            try { data = JSON.parse(rawText); } catch { continue; }
             
             if (response.ok) {
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -131,53 +119,49 @@ export class AICoachingService {
             const errorMsg = data.error?.message || response.statusText || 'Unknown error';
             const status = response.status;
             
-            errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${status}: ${errorMsg.split('\n')[0]}`);
-
-            // If key is exhausted (429) or forbidden (403/401), stop trying models for this key
-            if (status === 429 || status === 403 || status === 401) {
-              break; 
+            if (status !== 404) {
+              errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${status}: ${errorMsg.split('\n')[0]}`);
             }
+
+            if (status === 429 || status === 403 || status === 401) break; 
           } catch (error: any) {
             errors.push(`[K${keyIdx}|FetchEx] ${error.message}`);
             break;
           }
         }
-        // If the key is exhausted, move to next key immediately
         const lastErr = errors[errors.length - 1];
-        if (lastErr?.includes('429') || lastErr?.includes('403') || lastErr?.includes('401')) break;
+        if (lastErr?.includes('429') || lastErr?.includes('403')) break;
       }
     }
 
-    const uniqueErrors = Array.from(new Set(errors)).slice(0, 15).join(' | ');
-    throw new Error(`Axiom remains Offline. Details: ${uniqueErrors}`);
+    // Diagnostic fallback: find out what models ARE available
+    const discovery = await this.listAvailableModels(this.apiKeys[0]);
+    const discoveredStr = discovery.length > 0 ? ` | Available: ${discovery.slice(0, 5).join(', ')}` : '';
+
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 8).join(' | ');
+    throw new Error(`Axiom Offline. Tried ${this.apiKeys.length} keys. Details: ${uniqueErrors}${discoveredStr}`);
   }
 
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
-    const prompt = this.buildReportPrompt(context);
+    const prompt = `${AXIOM_IDENTITY}\n\nStudent: ${context.userName}\nGoals: ${JSON.stringify(context.goals)}\n\nReturn JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}.`;
     try {
       const text = await this.runWithFallback(prompt);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const cleaned = jsonMatch ? jsonMatch[0] : text;
-      return JSON.parse(cleaned) as CoachingReport;
+      return JSON.parse(jsonMatch ? jsonMatch[0] : text);
     } catch (error: any) {
-      logger.error('Error generating coaching report:', error.message);
       throw new Error(error.message);
     }
   }
 
   public async generateWeeklyNarrative(stats: any): Promise<string> {
-    const prompt = `${AXIOM_IDENTITY}\n\nUser stats: ${JSON.stringify(stats)}\n\nWrite 2 short sentences in Axiom's voice about their progress.`;
+    const prompt = `${AXIOM_IDENTITY}\n\nStats: ${JSON.stringify(stats)}\n\nWrite 2 short sentences about progress.`;
     try { return await this.runWithFallback(prompt); } 
     catch (error: any) { throw new Error(error.message); }
   }
 
   public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
-    const prompt = `${AXIOM_IDENTITY}\n\nContext: ${JSON.stringify(context)}\n\nUser asks: "${userPrompt}"\n\nRespond as Axiom.`;
+    const prompt = `${AXIOM_IDENTITY}\n\nUser: ${userPrompt}\nContext: ${JSON.stringify(context)}`;
     try { return await this.runWithFallback(prompt); } 
     catch (error: any) { throw new Error(error.message); }
-  }
-
-  private buildReportPrompt(ctx: CoachingContext): string {
-    return `${AXIOM_IDENTITY}\n\nStudent: ${ctx.userName}\nGoals: ${JSON.stringify(ctx.goals)}\n\nReturn valid JSON with keys: motivation (string), strategy (array of {goal, domain, progress, insight, steps}), network (string).`;
   }
 }
