@@ -145,6 +145,19 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
     fetchPosts();
   }, [fetchPosts]);
 
+  // Listen for global open compose event
+  useEffect(() => {
+    const handleOpen = () => {
+      const composeBox = document.getElementById('dashboard-post-compose');
+      if (composeBox) {
+        composeBox.scrollIntoView({ behavior: 'smooth' });
+        // Optional: focus the text field if you want
+      }
+    };
+    window.addEventListener('praxis_open_compose', handleOpen);
+    return () => window.removeEventListener('praxis_open_compose', handleOpen);
+  }, []);
+
   // ---- Votes ----
 
   const postIds = posts.map(p => p.id).join(',');
@@ -386,6 +399,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
       {/* Compose box — hidden on profile views */}
       {user && !profileUserId && (
         <Card
+          id="dashboard-post-compose"
           sx={{
             mb: 3,
             bgcolor: 'rgba(255,255,255,0.03)',
