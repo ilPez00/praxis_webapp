@@ -24,6 +24,27 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
 import QrCodeIcon from '@mui/icons-material/QrCode2';
 import PeopleIcon from '@mui/icons-material/People';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+
+// Optional OpenStreetMap link
+function MapsFrame({ lat, lng, name }: { lat: number; lng: number; name: string }) {
+  return (
+    <Box
+      component="a"
+      href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      sx={{
+        display: 'flex', alignItems: 'center', gap: 0.5,
+        color: '#60A5FA', fontSize: '0.75rem', textDecoration: 'none',
+        mt: 1,
+        '&:hover': { textDecoration: 'underline' },
+      }}
+    >
+      <OpenInNewIcon sx={{ fontSize: 14 }} /> View on OpenStreetMap
+    </Box>
+  );
+}
 
 interface EventRsvp {
   user_id: string;
@@ -424,6 +445,11 @@ const EventsPage: React.FC = () => {
                         />
                       )}
                     </Stack>
+
+                    {/* Map preview */}
+                    {event.latitude != null && event.longitude != null && (
+                      <MapsFrame lat={event.latitude} lng={event.longitude} name={event.title} />
+                    )}
 
                     {/* Attendee counts */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
