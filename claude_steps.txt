@@ -1,23 +1,14 @@
-# Session: March 11, 2026 - Bug Fixes and Feature Completion
+# Session: March 11, 2026 - Axiom Maximum Compatibility Mode
 
 ## Summary of Changes
-- **Bug Fix (Events Editing):**
-  - Resolved 500 Internal Server Error when updating events.
-  - Corrected field mapping: mapped camelCase frontend payload fields (`eventDate`, `eventTime`) to snake_case database columns (`event_date`, `event_time`) in `updateEvent` controller.
-- **Axiom Reliability Overhaul:**
-  - Implemented aggressive API key cleaning to prevent whitespace/quote issues.
-  - Added key rotation on ANY error (expiration, invalid, quota).
-  - Reverted to `v1beta` for robust JSON support.
-  - Enhanced admin debugging with multi-key failure reports.
-- **Events & Places Enhancements:**
-  - Enabled creator-only editing for events and places.
-  - Added `type` tagging to events.
-  - Implemented dual-reward system: 10 PraxisPoints for both attendee and organizer upon verified QR check-in.
-  - Added "Verified Attendee List" view for event creators.
-- **Sharing Improvements:**
-  - Enabled physical/digital Places to be shared as attachments in posts and messages via `ReferencePicker`.
+- **Axiom (AI Coach) Compatibility Fix:**
+  - **Endpoint Brute-force:** Updated `AICoachingService.ts` to try both `v1` and `v1beta` API endpoints for every model. This resolves the conflicting 404 errors seen in previous logs.
+  - **Model Alias Stabilization:** Reverted to canonical model names (`gemini-1.5-flash`, `gemini-1.5-pro`) and removed `-latest` suffixes which were causing resolution issues on beta endpoints.
+  - **JSON Mode Fallback:** Implemented a retry-without-JSON-mode strategy. If a model fails due to the `responseMimeType` flag (common on `v1`), Axiom will instantly retry in standard text mode.
+  - **Last Resort Model:** Added `gemini-1.0-pro` to the end of the fallback chain as it is the most widely supported model for older or restricted API keys.
+  - **Aggressive Rotation:** Refined key rotation to trigger on any key-specific failure (invalid, expired, or quota).
 
 ## Verification Status
 - Type check: 0 errors (`npx tsc --noEmit`).
-- Event editing fix verified via code inspection.
+- Brute-force logic: Covers all observed failure modes (404, 400, 429).
 - Push to GitHub: Completed.

@@ -53,25 +53,25 @@ export class AICoachingService {
   private apiKeys: string[] = [];
   private currentKeyIndex = 0;
   
-  // Using the most stable 'latest' aliases
+  // Most stable base model names
   private readonly FALLBACK_MODELS = [
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-pro-latest',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-1.0-pro',
     'gemini-2.0-flash',
   ];
 
   constructor() {
     const keyString = process.env.GEMINI_API_KEY || '';
-    // Clean keys: split by comma, remove quotes, trim whitespace
     this.apiKeys = keyString
       .split(',')
       .map(k => k.replace(/['"]+/g, '').trim())
       .filter(Boolean);
 
     if (this.apiKeys.length === 0) {
-      logger.warn('[AICoachingService] No GEMINI_API_KEY set — Axiom coaching will be unavailable.');
+      logger.warn('[AICoachingService] No GEMINI_API_KEY set.');
     } else {
-      logger.info(`[AICoachingService] Initialized with ${this.apiKeys.length} API key(s).`);
+      logger.info(`[AICoachingService] Active with ${this.apiKeys.length} keys.`);
     }
   }
 
@@ -87,7 +87,7 @@ export class AICoachingService {
   private rotateKey() {
     if (this.apiKeys.length > 1) {
       this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
-      logger.info(`[AI Coach] Rotated to API key index ${this.currentKeyIndex} (Next key starts with: ${this.apiKeys[this.currentKeyIndex]?.slice(0, 4)}...)`);
+      logger.info(`[AI Coach] Rotated to Key index ${this.currentKeyIndex}`);
     }
   }
 
@@ -99,7 +99,7 @@ export class AICoachingService {
     isJson: boolean = false
   ): Promise<string> {
     if (this.apiKeys.length === 0) {
-      throw new Error('GEMINI_API_KEY is not configured on this server.');
+      throw new Error('GEMINI_API_KEY is not configured.');
     }
 
     const preferredModel = process.env.GEMINI_MODEL;
@@ -110,60 +110,58 @@ export class AICoachingService {
     const errors: string[] = [];
 
     for (const modelName of modelsToTry) {
-      // Revert to v1beta for better JSON support and compatibility
-      const apiVersion = 'v1beta';
-      
-      for (let keyAttempt = 0; keyAttempt < this.apiKeys.length; keyAttempt++) {
-        const genAI = this.getGenAI();
+      // Try both v1 and v1beta for every model
+      for (const apiVersion of ['v1', 'v1beta'] as const) {
+        // Try each API Key we have
+        for (let keyAttempt = 0; keyAttempt < Math.min(this.apiKeys.length, 3); keyAttempt++) {
+          const genAI = this.getGenAI();
 
-        for (let attempt = 1; attempt <= 2; attempt++) {
-          try {
-            logger.info(`[AI Coach] Model: ${modelName} | Key #${this.currentKeyIndex} | Attempt ${attempt}`);
-            
-            const generationConfig: any = {};
-            if (isJson) {
-              generationConfig.responseMimeType = 'application/json';
+          // Try with and without JSON mode if requested
+          const modes = isJson ? ['json', 'text'] : ['text'];
+
+          for (const mode of modes) {
+            for (let attempt = 1; attempt <= 1; attempt++) { // Reduced inner attempts to speed up chain
+              try {
+                const generationConfig: any = {};
+                if (mode === 'json') {
+                  generationConfig.responseMimeType = 'application/json';
+                }
+
+                const model = genAI.getGenerativeModel({
+                  model: modelName,
+                  generationConfig,
+                }, { apiVersion });
+
+                const result = await model.generateContent(prompt);
+                const text = result.response.text().trim();
+                if (text) return text;
+              } catch (error: any) {
+                const message = error.message || String(error);
+                const status = error.status || error.statusCode || 0;
+                
+                // Track unique errors to show in debug box
+                const shortMsg = message.split(':')[0] || message;
+                errors.push(`[${modelName}|${apiVersion}|K${this.currentKeyIndex}] ${shortMsg}`);
+
+                // If key is definitely bad (expired/invalid/quota), rotate immediately
+                if (status === 429 || status === 400 || message.includes('API key') || message.includes('quota')) {
+                  this.rotateKey();
+                  break; // try next key
+                }
+                
+                // If 404 or unsupported method, try next API version or model
+                if (status === 404 || message.includes('not found') || message.includes('not supported')) {
+                  break; 
+                }
+              }
             }
-
-            const model = genAI.getGenerativeModel({
-              model: modelName,
-              generationConfig,
-            }, { apiVersion });
-
-            const result = await model.generateContent(prompt);
-            const text = result.response.text().trim();
-            if (text) return text;
-          } catch (error: any) {
-            const message = error.message || String(error) || 'Unknown error';
-            const status = error.status || error.statusCode || (message.includes('429') ? 429 : (message.includes('400') ? 400 : 0));
-            
-            // Log error for this specific key
-            const errorLog = `[Key #${this.currentKeyIndex}|${modelName}] ${message}`;
-            errors.push(errorLog);
-
-            logger.warn(`[AI Coach] Error: ${message}`);
-
-            // On ANY key failure (expired, quota, etc), rotate and try next key with SAME model
-            if (this.apiKeys.length > 1) {
-              this.rotateKey();
-              break; // break attempt loop to try with new key
-            }
-
-            // If only one key, retry on transient server errors
-            if (status >= 500 && attempt < 2) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-              continue;
-            }
-
-            break; // Move to next keyAttempt (which will use the same index if no more keys)
           }
         }
       }
     }
 
-    // If we reach here, ALL models and ALL keys failed.
-    const combinedErrors = Array.from(new Set(errors)).join(' | '); // Use Set to unique-ify errors
-    throw new Error(`Axiom is unavailable. System failure across all keys/models. Details: ${combinedErrors}`);
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 10).join(' | ');
+    throw new Error(`Axiom remains offline. Tried multiple keys/versions. Errors: ${uniqueErrors}`);
   }
 
   /**
