@@ -43,7 +43,19 @@ export class AxiomScanService {
   private static async generateDailyRecommendations(userId: string, userName: string) {
     const today = new Date().toISOString().slice(0, 10);
     
-    // 1. Fetch deep context
+    // 1. Fetch user profile for location context
+    const { data: profile } = await supabase.from('profiles').select('city, latitude, longitude').eq('id', userId).single();
+    const userCity = profile?.city || 'Unknown';
+    const userLat = profile?.latitude;
+    const userLng = profile?.longitude;
+
+    // 2. Fetch deep context with geographic filtering
+    let eventsQuery = supabase.from('events').select('*').gte('event_date', today);
+    if (userCity !== 'Unknown') eventsQuery = eventsQuery.ilike('city', `%${userCity}%`);
+    
+    let placesQuery = supabase.from('places').select('*');
+    if (userCity !== 'Unknown') placesQuery = placesQuery.ilike('city', `%${userCity}%`);
+
     const [
       goalsRes,
       trackerRes,
@@ -54,35 +66,36 @@ export class AxiomScanService {
     ] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('userId', userId).single(),
       supabase.from('trackers').select('*, tracker_entries(*)').eq('user_id', userId),
-      supabase.from('events').select('*').gte('event_date', today).limit(10),
-      supabase.from('places').select('*').limit(10),
-      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 3 }),
+      eventsQuery.limit(10),
+      placesQuery.limit(10),
+      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
       supabase.from('coaching_offers').select('*').limit(10),
     ]);
 
     const prompt = `You are Axiom. Generate a high-performance daily protocol for ${userName}.
     
+### Student Location: ${userCity} (${userLat || '?'}, ${userLng || '?'})
+
 ### Context:
 - Goals: ${JSON.stringify(goalsRes.data?.nodes || [])}
 - Tracked Progress: ${JSON.stringify(trackerRes.data || [])}
-- Local Events: ${JSON.stringify(eventsRes.data || [])}
-- Community Places: ${JSON.stringify(placesRes.data || [])}
+- Nearby Events: ${JSON.stringify(eventsRes.data || [])}
+- Nearby Places: ${JSON.stringify(placesRes.data || [])}
 - Aligned Students: ${JSON.stringify(matchRes.data || [])}
 - Services: ${JSON.stringify(servicesRes.data || [])}
 
 ### Task:
-You MUST provide a JSON response with exactly these 6 keys. For match, event, and place, you MUST include the "id" field from the context provided above so they are clickable.
+Provide a JSON response with exactly these 7 keys. You MUST prioritize items that are NEARBY (same city) and MATCH the student's goals.
 
-1. "match": { "id": "MUST_BE_STUDENT_ID", "name": "string", "reason": "string" }
-2. "resources": [ { "goal": "string", "suggestion": "string", "details": "string" } ] (Provide ONE per goal. Fields MUST be strings, NOT objects).
-3. "event": { "id": "MUST_BE_EVENT_ID", "title": "string", "reason": "string" }
-4. "place": { "id": "MUST_BE_PLACE_ID", "name": "string", "reason": "string" }
-5. "challenge": { "type": "bet|duel", "target": "string", "terms": "string" }
-6. "routine": [ { "time": "e.g. 07:00", "task": "string", "alignment": "string" } ] (Assume 9-5 work hours. Fields MUST be strings).
+1. "message": "A short (1-2 sentence) motivating morning message in Axiom's voice."
+2. "match": { "id": "ID", "name": "string", "reason": "why they match goals" }
+3. "resources": [ { "goal": "string", "suggestion": "string", "details": "string" } ] (Provide ONE per goal).
+4. "event": { "id": "ID", "title": "string", "reason": "why attend" }
+5. "place": { "id": "ID", "name": "string", "reason": "why go here" }
+6. "challenge": { "type": "bet|duel", "target": "string", "terms": "string" }
+7. "routine": [ { "time": "HH:MM", "task": "string", "alignment": "string" } ]
 
-CRITICAL: All fields (goal, suggestion, details, task, alignment, etc.) MUST be simple strings. Do not use objects or nested structures inside these fields.
-
-CRITICAL: You must use the actual IDs provided in the context for 'id' fields. If no context exists for a category, use "null" for the id.
+CRITICAL: Use actual IDs from the context. If no nearby event/place exists, pick the best matching one from the list.
 
 JSON ONLY:`;
 
