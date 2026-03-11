@@ -1,23 +1,21 @@
-# Session: March 11, 2026 - Axiom Reliability & Model Expansion
+# Session: March 11, 2026 - Axiom Source Cleanup & Reliability
 
 ## Summary of Changes
-- **Axiom Rebrand (Full Codebase):**
-  - Renamed "Master Roshi" and "Roshi" to "Axiom" across all backend and frontend files.
+- **Axiom Rebrand & Identity:**
+  - Renamed "Master Roshi" to "Axiom" project-wide.
+  - Refined `AXIOM_IDENTITY` to emphasize direct, practical advice without book citations.
+- **Source Removal (Axiom Training):**
+  - Removed `src/services/KnowledgeBaseService.ts` which was designed to inject PDF text into AI prompts.
+  - Deleted the `sources/` directory containing the underlying PDF books (Zero to One, Antifragile, Atomic Habits, etc.).
+  - Uninstalled `pdf-parse` and its type definitions to remove the unused dependency.
 - **AI Coaching Robustness (Backend):**
-  - Refactored `AICoachingService.ts` to include a `runWithFallback` method with a 6-model chain:
-    1. `gemini-2.0-flash`
-    2. `gemini-1.5-flash`
-    3. `gemini-2.0-flash-lite-preview-02-05`
-    4. `gemini-1.5-flash-8b`
-    5. `gemini-1.5-pro`
-    6. `gemini-2.0-pro-exp-02-05`
-  - Added **automatic retries** (up to 2 attempts) for transient server errors (500, 503, 504) within each model.
-  - Implemented smart fallback: skips to the next model immediately on quota errors (429) but retries on server errors.
-  - Refined error messages to clearly distinguish between "resting" (quota) and "temporarily unavailable" (system failure).
+  - Implemented a 6-model fallback chain in `AICoachingService.ts`.
+  - Added automatic retries (up to 2 attempts) for transient server errors.
+  - Improved error reporting for quota limits and system availability.
 - **UI Refinement (Mobile):**
   - Removed redundant "Groups" entry from the mobile hamburger menu.
 
 ## Verification Status
-- Full project search confirms "Axiom" is the only coach identity.
-- Service resilience improved with expanded model set and retry logic.
+- Full project search confirms "Axiom" is the only coach identity and no "KnowledgeBase" remains.
+- Unnecessary dependencies (`pdf-parse`) removed.
 - TypeScript type checks passed.
