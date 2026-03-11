@@ -1,19 +1,23 @@
-# Session: March 11, 2026 - Axiom Rebrand, AI Fallback, and UI Refinement
+# Session: March 11, 2026 - Axiom Reliability & Model Expansion
 
 ## Summary of Changes
 - **Axiom Rebrand (Full Codebase):**
   - Renamed "Master Roshi" and "Roshi" to "Axiom" across all backend and frontend files.
-  - Updated variable names (e.g., `roshiOpen` -> `axiomOpen`, `setRoshi` -> `setAxiom`).
-  - Updated UI strings and prompts to reflect the new identity.
 - **AI Coaching Robustness (Backend):**
-  - Refactored `AICoachingService.ts` to include a `runWithFallback` method.
-  - Implemented a fallback chain: `gemini-2.0-flash` -> `gemini-1.5-pro` -> `gemini-1.5-flash`.
-  - Retained support for `GEMINI_MODEL` environment variable (tried first if present).
-  - Improved error logging and user-facing error messages ("Axiom is resting" for quota, "Axiom is unavailable" for other errors).
+  - Refactored `AICoachingService.ts` to include a `runWithFallback` method with a 6-model chain:
+    1. `gemini-2.0-flash`
+    2. `gemini-1.5-flash`
+    3. `gemini-2.0-flash-lite-preview-02-05`
+    4. `gemini-1.5-flash-8b`
+    5. `gemini-1.5-pro`
+    6. `gemini-2.0-pro-exp-02-05`
+  - Added **automatic retries** (up to 2 attempts) for transient server errors (500, 503, 504) within each model.
+  - Implemented smart fallback: skips to the next model immediately on quota errors (429) but retries on server errors.
+  - Refined error messages to clearly distinguish between "resting" (quota) and "temporarily unavailable" (system failure).
 - **UI Refinement (Mobile):**
-  - Removed redundant "Groups" entry from the mobile hamburger menu in `Navbar.tsx` (now accessible via "Chat").
+  - Removed redundant "Groups" entry from the mobile hamburger menu.
 
 ## Verification Status
-- Full project search for "Roshi" confirms 0 instances in source code.
-- Mobile menu verified in `Navbar.tsx` code.
+- Full project search confirms "Axiom" is the only coach identity.
+- Service resilience improved with expanded model set and retry logic.
 - TypeScript type checks passed.

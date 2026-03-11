@@ -51,10 +51,14 @@ const AXIOM_IDENTITY = `You are Axiom — a wise, warm, and practical life coach
 
 export class AICoachingService {
   private genAI: GoogleGenerativeAI | null = null;
+  // Robust list of models, including experimental and lite versions for maximum availability
   private readonly FALLBACK_MODELS = [
     'gemini-2.0-flash',
-    'gemini-1.5-pro',
     'gemini-1.5-flash',
+    'gemini-2.0-flash-lite-preview-02-05',
+    'gemini-1.5-flash-8b',
+    'gemini-1.5-pro',
+    'gemini-2.0-pro-exp-02-05',
   ];
 
   constructor() {
@@ -72,6 +76,7 @@ export class AICoachingService {
 
   /**
    * Helper to attempt a generation with model fallbacks.
+   * Now includes retries per model for transient failures (500, 503, etc).
    */
   private async runWithFallback(
     prompt: string,
@@ -81,7 +86,6 @@ export class AICoachingService {
       throw new Error('GEMINI_API_KEY is not configured on this server.');
     }
 
-    // If user provided a specific model via env, try it first
     const preferredModel = process.env.GEMINI_MODEL;
     const modelsToTry = preferredModel 
       ? [preferredModel, ...this.FALLBACK_MODELS]
@@ -90,25 +94,48 @@ export class AICoachingService {
     let lastError: any = null;
 
     for (const modelName of modelsToTry) {
-      try {
-        logger.info(`[AI Coach] Attempting generation with ${modelName}...`);
-        const model = this.genAI.getGenerativeModel({
-          model: modelName,
-          ...(isJson ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
-        }, { apiVersion: 'v1' });
+      // Try each model up to 2 times for transient errors
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          logger.info(`[AI Coach] Attempting generation with ${modelName} (attempt ${attempt})...`);
+          const model = this.genAI.getGenerativeModel({
+            model: modelName,
+            ...(isJson ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
+          }, { apiVersion: 'v1' });
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text().trim();
-        if (text) return text;
-      } catch (error: any) {
-        lastError = error;
-        logger.warn(`[AI Coach] Model ${modelName} failed: ${error.message}`);
-        // If it's a quota error, we might still want to try other models if they have separate quotas,
-        // but usually it's better to just log and continue the loop.
+          const result = await model.generateContent(prompt);
+          const text = result.response.text().trim();
+          if (text) return text;
+        } catch (error: any) {
+          lastError = error;
+          const status = error.status || error.statusCode || 0;
+          const message = error.message || '';
+          
+          logger.warn(`[AI Coach] Model ${modelName} failed (attempt ${attempt}): ${message}`);
+
+          // If it's a quota error (429), don't retry this model, move to next model
+          if (status === 429 || message.toLowerCase().includes('quota') || message.toLowerCase().includes('exhausted')) {
+            break; 
+          }
+
+          // If it's a transient server error (500, 503, 504), wait a bit and retry the same model
+          if (status >= 500 && attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+
+          // Otherwise, move to next model
+          break;
+        }
       }
     }
 
-    throw lastError || new Error('All Gemini models failed to respond.');
+    // If we get here, all models failed
+    const errorMsg = lastError?.message || 'All Gemini models failed to respond.';
+    if (errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('exhausted')) {
+      throw new Error('Axiom is resting (daily limit reached). Please try again later.');
+    }
+    throw new Error('Axiom is temporarily unavailable. Please try again in a moment.');
   }
 
   /**
@@ -120,7 +147,6 @@ export class AICoachingService {
     try {
       const text = await this.runWithFallback(prompt, true);
       
-      // Strip markdown code fences if Gemini wraps the JSON despite responseMimeType
       const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
       let parsed: CoachingReport;
       try {
@@ -132,7 +158,7 @@ export class AICoachingService {
       return parsed;
     } catch (error: any) {
       logger.error('Error generating coaching report:', error.message);
-      throw new Error(error.message || 'Failed to generate coaching report.');
+      throw new Error(error.message);
     }
   }
 
@@ -170,7 +196,7 @@ Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
       return await this.runWithFallback(prompt);
     } catch (error: any) {
       logger.error('Error generating weekly narrative:', error.message);
-      throw new Error(error.message || 'Failed to generate weekly narrative.');
+      throw new Error(error.message);
     }
   }
 
@@ -184,7 +210,7 @@ Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
       return await this.runWithFallback(prompt);
     } catch (error: any) {
       logger.error('Error generating coaching response:', error.message);
-      throw new Error(error.message || 'Failed to generate coaching response.');
+      throw new Error(error.message);
     }
   }
 
