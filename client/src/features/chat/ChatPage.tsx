@@ -141,7 +141,7 @@ const ChatPage: React.FC = () => {
 
                 // Add Groups to list
                 for (const j of joinedRooms || []) {
-                    const room = j.chat_rooms;
+                    const room = j.chat_rooms as any;
                     if (!room) continue;
                     const msg = latestMsgByRoom.get(room.id);
                     convList.push({

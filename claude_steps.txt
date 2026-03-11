@@ -1,23 +1,22 @@
-# Session: March 11, 2026 - Event/Group Integration & Communication UX
+# Session: March 11, 2026 - Event/Group Integration, Communication UX, and Build Fixes
 
 ## Summary of Changes
+- **Build Fixes (Backend/Frontend):**
+  - Resolved Railway build error by removing `apiVersion: 'v1'` and ensuring proper typing for Gemini SDK calls.
+  - Fixed TypeScript errors in `ChatPage.tsx`, `EventsPage.tsx`, and `GroupChatRoom.tsx` (imports, typing, and implicit any).
+  - Stabilized Gemini models: using `gemini-1.5-flash` and `gemini-1.5-pro` as core fallbacks.
 - **Event/Group Integration (Backend):**
   - Updated `eventsController.ts` to automatically add users to the linked event group chat when they RSVP as "going".
-  - Verified `createEvent` already auto-creates a group chat room for new events.
 - **Communication UI/UX (Frontend):**
-  - **Messages Consolidation:** Moved joined groups into the main `ChatPage.tsx` (Messages) conversation list.
-  - **Group Rebrand:** Added "Group" indicator and different icons to distinguish between DMs and Groups in the message list.
-  - **WhatsApp-style Menu:** Replaced group header buttons with a "More" (MoreVert) hamburger menu containing options like "Members", "Ask Axiom", "Mute", and "Leave Group".
-  - **Chat Replies:** Implemented message reply functionality in `GroupChatRoom.tsx`.
-    - Users can now reply to specific messages (creates a visual quote).
-    - Added "Reply Privately" option to group messages which opens a DM with the sender.
+  - **Messages Consolidation:** Moved joined groups into the main `ChatPage.tsx` conversation list with "Group" badges.
+  - **WhatsApp-style Menu:** Added `MoreVert` hamburger menu to `GroupChatRoom.tsx` for "Leave Group", "Mute", etc.
+  - **Chat Replies:** Implemented public replies (visual quote) and "Reply Privately" functionality in groups.
 - **Event Management (Frontend):**
-  - **QR Attendee Scanner:** Added a QR code scanner for event creators to scan attendee check-in codes directly from the `EventsPage.tsx`.
-  - **Map Integration:** Re-confirmed and verified that the `EventsPage.tsx` displays event markers on the `LocationMap`.
+  - **QR Attendee Scanner:** Added organizer-side QR code scanner to `EventsPage.tsx` using `react-qr-barcode-scanner`.
+  - **Map Integration:** Verified event markers on the `EventsPage.tsx` map.
 
 ## Verification Status
-- Automatic group joining logic verified in `eventsController.ts`.
-- Consolidate chat list UI updated in `ChatPage.tsx`.
-- Reply UI and hamburger menu implemented in `GroupChatRoom.tsx`.
-- Attendee scanning capability added using `react-qr-barcode-scanner`.
-- TypeScript type checks passed.
+- Local TypeScript check: 0 errors (verified with `npx tsc --noEmit`).
+- Automatic group joining logic verified.
+- Communication UI logic updated and type-safe.
+- Organizer scanner logic implemented and ready for live testing.

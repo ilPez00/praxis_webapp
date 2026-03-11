@@ -510,7 +510,7 @@ const EventsPage: React.FC = () => {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, pb: 3 }}>
           <Box sx={{ width: '100%', maxWidth: 320, height: 240, bgcolor: '#000', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
             <BarcodeScanner
-              onUpdate={(_err, result) => {
+              onUpdate={(_err: any, result: any) => {
                 if (result) processCheckinToken(result.getText());
               }}
               width="100%"

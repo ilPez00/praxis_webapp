@@ -37,6 +37,8 @@ import {
   DialogActions,
   Button,
   ListItemIcon,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
@@ -50,6 +52,7 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import CancelIcon from '@mui/icons-material/Cancel';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 interface Member {
   user_id: string;
@@ -330,11 +333,6 @@ const GroupChatRoom: React.FC = () => {
     );
   }
 
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-
-// ... (inside component)
   const [headerMenuAnchor, setHeaderMenuAnchor] = useState<null | HTMLElement>(null);
 
   const handleHeaderMenuOpen = (event: React.MouseEvent<HTMLElement>) => {

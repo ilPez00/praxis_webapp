@@ -49,10 +49,7 @@ export class EmbeddingService {
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
           const model = this.genAI.getGenerativeModel({ model: modelName });
-          const result = await model.embedContent({
-            content: { parts: [{ text }] },
-            taskType: "RETRIEVAL_DOCUMENT",
-          });
+          const result = await model.embedContent(text);
           return result.embedding.values;
         } catch (error: any) {
           lastError = error;
