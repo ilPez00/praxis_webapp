@@ -183,7 +183,7 @@ export const rsvpEvent = catchAsync(async (req: Request, res: Response, _next: N
     throw new BadRequestError('status must be going, maybe, or not_going.');
   }
 
-  const { data, error } = await supabase
+  const { data: rsvp, error } = await supabase
     .from('event_rsvps')
     .upsert({ event_id: eventId, user_id: userId, status }, { onConflict: 'event_id,user_id' })
     .select()
@@ -197,7 +197,23 @@ export const rsvpEvent = catchAsync(async (req: Request, res: Response, _next: N
     throw new InternalServerError('Failed to save RSVP.');
   }
 
-  res.json(data);
+  // If status is 'going', auto-join the linked group chat
+  if (status === 'going') {
+    const { data: room } = await supabase
+      .from('chat_rooms')
+      .select('id')
+      .eq('event_id', eventId)
+      .maybeSingle();
+    
+    if (room) {
+      await supabase
+        .from('chat_room_members')
+        .upsert({ room_id: room.id, user_id: userId }, { onConflict: 'room_id,user_id' });
+      logger.info(`User ${userId} auto-joined group room ${room.id} after RSVPing 'going' to event ${eventId}`);
+    }
+  }
+
+  res.json(rsvp);
 });
 
 /**

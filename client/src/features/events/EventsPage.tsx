@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import BarcodeScanner from 'react-qr-barcode-scanner';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { API_URL } from '../../lib/api';
@@ -72,6 +73,8 @@ const EventsPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [qrDialog, setQrDialog] = useState<{ open: boolean; token: string; eventTitle: string; eventId: string }>({ open: false, token: '', eventTitle: '', eventId: '' });
+  const [scanDialog, setScanDialog] = useState<{ open: boolean; eventId: string; eventTitle: string }>({ open: false, eventId: '', eventTitle: '' });
+  const [scanning, setScanning] = useState(false);
 
   // Geo filter
   const [nearbyMode, setNearbyMode] = useState(false);
@@ -113,6 +116,38 @@ const EventsPage: React.FC = () => {
       setQrDialog({ open: true, token, eventTitle, eventId });
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Could not generate check-in QR.');
+    }
+  };
+
+  const handleScanAttendee = (eventId: string, eventTitle: string) => {
+    setScanDialog({ open: true, eventId, eventTitle });
+  };
+
+  const processCheckinToken = async (qrValue: string) => {
+    if (scanning) return;
+    setScanning(true);
+    try {
+      // Expecting URL format: .../events/checkin?token=xxx&eventId=yyy
+      const url = new URL(qrValue);
+      const token = url.searchParams.get('token');
+      const eventId = url.searchParams.get('eventId');
+
+      if (!token || !eventId) throw new Error('Invalid QR code format.');
+      if (eventId !== scanDialog.eventId) throw new Error('QR code is for a different event.');
+
+      const headers = await getAuthHeader();
+      const res = await axios.post(`${API_URL}/events/${eventId}/checkin`, { token }, { headers });
+      
+      if (res.data.alreadyCheckedIn) {
+        toast.success('Attendee already checked in!', { icon: 'ℹ️' });
+      } else {
+        toast.success('Check-in successful! +50 PP awarded.');
+      }
+      setScanDialog(s => ({ ...s, open: false }));
+    } catch (err: any) {
+      toast.error(err.message || 'Check-in failed.');
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -331,9 +366,14 @@ const EventsPage: React.FC = () => {
                       </Box>
                       {canManage && (
                         <Stack direction="row" spacing={0.5}>
-                          <Tooltip title="Show Check-in QR">
+                          <Tooltip title="Show Check-in QR (for you to show)">
                             <IconButton size="small" onClick={() => handleShowQR(event.id, event.title)} sx={{ opacity: 0.6, '&:hover': { opacity: 1, color: '#10B981' } }}>
                               <QrCodeIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Scan Attendee QR (you scan them)">
+                            <IconButton size="small" onClick={() => handleScanAttendee(event.id, event.title)} sx={{ opacity: 0.6, '&:hover': { opacity: 1, color: '#3B82F6' } }}>
+                              <MyLocationIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Delete event">
@@ -458,6 +498,36 @@ const EventsPage: React.FC = () => {
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
           <Button onClick={() => setQrDialog(q => ({ ...q, open: false }))} variant="outlined">Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Scan Attendee Dialog */}
+      <Dialog open={scanDialog.open} onClose={() => setScanDialog(s => ({ ...s, open: false }))} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>
+          Scan Attendee QR
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{scanDialog.eventTitle}</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, pb: 3 }}>
+          <Box sx={{ width: '100%', maxWidth: 320, height: 240, bgcolor: '#000', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+            <BarcodeScanner
+              onUpdate={(_err, result) => {
+                if (result) processCheckinToken(result.getText());
+              }}
+              width="100%"
+              height="100%"
+            />
+            {scanning && (
+              <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, bgcolor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CircularProgress />
+              </Box>
+            )}
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+            Point your camera at the attendee's check-in QR code.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button onClick={() => setScanDialog(s => ({ ...s, open: false }))} variant="outlined">Cancel</Button>
         </DialogActions>
       </Dialog>
 

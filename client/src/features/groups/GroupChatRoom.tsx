@@ -36,6 +36,7 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  ListItemIcon,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
@@ -48,6 +49,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 interface Member {
   user_id: string;
@@ -175,12 +177,47 @@ const GroupChatRoom: React.FC = () => {
     return nameCache[senderId] || senderId.slice(0, 8);
   };
 
+  const [replyTo, setReplyTo] = useState<any | null>(null);
+  const [messageMenuAnchor, setMessageMenuAnchor] = useState<{ el: HTMLElement; msg: any } | null>(null);
+
+  const handleMessageMenuOpen = (event: React.MouseEvent<HTMLElement>, msg: any) => {
+    setMessageMenuAnchor({ el: event.currentTarget, msg });
+  };
+
+  const handleMessageMenuClose = () => {
+    setMessageMenuAnchor(null);
+  };
+
+  const startReply = (msg: any) => {
+    setReplyTo(msg);
+    handleMessageMenuClose();
+  };
+
+  const replyPrivately = (msg: any) => {
+    handleMessageMenuClose();
+    if (msg.sender_id === currentUserId) return;
+    navigate(`/chat/${currentUserId}/${msg.sender_id}`);
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentUserId || !roomId) return;
     const content = newMessage.trim();
     setNewMessage('');
+    const replyData = replyTo ? {
+      replyToId: replyTo.id,
+      replyPreview: {
+        id: replyTo.id,
+        senderName: getSenderName(replyTo.sender_id),
+        content: replyTo.content.length > 50 ? replyTo.content.slice(0, 50) + '...' : replyTo.content
+      }
+    } : {};
+    setReplyTo(null);
     try {
-      await axios.post(`${API_URL}/groups/${roomId}/messages`, { senderId: currentUserId, content });
+      await axios.post(`${API_URL}/groups/${roomId}/messages`, { 
+        senderId: currentUserId, 
+        content,
+        ...replyData
+      });
     } catch (err) {
       toast.error('Failed to send message.');
       setNewMessage(content);
@@ -293,6 +330,21 @@ const GroupChatRoom: React.FC = () => {
     );
   }
 
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+
+// ... (inside component)
+  const [headerMenuAnchor, setHeaderMenuAnchor] = useState<null | HTMLElement>(null);
+
+  const handleHeaderMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setHeaderMenuAnchor(event.currentTarget);
+  };
+
+  const handleHeaderMenuClose = () => {
+    setHeaderMenuAnchor(null);
+  };
+
   return (
     <>
       <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
@@ -305,19 +357,16 @@ const GroupChatRoom: React.FC = () => {
           bgcolor: 'rgba(17,24,39,0.8)', backdropFilter: 'blur(20px)',
           flexShrink: 0,
         }}>
-          <IconButton edge="start" onClick={() => navigate('/boards')} size="small">
+          <IconButton edge="start" onClick={() => navigate('/communication')} size="small">
             <ArrowBackIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
               {room?.name || 'Board'}
             </Typography>
-            {room?.domain && (
-              <Chip label={room.domain} size="small" sx={{ height: 18, fontSize: '0.65rem', mt: 0.25 }} />
-            )}
+            <Typography variant="caption" color="text.disabled">{members.length} members</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Typography variant="caption" color="text.disabled">{members.length} members</Typography>
             <Tooltip title="Invite Friends">
               <IconButton
                 size="small"
@@ -327,49 +376,60 @@ const GroupChatRoom: React.FC = () => {
                 <PersonAddIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Ask Axiom">
-              <IconButton
-                size="small"
-                onClick={() => setAxiomOpen(true)}
-                sx={{ color: '#A78BFA' }}
-              >
-                <AutoAwesomeIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={roomMuted ? 'Unmute this board' : 'Mute notifications from this board'}>
-              <IconButton
-                size="small"
-                onClick={async () => {
-                  try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (!session?.access_token || !roomId) return;
-                    const headers = { Authorization: `Bearer ${session.access_token}` };
-                    if (roomMuted) {
-                      await axios.delete(`${API_URL}/mutes/room/${roomId}`, { headers });
-                      setRoomMuted(false);
-                      toast('Board unmuted', { icon: '🔔' });
-                    } else {
-                      await axios.post(`${API_URL}/mutes/room/${roomId}`, {}, { headers });
-                      setRoomMuted(true);
-                      toast('Board muted — you won\'t get notifications from here', { icon: '🔕' });
-                    }
-                  } catch { toast.error('Failed to update mute status.'); }
-                }}
-                sx={{ color: roomMuted ? '#EF4444' : 'text.secondary', '&:hover': { color: roomMuted ? '#F87171' : '#EF4444' } }}
-              >
-                {roomMuted ? <VolumeOffIcon /> : <VolumeUpIcon />}
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Members">
-              <IconButton size="small" onClick={() => setMemberDrawerOpen(true)} sx={{ color: 'text.secondary' }}>
-                <PeopleIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Leave group">
-              <IconButton size="small" onClick={handleLeaveRoom} sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
-                <ExitToAppIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            
+            <IconButton
+              size="small"
+              onClick={handleHeaderMenuOpen}
+              sx={{ color: 'text.secondary' }}
+            >
+              <MoreVertIcon />
+            </IconButton>
+
+            <Menu
+              anchorEl={headerMenuAnchor}
+              open={Boolean(headerMenuAnchor)}
+              onClose={handleHeaderMenuClose}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              <MenuItem onClick={() => { handleHeaderMenuClose(); setMemberDrawerOpen(true); }}>
+                <ListItemIcon><PeopleIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Group Members</ListItemText>
+              </MenuItem>
+              
+              <MenuItem onClick={() => { handleHeaderMenuClose(); setAxiomOpen(true); }}>
+                <ListItemIcon><AutoAwesomeIcon fontSize="small" sx={{ color: '#A78BFA' }} /></ListItemIcon>
+                <ListItemText>Ask Axiom</ListItemText>
+              </MenuItem>
+
+              <MenuItem onClick={async () => {
+                handleHeaderMenuClose();
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session?.access_token || !roomId) return;
+                  const headers = { Authorization: `Bearer ${session.access_token}` };
+                  if (roomMuted) {
+                    await axios.delete(`${API_URL}/mutes/room/${roomId}`, { headers });
+                    setRoomMuted(false);
+                    toast('Board unmuted', { icon: '🔔' });
+                  } else {
+                    await axios.post(`${API_URL}/mutes/room/${roomId}`, {}, { headers });
+                    setRoomMuted(true);
+                    toast('Board muted', { icon: '🔕' });
+                  }
+                } catch { toast.error('Failed to update mute status.'); }
+              }}>
+                <ListItemIcon>{roomMuted ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}</ListItemIcon>
+                <ListItemText>{roomMuted ? 'Unmute' : 'Mute'}</ListItemText>
+              </MenuItem>
+
+              <Divider />
+
+              <MenuItem onClick={() => { handleHeaderMenuClose(); handleLeaveRoom(); }} sx={{ color: 'error.main' }}>
+                <ListItemIcon><ExitToAppIcon fontSize="small" color="error" /></ListItemIcon>
+                <ListItemText>Leave Group</ListItemText>
+              </MenuItem>
+            </Menu>
           </Box>
         </Box>
 
@@ -490,12 +550,34 @@ const GroupChatRoom: React.FC = () => {
                               {senderName}
                             </Typography>
                           )}
-                          <Box sx={{
-                            px: 2, py: 1,
-                            borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                            background: isMine ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' : 'rgba(255,255,255,0.07)',
-                            border: isMine ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                          }}>
+                          <Box 
+                            onClick={(e) => handleMessageMenuOpen(e, msg)}
+                            sx={{
+                              px: 2, py: 1,
+                              borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                              background: isMine ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' : 'rgba(255,255,255,0.07)',
+                              border: isMine ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                              cursor: 'pointer',
+                              position: 'relative'
+                            }}
+                          >
+                            {msg.metadata?.reply_preview && (
+                              <Box sx={{ 
+                                mb: 1, p: 1, 
+                                borderRadius: 1, 
+                                bgcolor: isMine ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.05)',
+                                borderLeft: '3px solid',
+                                borderColor: 'primary.main',
+                                fontSize: '0.75rem'
+                              }}>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', display: 'block' }}>
+                                  {msg.metadata.reply_preview.senderName}
+                                </Typography>
+                                <Typography variant="caption" noWrap sx={{ opacity: 0.8, display: 'block' }}>
+                                  {msg.metadata.reply_preview.content}
+                                </Typography>
+                              </Box>
+                            )}
                             <Typography variant="body2" sx={{ color: isMine ? '#0A0B14' : 'text.primary', wordBreak: 'break-word', fontWeight: isMine ? 500 : 400 }}>
                               {msg.content}
                             </Typography>
@@ -519,6 +601,30 @@ const GroupChatRoom: React.FC = () => {
               bgcolor: 'rgba(17,24,39,0.8)', backdropFilter: 'blur(20px)',
               flexShrink: 0,
             }}>
+              {replyTo && (
+                <Box sx={{ 
+                  mb: 1, p: 1, 
+                  borderRadius: 2, 
+                  bgcolor: 'rgba(255,255,255,0.05)', 
+                  borderLeft: '4px solid', 
+                  borderColor: 'primary.main',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', display: 'block' }}>
+                      Replying to {getSenderName(replyTo.sender_id)}
+                    </Typography>
+                    <Typography variant="caption" noWrap sx={{ opacity: 0.7, display: 'block' }}>
+                      {replyTo.content}
+                    </Typography>
+                  </Box>
+                  <IconButton size="small" onClick={() => setReplyTo(null)}>
+                    <CancelIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              )}
               <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,.pdf,.doc,.docx,.txt" onChange={handleFileUpload} />
               <Stack direction="row" spacing={1} alignItems="center">
                 <Tooltip title="Attach file">
@@ -662,6 +768,24 @@ const GroupChatRoom: React.FC = () => {
           <Button onClick={() => setInviteOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Message Options Menu */}
+      <Menu
+        anchorEl={messageMenuAnchor?.el}
+        open={Boolean(messageMenuAnchor)}
+        onClose={handleMessageMenuClose}
+      >
+        <MenuItem onClick={() => startReply(messageMenuAnchor?.msg)}>
+          <ListItemIcon><ChatIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Reply</ListItemText>
+        </MenuItem>
+        {messageMenuAnchor?.msg.sender_id !== currentUserId && (
+          <MenuItem onClick={() => replyPrivately(messageMenuAnchor?.msg)}>
+            <ListItemIcon><PersonAddIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>Reply Privately</ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
     </>
   );
 };

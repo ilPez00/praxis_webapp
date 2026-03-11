@@ -1,24 +1,23 @@
-# Session: March 11, 2026 - Axiom Reliability, Matching, and Deployment
+# Session: March 11, 2026 - Event/Group Integration & Communication UX
 
 ## Summary of Changes
-- **Axiom Rebrand & Identity:**
-  - Full project rename from "Master Roshi" to "Axiom".
-- **AI Coaching Reliability (Backend):**
-  - Refined `AICoachingService.ts` based on Grok's feedback:
-    - Removed `apiVersion: 'v1'` for better SDK compatibility.
-    - Simplified `FALLBACK_MODELS` to focus on stable versions (`gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-1.5-flash-8b`, `gemini-2.0-flash`).
-    - Enhanced error reporting: now exposes real Gemini error messages for debugging.
-- **Semantic Matching & Embeddings:**
-  - Updated `EmbeddingService.ts` to remove `apiVersion: 'v1'`.
-  - Implemented 2nd-level fallback for embeddings (`text-embedding-004` -> `text-embedding-001`).
-- **Source Removal:**
-  - Deleted unused `KnowledgeBaseService.ts` and `sources/` directory.
-  - Uninstalled `pdf-parse`.
-- **UI Refinement:**
-  - Removed "Groups" from the mobile hamburger menu.
+- **Event/Group Integration (Backend):**
+  - Updated `eventsController.ts` to automatically add users to the linked event group chat when they RSVP as "going".
+  - Verified `createEvent` already auto-creates a group chat room for new events.
+- **Communication UI/UX (Frontend):**
+  - **Messages Consolidation:** Moved joined groups into the main `ChatPage.tsx` (Messages) conversation list.
+  - **Group Rebrand:** Added "Group" indicator and different icons to distinguish between DMs and Groups in the message list.
+  - **WhatsApp-style Menu:** Replaced group header buttons with a "More" (MoreVert) hamburger menu containing options like "Members", "Ask Axiom", "Mute", and "Leave Group".
+  - **Chat Replies:** Implemented message reply functionality in `GroupChatRoom.tsx`.
+    - Users can now reply to specific messages (creates a visual quote).
+    - Added "Reply Privately" option to group messages which opens a DM with the sender.
+- **Event Management (Frontend):**
+  - **QR Attendee Scanner:** Added a QR code scanner for event creators to scan attendee check-in codes directly from the `EventsPage.tsx`.
+  - **Map Integration:** Re-confirmed and verified that the `EventsPage.tsx` displays event markers on the `LocationMap`.
 
 ## Verification Status
-- GitHub Push: I am now pushing these changes to the remote repository.
-- Redeployment: Once pushed, Vercel/Railway will redeploy with the fixed Axiom logic.
-- Service resilience improved with stable model sets and better error visibility.
+- Automatic group joining logic verified in `eventsController.ts`.
+- Consolidate chat list UI updated in `ChatPage.tsx`.
+- Reply UI and hamburger menu implemented in `GroupChatRoom.tsx`.
+- Attendee scanning capability added using `react-qr-barcode-scanner`.
 - TypeScript type checks passed.
