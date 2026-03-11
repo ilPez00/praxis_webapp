@@ -32,6 +32,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Divider,
+  Grid,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SendIcon from '@mui/icons-material/Send';
@@ -40,6 +41,7 @@ import FlagIcon from '@mui/icons-material/Flag';
 import PeopleIcon from '@mui/icons-material/People';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import LockIcon from '@mui/icons-material/Lock';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 interface StrategyItem {
   goal: string;
@@ -53,6 +55,15 @@ interface CoachingReport {
   motivation: string;
   strategy: StrategyItem[];
   network: string;
+}
+
+interface DailyRecommendation {
+  match: { name: string; reason: string };
+  event: { title: string; reason: string };
+  post: { author: string; snippet: string; reason: string };
+  service: { title: string; reason: string };
+  place: { name: string; reason: string };
+  resource: { title: string; content: string };
 }
 
 interface ChatMessage {
@@ -92,6 +103,9 @@ const AICoachPage: React.FC = () => {
   const [detailedError, setDetailedError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [dailyBrief, setDailyBrief] = useState<DailyRecommendation | null>(null);
+  const [loadingDaily, setLoadingDaily] = useState(true);
+
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
@@ -105,6 +119,22 @@ const AICoachPage: React.FC = () => {
     const res = await fetch(`${API_URL}/ai-coaching/brief`, { headers });
     if (!res.ok) return null;
     return res.json() as Promise<{ brief: CoachingReport; generated_at: string } | null>;
+  }, []);
+
+  const loadDailyBrief = useCallback(async () => {
+    setLoadingDaily(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/ai-coaching/daily-brief`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.brief) setDailyBrief(data.brief);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingDaily(false);
+    }
   }, []);
 
   // ── generate fresh brief (inline, blocking) ───────────────────────────────
@@ -163,15 +193,17 @@ const AICoachPage: React.FC = () => {
         setLoadingReport(false);
         // 2. Kick off background refresh in parallel
         triggerBackgroundUpdate();
-        return;
+      } else if (!cancelled) {
+        // 3. No cache — generate inline
+        await generateBrief();
       }
 
-      // 3. No cache — generate inline
-      if (!cancelled) await generateBrief();
+      // 4. Load daily midnight scan results
+      if (!cancelled) await loadDailyBrief();
     })();
 
     return () => { cancelled = true; };
-  }, [loadCachedBrief, generateBrief, triggerBackgroundUpdate]);
+  }, [loadCachedBrief, generateBrief, triggerBackgroundUpdate, loadDailyBrief]);
 
   // ── Supabase realtime — auto-refresh when background job finishes ─────────
 
@@ -400,6 +432,41 @@ const AICoachPage: React.FC = () => {
       </Box>
 
       <Stack spacing={3}>
+
+        {/* ── Daily Recommendations ────────────────────────────────── */}
+        {dailyBrief && (
+          <Box sx={{ p: 3, borderRadius: 3, background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(245,158,11,0.06) 100%)', border: '1px solid rgba(139,92,246,0.2)' }}>
+            <SectionHeader icon={<AutoAwesomeIcon />} label="Axiom Daily Recommendations" color="#A78BFA" />
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Best Match</Typography>
+                <Typography variant="body2">{dailyBrief.match.name} — {dailyBrief.match.reason}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Event</Typography>
+                <Typography variant="body2">{dailyBrief.event.title} — {dailyBrief.event.reason}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Community Post</Typography>
+                <Typography variant="body2">By {dailyBrief.post.author}: "{dailyBrief.post.snippet}" — {dailyBrief.post.reason}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Service / Coach</Typography>
+                <Typography variant="body2">{dailyBrief.service.title} — {dailyBrief.service.reason}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Place</Typography>
+                <Typography variant="body2">{dailyBrief.place.name} — {dailyBrief.place.reason}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Divider sx={{ my: 1.5, borderColor: 'rgba(255,255,255,0.1)' }} />
+                <Typography variant="subtitle2" sx={{ color: '#F59E0B', mb: 0.5 }}>Custom Resource (Tailored to your progress)</Typography>
+                <Typography variant="h6" sx={{ fontSize: '1rem', mb: 1 }}>{dailyBrief.resource.title}</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', bgcolor: 'rgba(0,0,0,0.2)', p: 2, borderRadius: 2 }}>{dailyBrief.resource.content}</Typography>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
 
         {/* ── Section 1: Motivation ──────────────────────────────────── */}
         <Box sx={{

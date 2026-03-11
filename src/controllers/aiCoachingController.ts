@@ -258,8 +258,29 @@ export const getBrief = catchAsync(async (req: Request, res: Response, _next: Ne
     return res.json(null);
   }
 
-  res.json(data ?? null);
-});
+  res.json(data || null);
+  });
+
+  /**
+  * GET /ai-coaching/daily-brief — returns the midnight automated scan result
+  */
+  export const getDailyBrief = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('User ID not found.');
+
+  const { data, error } = await supabase
+    .from('axiom_daily_briefs')
+    .select('brief, generated_at')
+    .eq('user_id', userId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    logger.error('Error fetching daily brief:', error.message);
+  }
+
+  res.json(data || null);
+  });
+
 
 // ---------------------------------------------------------------------------
 // GET /ai-coaching/weekly-narrative — short Axiom "this week" summary

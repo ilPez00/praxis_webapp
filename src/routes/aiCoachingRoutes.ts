@@ -1,11 +1,14 @@
 import { Router } from 'express';
-import { requestReport, requestCoaching, getBrief, triggerBriefUpdate, getWeeklyNarrative } from '../controllers/aiCoachingController';
+import { requestReport, requestCoaching, getBrief, getDailyBrief, triggerBriefUpdate, getWeeklyNarrative } from '../controllers/aiCoachingController';
 import { requirePro } from '../middleware/requireTier';
 
 const router = Router();
 
 // Returns cached brief immediately (no generation)
 router.get('/brief', ...requirePro, getBrief);
+
+// Returns the midnight automated scan result
+router.get('/daily-brief', ...requirePro, getDailyBrief);
 
 // Short Axiom weekly narrative (cached 7 days per user)
 router.get('/weekly-narrative', ...requirePro, getWeeklyNarrative);
