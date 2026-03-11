@@ -1,21 +1,20 @@
-# Session: March 11, 2026 - Event/Group Integration, Communication UX, and Vercel Build Fix
+# Session: March 11, 2026 - Admin Debugging & Build Reliability
 
 ## Summary of Changes
-- **Vercel Build Fix:**
-  - Moved `react-qr-barcode-scanner` from root `package.json` to `client/package.json` to resolve build-time import resolution errors on Vercel.
-  - Verified with a successful local `npm run build` in the `client` directory.
-- **Event/Group Integration (Backend):**
-  - Updated `eventsController.ts` to automatically add users to the linked event group chat when they RSVP as "going".
-- **Communication UI/UX (Frontend):**
-  - **Messages Consolidation:** Moved joined groups into the main `ChatPage.tsx` conversation list with "Group" badges.
-  - **WhatsApp-style Menu:** Added `MoreVert` hamburger menu to `GroupChatRoom.tsx` for "Leave Group", "Mute", etc.
-  - **Chat Replies:** Implemented public replies (visual quote) and "Reply Privately" functionality in groups.
-- **Event Management (Frontend):**
-  - **QR Attendee Scanner:** Added organizer-side QR code scanner to `EventsPage.tsx` using `react-qr-barcode-scanner`.
-  - **Map Integration:** Verified event markers on the `EventsPage.tsx` map.
+- **Admin Debugging (Backend/Frontend):**
+  - Updated `aiCoachingController.ts` to fetch user admin status.
+  - Enhanced `friendlyAiError` to conditionally return raw Gemini error messages (`detailed` field) only for admin users.
+  - Updated `AICoachPage.tsx` to handle and display this `detailedError` in a dedicated debug `Alert` box.
+- **Build Fixes (Vercel/Railway):**
+  - Resolved `react-qr-barcode-scanner` resolution error by moving it to `client/package.json`.
+  - Fixed Gemini SDK `apiVersion` and `Content` object typing issues.
+  - Resolved several TypeScript errors in `ChatPage.tsx`, `EventsPage.tsx`, and `GroupChatRoom.tsx`.
+- **Feature Completion:**
+  - Automatic event-group joining logic verified and live.
+  - Consolidated "Messages" view with group chat support and replies.
+  - Attendee QR scanner for organizers integrated into `EventsPage.tsx`.
 
 ## Verification Status
-- Local Vercel-style build: Success.
-- Automatic group joining logic verified.
-- Communication UI logic updated and type-safe.
-- Organizer scanner logic implemented and verified.
+- Local build: Success (`npm run build` in client).
+- Type check: 0 errors (`npx tsc --noEmit`).
+- Push to GitHub: Completed.

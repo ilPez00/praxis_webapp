@@ -10,19 +10,28 @@ const aiCoachingService = new AICoachingService();
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('does not exist') || msg?.includes('42P01');
 
-/** Converts a raw Gemini error into a short, user-friendly message. */
-function friendlyAiError(err: any): { message: string; code: string } {
+/** Converts a raw Gemini error into a short, user-friendly message. 
+ * If isAdmin is true, it appends the actual error message for debugging.
+ */
+function friendlyAiError(err: any, isAdmin: boolean = false): { message: string; code: string; detailed?: string } {
   const msg: string = err?.message || String(err) || '';
+  let result: { code: string; message: string; detailed?: string };
+
   if (msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('too many requests')) {
-    return {
+    result = {
       code: 'QUOTA_EXCEEDED',
       message: "Axiom is resting — the AI service has hit its daily limit. If this persists, verify the GEMINI_API_KEY plan or billing in AI Studio.",
     };
+  } else if (msg.includes('GEMINI_API_KEY') || msg.toLowerCase().includes('api key')) {
+    result = { code: 'NOT_CONFIGURED', message: 'Axiom is offline — AI service not configured on this server.' };
+  } else {
+    result = { code: 'UNKNOWN', message: 'Axiom is temporarily unavailable. Please try again in a moment.' };
   }
-  if (msg.includes('GEMINI_API_KEY') || msg.toLowerCase().includes('api key')) {
-    return { code: 'NOT_CONFIGURED', message: 'Axiom is offline — AI service not configured on this server.' };
+
+  if (isAdmin) {
+    result.detailed = msg;
   }
-  return { code: 'UNKNOWN', message: 'Axiom is temporarily unavailable. Please try again in a moment.' };
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -206,9 +215,14 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('User ID not found.');
 
+  // Fetch admin status for error reporting
+  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
+  const isAdmin = !!profile?.is_admin;
+
   if (!aiCoachingService.isConfigured) {
     return res.status(503).json({
       message: 'Axiom is offline — the AI service is not configured on this server. Please set GEMINI_API_KEY on Railway.',
+      detailed: isAdmin ? 'genAI instance is null in AICoachingService' : undefined
     });
   }
 
@@ -220,8 +234,8 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
     res.json(report);
   } catch (err: any) {
     logger.error('[AI Coach] Report generation failed:', err.message);
-    const { message, code } = friendlyAiError(err);
-    return res.status(503).json({ message, code });
+    const { message, code, detailed } = friendlyAiError(err, isAdmin);
+    return res.status(503).json({ message, code, detailed });
   }
 });
 
@@ -265,8 +279,15 @@ export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response,
     return res.json({ narrative: cached.narrative, cached: true });
   }
 
+  // Fetch admin status
+  const { data: userProfile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
+  const isAdmin = !!userProfile?.is_admin;
+
   if (!aiCoachingService.isConfigured) {
-    return res.status(503).json({ message: 'AI service not configured.' });
+    return res.status(503).json({ 
+      message: 'AI service not configured.',
+      detailed: isAdmin ? 'genAI instance is null in AICoachingService' : undefined
+    });
   }
 
   // Gather weekly stats
@@ -305,8 +326,8 @@ export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response,
     return res.json({ narrative, cached: false });
   } catch (err: any) {
     logger.error('[AI Coach] Weekly narrative failed:', err.message);
-    const { message, code } = friendlyAiError(err);
-    return res.status(503).json({ message, code });
+    const { message, code, detailed } = friendlyAiError(err, isAdmin);
+    return res.status(503).json({ message, code, detailed });
   }
 });
 
@@ -349,9 +370,14 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
     return res.status(400).json({ message: 'userPrompt is required.' });
   }
 
+  // Fetch admin status
+  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
+  const isAdmin = !!profile?.is_admin;
+
   if (!aiCoachingService.isConfigured) {
     return res.status(503).json({
       message: 'Axiom is offline — the AI service is not configured on this server.',
+      detailed: isAdmin ? 'genAI instance is null in AICoachingService' : undefined
     });
   }
 
@@ -361,7 +387,7 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
     res.json({ response });
   } catch (err: any) {
     logger.error('[AI Coach] Follow-up generation failed:', err.message);
-    const { message, code } = friendlyAiError(err);
-    return res.status(503).json({ message, code });
+    const { message, code, detailed } = friendlyAiError(err, isAdmin);
+    return res.status(503).json({ message, code, detailed });
   }
 });
