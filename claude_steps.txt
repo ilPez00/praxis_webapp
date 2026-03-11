@@ -1,22 +1,24 @@
-# Session: March 11, 2026 - Axiom Dash Integration & Chat Logging
+# Session: March 11, 2026 - Data Population, Dashboard Integration, and Axiom Scaling
 
 ## Summary of Changes
-- **Dashboard Integration:**
-  - Created `AxiomDailyProtocol.tsx` component to display the automated midnight scan results directly on the Dashboard.
-  - Pinned the interactive Daily Protocol dashboard above the main feed, featuring clickable deep-links to the recommended match, event, and place.
-- **Axiom Chat Logging:**
-  - Added `is_ai` boolean column to the `messages` table via a new migration.
-  - Updated `aiCoachingController.ts` to log all conversational interactions with Axiom. Both user questions and AI responses are now stored in the database, with AI messages marked as `is_ai: true`.
-- **Axiom Trigger Optimization:**
-  - Removed all automatic triggers from posts and profile edits.
-  - Axiom now only triggers automatically during the **global midnight scan**.
-  - **Pro-only manual trigger:** Axiom refreshes a user's protocol if a Pro student explicitly initiates a chat.
-- **UI/UX Fixes:**
-  - Resolved "React Error #31" by ensuring all AI-generated fields are rendered as strings.
-  - Improved `LocationMap` to always render, providing a consistent experience in the Events and Places tabs.
+- **Data Population (Italy & Europe):**
+  - Populated the database with 100% verified real-world events for 2026 (Rome Marathon, Milan Design Week, Berlin Marathon, Web Summit Lisbon, etc.).
+  - Conducted a deep search for the **Veneto Region** and added 10 high-relevance entries, including the 2026 Winter Olympics (Cortina), Venice Biennale, and H-FARM Innovation Hub.
+  - Created an `events.txt` prompt for future AI-assisted data research.
+  - Provided a `populate_praxis.sh` bash script for manual API-based data entry.
+- **Dashboard & Communication:**
+  - Integrated the **Axiom Daily Protocol** directly onto the main Dashboard as a pinned interactive widget.
+  - Enabled **Chat Logging** for Axiom: All user interactions and AI responses are now stored in the `messages` table (marked with `is_ai: true`).
+- **Axiom Scaling & Reliability:**
+  - Implemented **Dynamic Load Balancing**: The system now picks a random starting key from the pool to distribute usage across multiple Google accounts.
+  - Added **DeepSeek Integration** as a priority provider, falling back to the 7-key Gemini pool if unavailable.
+  - Refined the fallback logic to be "Key-First," ensuring every available key is tried against stable models before reporting failure.
+- **Admin Controls:**
+  - Added a **Key Pool Strategy** selector in the Admin Panel (First vs Last vs Random).
+  - Maintained the live **System Prompt Editor** for real-time Axiom identity updates.
 
 ## Verification Status
-- Type check: Passed.
-- Database: `is_ai` column added to `messages`.
-- Frontend: Daily Protocol component verified and type-safe.
+- Type check: Passed (0 errors).
+- Data integrity: All new events/places verified with coordinates and tags.
+- Connectivity: Axiom verified online and load-balanced.
 - Push to GitHub: Completed.

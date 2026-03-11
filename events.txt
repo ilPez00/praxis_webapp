@@ -1,0 +1,51 @@
+# PROMPT FOR AI (GEMINI/CLAUDE)
+# Copy and paste the text below into an AI with web-search/maps access.
+
+---
+
+I need you to act as a data researcher for my web application, "Praxis". 
+Your task is to find confirmed real-world events and major places (libraries, co-working spaces, high-end gyms, etc.) for the following area: [INSERT CITY OR AREA HERE].
+
+Please use your search tools and maps to find at least 10 high-relevance entries for 2026.
+
+### CATEGORIES
+Ensure every entry fits one of these categories:
+- **Work**: Tech conferences, startup meetups, co-working spaces.
+- **Study**: Universities, major public libraries, academic seminars.
+- **Fitness**: Marathons, major gyms, wellness centers, sport expos.
+- **Social**: Art festivals, networking events, cultural hubs.
+- **Performance**: Executive coaching centers, productivity workshops, high-performance training hubs.
+
+### REQUIRED FIELDS
+For each entry, I need:
+1. **Title**: The official name of the event or place.
+2. **City**: The city it is located in.
+3. **Type**: One of the categories listed above (Work, Study, Fitness, Social, Performance).
+4. **Date**: For events, find the confirmed 2026 date (YYYY-MM-DD). For places, use null.
+5. **Time**: Expected start time (HH:MM:SS) or null.
+6. **Coordinates**: Accurate Latitude and Longitude.
+7. **Description**: A 1-2 sentence compelling summary of why a student of the "Praxis" philosophy would go there.
+
+### OUTPUT FORMAT
+Provide the final data as a single JSON array of objects. Do not include any text before or after the JSON.
+
+Example Structure:
+[
+  {
+    "title": "Example Event 2026",
+    "city": "Milan",
+    "type": "Work",
+    "eventDate": "2026-11-03",
+    "eventTime": "09:00:00",
+    "latitude": 45.485,
+    "longitude": 9.156,
+    "description": "Short description here."
+  }
+]
+
+---
+
+# HOW TO USE THIS DATA
+Once the AI provides the JSON:
+1. Save it to a file called 'new_data.json'.
+2. Use the 'populate_praxis.sh' script to send it to your server, or ask me to process the file for you.
