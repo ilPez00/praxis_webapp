@@ -65,15 +65,20 @@ export class AICoachingService {
 
   constructor() {
     const keyString = process.env.GEMINI_API_KEY || '';
-    this.apiKeys = keyString
-      .split(',')
-      .map(k => k.replace(/['"]+/g, '').trim())
-      .filter(Boolean);
+    // Clean keys: split by comma, remove quotes, trim whitespace, remove invisible chars
+    const rawKeys = keyString.split(',');
+    
+    const cleanedKeys = rawKeys
+      .map(k => k.replace(/['"\s\u200B-\u200D\uFEFF]+/g, '').trim())
+      .filter(k => k.startsWith('AIza')); // Only keep valid-looking keys
+
+    // Remove duplicates to avoid wasting attempts
+    this.apiKeys = Array.from(new Set(cleanedKeys));
 
     if (this.apiKeys.length === 0) {
-      logger.warn('[AICoachingService] No GEMINI_API_KEY set.');
+      logger.warn('[AICoachingService] No valid GEMINI_API_KEY found starting with AIza.');
     } else {
-      logger.info(`[AICoachingService] Active with ${this.apiKeys.length} keys.`);
+      logger.info(`[AICoachingService] Active with ${this.apiKeys.length} unique keys.`);
     }
   }
 
@@ -112,13 +117,13 @@ export class AICoachingService {
 
     for (const modelName of modelsToTry) {
       for (const apiVersion of ['v1', 'v1beta'] as const) {
-        // Try up to all keys for this specific model/version combo
+        // Try up to all unique keys
         for (let keyAttempt = 0; keyAttempt < this.apiKeys.length; keyAttempt++) {
           const key = this.apiKeys[this.currentKeyIndex];
           const keyPrefix = key?.slice(0, 6) || '????';
 
           try {
-            // Try via Direct REST Fetch first (bypasses SDK issues)
+            // Brute force: try with models/ prefix (standard)
             const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
             const response = await fetch(url, {
               method: 'POST',
@@ -138,15 +143,18 @@ export class AICoachingService {
             const errorMsg = data.error?.message || response.statusText || 'Unknown REST error';
             const status = response.status;
             
-            errors.push(`[${modelName}|${apiVersion}|K${this.currentKeyIndex}:${keyPrefix}] ${status}: ${errorMsg.split('\n')[0]}`);
+            // Log everything except 404 to see specific key issues
+            if (status !== 404) {
+              errors.push(`[${modelName}|${apiVersion}|K${this.currentKeyIndex}:${keyPrefix}] ${status}: ${errorMsg.split('\n')[0]}`);
+            }
 
-            // Logic: if it's a key issue, rotate and CONTINUE with same model/version
+            // Rotate on key-specific errors
             if (status === 429 || status === 401 || (status === 400 && errorMsg.includes('key'))) {
               this.rotateKey();
               continue; 
             }
             
-            // If 404, this specific model/version is likely wrong, move to next version/model
+            // If 404, try next version or model
             if (status === 404) break;
 
           } catch (error: any) {
