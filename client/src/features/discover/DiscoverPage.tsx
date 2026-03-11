@@ -1,87 +1,238 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Box, Tabs, Tab, Container, CircularProgress } from '@mui/material';
+import axios from 'axios';
+import {
+  Box,
+  Container,
+  Typography,
+  Chip,
+  Stack,
+  CircularProgress,
+  IconButton,
+  Tooltip,
+} from '@mui/material';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import PlaceIcon from '@mui/icons-material/Place';
 import EventIcon from '@mui/icons-material/Event';
+import AppsIcon from '@mui/icons-material/Apps';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { useUser } from '../../hooks/useUser';
+import { API_URL } from '../../lib/api';
+import LocationMap, { MapMarker } from '../../components/common/LocationMap';
 
-const MatchesPage = lazy(() => import('../matches/MatchesPage'));
-const PlacesTab = lazy(() => import('../places/PlacesTab'));
-const EventsPage = lazy(() => import('../events/EventsPage'));
+// Lazy load the list components for better performance
+const MatchesPage = React.lazy(() => import('../matches/MatchesPage'));
+const PlacesTab = React.lazy(() => import('../places/PlacesTab'));
+const EventsPage = React.lazy(() => import('../events/EventsPage'));
 
-const TabLoader = () => (
-  <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-    <CircularProgress />
-  </Box>
-);
+type FilterType = 'all' | 'people' | 'places' | 'events';
 
 const DiscoverPage: React.FC = () => {
   const { user } = useUser();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Determine initial tab from URL hash or query if needed, default to 0 (People)
-  const [tab, setTab] = useState(0);
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [markers, setMarkers] = useState<MapMarker[]>([]);
+  const [loadingMarkers, setLoadingLoadingMarkers] = useState(true);
+  const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null);
 
+  // Sync state with URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
-    if (tabParam === 'places') setTab(1);
-    else if (tabParam === 'events') setTab(2);
-    else setTab(0);
+    if (tabParam === 'places') setFilter('places');
+    else if (tabParam === 'events') setFilter('events');
+    else if (tabParam === 'people') setFilter('people');
+    else setFilter('all');
   }, [location]);
 
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setTab(newValue);
-    const tabName = newValue === 1 ? 'places' : newValue === 2 ? 'events' : 'people';
-    navigate(`/discover?tab=${tabName}`, { replace: true });
+  const handleFilterChange = (newFilter: FilterType) => {
+    setFilter(newFilter);
+    const tabName = newFilter === 'all' ? '' : newFilter;
+    navigate(tabName ? `/discover?tab=${tabName}` : `/discover`, { replace: true });
+  };
+
+  // Get user location for map centering
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => console.warn('Location access denied'),
+        { enableHighAccuracy: true }
+      );
+    }
+  }, []);
+
+  const fetchMarkers = useCallback(async () => {
+    setLoadingLoadingMarkers(true);
+    try {
+      // Fetch all 3 types in parallel
+      const [peopleRes, placesRes, eventsRes] = await Promise.allSettled([
+        axios.get(`${API_URL}/matches/${user?.id || 'none'}`),
+        axios.get(`${API_URL}/places`),
+        axios.get(`${API_URL}/events`)
+      ]);
+
+      const newMarkers: MapMarker[] = [];
+
+      // Process People
+      if (peopleRes.status === 'fulfilled') {
+        const people = (peopleRes.value.data || []).filter((p: any) => p.latitude && p.longitude);
+        people.forEach((p: any) => newMarkers.push({
+          id: p.userId,
+          title: p.name,
+          subtitle: p.domains?.join(', '),
+          lat: p.latitude,
+          lng: p.longitude,
+          type: 'user',
+          avatarUrl: p.avatarUrl
+        }));
+      }
+
+      // Process Places
+      if (placesRes.status === 'fulfilled') {
+        const places = (placesRes.value.data || []).filter((p: any) => p.latitude && p.longitude);
+        places.forEach((p: any) => newMarkers.push({
+          id: p.id,
+          title: p.name,
+          subtitle: p.type,
+          lat: p.latitude,
+          lng: p.longitude,
+          type: 'place'
+        }));
+      }
+
+      // Process Events
+      if (eventsRes.status === 'fulfilled') {
+        const events = (eventsRes.value.data || []).filter((e: any) => e.latitude && e.longitude);
+        events.forEach((e: any) => newMarkers.push({
+          id: e.id,
+          title: e.title,
+          subtitle: e.event_date,
+          lat: e.latitude,
+          lng: e.longitude,
+          type: 'event'
+        }));
+      }
+
+      setMarkers(newMarkers);
+    } catch (err) {
+      console.error('Failed to load markers:', err);
+    } finally {
+      setLoadingLoadingMarkers(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchMarkers();
+  }, [fetchMarkers]);
+
+  const filteredMarkers = markers.filter(m => {
+    if (filter === 'all') return true;
+    if (filter === 'people') return m.type === 'user';
+    if (filter === 'places') return m.type === 'place';
+    if (filter === 'events') return m.type === 'event';
+    return true;
+  });
+
+  const handleMarkerClick = (id: string, type?: string) => {
+    if (type === 'user') navigate(`/profile/${id}`);
+    // For others, let the popup handle it or scroll to item
   };
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 64px)', pb: 8 }}>
-      {/* Sticky tab bar */}
-      <Box sx={{
-        borderBottom: 1,
-        borderColor: 'divider',
-        bgcolor: 'rgba(17,24,39,0.95)',
-        position: 'sticky',
-        top: 64,
-        zIndex: 10,
-        backdropFilter: 'blur(20px)',
-      }}>
-        <Container maxWidth="lg">
-          <Tabs
-            value={tab}
-            onChange={handleTabChange}
-            variant="fullWidth"
-            sx={{
-              '& .MuiTabs-indicator': { bgcolor: 'primary.main', height: 3 },
-              '& .MuiTab-root': { 
-                textTransform: 'none', 
-                fontWeight: 700, 
-                fontSize: '0.95rem', 
-                minHeight: 64,
-                color: 'text.disabled',
-                '&.Mui-selected': { color: 'primary.main' }
-              },
-            }}
-          >
-            <Tab label="People" icon={<PersonSearchIcon sx={{ fontSize: 20 }} />} iconPosition="start" />
-            <Tab label="Places" icon={<PlaceIcon sx={{ fontSize: 20 }} />} iconPosition="start" />
-            <Tab label="Events" icon={<EventIcon sx={{ fontSize: 20 }} />} iconPosition="start" />
-          </Tabs>
-        </Container>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
+      
+      {/* ── 1. Map Section (Hero) ── */}
+      <Box sx={{ position: 'relative', height: { xs: '45vh', md: '55vh' }, width: '100%' }}>
+        <LocationMap
+          height="100%"
+          markers={filteredMarkers}
+          userLocation={userGeo || undefined}
+          onMarkerClick={handleMarkerClick}
+        />
+        
+        {/* Floating Filter Hub */}
+        <Box sx={{ 
+          position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', 
+          zIndex: 1000, width: '90%', maxWidth: 600 
+        }}>
+          <GlassCard sx={{ 
+            p: 1, borderRadius: '50px', display: 'flex', gap: 1, overflowX: 'auto', 
+            justifyContent: 'center', border: '1px solid rgba(255,255,255,0.15)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' }
+          }}>
+            {[
+              { id: 'all', label: 'Everything', icon: <AppsIcon fontSize="small" /> },
+              { id: 'people', label: 'Users', icon: <PersonSearchIcon fontSize="small" /> },
+              { id: 'places', label: 'Places', icon: <PlaceIcon fontSize="small" /> },
+              { id: 'events', label: 'Events', icon: <EventIcon fontSize="small" /> },
+            ].map((btn) => (
+              <Chip
+                key={btn.id}
+                icon={btn.icon}
+                label={btn.label}
+                onClick={() => handleFilterChange(btn.id as FilterType)}
+                sx={{
+                  height: 40,
+                  px: 1,
+                  borderRadius: '20px',
+                  fontWeight: 800,
+                  bgcolor: filter === btn.id ? 'primary.main' : 'rgba(255,255,255,0.05)',
+                  color: filter === btn.id ? '#0A0B14' : 'text.primary',
+                  border: '1px solid',
+                  borderColor: filter === btn.id ? 'primary.main' : 'rgba(255,255,255,0.1)',
+                  '&:hover': { bgcolor: filter === btn.id ? 'primary.light' : 'rgba(255,255,255,0.1)' },
+                  '& .MuiChip-icon': { color: 'inherit' }
+                }}
+              />
+            ))}
+          </GlassCard>
+        </Box>
       </Box>
 
-      {/* Tab content */}
-      <Box sx={{ mt: 2 }}>
-        <Suspense fallback={<TabLoader />}>
-          {tab === 0 && <MatchesPage />}
-          {tab === 1 && <PlacesTab currentUserId={user?.id} />}
-          {tab === 2 && <EventsPage />}
-        </Suspense>
-      </Box>
+      {/* ── 2. Unified List Section ── */}
+      <Container maxWidth="lg" sx={{ mt: -4, position: 'relative', zIndex: 2, pb: 10 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.02em', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+            {filter === 'all' ? 'Community Hub' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+          </Typography>
+          <Tooltip title="Refresh data">
+            <IconButton onClick={fetchMarkers} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
+              {loadingMarkers ? <CircularProgress size={20} /> : <FilterListIcon />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        <React.Suspense fallback={
+          <Box sx={{ textAlign: 'center', py: 10 }}>
+            <CircularProgress />
+            <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>Assembling discovery feed...</Typography>
+          </Box>
+        }>
+          {filter === 'all' && (
+            <Stack spacing={6}>
+              <Box>
+                <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>Top User Matches</Typography>
+                <MatchesPage compact />
+              </Box>
+              <Box>
+                <Typography variant="overline" sx={{ color: '#6366F1', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>Recommended Places</Typography>
+                <PlacesTab currentUserId={user?.id} compact />
+              </Box>
+              <Box>
+                <Typography variant="overline" sx={{ color: '#EC4899', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>Upcoming Events</Typography>
+                <EventsPage compact />
+              </Box>
+            </Stack>
+          )}
+          {filter === 'people' && <MatchesPage />}
+          {filter === 'places' && <PlacesTab currentUserId={user?.id} />}
+          {filter === 'events' && <EventsPage />}
+        </React.Suspense>
+      </Container>
     </Box>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Avatar } from '@mui/material';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default marker icons not showing in production
@@ -22,12 +22,15 @@ export interface MapMarker {
   subtitle?: string;
   lat: number;
   lng: number;
+  type?: 'user' | 'place' | 'event';
+  avatarUrl?: string;
 }
 
 interface LocationMapProps {
   markers: MapMarker[];
-  height?: number;
+  height?: string | number;
   userLocation?: { lat: number; lng: number };
+  onMarkerClick?: (id: string, type?: string) => void;
 }
 
 // Helper component to auto-fit bounds when markers change
@@ -36,7 +39,7 @@ function MapAutoFit({ markers, userLocation }: { markers: MapMarker[], userLocat
   React.useEffect(() => {
     if (markers.length === 0) {
       if (userLocation) {
-        map.setView([userLocation.lat, userLocation.lng], 13);
+        map.setView([userLocation.lat, userLocation.lng], 12);
       }
       return;
     }
@@ -50,12 +53,30 @@ function MapAutoFit({ markers, userLocation }: { markers: MapMarker[], userLocat
   return null;
 }
 
-const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340, userLocation }) => {
+// Custom marker creator
+const createCustomIcon = (m: MapMarker) => {
+  if (m.type === 'user' && m.avatarUrl) {
+    return L.divIcon({
+      className: 'custom-div-icon',
+      html: `<div style="background-image: url(${m.avatarUrl}); background-size: cover; width: 36px; height: 36px; border-radius: 50%; border: 3px solid #F59E0B; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"></div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+  }
+  
+  const color = m.type === 'event' ? '#EC4899' : (m.type === 'place' ? '#6366F1' : '#F59E0B');
+  return L.divIcon({
+    className: 'custom-div-icon',
+    html: `<div style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px ${color};"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+};
+
+const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340, userLocation, onMarkerClick }) => {
   const validMarkers = markers.filter(m => m.lat != null && m.lng != null);
 
-  // Default center if no markers or user location (Europe/Milan as neutral default for Praxis context)
   const defaultCenter: [number, number] = [45.4642, 9.1900];
-  
   let center: [number, number] = defaultCenter;
 
   if (validMarkers.length > 0) {
@@ -73,20 +94,17 @@ const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340, userLo
     <Box sx={{ 
       borderRadius: '16px', 
       overflow: 'hidden', 
-      mb: 3, 
       height,
       border: '1px solid rgba(255,255,255,0.07)', 
-      boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
       zIndex: 1,
-      bgcolor: '#0A0B14' // Background color while map tiles load
+      bgcolor: '#0A0B14'
     }}>
       <MapContainer 
         center={center} 
-        zoom={validMarkers.length === 1 ? 14 : (validMarkers.length > 1 ? 10 : 12)} 
+        zoom={12} 
         style={{ width: '100%', height: '100%' }}
-        scrollWheelZoom={false}
+        scrollWheelZoom={true}
       >
-        {/* CartoDB Dark Matter — perfectly matches Praxis dark theme */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -95,26 +113,17 @@ const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340, userLo
         <MapAutoFit markers={validMarkers} userLocation={userLocation} />
 
         {validMarkers.map(m => (
-          <Marker key={m.id} position={[m.lat, m.lng]}>
+          <Marker 
+            key={m.id} 
+            position={[m.lat, m.lng]} 
+            icon={createCustomIcon(m)}
+            eventHandlers={{
+              click: () => onMarkerClick && onMarkerClick(m.id, m.type),
+            }}
+          >
             <Popup>
-              <Box sx={{ color: '#0A0B14', minWidth: 120, p: 0.5 }}>
-                <Typography
-                  variant="body2"
-                  component="a"
-                  href={`https://www.google.com/search?q=${encodeURIComponent(m.title)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{
-                    fontWeight: 700,
-                    lineHeight: 1.3,
-                    color: 'primary.main',
-                    textDecoration: 'none',
-                    display: 'block',
-                    '&:hover': {
-                      textDecoration: 'underline'
-                    }
-                  }}
-                >
+              <Box sx={{ color: '#0A0B14', minWidth: 140, p: 0.5 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
                   {m.title}
                 </Typography>
                 {m.subtitle && (
@@ -122,6 +131,9 @@ const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340, userLo
                     {m.subtitle}
                   </Typography>
                 )}
+                <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700, mt: 1, display: 'block', cursor: 'pointer' }}>
+                  Click to view details
+                </Typography>
               </Box>
             </Popup>
           </Marker>

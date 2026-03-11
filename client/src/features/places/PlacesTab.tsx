@@ -4,8 +4,8 @@ import toast from 'react-hot-toast';
 import {
   Box, Typography, Button, Stack, Chip, Grid, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Select, MenuItem, FormControl, InputLabel, FormControlLabel,
-  Switch, IconButton, Tooltip, Avatar,
+  Select, MenuItem, FormControl, InputLabel,
+  IconButton, Tooltip, Avatar, Container,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import PlaceIcon from '@mui/icons-material/Place';
@@ -53,7 +53,7 @@ interface Place {
   owner: { id: string; name: string; avatar_url: string | null } | null;
   members: { user_id: string }[];
 }
-// Optional OpenStreetMap link - now also includes a Google Search link
+
 function MapsFrame({ lat, lng, name }: { lat: number; lng: number; name: string }) {
   const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(name)}`;
   return (
@@ -90,12 +90,12 @@ function MapsFrame({ lat, lng, name }: { lat: number; lng: number; name: string 
   );
 }
 
-
 interface PlacesTabProps {
   currentUserId?: string;
+  compact?: boolean;
 }
 
-const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
+const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false }) => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');
@@ -105,7 +105,6 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Form
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formType, setFormType] = useState('gym');
@@ -116,7 +115,6 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
   const [formDesc, setFormDesc] = useState('');
   const [formWebsite, setFormWebsite] = useState('');
   const [formSchedule, setFormSchedule] = useState('');
-  const [formRemote, setFormRemote] = useState(false);
 
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -188,7 +186,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
   const resetForm = () => {
     setEditingId(null);
     setFormName(''); setFormType('gym'); setFormAddress(''); setFormCity('');
-    setFormLat(''); setFormLng(''); setFormDesc(''); setFormWebsite(''); setFormSchedule(''); setFormRemote(false);
+    setFormLat(''); setFormLng(''); setFormDesc(''); setFormWebsite(''); setFormSchedule('');
   };
 
   const handleSave = async () => {
@@ -246,187 +244,154 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
 
   return (
-    <Box>
-      {/* Toolbar */}
-      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, mb: 3 }}>
-        <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel>Type</InputLabel>
-          <Select value={filterType} label="Type" onChange={e => setFilterType(e.target.value)} sx={{ borderRadius: '10px' }}>
-            <MenuItem value="">All types</MenuItem>
-            {PLACE_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <Button
-          variant={nearbyMode ? 'contained' : 'outlined'}
-          size="small"
-          startIcon={geoLoading ? <CircularProgress size={14} color="inherit" /> : <NearMeIcon />}
-          onClick={handleNearby}
-          disabled={geoLoading}
-          sx={{ borderRadius: '10px', fontWeight: 700 }}
-        >
-          {nearbyMode ? 'Nearby (on)' : 'Near me'}
-        </Button>
-        <Box sx={{ flexGrow: 1 }} />
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<AddCircleOutlineIcon />}
-          onClick={() => setDialogOpen(true)}
-          sx={{ borderRadius: '10px', fontWeight: 700 }}
-        >
-          Add place
-        </Button>
-      </Box>
+    <Box sx={compact ? {} : { py: 4 }}>
+      {!compact && (
+        <Container maxWidth="lg">
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, mb: 3 }}>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Type</InputLabel>
+              <Select value={filterType} label="Type" onChange={e => setFilterType(e.target.value)} sx={{ borderRadius: '10px' }}>
+                <MenuItem value="">All types</MenuItem>
+                {PLACE_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <Button
+              variant={nearbyMode ? 'contained' : 'outlined'}
+              size="small"
+              startIcon={geoLoading ? <CircularProgress size={14} color="inherit" /> : <NearMeIcon />}
+              onClick={handleNearby}
+              disabled={geoLoading}
+              sx={{ borderRadius: '10px', fontWeight: 700 }}
+            >
+              {nearbyMode ? 'Nearby (on)' : 'Near me'}
+            </Button>
+            <Box sx={{ flexGrow: 1 }} />
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AddCircleOutlineIcon />}
+              onClick={() => setDialogOpen(true)}
+              sx={{ borderRadius: '10px', fontWeight: 700 }}
+            >
+              Add place
+            </Button>
+          </Box>
 
-      {/* Map */}
-      <LocationMap
-        userLocation={userGeo || undefined}
-        markers={places
-          .filter(p => p.latitude != null && p.longitude != null)
-          .map(p => ({
-            id: p.id,
-            title: p.name,
-            subtitle: p.city || p.address || undefined,
-            lat: p.latitude!,
-            lng: p.longitude!,
-          }))}
-      />
+          <LocationMap
+            userLocation={userGeo || undefined}
+            markers={places
+              .filter(p => p.latitude != null && p.longitude != null)
+              .map(p => ({
+                id: p.id,
+                title: p.name,
+                subtitle: p.city || p.address || undefined,
+                lat: p.latitude!,
+                lng: p.longitude!,
+                type: 'place'
+              }))}
+          />
+        </Container>
+      )}
 
-      {places.length === 0 ? (
-        <GlassCard sx={{ p: 5, textAlign: 'center' }}>
-          <PlaceIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary" fontWeight={700}>No places yet</Typography>
-          <Typography variant="body2" color="text.disabled" sx={{ mb: 2 }}>
-            Add gyms, churches, coworking spaces, museums — any place your community gathers.
-          </Typography>
-          <Button variant="outlined" sx={{ borderRadius: '10px' }} onClick={() => setDialogOpen(true)}>
-            Add the first place
-          </Button>
-        </GlassCard>
-      ) : (
-        <Grid container spacing={2}>
-          {places.map(place => {
-            const cfg = typeConfig(place.type);
-            const isMember = place.members.some(m => m.user_id === currentUserId);
-            const isOwner = place.owner_id === currentUserId;
-            const canManage = isOwner || isAdmin;
-            return (
-              <Grid key={place.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                <GlassCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                    <Chip
-                      label={cfg.label}
-                      size="small"
-                      sx={{ bgcolor: `${cfg.color}18`, color: cfg.color, fontWeight: 700, fontSize: '0.72rem' }}
-                    />
-                    {canManage && (
-                      <Stack direction="row" spacing={0.5}>
-                        <Tooltip title="Edit place">
+      <Container maxWidth={compact ? false : "lg"} sx={compact ? { p: 0 } : {}}>
+        {places.length === 0 ? (
+          <GlassCard sx={{ p: 5, textAlign: 'center' }}>
+            <PlaceIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" fontWeight={700}>No places yet</Typography>
+            {!compact && (
+              <Button variant="outlined" sx={{ borderRadius: '10px', mt: 2 }} onClick={() => setDialogOpen(true)}>
+                Add the first place
+              </Button>
+            )}
+          </GlassCard>
+        ) : (
+          <Grid container spacing={2}>
+            {places.map(place => {
+              const cfg = typeConfig(place.type);
+              const isMember = place.members.some(m => m.user_id === currentUserId);
+              const isOwner = place.owner_id === currentUserId;
+              const canManage = isOwner || isAdmin;
+              return (
+                <Grid key={place.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <GlassCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                      <Chip
+                        label={cfg.label}
+                        size="small"
+                        sx={{ bgcolor: `${cfg.color}18`, color: cfg.color, fontWeight: 700, fontSize: '0.72rem' }}
+                      />
+                      {canManage && (
+                        <Stack direction="row" spacing={0.5}>
                           <IconButton size="small" onClick={() => openEditDialog(place)} sx={{ opacity: 0.5, '&:hover': { opacity: 1, color: 'primary.main' } }}>
                             <EditIcon fontSize="small" />
                           </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete place">
                           <IconButton size="small" onClick={() => handleDelete(place.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    )}
-                  {/* Name */}
-                  <Typography
-                    variant="h6"
-                    component="a"
-                    href={`https://www.google.com/search?q=${encodeURIComponent(place.name)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{
-                      fontWeight: 800,
-                      lineHeight: 1.3,
-                      color: 'inherit',
-                      textDecoration: 'none',
-                      '&:hover': {
-                        color: 'primary.main',
-                        textDecoration: 'underline'
-                      }
-                    }}
-                  >
-                    {place.name}
-                  </Typography>
+                        </Stack>
+                      )}
+                    </Box>
+
+                    <Typography
+                      variant="h6"
+                      component="a"
+                      href={`https://www.google.com/search?q=${encodeURIComponent(place.name)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ fontWeight: 800, lineHeight: 1.2, color: 'inherit', textDecoration: 'none', '&:hover': { color: 'primary.main', textDecoration: 'underline' } }}
+                    >
+                      {place.name}
+                    </Typography>
 
                     {(place.city || place.address) && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <PlaceIcon sx={{ fontSize: 12 }} />{place.city || place.address}
                       </Typography>
                     )}
-                  </Box>
 
-                  {place.description && (
-                    <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1, fontSize: '0.8125rem' }}>
-                      {place.description}
-                    </Typography>
-                  )}
-
-                  {place.schedule && (
-                    <Typography variant="caption" sx={{ color: cfg.color, fontWeight: 600 }}>🕐 {place.schedule}</Typography>
-                  )}
-
-                  {place.distance_km !== null && (
-                    <Chip
-                      icon={<NearMeIcon />}
-                      label={place.distance_km < 1 ? '<1 km away' : `${place.distance_km} km away`}
-                      size="small"
-                      sx={{ bgcolor: 'rgba(59,130,246,0.1)', color: '#3B82F6', fontSize: '0.7rem', alignSelf: 'flex-start' }}
-                    />
-                  )}
-
-                  {/* Map preview */}
-                  {place.latitude != null && place.longitude != null && (
-                    <MapsFrame lat={place.latitude} lng={place.longitude} name={place.name} />
-                  )}
-
-                  {/* Footer */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 'auto' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexGrow: 1 }}>
-                      <PeopleIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
-                      <Typography variant="caption" color="text.secondary">{place.members.length} member{place.members.length !== 1 ? 's' : ''}</Typography>
-                    </Box>
-                    {place.website && (
-                      <Tooltip title="Visit website">
-                        <IconButton
-                          size="small"
-                          href={place.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{ color: 'text.disabled', '&:hover': { color: 'primary.main' } }}
-                        >
-                          <OpenInNewIcon sx={{ fontSize: 14 }} />
-                        </IconButton>
-                      </Tooltip>
+                    {place.description && (
+                      <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1, fontSize: '0.8125rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {place.description}
+                      </Typography>
                     )}
-                    <Button
-                      size="small"
-                      variant={isMember ? 'contained' : 'outlined'}
-                      onClick={() => handleJoin(place)}
-                      sx={{
-                        borderRadius: '8px', fontWeight: 700, fontSize: '0.7rem',
-                        bgcolor: isMember ? `${cfg.color}22` : 'transparent',
-                        color: isMember ? cfg.color : 'text.secondary',
-                        borderColor: isMember ? cfg.color : 'rgba(255,255,255,0.12)',
-                        '&:hover': { borderColor: cfg.color, color: cfg.color },
-                      }}
-                    >
-                      {isMember ? 'Joined ✓' : 'Join'}
-                    </Button>
-                  </Box>
-                </GlassCard>
-              </Grid>
-            );
-          })}
-        </Grid>
-      )}
 
-      {/* Add/Edit Place Dialog */}
+                    <Box sx={{ mt: 'auto' }}>
+                      {place.schedule && (
+                        <Typography variant="caption" sx={{ color: cfg.color, fontWeight: 600, display: 'block', mb: 1 }}>🕐 {place.schedule}</Typography>
+                      )}
+
+                      {place.latitude != null && place.longitude != null && (
+                        <MapsFrame lat={place.latitude} lng={place.longitude} name={place.name} />
+                      )}
+
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexGrow: 1 }}>
+                          <PeopleIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                          <Typography variant="caption" color="text.secondary">{place.members.length}</Typography>
+                        </Box>
+                        <Button
+                          size="small"
+                          variant={isMember ? 'contained' : 'outlined'}
+                          onClick={() => handleJoin(place)}
+                          sx={{
+                            borderRadius: '8px', fontWeight: 700, fontSize: '0.7rem',
+                            bgcolor: isMember ? `${cfg.color}22` : 'transparent',
+                            color: isMember ? cfg.color : 'text.secondary',
+                            borderColor: isMember ? cfg.color : 'rgba(255,255,255,0.12)',
+                          }}
+                        >
+                          {isMember ? 'Joined' : 'Join'}
+                        </Button>
+                      </Box>
+                    </Box>
+                  </GlassCard>
+                </Grid>
+              );
+            })}
+          </Grid>
+        )}
+      </Container>
+
       <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); resetForm(); }} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -435,50 +400,36 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField fullWidth label="Name *" value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Iron Paradise Gym" />
+            <TextField fullWidth label="Name *" value={formName} onChange={e => setFormName(e.target.value)} />
             <FormControl fullWidth>
               <InputLabel>Type *</InputLabel>
               <Select value={formType} label="Type *" onChange={e => setFormType(e.target.value)}>
                 {PLACE_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
               </Select>
             </FormControl>
-            <TextField fullWidth label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} multiline rows={2} placeholder="What happens here?" />
-            <TextField fullWidth label="Address" value={formAddress} onChange={e => setFormAddress(e.target.value)} placeholder="123 Main St" />
+            <TextField fullWidth label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} multiline rows={2} />
+            <TextField fullWidth label="Address" value={formAddress} onChange={e => setFormAddress(e.target.value)} />
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="City" value={formCity} onChange={e => setFormCity(e.target.value)} placeholder="Milan" />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Schedule" value={formSchedule} onChange={e => setFormSchedule(e.target.value)} placeholder="Mon–Fri 6am–10pm" />
-              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="City" value={formCity} onChange={e => setFormCity(e.target.value)} /></Grid>
+              <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Schedule" value={formSchedule} onChange={e => setFormSchedule(e.target.value)} /></Grid>
             </Grid>
-            <TextField fullWidth label="Website" value={formWebsite} onChange={e => setFormWebsite(e.target.value)} placeholder="https://..." />
+            <TextField fullWidth label="Website" value={formWebsite} onChange={e => setFormWebsite(e.target.value)} />
             <Box>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                <Typography variant="caption" color="text.secondary" fontWeight={600}>Coordinates (enables map + "Near me")</Typography>
-                <Button size="small" startIcon={<MyLocationIcon />} onClick={autoFillGeo} sx={{ fontSize: '0.72rem' }}>Auto-detect</Button>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>Location</Typography>
+                <Button size="small" startIcon={<MyLocationIcon />} onClick={autoFillGeo}>Detect</Button>
               </Stack>
               <Grid container spacing={2}>
-                <Grid size={{ xs: 6 }}>
-                  <TextField fullWidth size="small" label="Latitude" value={formLat} onChange={e => setFormLat(e.target.value)} placeholder="45.4654" />
-                </Grid>
-                <Grid size={{ xs: 6 }}>
-                  <TextField fullWidth size="small" label="Longitude" value={formLng} onChange={e => setFormLng(e.target.value)} placeholder="9.1859" />
-                </Grid>
+                <Grid size={{ xs: 6 }}><TextField fullWidth size="small" label="Lat" value={formLat} onChange={e => setFormLat(e.target.value)} /></Grid>
+                <Grid size={{ xs: 6 }}><TextField fullWidth size="small" label="Lng" value={formLng} onChange={e => setFormLng(e.target.value)} /></Grid>
               </Grid>
             </Box>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleSave}
-            disabled={saving || !formName.trim()}
-            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : (editingId ? <EditIcon /> : <AddCircleOutlineIcon />)}
-            sx={{ borderRadius: '10px', fontWeight: 800 }}
-          >
-            {saving ? (editingId ? 'Saving…' : 'Adding…') : (editingId ? 'Save changes' : 'Add place')}
+          <Button variant="contained" onClick={handleSave} disabled={saving} startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <PlaceIcon />}>
+            {editingId ? 'Save' : 'Add'}
           </Button>
         </DialogActions>
       </Dialog>

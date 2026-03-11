@@ -14,10 +14,18 @@ import {
     Divider,
     Chip,
     Tooltip,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import ForumIcon from '@mui/icons-material/Forum';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PersonIcon from '@mui/icons-material/Person';
+import { supabase } from '../../lib/supabase';
+import { API_URL } from '../../lib/api';
+import { useUser } from '../../hooks/useUser';
 
 function checkinDotColor(lastCheckinDate?: string | null): string {
     if (!lastCheckinDate) return '#4B5563';
@@ -38,9 +46,6 @@ function checkinDotTitle(lastCheckinDate?: string | null): string {
     if (diffDays === 1) return 'Missed today — checked in yesterday';
     return `Last checked in ${diffDays}d ago`;
 }
-import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
-import { useUser } from '../../hooks/useUser';
 
 interface ConversationSummary {
     id: string; // userId for DM, roomId for Group
@@ -52,6 +57,7 @@ interface ConversationSummary {
     lastCheckinDate?: string | null; // DM only
     currentStreak?: number; // DM only
     avatarUrl?: string;
+    timestamp?: number;
 }
 
 const ChatPage: React.FC = () => {
@@ -126,12 +132,14 @@ const ChatPage: React.FC = () => {
                 // Add DMs to list
                 for (const [userId, msg] of Array.from(latestDMByUser)) {
                     const p = profileMap.get(userId);
+                    const ts = Date.parse(msg.timestamp || msg.created_at);
                     convList.push({
                         id: userId,
                         type: 'dm',
                         name: p?.name || 'Unknown User',
                         lastMessage: msg.content,
-                        lastMessageTime: new Date(msg.timestamp || msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        lastMessageTime: new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        timestamp: ts,
                         unreadCount: 0,
                         lastCheckinDate: p?.last_activity_date,
                         currentStreak: p?.current_streak,
@@ -144,19 +152,19 @@ const ChatPage: React.FC = () => {
                     const room = j.chat_rooms as any;
                     if (!room) continue;
                     const msg = latestMsgByRoom.get(room.id);
+                    const ts = msg ? Date.parse(msg.timestamp || msg.created_at) : 0;
                     convList.push({
                         id: room.id,
                         type: 'group',
                         name: room.name,
                         lastMessage: msg ? msg.content : 'No messages yet',
-                        lastMessageTime: msg ? new Date(msg.timestamp || msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                        lastMessageTime: msg ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                        timestamp: ts,
                         unreadCount: 0,
                     });
                 }
 
-                // Sort entire list by recency (if we have time info)
-                // For simplicity now, just set it
-                setConversations(convList);
+                setConversations(convList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
 
             } catch (err: any) {
                 console.error('Error fetching chat data:', err.message);
@@ -195,160 +203,160 @@ const ChatPage: React.FC = () => {
     if (currentUserLoading || loading) {
         return (
             <Container component="main" maxWidth="md" sx={{ mt: 4, textAlign: 'center' }}>
-                <Typography variant="h5" color="text.secondary">Loading conversations...</Typography>
+                <CircularProgress sx={{ mb: 2 }} />
+                <Typography variant="body2" color="text.secondary">Loading your messages...</Typography>
             </Container>
         );
     }
 
+    const dmConversations = conversations.filter(c => c.type === 'dm');
+    const groupConversations = conversations.filter(c => c.type === 'group');
+
+    const renderConversationItem = (conv: ConversationSummary) => {
+        const isDM = conv.type === 'dm';
+        const linkTo = isDM ? `/chat/${currentUser?.id}/${conv.id}` : `/groups/${conv.id}`;
+        
+        return (
+            <ListItem
+                key={`${conv.type}-${conv.id}`}
+                component={RouterLink}
+                to={linkTo}
+                sx={{ py: 2, textDecoration: 'none', color: 'inherit', '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}
+            >
+                <ListItemAvatar>
+                    <Badge
+                        badgeContent={conv.unreadCount}
+                        color="error"
+                        overlap="circular"
+                        invisible={conv.unreadCount === 0}
+                    >
+                        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                            {isDM ? (
+                                <Tooltip title={checkinDotTitle(conv.lastCheckinDate)} placement="right">
+                                    <Box sx={{ position: 'relative' }}>
+                                        <Avatar src={conv.avatarUrl}>
+                                            {conv.name.charAt(0)}
+                                        </Avatar>
+                                        <Box sx={{
+                                            position: 'absolute', bottom: 1, right: 1,
+                                            width: 10, height: 10, borderRadius: '50%',
+                                            bgcolor: checkinDotColor(conv.lastCheckinDate),
+                                            border: '2px solid #111827',
+                                            boxShadow: `0 0 4px ${checkinDotColor(conv.lastCheckinDate)}`,
+                                        }} />
+                                    </Box>
+                                </Tooltip>
+                            ) : (
+                                <Avatar sx={{ bgcolor: 'rgba(139,92,246,0.1)', color: 'primary.main' }}>
+                                    <ForumIcon fontSize="small" />
+                                </Avatar>
+                            )}
+                        </Box>
+                    </Badge>
+                </ListItemAvatar>
+                <ListItemText
+                    primary={
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="subtitle1" sx={{ color: 'text.primary', fontWeight: 700 }}>
+                                    {conv.name}
+                                </Typography>
+                                {isDM && mutualStreaks[conv.id] && (
+                                    <Chip
+                                        icon={<LocalFireDepartmentIcon sx={{ fontSize: '12px !important', color: '#F97316 !important' }} />}
+                                        label={`${mutualStreaks[conv.id]}d`}
+                                        size="small"
+                                        sx={{ height: 18, fontSize: '0.6rem', bgcolor: 'rgba(249,115,22,0.1)', color: '#F97316', border: '1px solid rgba(249,115,22,0.2)', fontWeight: 800 }}
+                                    />
+                                )}
+                            </Box>
+                            <Typography variant="caption" color="text.disabled">
+                                {conv.lastMessageTime}
+                            </Typography>
+                        </Box>
+                    }
+                    secondary={
+                        <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: '90%', fontSize: '0.8rem' }}>
+                            {conv.lastMessage}
+                        </Typography>
+                    }
+                />
+            </ListItem>
+        );
+    };
+
     return (
-        <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
-            <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'primary.main' }}>
+        <Container component="main" maxWidth="md" sx={{ mt: 4, pb: 10 }}>
+            <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'primary.main', fontWeight: 900, letterSpacing: '-0.02em', mb: 3 }}>
                 Messages
             </Typography>
 
-            <List sx={{ bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
-                {/* Axiom — pinned at top */}
+            {/* Axiom pinned always */}
+            <GlassCard sx={{ mb: 3, border: '1px solid rgba(245,158,11,0.2)' }}>
                 <ListItem
                     component={RouterLink}
                     to="/coaching"
                     sx={{
-                        py: 2,
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        background: 'linear-gradient(135deg, rgba(245,158,11,0.07) 0%, rgba(139,92,246,0.05) 100%)',
-                        borderLeft: '3px solid rgba(245,158,11,0.6)',
-                        '&:hover': { background: 'linear-gradient(135deg, rgba(245,158,11,0.13) 0%, rgba(139,92,246,0.1) 100%)' },
+                        py: 2, textDecoration: 'none', color: 'inherit',
+                        background: 'linear-gradient(135deg, rgba(245,158,11,0.05) 0%, rgba(139,92,246,0.03) 100%)',
                     }}
                 >
                     <ListItemAvatar>
                         <Avatar sx={{
                             background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
-                            border: '2px solid rgba(245,158,11,0.45)',
-                            fontSize: '1.25rem',
-                            width: 44,
-                            height: 44,
-                        }}>
-                            🥋
-                        </Avatar>
+                            border: '2px solid rgba(245,158,11,0.4)',
+                            width: 48, height: 48,
+                        }}>🥋</Avatar>
                     </ListItemAvatar>
                     <ListItemText
                         primary={
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Typography variant="h6" component="span" sx={{ color: '#F59E0B', fontWeight: 800 }}>
-                                        Axiom
-                                    </Typography>
-                                    <Chip
-                                        icon={<AutoAwesomeIcon sx={{ fontSize: '12px !important' }} />}
-                                        label="AI Coach"
-                                        size="small"
-                                        sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)', fontWeight: 700 }}
-                                    />
-                                </Box>
-                                <Typography variant="caption" sx={{ color: 'rgba(245,158,11,0.6)', fontStyle: 'italic' }}>
-                                    always here
-                                </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="h6" sx={{ color: '#F59E0B', fontWeight: 800 }}>Axiom</Typography>
+                                <Chip label="AI COACH" size="small" sx={{ height: 16, fontSize: '0.55rem', fontWeight: 900, bgcolor: 'rgba(245,158,11,0.15)', color: '#F59E0B' }} />
                             </Box>
                         }
-                        secondary={
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                Strategy, accountability, mindset — ask me anything
-                            </Typography>
-                        }
+                        secondary="Strategy, accountability, and your daily protocol."
                     />
                 </ListItem>
-                <Divider component="li" />
+            </GlassCard>
 
-                {conversations.length > 0 ? (
-                    conversations.map((conv, index) => {
-                        const isDM = conv.type === 'dm';
-                        const linkTo = isDM ? `/chat/${currentUser?.id}/${conv.id}` : `/groups/${conv.id}`;
-
-                        return (
-                            <React.Fragment key={`${conv.type}-${conv.id}`}>
-                                <ListItem
-                                    component={RouterLink}
-                                    to={linkTo}
-                                    sx={{ py: 2, textDecoration: 'none', color: 'inherit' }}
-                                >
-                                    <ListItemAvatar>
-                                        <Badge
-                                            badgeContent={conv.unreadCount}
-                                            color="error"
-                                            overlap="circular"
-                                            invisible={conv.unreadCount === 0}
-                                        >
-                                            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                                                {isDM ? (
-                                                    <Tooltip title={checkinDotTitle(conv.lastCheckinDate)} placement="right">
-                                                        <Box sx={{ position: 'relative' }}>
-                                                            <Avatar src={conv.avatarUrl}>
-                                                                {conv.name.charAt(0)}
-                                                            </Avatar>
-                                                            <Box sx={{
-                                                                position: 'absolute', bottom: 1, right: 1,
-                                                                width: 10, height: 10, borderRadius: '50%',
-                                                                bgcolor: checkinDotColor(conv.lastCheckinDate),
-                                                                border: '2px solid #111827',
-                                                                boxShadow: `0 0 4px ${checkinDotColor(conv.lastCheckinDate)}`,
-                                                            }} />
-                                                        </Box>
-                                                    </Tooltip>
-                                                ) : (
-                                                    <Avatar sx={{ bgcolor: 'rgba(139,92,246,0.1)', color: 'primary.main' }}>
-                                                        <ForumIcon fontSize="small" />
-                                                    </Avatar>
-                                                )}
-                                            </Box>
-                                        </Badge>
-                                    </ListItemAvatar>
-                                    <ListItemText
-                                        primary={
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <Typography variant="h6" component="span" sx={{ color: isDM ? 'primary.main' : '#A78BFA', fontWeight: isDM ? 600 : 700 }}>
-                                                        {conv.name}
-                                                    </Typography>
-                                                    {isDM && mutualStreaks[conv.id] && (
-                                                        <Tooltip title={`You and ${conv.name} have both checked in for ${mutualStreaks[conv.id]} days in a row`}>
-                                                            <Chip
-                                                                icon={<LocalFireDepartmentIcon sx={{ fontSize: '13px !important', color: '#F97316 !important' }} />}
-                                                                label={`${mutualStreaks[conv.id]}d mutual`}
-                                                                size="small"
-                                                                sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(249,115,22,0.1)', color: '#F97316', border: '1px solid rgba(249,115,22,0.3)', fontWeight: 700 }}
-                                                            />
-                                                        </Tooltip>
-                                                    )}
-                                                    {!isDM && (
-                                                        <Chip label="Group" size="small" sx={{ height: 16, fontSize: '0.6rem', bgcolor: 'rgba(167,139,250,0.1)', color: '#A78BFA', fontWeight: 700 }} />
-                                                    )}
-                                                </Box>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    {conv.lastMessageTime}
-                                                </Typography>
-                                            </Box>
-                                        }
-                                        secondary={
-                                            <Typography variant="body2" color="text.secondary" noWrap>
-                                                {conv.lastMessage}
-                                            </Typography>
-                                        }
-                                    />
-                                </ListItem>
-                                {index < conversations.length - 1 && <Divider component="li" />}
-                            </React.Fragment>
-                        );
-                    })
-                ) : (
-                    <ListItem>
-                        <ListItemText>
-                            <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                                No conversations yet — find matches or join events to start chatting!
+            <Stack spacing={2}>
+                <Accordion defaultExpanded sx={{ bgcolor: 'transparent', boxShadow: 'none', '&:before': { display: 'none' } }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 1, minHeight: 48 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <PersonIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                            <Typography variant="overline" sx={{ fontWeight: 900, letterSpacing: '0.1em', color: 'text.disabled' }}>
+                                Direct Messages ({dmConversations.length})
                             </Typography>
-                        </ListItemText>
-                    </ListItem>
-                )}
-            </List>
+                        </Box>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ p: 0 }}>
+                        <List disablePadding>
+                            {dmConversations.length > 0 ? dmConversations.map(renderConversationItem) : (
+                                <Typography variant="body2" color="text.disabled" sx={{ p: 2, textAlign: 'center' }}>No direct messages yet.</Typography>
+                            )}
+                        </List>
+                    </AccordionDetails>
+                </Accordion>
+
+                <Accordion defaultExpanded sx={{ bgcolor: 'transparent', boxShadow: 'none', '&:before': { display: 'none' } }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 1, minHeight: 48 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <ForumIcon sx={{ color: '#8B5CF6', fontSize: 20 }} />
+                            <Typography variant="overline" sx={{ fontWeight: 900, letterSpacing: '0.1em', color: 'text.disabled' }}>
+                                Community Boards ({groupConversations.length})
+                            </Typography>
+                        </Box>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ p: 0 }}>
+                        <List disablePadding>
+                            {groupConversations.length > 0 ? groupConversations.map(renderConversationItem) : (
+                                <Typography variant="body2" color="text.disabled" sx={{ p: 2, textAlign: 'center' }}>You haven't joined any groups yet.</Typography>
+                            )}
+                        </List>
+                    </AccordionDetails>
+                </Accordion>
+            </Stack>
         </Container>
     );
 };
