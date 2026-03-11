@@ -483,13 +483,15 @@ const AICoachPage: React.FC = () => {
               <Grid size={{ xs: 12 }}>
                 <Typography variant="overline" sx={{ color: '#10B981', fontWeight: 800 }}>Strategic Resources</Typography>
                 <Stack spacing={1.5} sx={{ mt: 1 }}>
-                  {(dailyBrief.resources || []).map((res, i) => (
+                  {Array.isArray(dailyBrief.resources) ? dailyBrief.resources.map((res, i) => (
                     <Box key={i} sx={{ bgcolor: 'rgba(255,255,255,0.03)', p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700 }}>Goal: {res.goal}</Typography>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, my: 0.5 }}>{res.suggestion}</Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>{res.details}</Typography>
+                      <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700 }}>Goal: {String(res.goal || 'General')}</Typography>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, my: 0.5 }}>{String(res.suggestion || '')}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>{String(res.details || '')}</Typography>
                     </Box>
-                  ))}
+                  )) : (
+                    <Typography variant="body2" color="text.secondary">No resources available for today.</Typography>
+                  )}
                 </Stack>
               </Grid>
 
@@ -497,9 +499,9 @@ const AICoachPage: React.FC = () => {
               <Grid size={{ xs: 12, md: 6 }}>
                 <Typography variant="overline" sx={{ color: '#F59E0B', fontWeight: 800 }}>Suggested Competition</Typography>
                 <Box sx={{ p: 2, mt: 1, bgcolor: 'rgba(245,158,11,0.05)', borderRadius: 2, border: '1px dashed #F59E0B' }}>
-                  <Typography variant="subtitle2" sx={{ color: '#F59E0B', fontWeight: 800, textTransform: 'uppercase' }}>{dailyBrief.challenge.type}</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{dailyBrief.challenge.target}</Typography>
-                  <Typography variant="caption" display="block">{dailyBrief.challenge.terms}</Typography>
+                  <Typography variant="subtitle2" sx={{ color: '#F59E0B', fontWeight: 800, textTransform: 'uppercase' }}>{String(dailyBrief.challenge?.type || 'CHALLENGE')}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{String(dailyBrief.challenge?.target || '')}</Typography>
+                  <Typography variant="caption" display="block">{String(dailyBrief.challenge?.terms || '')}</Typography>
                 </Box>
               </Grid>
 
@@ -507,15 +509,17 @@ const AICoachPage: React.FC = () => {
               <Grid size={{ xs: 12, md: 6 }}>
                 <Typography variant="overline" sx={{ color: '#A78BFA', fontWeight: 800 }}>Daily Routine (9-5 Friendly)</Typography>
                 <Box sx={{ mt: 1, maxHeight: 300, overflowY: 'auto', pr: 1 }}>
-                  {(dailyBrief.routine || []).map((step, i) => (
+                  {Array.isArray(dailyBrief.routine) ? dailyBrief.routine.map((step, i) => (
                     <Box key={i} sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
-                      <Typography variant="caption" sx={{ minWidth: 55, fontWeight: 800, color: 'primary.main' }}>{step.time}</Typography>
+                      <Typography variant="caption" sx={{ minWidth: 55, fontWeight: 800, color: 'primary.main' }}>{String(step.time || '')}</Typography>
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{step.task}</Typography>
-                        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25 }}>{step.alignment}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{String(step.task || '')}</Typography>
+                        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25 }}>{String(step.alignment || '')}</Typography>
                       </Box>
                     </Box>
-                  ))}
+                  )) : (
+                    <Typography variant="body2" color="text.secondary">Routine not generated.</Typography>
+                  )}
                 </Box>
               </Grid>
             </Grid>

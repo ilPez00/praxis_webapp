@@ -95,12 +95,10 @@ export class AICoachingService {
     if (this.apiKeys.length === 0) throw new Error('GEMINI_API_KEY not set.');
 
     const baseModels = [
-      'gemini-2.5-flash',
-      'gemini-2.5-pro',
-      'gemini-2.0-flash-001',
-      'gemini-2.0-flash-lite-001',
-      'gemini-2.0-flash',
       'gemini-1.5-flash',
+      'gemini-1.5-pro',
+      'gemini-2.0-flash',
+      'gemini-pro',
     ];
     
     const errors: string[] = [];

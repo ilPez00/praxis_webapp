@@ -1,16 +1,17 @@
-# Session: March 11, 2026 - Axiom Trigger Optimization
+# Session: March 11, 2026 - Axiom UI Fix and Reliability Update
 
 ## Summary of Changes
-- **Axiom Trigger Restriction:**
-  - **Removed Auto-Triggers:** Deleted all automatic Axiom protocol triggers from `PostFeed.tsx` (new posts) and `ProfilePage.tsx` (goal/profile edits).
-  - **Removed Initial Page Refresh:** Updated `AICoachPage.tsx` to stop automatically triggering a background refresh or generating a new report upon visiting the page.
-  - **Pro-Only Manual Trigger:** Added a manual trigger to the `handleAsk` function in `AICoachPage.tsx`. Now, Axiom only analyzes and refreshes a user's protocol if a **Pro user** explicitly initiates a conversation with the coach.
-  - **Midnight Scan Persistence:** Maintained the `AxiomScanService.ts` global midnight scan, ensuring every active user (Free and Pro) receives a fresh daily recommendation protocol once per day at 00:00.
-- **Admin Management:**
-  - Maintained all previous admin features (prompt editing and manual global trigger).
+- **Axiom (AI Coach) UI Fix:**
+  - **Resolved React Error #31:** Updated `AICoachPage.tsx` to explicitly cast all daily protocol fields to strings before rendering. This prevents the crash caused by Axiom occasionally returning objects instead of strings for goal names or suggestions.
+  - **Robustness:** Added `Array.isArray` checks for resources and routine lists to handle malformed AI responses gracefully.
+- **Axiom Reliability:**
+  - **Prioritized Stability:** Reverted the fallback chain in `AICoachingService.ts` to put `gemini-1.5-flash` at the top. The previous logs showed that the 2.5 series (though "Available") were reporting a `limit: 0` quota, causing immediate 429 failures.
+  - **Strict Prompting:** Updated the `AxiomScanService.ts` prompt with a **CRITICAL** instruction to only return simple strings for text fields, explicitly forbidding nested objects which were causing the frontend crash.
+- **Feature Persistence:**
+  - Maintained all previous midnight scan, admin control, and event/place enhancements.
 
 ## Verification Status
 - Type check: Passed.
-- Trigger logic: Manual conversation trigger implemented for Pro users.
-- Midnight scan: Unaffected, still scheduled for 00:00.
+- Frontend: Safe-rendering logic implemented for all dynamic AI fields.
+- Backend: Stabilized model fallback order.
 - Push to GitHub: Completed.

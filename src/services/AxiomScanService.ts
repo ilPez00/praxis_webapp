@@ -73,12 +73,14 @@ export class AxiomScanService {
 ### Task:
 You MUST provide a JSON response with exactly these 6 keys. For match, event, and place, you MUST include the "id" field from the context provided above so they are clickable.
 
-1. "match": { "id": "MUST_BE_STUDENT_ID", "name": "...", "reason": "..." }
-2. "resources": [ { "goal": "exact goal name", "suggestion": "book/plan name", "details": "specific actionable advice" } ] (Provide ONE per goal).
-3. "event": { "id": "MUST_BE_EVENT_ID", "title": "...", "reason": "..." }
-4. "place": { "id": "MUST_BE_PLACE_ID", "name": "...", "reason": "..." }
-5. "challenge": { "type": "bet|duel", "target": "specific competitive action", "terms": "stake or goal" }
-6. "routine": [ { "time": "e.g. 07:00", "task": "...", "alignment": "how it fits goals" } ] (Assume 9-5 work hours, focus on morning/evening/breaks).
+1. "match": { "id": "MUST_BE_STUDENT_ID", "name": "string", "reason": "string" }
+2. "resources": [ { "goal": "string", "suggestion": "string", "details": "string" } ] (Provide ONE per goal. Fields MUST be strings, NOT objects).
+3. "event": { "id": "MUST_BE_EVENT_ID", "title": "string", "reason": "string" }
+4. "place": { "id": "MUST_BE_PLACE_ID", "name": "string", "reason": "string" }
+5. "challenge": { "type": "bet|duel", "target": "string", "terms": "string" }
+6. "routine": [ { "time": "e.g. 07:00", "task": "string", "alignment": "string" } ] (Assume 9-5 work hours. Fields MUST be strings).
+
+CRITICAL: All fields (goal, suggestion, details, task, alignment, etc.) MUST be simple strings. Do not use objects or nested structures inside these fields.
 
 CRITICAL: You must use the actual IDs provided in the context for 'id' fields. If no context exists for a category, use "null" for the id.
 
