@@ -51,14 +51,12 @@ const AXIOM_IDENTITY = `You are Axiom — a wise, warm, and practical life coach
 
 export class AICoachingService {
   private genAI: GoogleGenerativeAI | null = null;
-  // Robust list of models, including experimental and lite versions for maximum availability
+  // Robust list of stable models
   private readonly FALLBACK_MODELS = [
-    'gemini-2.0-flash',
     'gemini-1.5-flash',
-    'gemini-2.0-flash-lite-preview-02-05',
-    'gemini-1.5-flash-8b',
     'gemini-1.5-pro',
-    'gemini-2.0-pro-exp-02-05',
+    'gemini-1.5-flash-8b',
+    'gemini-2.0-flash',
   ];
 
   constructor() {
@@ -101,7 +99,7 @@ export class AICoachingService {
           const model = this.genAI.getGenerativeModel({
             model: modelName,
             ...(isJson ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
-          }, { apiVersion: 'v1' });
+          });
 
           const result = await model.generateContent(prompt);
           const text = result.response.text().trim();
@@ -138,8 +136,8 @@ export class AICoachingService {
       throw new Error('Axiom is resting (daily limit reached). Please try again later.');
     }
     
-    // For anything else, show the generic "unavailable" message
-    throw new Error('Axiom is temporarily unavailable. Please try again in a moment.');
+    // For anything else, show the real error for debugging (as requested)
+    throw new Error(`Axiom is temporarily unavailable. Gemini failure: ${lastErrorMsg}`);
   }
 
   /**

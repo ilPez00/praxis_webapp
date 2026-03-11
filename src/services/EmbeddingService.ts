@@ -48,7 +48,7 @@ export class EmbeddingService {
     for (const modelName of this.FALLBACK_MODELS) {
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          const model = this.genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
+          const model = this.genAI.getGenerativeModel({ model: modelName });
           const result = await model.embedContent({
             content: { parts: [{ text }] },
             taskType: "RETRIEVAL_DOCUMENT",
