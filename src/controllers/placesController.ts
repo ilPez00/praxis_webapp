@@ -88,6 +88,19 @@ export const createPlace = catchAsync(async (req: Request, res: Response, _next:
     throw new InternalServerError(`Failed to create place: ${error.message}`);
   }
 
+  // Auto-create linked group room for the place
+  if (data?.id) {
+    supabase.from('chat_rooms').insert({
+      name: data.name,
+      description: `Community group for ${data.name}`,
+      creator_id: userId,
+      type: 'place',
+      place_id: data.id,
+    }).then(({ error: roomErr }) => {
+      if (roomErr) logger.warn('Could not auto-create place group room:', roomErr.message);
+    });
+  }
+
   res.status(201).json(data);
 });
 
@@ -104,6 +117,20 @@ export const joinPlace = catchAsync(async (req: Request, res: Response, _next: N
     if (SCHEMA_MISSING(error.message)) return res.status(503).json({ message: 'Run DB migrations.' });
     throw new InternalServerError('Failed to join place.');
   }
+
+  // Auto-join the linked group chat
+  const { data: room } = await supabase
+    .from('chat_rooms')
+    .select('id')
+    .eq('place_id', id)
+    .maybeSingle();
+
+  if (room) {
+    await supabase
+      .from('chat_room_members')
+      .upsert({ room_id: room.id, user_id: userId }, { onConflict: 'room_id,user_id' });
+  }
+  
   res.json({ success: true });
 });
 

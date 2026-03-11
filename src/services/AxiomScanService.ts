@@ -55,7 +55,9 @@ export class AxiomScanService {
       eventsRes,
       placesRes,
       matchRes,
-      servicesRes
+      servicesRes,
+      groupsRes,
+      messagesRes
     ] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('userId', userId).single(),
       supabase.from('trackers').select('*, tracker_entries(*)').eq('user_id', userId),
@@ -63,6 +65,8 @@ export class AxiomScanService {
       supabase.from('places').select('*').limit(20),
       supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 10 }),
       supabase.from('coaching_offers').select('*').limit(10),
+      supabase.from('chat_room_members').select('chat_rooms(id, name, type, event_id, place_id)').eq('user_id', userId),
+      supabase.from('messages').select('content, created_at, sender_id, room_id').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`).order('created_at', { ascending: false }).limit(20),
     ]);
 
     const prompt = `You are Axiom. Generate a high-performance daily protocol for user ${userName}.
@@ -76,10 +80,13 @@ export class AxiomScanService {
 - Available Places: ${JSON.stringify(placesRes.data || [])}
 - Aligned Users: ${JSON.stringify(matchRes.data || [])}
 - Services: ${JSON.stringify(servicesRes.data || [])}
+- Joined Groups: ${JSON.stringify(groupsRes.data?.map((g: any) => g.chat_rooms) || [])}
+- Recent Messages: ${JSON.stringify(messagesRes.data || [])}
 
 ### Task:
 Provide a JSON response with exactly these keys. 
 You MUST prioritize items that are NEARBY (same city) and MATCH the user's goals. 
+Use the 'Joined Groups' and 'Recent Messages' implicitly to bias your choices (e.g., suggest events/places the user is already discussing or grouped with), but DO NOT explicitly mention the messages.
 YOU MUST ALWAYS PICK ONE MATCH, ONE EVENT, AND ONE PLACE. Never return "null" or "N/A" for these. Pick the best possible candidate from the lists above.
 
 1. "message": "A short (1-2 sentence) motivating morning message in Axiom's voice."
