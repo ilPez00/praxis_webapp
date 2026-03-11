@@ -6,11 +6,7 @@ import logger from '../utils/logger';
 const aiCoachingService = new AICoachingService();
 
 export class AxiomScanService {
-  /**
-   * Starts the midnight cron job.
-   */
   public static start() {
-    // Schedule: 00:00 every day
     cron.schedule('0 0 * * *', async () => {
       logger.info('[AxiomScan] Starting midnight automated scan...');
       try {
@@ -22,11 +18,7 @@ export class AxiomScanService {
     logger.info('[AxiomScan] Midnight cron job scheduled.');
   }
 
-  /**
-   * Manually trigger a scan for all active users.
-   */
   public static async runGlobalScan() {
-    // 1. Fetch all active users (users who checked in in the last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -36,120 +28,67 @@ export class AxiomScanService {
       .gte('last_activity_date', sevenDaysAgo.toISOString().slice(0, 10));
 
     if (userError) throw userError;
-    if (!users || users.length === 0) {
-      logger.info('[AxiomScan] No active users found for scan.');
-      return;
-    }
+    if (!users || users.length === 0) return;
 
-    logger.info(`[AxiomScan] Scanning ${users.length} active users...`);
-
-    // 2. Process each user (ideally in chunks or sequentially to respect rate limits)
     for (const user of users) {
       try {
         await this.generateDailyRecommendations(user.id, user.name);
-        // Small delay to be kind to the API
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (err: any) {
-        logger.warn(`[AxiomScan] Failed recommendations for ${user.name} (${user.id}): ${err.message}`);
+        logger.warn(`[AxiomScan] Failed for ${user.name}: ${err.message}`);
       }
     }
-    logger.info('[AxiomScan] Global scan completed.');
   }
 
-  /**
-   * Aggregates all data for a user and generates tailored recommendations.
-   */
   private static async generateDailyRecommendations(userId: string, userName: string) {
-    logger.info(`[AxiomScan] Processing ${userName}...`);
-
-    // 1. Fetch all relevant data for context
-    const since = new Date();
-    since.setDate(since.getDate() - 7);
-    const sinceISO = since.toISOString();
-
+    const today = new Date().toISOString().slice(0, 10);
+    
+    // 1. Fetch deep context
     const [
-      postsRes,
-      messagesRes,
-      eventsRes,
-      challengesRes,
-      matchRes,
-      placesRes,
-      servicesRes,
+      goalsRes,
       trackerRes,
-      goalsRes
+      eventsRes,
+      placesRes,
+      matchRes,
+      servicesRes
     ] = await Promise.all([
-      supabase.from('posts').select('*').gte('created_at', sinceISO).limit(20),
-      supabase.from('messages').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`).gte('created_at', sinceISO).limit(50),
-      supabase.from('events').select('*').gte('event_date', new Date().toISOString().slice(0, 10)).limit(10),
-      supabase.from('challenges').select('*').limit(10),
-      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
-      supabase.from('places').select('*').limit(10),
-      supabase.from('coaching_offers').select('*').limit(10),
-      supabase.from('trackers').select('*, tracker_entries(*)').eq('user_id', userId),
       supabase.from('goal_trees').select('nodes').eq('userId', userId).single(),
+      supabase.from('trackers').select('*, tracker_entries(*)').eq('user_id', userId),
+      supabase.from('events').select('*').gte('event_date', today).limit(10),
+      supabase.from('places').select('*').limit(10),
+      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 3 }),
+      supabase.from('coaching_offers').select('*').limit(10),
     ]);
 
-    // 2. Build the detailed context prompt
-    const prompt = `You are Axiom. This is your midnight automated scan for ${userName}.
-Analyze the following data from the last 7 days and provide 6 specific recommendations.
+    const prompt = `You are Axiom. Generate a high-performance daily brief for ${userName}.
+    
+### Context:
+- Goals: ${JSON.stringify(goalsRes.data?.nodes || [])}
+- Tracked Progress: ${JSON.stringify(trackerRes.data || [])}
+- Local Events: ${JSON.stringify(eventsRes.data || [])}
+- Community Places: ${JSON.stringify(placesRes.data || [])}
+- Aligned Students: ${JSON.stringify(matchRes.data || [])}
+- Services: ${JSON.stringify(servicesRes.data || [])}
 
-### User Goals
-${JSON.stringify(goalsRes.data?.nodes || [])}
+### Task:
+Provide a JSON response with exactly:
+1. "match": { "id": "...", "name": "...", "reason": "..." } (the best clickable student).
+2. "resources": [ { "goal": "...", "suggestion": "...", "details": "..." } ] (ONE specific resource per goal. If they study Kant, suggest Schopenhauer. If muscle, a specific routine).
+3. "event": { "id": "...", "title": "...", "reason": "..." } (clickable event).
+4. "place": { "id": "...", "name": "...", "reason": "..." } (clickable place).
+5. "challenge": { "type": "bet|duel", "target": "...", "terms": "..." } (suggest a specific competitive action).
+6. "routine": [ { "time": "...", "task": "...", "alignment": "..." } ] (A full day plan considering 9-5 work hours).
 
-### Recent Activity (Posts)
-${JSON.stringify(postsRes.data || [])}
-
-### Upcoming Community Events
-${JSON.stringify(eventsRes.data || [])}
-
-### Community Challenges
-${JSON.stringify(challengesRes.data || [])}
-
-### Potential Matches (Aligned Students)
-${JSON.stringify(matchRes.data || [])}
-
-### Community Places
-${JSON.stringify(placesRes.data || [])}
-
-### Available Services/Coaches
-${JSON.stringify(servicesRes.data || [])}
-
-### Tracked Progress (Widgets & Trackers)
-${JSON.stringify(trackerRes.data || [])}
-
----
-INSTRUCTIONS:
-Return a JSON object with exactly these 6 tailored recommendations for ${userName}:
-1. "match": One best fitting student to connect with and why.
-2. "event": One upcoming event they should attend.
-3. "post": A relevant post from the community (e.g., a goal achieved by someone else) to inspire them.
-4. "service": One job, coach, or service that fits their current needs.
-5. "place": A physical or digital place (gym, library, board) they should visit.
-6. "resource": A custom resource tailored to their exact tracked progress (e.g., a specific meal plan if they are tracking fitness, a lifting schedule, or a study plan).
-
-Format:
-{
-  "match": { "name": "...", "reason": "..." },
-  "event": { "title": "...", "reason": "..." },
-  "post": { "author": "...", "snippet": "...", "reason": "..." },
-  "service": { "title": "...", "reason": "..." },
-  "place": { "name": "...", "reason": "..." },
-  "resource": { "title": "...", "content": "..." }
-}
-`;
+JSON ONLY:`;
 
     const responseText = await aiCoachingService['runWithFallback'](prompt);
-    // Manual JSON cleanup if needed
-    const cleaned = responseText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    const recommendations = JSON.parse(cleaned);
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    const recommendations = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
 
-    // 3. Store in the database
     await supabase.from('axiom_daily_briefs').upsert({
       user_id: userId,
       brief: recommendations,
       generated_at: new Date().toISOString()
     });
-
-    logger.info(`[AxiomScan] Recommendations saved for ${userName}`);
   }
 }

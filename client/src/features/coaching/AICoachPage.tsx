@@ -10,10 +10,14 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
+import GlassCard from '../../components/common/GlassCard';
 import UpgradeModal from '../../components/UpgradeModal';
+
 import { DOMAIN_COLORS } from '../../types/goal';
 import {
   Container,
@@ -58,12 +62,12 @@ interface CoachingReport {
 }
 
 interface DailyRecommendation {
-  match: { name: string; reason: string };
-  event: { title: string; reason: string };
-  post: { author: string; snippet: string; reason: string };
-  service: { title: string; reason: string };
-  place: { name: string; reason: string };
-  resource: { title: string; content: string };
+  match: { id: string; name: string; reason: string };
+  event: { id: string; title: string; reason: string };
+  place: { id: string; name: string; reason: string };
+  challenge: { type: 'bet' | 'duel'; target: string; terms: string };
+  resources: Array<{ goal: string; suggestion: string; details: string }>;
+  routine: Array<{ time: string; task: string; alignment: string }>;
 }
 
 interface ChatMessage {
@@ -94,6 +98,7 @@ function formatAge(iso: string): string {
 // ── component ─────────────────────────────────────────────────────────────────
 
 const AICoachPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useUser();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [report, setReport] = useState<CoachingReport | null>(null);
@@ -436,33 +441,72 @@ const AICoachPage: React.FC = () => {
         {/* ── Daily Recommendations ────────────────────────────────── */}
         {dailyBrief && (
           <Box sx={{ p: 3, borderRadius: 3, background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(245,158,11,0.06) 100%)', border: '1px solid rgba(139,92,246,0.2)' }}>
-            <SectionHeader icon={<AutoAwesomeIcon />} label="Axiom Daily Recommendations" color="#A78BFA" />
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Best Match</Typography>
-                <Typography variant="body2">{dailyBrief.match.name} — {dailyBrief.match.reason}</Typography>
+            <SectionHeader icon={<AutoAwesomeIcon />} label="Axiom Daily Protocol" color="#A78BFA" />
+            
+            <Grid container spacing={3}>
+              {/* Clickable Discovery */}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 800 }}>Primary Match</Typography>
+                <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => navigate(`/profile/${dailyBrief.match.id}`)}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{dailyBrief.match.name}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>{dailyBrief.match.reason}</Typography>
+                </GlassCard>
               </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Event</Typography>
-                <Typography variant="body2">{dailyBrief.event.title} — {dailyBrief.event.reason}</Typography>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Typography variant="overline" sx={{ color: '#EC4899', fontWeight: 800 }}>Featured Event</Typography>
+                <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => navigate(`/discover?tab=events`)}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{dailyBrief.event.title}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>{dailyBrief.event.reason}</Typography>
+                </GlassCard>
               </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Community Post</Typography>
-                <Typography variant="body2">By {dailyBrief.post.author}: "{dailyBrief.post.snippet}" — {dailyBrief.post.reason}</Typography>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Typography variant="overline" sx={{ color: '#6366F1', fontWeight: 800 }}>Visit Place</Typography>
+                <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => navigate(`/discover?tab=places`)}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{dailyBrief.place.name}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>{dailyBrief.place.reason}</Typography>
+                </GlassCard>
               </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Service / Coach</Typography>
-                <Typography variant="body2">{dailyBrief.service.title} — {dailyBrief.service.reason}</Typography>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 0.5 }}>Place</Typography>
-                <Typography variant="body2">{dailyBrief.place.name} — {dailyBrief.place.reason}</Typography>
-              </Grid>
+
+              {/* Resources per Goal */}
               <Grid size={{ xs: 12 }}>
-                <Divider sx={{ my: 1.5, borderColor: 'rgba(255,255,255,0.1)' }} />
-                <Typography variant="subtitle2" sx={{ color: '#F59E0B', mb: 0.5 }}>Custom Resource (Tailored to your progress)</Typography>
-                <Typography variant="h6" sx={{ fontSize: '1rem', mb: 1 }}>{dailyBrief.resource.title}</Typography>
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', bgcolor: 'rgba(0,0,0,0.2)', p: 2, borderRadius: 2 }}>{dailyBrief.resource.content}</Typography>
+                <Typography variant="overline" sx={{ color: '#10B981', fontWeight: 800 }}>Strategic Resources</Typography>
+                <Stack spacing={1.5} sx={{ mt: 1 }}>
+                  {(dailyBrief.resources || []).map((res, i) => (
+                    <Box key={i} sx={{ bgcolor: 'rgba(255,255,255,0.03)', p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700 }}>Goal: {res.goal}</Typography>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, my: 0.5 }}>{res.suggestion}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>{res.details}</Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </Grid>
+
+              {/* Challenge */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="overline" sx={{ color: '#F59E0B', fontWeight: 800 }}>Suggested Competition</Typography>
+                <Box sx={{ p: 2, mt: 1, bgcolor: 'rgba(245,158,11,0.05)', borderRadius: 2, border: '1px dashed #F59E0B' }}>
+                  <Typography variant="subtitle2" sx={{ color: '#F59E0B', fontWeight: 800, textTransform: 'uppercase' }}>{dailyBrief.challenge.type}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{dailyBrief.challenge.target}</Typography>
+                  <Typography variant="caption" display="block">{dailyBrief.challenge.terms}</Typography>
+                </Box>
+              </Grid>
+
+              {/* Routine */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="overline" sx={{ color: '#A78BFA', fontWeight: 800 }}>Daily Routine (9-5 Friendly)</Typography>
+                <Box sx={{ mt: 1, maxHeight: 300, overflowY: 'auto', pr: 1 }}>
+                  {(dailyBrief.routine || []).map((step, i) => (
+                    <Box key={i} sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+                      <Typography variant="caption" sx={{ minWidth: 55, fontWeight: 800, color: 'primary.main' }}>{step.time}</Typography>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{step.task}</Typography>
+                        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25 }}>{step.alignment}</Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
               </Grid>
             </Grid>
           </Box>
