@@ -109,21 +109,35 @@ export class AICoachingService {
     }
 
     const preferredModel = process.env.GEMINI_MODEL;
+    // Focused list of highly likely functional models
+    const baseModels = [
+      'gemini-1.5-flash',
+      'gemini-1.5-pro',
+      'gemini-pro', // 1.0 alias
+      'gemini-1.5-flash-001',
+    ];
+    
     const modelsToTry = preferredModel 
-      ? [preferredModel, ...this.FALLBACK_MODELS]
-      : this.FALLBACK_MODELS;
+      ? [preferredModel, ...baseModels]
+      : baseModels;
 
     const errors: string[] = [];
+    const triedKeys = new Set<number>();
 
-    for (const modelName of modelsToTry) {
-      for (const apiVersion of ['v1', 'v1beta'] as const) {
-        // Try up to all unique keys
-        for (let keyAttempt = 0; keyAttempt < this.apiKeys.length; keyAttempt++) {
-          const key = this.apiKeys[this.currentKeyIndex];
-          const keyPrefix = key?.slice(0, 6) || '????';
+    // Strategy: Try each unique key we have
+    for (let i = 0; i < this.apiKeys.length; i++) {
+      // Always start from the current known good index or move through pool
+      const keyIdx = (this.currentKeyIndex + i) % this.apiKeys.length;
+      if (triedKeys.has(keyIdx)) continue;
+      triedKeys.add(keyIdx);
 
+      const key = this.apiKeys[keyIdx];
+      const keyPrefix = key?.slice(0, 6) || '????';
+
+      // For each key, try models and endpoints
+      for (const modelName of modelsToTry) {
+        for (const apiVersion of ['v1beta', 'v1'] as const) {
           try {
-            // Brute force: try with models/ prefix (standard)
             const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
             const response = await fetch(url, {
               method: 'POST',
@@ -137,36 +151,32 @@ export class AICoachingService {
             
             if (response.ok) {
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) return text.trim();
+              if (text) {
+                this.currentKeyIndex = keyIdx; // Save working key
+                return text.trim();
+              }
             }
 
-            const errorMsg = data.error?.message || response.statusText || 'Unknown REST error';
+            const errorMsg = data.error?.message || response.statusText || 'Unknown error';
             const status = response.status;
             
-            // Log everything except 404 to see specific key issues
-            if (status !== 404) {
-              errors.push(`[${modelName}|${apiVersion}|K${this.currentKeyIndex}:${keyPrefix}] ${status}: ${errorMsg.split('\n')[0]}`);
-            }
+            // Log everything except noise
+            errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}|${apiVersion}] ${status}: ${errorMsg.split('\n')[0]}`);
 
-            // Rotate on key-specific errors
-            if (status === 429 || status === 401 || (status === 400 && errorMsg.includes('key'))) {
-              this.rotateKey();
-              continue; 
+            // If it's a 429 (Quota), 403 (Disabled) or 401 (Invalid), move to next KEY
+            if (status === 429 || status === 403 || status === 401) {
+              break; 
             }
-            
-            // If 404, try next version or model
-            if (status === 404) break;
-
           } catch (error: any) {
-            errors.push(`[${modelName}|FetchEx|K${this.currentKeyIndex}] ${error.message}`);
-            this.rotateKey();
+            errors.push(`[K${keyIdx}|FetchEx] ${error.message}`);
+            break;
           }
         }
       }
     }
 
-    const uniqueErrors = Array.from(new Set(errors)).slice(0, 10).join(' | ');
-    throw new Error(`Axiom Offline. Details: ${uniqueErrors}`);
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 12).join(' | ');
+    throw new Error(`Axiom Offline. Tried ${this.apiKeys.length} keys. Errors: ${uniqueErrors}`);
   }
 
   /**
