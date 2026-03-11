@@ -31,6 +31,8 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import EditTreeIcon from '@mui/icons-material/AccountTree';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
@@ -137,6 +139,13 @@ interface AdminCoach {
   hourly_rate?: number;
   is_available: boolean;
   created_at: string;
+}
+
+interface SystemConfig {
+  key: string;
+  value: string;
+  updated_at: string;
+  updated_by?: string;
 }
 
 type ConfirmAction =
@@ -328,6 +337,9 @@ const AdminPage: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const [tab, setTab] = useState(0);
+  const [axiomPrompt, setAxiomPrompt] = useState('');
+  const [savingPrompt, setSavingPrompt] = useState(false);
+  const [triggeringScan, setTriggeringScan] = useState(false);
 
   // ── Users state ─────────────────────────────────────────────────────────────
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -344,7 +356,48 @@ const AdminPage: React.FC = () => {
   const [groups, setGroups] = useState<AdminGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
 
-  // ── Stats state ─────────────────────────────────────────────────────────────
+  const fetchAxiomPrompt = useCallback(async () => {
+    try {
+      const headers = await authHeaders();
+      const res = await fetch(`${API_URL}/admin/config`, { headers });
+      const configs: SystemConfig[] = await res.json();
+      const prompt = configs.find(c => c.key === 'axiom_prompt');
+      if (prompt) setAxiomPrompt(prompt.value);
+    } catch {
+      toast.error('Failed to fetch Axiom prompt.');
+    }
+  }, []);
+
+  const handleUpdatePrompt = async () => {
+    setSavingPrompt(true);
+    try {
+      const headers = await authHeaders();
+      await fetch(`${API_URL}/admin/config/axiom_prompt`, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: axiomPrompt }),
+      });
+      toast.success('Axiom prompt updated!');
+    } catch {
+      toast.error('Failed to update prompt.');
+    } finally {
+      setSavingPrompt(false);
+    }
+  };
+
+  const handleTriggerScan = async () => {
+    if (!window.confirm('Trigger global midnight scan now? This will generate daily recommendations for all active users.')) return;
+    setTriggeringScan(true);
+    try {
+      const headers = await authHeaders();
+      await fetch(`${API_URL}/admin/axiom/trigger-scan`, { method: 'POST', headers });
+      toast.success('Axiom scan triggered in background.');
+    } catch {
+      toast.error('Failed to trigger scan.');
+    } finally {
+      setTriggeringScan(false);
+    }
+  };
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
@@ -458,7 +511,8 @@ const AdminPage: React.FC = () => {
     if (tab === 4 && challenges.length === 0) fetchChallenges();
     if (tab === 5 && services.length === 0) fetchServices();
     if (tab === 6 && coaches.length === 0) fetchCoaches();
-  }, [tab, user]);
+    if (tab === 7 && !axiomPrompt) fetchAxiomPrompt();
+  }, [tab, user, fetchAxiomPrompt, axiomPrompt]);
 
   // ── User actions ─────────────────────────────────────────────────────────────
 
@@ -681,6 +735,7 @@ const AdminPage: React.FC = () => {
         <Tab icon={<EmojiEventsIcon fontSize="small" />} iconPosition="start" label="Challenges" />
         <Tab icon={<HandshakeIcon fontSize="small" />} iconPosition="start" label="Services" />
         <Tab icon={<SchoolIcon fontSize="small" />} iconPosition="start" label="Coaches" />
+        <Tab icon={<SmartToyIcon fontSize="small" />} iconPosition="start" label="Axiom" />
       </Tabs>
 
       {/* ── Tab 0: Users ──────────────────────────────────────────────────────── */}
@@ -1542,6 +1597,70 @@ const AdminPage: React.FC = () => {
           <Button onClick={() => setUserDetail(null)}>Close</Button>
         </DialogActions>
       </Dialog>
+      {/* ── Tab 7: Axiom ──────────────────────────────────────────────────────── */}
+      <TabPanel value={tab} index={7}>
+        <Box sx={{ maxWidth: 800, mx: 'auto', py: 2 }}>
+          <Typography variant="h5" sx={{ fontWeight: 800, mb: 3, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <AutoAwesomeIcon /> Axiom Engine Management
+          </Typography>
+
+          <Grid container spacing={4}>
+            {/* System Prompt */}
+            <Grid size={{ xs: 12 }}>
+              <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 3 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>System Identity & Prompt</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+                    This prompt defines Axiom's personality, knowledge, and tone. It is injected into every coaching request.
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={10}
+                    value={axiomPrompt}
+                    onChange={(e) => setAxiomPrompt(e.target.value)}
+                    placeholder="Enter Axiom's system prompt..."
+                    sx={{ 
+                      mb: 2,
+                      '& .MuiOutlinedInput-root': { bgcolor: 'rgba(0,0,0,0.2)', fontFamily: 'monospace', fontSize: '0.85rem' }
+                    }}
+                  />
+                  <Button 
+                    variant="contained" 
+                    onClick={handleUpdatePrompt}
+                    disabled={savingPrompt || !axiomPrompt.trim()}
+                    sx={{ borderRadius: '10px', fontWeight: 800, px: 4 }}
+                  >
+                    {savingPrompt ? <CircularProgress size={20} sx={{ color: 'inherit' }} /> : 'Save Prompt'}
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Manual Triggers */}
+            <Grid size={{ xs: 12 }}>
+              <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 3 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Manual Scan Trigger</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Manually initiate the midnight automated scan. This will process all active users, analyze their activity, and generate new daily protocols. Use sparingly.
+                  </Typography>
+                  <Button 
+                    variant="outlined" 
+                    color="primary"
+                    onClick={handleTriggerScan}
+                    disabled={triggeringScan}
+                    startIcon={<RefreshIcon />}
+                    sx={{ borderRadius: '10px', fontWeight: 800, border: '2px solid' }}
+                  >
+                    {triggeringScan ? 'Triggering...' : 'Trigger Global Midnight Scan Now'}
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Box>
+      </TabPanel>
     </Container>
   );
 };

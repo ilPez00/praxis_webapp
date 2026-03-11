@@ -774,6 +774,47 @@ export const leaderboardBonus = catchAsync(async (req: Request, res: Response) =
   return res.json(report);
 });
 
+import { AxiomScanService } from '../services/AxiomScanService';
+
+/**
+ * GET /admin/config
+ */
+export const getSystemConfig = catchAsync(async (_req: Request, res: Response) => {
+  const { data, error } = await supabase.from('system_config').select('*');
+  if (error) throw new InternalServerError('Failed to fetch config.');
+  res.json(data || []);
+});
+
+/**
+ * PUT /admin/config/:key
+ */
+export const updateSystemConfig = catchAsync(async (req: Request, res: Response) => {
+  const { key } = req.params;
+  const { value } = req.body;
+  const userId = req.user?.id;
+
+  const { data, error } = await supabase
+    .from('system_config')
+    .upsert({ key, value, updated_at: new Date().toISOString(), updated_by: userId }, { onConflict: 'key' })
+    .select()
+    .single();
+
+  if (error) throw new InternalServerError('Failed to update config.');
+  res.json(data);
+});
+
+/**
+ * POST /admin/axiom/trigger-scan
+ */
+export const triggerAxiomScan = catchAsync(async (_req: Request, res: Response) => {
+  // Run in background
+  AxiomScanService.runGlobalScan().catch(err => {
+    logger.error('[Admin] Manual Axiom scan background failure:', err.message);
+  });
+
+  res.json({ message: 'Global Axiom scan triggered in background.' });
+});
+
 /**
  * POST /admin/cron/streak-alerts
  * Sends a push notification to every user who has a streak > 0 but hasn't
