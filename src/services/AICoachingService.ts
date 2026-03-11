@@ -47,7 +47,7 @@ export interface CoachingReport {
 }
 
 // Axiom's identity — injected into every prompt
-const AXIOM_IDENTITY = `You are Axiom — a wise, warm, and practical life coach who has spent decades helping people achieve their most important goals. You are deeply experienced in strategy, habit formation, nutrition, training, productivity, and performance — and you bring genuine enthusiasm for each person's specific situation. Your tone is friendly and direct, like a trusted mentor who happens to know a lot. You speak simply, without jargon or academic citations. You ask good questions when you need more context. You give practical, concrete guidance: weekly plans, daily routines, meal ideas, accountability systems, and next actions. When asked to analyze someone's posts, goals, groups, or services, you give honest, useful feedback. You celebrate wins without hollow cheerleading, and you name obstacles clearly without judgment. You never cite books by name or author. You just give people what they need to move forward.`;
+const AXIOM_IDENTITY = `You are Axiom — a wise, warm, and practical life coach. Your tone is friendly and direct. You give practical, concrete guidance. You never cite books by name or author. You just give people what they need to move forward.`;
 
 export class AICoachingService {
   private apiKeys: string[] = [];
@@ -81,19 +81,15 @@ export class AICoachingService {
   private async runWithFallback(prompt: string): Promise<string> {
     if (this.apiKeys.length === 0) throw new Error('GEMINI_API_KEY not set.');
 
-    const preferredModel = process.env.GEMINI_MODEL;
-    // Exhaustive list of every possible stable alias
+    // Comprehensive list of models to try
     const baseModels = [
+      'gemini-1.5-flash-8b', // Highly available
       'gemini-1.5-flash',
-      'gemini-1.5-flash-latest',
+      'gemini-pro',          // Legacy 1.0 (most compatible)
       'gemini-1.5-pro',
-      'gemini-1.5-pro-latest',
-      'gemini-pro',
-      'gemini-1.5-flash-8b',
       'gemini-2.0-flash',
     ];
     
-    const modelsToTry = preferredModel ? [preferredModel, ...baseModels] : baseModels;
     const errors: string[] = [];
     const triedKeys = new Set<number>();
 
@@ -105,7 +101,7 @@ export class AICoachingService {
       const key = this.apiKeys[keyIdx];
       const keyPrefix = key?.slice(0, 6) || '????';
 
-      for (const modelName of modelsToTry) {
+      for (const modelName of baseModels) {
         for (const apiVersion of ['v1beta', 'v1'] as const) {
           try {
             const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
@@ -117,7 +113,12 @@ export class AICoachingService {
 
             const rawText = await response.text();
             let data: any;
-            try { data = JSON.parse(rawText); } catch { continue; }
+            try { 
+              data = JSON.parse(rawText); 
+            } catch { 
+              errors.push(`[K${keyIdx}|${modelName}] Non-JSON response`);
+              continue; 
+            }
             
             if (response.ok) {
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -130,14 +131,10 @@ export class AICoachingService {
             const errorMsg = data.error?.message || response.statusText || 'Unknown error';
             const status = response.status;
             
-            // Log key-specific failures
-            if (status !== 404) {
-              errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${status}: ${errorMsg.split('\n')[0]}`);
-            }
+            errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${status}: ${errorMsg.split('\n')[0]}`);
 
-            // Quota/Key issue: move to next KEY immediately
+            // If key is exhausted (429) or forbidden (403/401), stop trying models for this key
             if (status === 429 || status === 403 || status === 401) {
-              await new Promise(r => setTimeout(r, 500)); // Be kind before rotating
               break; 
             }
           } catch (error: any) {
@@ -145,14 +142,14 @@ export class AICoachingService {
             break;
           }
         }
-        // If the key is dead for this model, it's likely dead for all for now
+        // If the key is exhausted, move to next key immediately
         const lastErr = errors[errors.length - 1];
-        if (lastErr?.includes('429') || lastErr?.includes('403')) break;
+        if (lastErr?.includes('429') || lastErr?.includes('403') || lastErr?.includes('401')) break;
       }
     }
 
-    const uniqueErrors = Array.from(new Set(errors)).slice(0, 10).join(' | ');
-    throw new Error(`Axiom Offline. Tried ${this.apiKeys.length} keys. Details: ${uniqueErrors}`);
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 15).join(' | ');
+    throw new Error(`Axiom remains Offline. Details: ${uniqueErrors}`);
   }
 
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
