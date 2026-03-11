@@ -109,11 +109,10 @@ export class AICoachingService {
     }
 
     const preferredModel = process.env.GEMINI_MODEL;
-    // Focused list of highly likely functional models
     const baseModels = [
       'gemini-1.5-flash',
       'gemini-1.5-pro',
-      'gemini-pro', // 1.0 alias
+      'gemini-pro',
       'gemini-1.5-flash-001',
     ];
     
@@ -124,9 +123,7 @@ export class AICoachingService {
     const errors: string[] = [];
     const triedKeys = new Set<number>();
 
-    // Strategy: Try each unique key we have
     for (let i = 0; i < this.apiKeys.length; i++) {
-      // Always start from the current known good index or move through pool
       const keyIdx = (this.currentKeyIndex + i) % this.apiKeys.length;
       if (triedKeys.has(keyIdx)) continue;
       triedKeys.add(keyIdx);
@@ -134,44 +131,51 @@ export class AICoachingService {
       const key = this.apiKeys[keyIdx];
       const keyPrefix = key?.slice(0, 6) || '????';
 
-      // For each key, try models and endpoints
       for (const modelName of modelsToTry) {
         for (const apiVersion of ['v1beta', 'v1'] as const) {
-          try {
-            const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
-            const response = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-              })
-            });
+          // Patterns to try: 1. models/name (standard), 2. name (legacy/direct)
+          const variations = [`models/${modelName}`, modelName];
 
-            const data = await response.json();
-            
-            if (response.ok) {
-              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                this.currentKeyIndex = keyIdx; // Save working key
-                return text.trim();
+          for (const path of variations) {
+            try {
+              const url = `https://generativelanguage.googleapis.com/${apiVersion}/${path}:generateContent?key=${key}`;
+              const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }]
+                })
+              });
+
+              const data = await response.json();
+              
+              if (response.ok) {
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                  this.currentKeyIndex = keyIdx; 
+                  return text.trim();
+                }
               }
-            }
 
-            const errorMsg = data.error?.message || response.statusText || 'Unknown error';
-            const status = response.status;
-            
-            // Log everything except noise
-            errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}|${apiVersion}] ${status}: ${errorMsg.split('\n')[0]}`);
+              const errorMsg = data.error?.message || response.statusText || 'Unknown error';
+              const status = response.status;
+              
+              // Only log if it's not a standard 404 to keep debug box clean
+              if (status !== 404 || path === variations[variations.length - 1]) {
+                errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}|${apiVersion}] ${status}: ${errorMsg.split('\n')[0]}`);
+              }
 
-            // If it's a 429 (Quota), 403 (Disabled) or 401 (Invalid), move to next KEY
-            if (status === 429 || status === 403 || status === 401) {
-              break; 
+              if (status === 429 || status === 403 || status === 401) {
+                break; 
+              }
+            } catch (error: any) {
+              errors.push(`[K${keyIdx}|FetchEx] ${error.message}`);
+              break;
             }
-          } catch (error: any) {
-            errors.push(`[K${keyIdx}|FetchEx] ${error.message}`);
-            break;
           }
+          if (errors[errors.length - 1]?.includes('429') || errors[errors.length - 1]?.includes('403')) break;
         }
+        if (errors[errors.length - 1]?.includes('429') || errors[errors.length - 1]?.includes('403')) break;
       }
     }
 
