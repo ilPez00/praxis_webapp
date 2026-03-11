@@ -191,7 +191,21 @@ const GoalTreePage: React.FC = () => {
 
   const handleNodeClick = (node: FrontendGoalNode) => {
     if (!isOwnTree) return;
-    if (node.id.startsWith('__dom__')) return;
+    
+    // If it's a domain node, treat as "Add Sub-goal" to that domain (activating it)
+    if (node.id.startsWith('__dom__')) {
+      // Find a dummy "parent" or just pre-fill domain
+      const domain = node.domain;
+      setEditingNode(node);
+      setIsBranching(true);
+      setEditName('');
+      setEditDesc('');
+      setEditMetric('');
+      setEditTargetDate('');
+      setEditProgress(0);
+      return;
+    }
+
     handleOpenEdit(node, false);
   };
 
@@ -231,12 +245,12 @@ const GoalTreePage: React.FC = () => {
             description: editDesc.trim() || undefined,
             completionMetric: editMetric.trim() || undefined,
             targetDate: editTargetDate || undefined,
-            parentId: editingNode.id,
+            parentId: editingNode.id.startsWith('__dom__') ? undefined : editingNode.id,
             domain: editingNode.domain,
           },
           { headers }
         );
-        toast.success(`Sub-goal added! -500 PP`);
+        toast.success(editingNode.id.startsWith('__dom__') ? 'New goal added! -500 PP' : 'Sub-goal added! -500 PP');
         if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
       } else {
         // Costs 100 PP for metadata changes

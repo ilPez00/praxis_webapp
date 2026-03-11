@@ -258,14 +258,14 @@ const AICoachPage: React.FC = () => {
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <Typography variant="overline" sx={{ color: '#EC4899', fontWeight: 800 }}>Featured Event</Typography>
-                <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => navigate(`/discover?tab=events`)}>
+                <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(String(dailyBrief.event.title))}`, '_blank')}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{String(dailyBrief.event.title)}</Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>{String(dailyBrief.event.reason)}</Typography>
                 </GlassCard>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <Typography variant="overline" sx={{ color: '#6366F1', fontWeight: 800 }}>Visit Place</Typography>
-                <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => navigate(`/discover?tab=places`)}>
+                <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(String(dailyBrief.place.name))}`, '_blank')}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{String(dailyBrief.place.name)}</Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>{String(dailyBrief.place.reason)}</Typography>
                 </GlassCard>

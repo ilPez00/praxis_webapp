@@ -368,11 +368,11 @@ const GoalTreeVisualization: React.FC<Props> = ({
             <g
               key={ln.node.id}
               style={{
-                cursor: (!isDomainNode && onNodeClick) ? 'pointer' : 'default',
+                cursor: onNodeClick ? 'pointer' : 'default',
                 opacity: isSuspended ? 0.35 : isInactive ? 0.3 : 1,
                 filter: isSuspended ? 'grayscale(0.8)' : undefined,
               }}
-              onClick={() => !isDomainNode && onNodeClick ? onNodeClick(ln.node) : undefined}
+              onClick={() => onNodeClick ? onNodeClick(ln.node) : undefined}
               onMouseEnter={() => setHovered(ln.node.id)}
               onMouseLeave={() => setHovered(null)}
             >

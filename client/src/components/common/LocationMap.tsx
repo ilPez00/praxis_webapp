@@ -98,7 +98,23 @@ const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340, userLo
           <Marker key={m.id} position={[m.lat, m.lng]}>
             <Popup>
               <Box sx={{ color: '#0A0B14', minWidth: 120, p: 0.5 }}>
-                <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
+                <Typography
+                  variant="body2"
+                  component="a"
+                  href={`https://www.google.com/search?q=${encodeURIComponent(m.title)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    fontWeight: 700,
+                    lineHeight: 1.3,
+                    color: 'primary.main',
+                    textDecoration: 'none',
+                    display: 'block',
+                    '&:hover': {
+                      textDecoration: 'underline'
+                    }
+                  }}
+                >
                   {m.title}
                 </Typography>
                 {m.subtitle && (

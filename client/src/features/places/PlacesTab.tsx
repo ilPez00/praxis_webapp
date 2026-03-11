@@ -53,26 +53,43 @@ interface Place {
   owner: { id: string; name: string; avatar_url: string | null } | null;
   members: { user_id: string }[];
 }
-
-// Optional OpenStreetMap link
+// Optional OpenStreetMap link - now also includes a Google Search link
 function MapsFrame({ lat, lng, name }: { lat: number; lng: number; name: string }) {
+  const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(name)}`;
   return (
-    <Box
-      component="a"
-      href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      sx={{
-        display: 'flex', alignItems: 'center', gap: 0.5,
-        color: '#60A5FA', fontSize: '0.75rem', textDecoration: 'none',
-        mt: 1,
-        '&:hover': { textDecoration: 'underline' },
-      }}
-    >
-      <OpenInNewIcon sx={{ fontSize: 14 }} /> View on OpenStreetMap
-    </Box>
+    <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
+      <Box
+        component="a"
+        href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        sx={{
+          display: 'flex', alignItems: 'center', gap: 0.5,
+          color: '#60A5FA', fontSize: '0.75rem', textDecoration: 'none',
+          '&:hover': { textDecoration: 'underline' }
+        }}
+      >
+        <PlaceIcon sx={{ fontSize: 14 }} />
+        Map
+      </Box>
+      <Box
+        component="a"
+        href={googleSearchUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        sx={{
+          display: 'flex', alignItems: 'center', gap: 0.5,
+          color: '#60A5FA', fontSize: '0.75rem', textDecoration: 'none',
+          '&:hover': { textDecoration: 'underline' }
+        }}
+      >
+        <OpenInNewIcon sx={{ fontSize: 14 }} />
+        Search
+      </Box>
+    </Stack>
   );
 }
+
 
 interface PlacesTabProps {
   currentUserId?: string;
@@ -316,10 +333,27 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
                         </Tooltip>
                       </Stack>
                     )}
-                  </Box>
+                  {/* Name */}
+                  <Typography
+                    variant="h6"
+                    component="a"
+                    href={`https://www.google.com/search?q=${encodeURIComponent(place.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                      fontWeight: 800,
+                      lineHeight: 1.3,
+                      color: 'inherit',
+                      textDecoration: 'none',
+                      '&:hover': {
+                        color: 'primary.main',
+                        textDecoration: 'underline'
+                      }
+                    }}
+                  >
+                    {place.name}
+                  </Typography>
 
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.3 }}>{place.name}</Typography>
                     {(place.city || place.address) && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <PlaceIcon sx={{ fontSize: 12 }} />{place.city || place.address}
