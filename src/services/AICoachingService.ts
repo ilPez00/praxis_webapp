@@ -54,9 +54,10 @@ export class AICoachingService {
   // Robust list of stable models
   private readonly FALLBACK_MODELS = [
     'gemini-1.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
     'gemini-1.5-pro',
     'gemini-1.5-flash-8b',
-    'gemini-2.0-flash',
   ];
 
   constructor() {
@@ -106,13 +107,14 @@ export class AICoachingService {
           if (text) return text;
         } catch (error: any) {
           lastError = error;
-          const status = error.status || error.statusCode || 0;
-          const message = error.message || '';
+          const message = error.message || String(error) || '';
+          const status = error.status || error.statusCode || (message.includes('429') ? 429 : 0);
           
           logger.warn(`[AI Coach] Model ${modelName} failed (attempt ${attempt}): ${message}`);
 
-          // If it's a quota error (429), don't retry this model, move to next model
+          // If it's a quota error (429), don't retry THIS model, move to NEXT model
           if (status === 429 || message.toLowerCase().includes('quota') || message.toLowerCase().includes('exhausted')) {
+            logger.info(`[AI Coach] Quota hit for ${modelName}, trying next model in chain...`);
             break; 
           }
 
@@ -132,10 +134,10 @@ export class AICoachingService {
 
     // If we get here, all models failed
     const lastErrorMsg = lastError?.message || 'Unknown Gemini error';
-    const isQuota = lastErrorMsg.toLowerCase().includes('quota') || lastErrorMsg.toLowerCase().includes('exhausted');
+    const isQuota = lastErrorMsg.toLowerCase().includes('quota') || lastErrorMsg.toLowerCase().includes('exhausted') || lastErrorMsg.includes('429');
     
     if (isQuota) {
-      throw new Error(`Axiom is resting (daily limit reached). Original error: ${lastErrorMsg}`);
+      throw new Error(`Axiom is resting (daily limit reached). Try again in a few minutes or check your API key quotas. Original error: ${lastErrorMsg}`);
     }
     
     throw new Error(`Axiom is temporarily unavailable. Gemini failure: ${lastErrorMsg}`);
