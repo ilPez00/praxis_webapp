@@ -138,7 +138,7 @@ Format:
 }
 `;
 
-    const responseText = await aiCoachingService['runWithFallback'](prompt, true);
+    const responseText = await aiCoachingService['runWithFallback'](prompt);
     // Manual JSON cleanup if needed
     const cleaned = responseText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     const recommendations = JSON.parse(cleaned);
