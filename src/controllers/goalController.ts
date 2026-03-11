@@ -312,17 +312,17 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   }
 
   if (existingTree) {
-    // Bulk PUT is only allowed for the very first save (editCount === 0).
+    // Bulk PUT is only allowed for the first few saves (editCount < 3).
     // After that, use per-node PATCH/POST/DELETE endpoints.
-    if (editCount > 0) {
-      throw new ForbiddenError('Use per-node editing after initial setup.');
+    if (editCount >= 3) {
+      throw new ForbiddenError('Use per-node editing after initial setup (3 free bulk edits used).');
     }
 
-    // Re-edit gate: non-premium, non-admin users only get one free re-edit after their initial setup.
-    // editCount === 0 → free re-edit (initial setup doesn't count against the limit)
-    // editCount >= 1 → must be premium or admin
-    if (!isPremium && !isAdmin && editCount >= 1) {
-      throw new ForbiddenError('You have used your free goal tree edit. Upgrade to Premium to make further changes.');
+    // Re-edit gate: non-premium, non-admin users only get a few free re-edits after their initial setup.
+    // editCount < 3 → free re-edits
+    // editCount >= 3 → must be premium or admin
+    if (!isPremium && !isAdmin && editCount >= 3) {
+      throw new ForbiddenError('You have used your free goal tree edits. Upgrade to Premium to make further changes.');
     }
 
     // If a tree exists, update it with the new nodes and root nodes

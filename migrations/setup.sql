@@ -197,6 +197,7 @@ ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS domain      TEXT;
 ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS type        TEXT DEFAULT 'board';
 ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS event_id    UUID REFERENCES public.events(id) ON DELETE SET NULL;
+ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS place_id    UUID REFERENCES public.places(id) ON DELETE SET NULL;
 UPDATE public.chat_rooms SET type = 'board' WHERE type IS NULL;
 
 ALTER TABLE public.chat_rooms ENABLE ROW LEVEL SECURITY;
@@ -1210,3 +1211,4 @@ CREATE INDEX IF NOT EXISTS user_subscriptions_status_idx ON public.user_subscrip
 
 -- Add objective column to trackers (stores user-defined targets per tracker)
 ALTER TABLE public.trackers ADD COLUMN IF NOT EXISTS goal JSONB NOT NULL DEFAULT '{}';
+CREATE INDEX IF NOT EXISTS idx_chat_rooms_place ON public.chat_rooms (place_id);

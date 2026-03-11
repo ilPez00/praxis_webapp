@@ -17,6 +17,8 @@ import {
     Accordion,
     AccordionSummary,
     AccordionDetails,
+    CircularProgress,
+    Stack,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -26,6 +28,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
+import GlassCard from '../../components/common/GlassCard';
 
 function checkinDotColor(lastCheckinDate?: string | null): string {
     if (!lastCheckinDate) return '#4B5563';

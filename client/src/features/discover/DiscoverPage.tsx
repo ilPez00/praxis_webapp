@@ -19,6 +19,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
 import LocationMap, { MapMarker } from '../../components/common/LocationMap';
+import GlassCard from '../../components/common/GlassCard';
 
 // Lazy load the list components for better performance
 const MatchesPage = React.lazy(() => import('../matches/MatchesPage'));
