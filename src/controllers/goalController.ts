@@ -409,13 +409,13 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
     .select('nodes, "rootNodes"')
-    .eq('"userId"', userId)
+    .eq('userId', userId)
     .single();
 
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
-  const rootNodes: GoalNode[] = Array.isArray(tree['rootNodes']) ? tree['rootNodes'] : [];
+  const rootNodes: GoalNode[] = Array.isArray((tree as any).rootNodes) ? (tree as any).rootNodes : [];
 
   // Find the node and update its progress
   let wasComplete = false;
@@ -436,8 +436,8 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
 
   const { error: updateErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, 'rootNodes': updatedRootNodes })
-    .eq('"userId"', userId);
+    .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
+    .eq('userId', userId);
 
   if (updateErr) throw new InternalServerError(`Failed to update node: ${updateErr.message}`);
 
@@ -543,7 +543,7 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found. Create your initial tree first.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
-  const rootNodes: GoalNode[] = Array.isArray(tree['rootNodes']) ? tree['rootNodes'] : [];
+  const rootNodes: GoalNode[] = Array.isArray((tree as any).rootNodes) ? (tree as any).rootNodes : [];
 
   // Validate parentId if supplied
   if (parentId && !nodes.find((n: GoalNode) => n.id === parentId)) {
@@ -571,7 +571,7 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 4. Save updated nodes + rootNodes
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, 'rootNodes': updatedRootNodes })
+    .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
     .eq('userId', userId);
   if (saveErr) throw new InternalServerError(`Failed to save new node: ${saveErr.message}`);
 
@@ -623,7 +623,7 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
-  const rootNodes: GoalNode[] = Array.isArray(tree['rootNodes']) ? tree['rootNodes'] : [];
+  const rootNodes: GoalNode[] = Array.isArray((tree as any).rootNodes) ? (tree as any).rootNodes : [];
 
   // 3. Find and merge
   const idx = nodes.findIndex((n: GoalNode) => n.id === nodeId);
@@ -647,7 +647,7 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 4. Save
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, 'rootNodes': updatedRootNodes })
+    .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
     .eq('userId', userId);
   if (saveErr) throw new InternalServerError(`Failed to save node update: ${saveErr.message}`);
 
@@ -685,7 +685,7 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
-  const rootNodes: GoalNode[] = Array.isArray(tree['rootNodes']) ? tree['rootNodes'] : [];
+  const rootNodes: GoalNode[] = Array.isArray((tree as any).rootNodes) ? (tree as any).rootNodes : [];
 
   if (!nodes.find((n: GoalNode) => n.id === targetNodeId)) {
     throw new NotFoundError('Goal node not found in tree.');
@@ -711,7 +711,7 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 3. Save
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, 'rootNodes': updatedRootNodes })
+    .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
     .eq('userId', userId);
   if (saveErr) throw new InternalServerError(`Failed to delete node: ${saveErr.message}`);
 
