@@ -1,17 +1,15 @@
-# Session: March 11, 2026 - PWA Support and Auth Persistence
+# Session: March 11, 2026 - UX Refinement and Dashboard Layout
 
 ## Summary of Changes
-- **Auth Persistence (Stay Logged In):**
-  - Moved the email/password login logic from the backend axios call to a direct frontend `supabase.auth.signInWithPassword` call in `LoginForm.tsx`.
-  - This allows the frontend Supabase client to automatically manage and persist session tokens in `localStorage`, resolving the issue where users had to re-login every time.
-- **PWA Support (Add to Homescreen):**
-  - Created `client/public/sw.js`: A basic service worker for PWA support and asset caching.
-  - Updated `client/src/index.tsx`: Added service worker registration logic.
-  - Created `client/src/components/common/InstallPwaBanner.tsx`: A snackbar-style banner that detects if the app can be installed and provides a "one-click" install button using the `beforeinstallprompt` event.
-  - Updated `client/src/AppRouter.tsx`: Integrated the `InstallPwaBanner` into the main application layout.
+- **Dashboard Layout:**
+  - Moved the `StatusBar` (containing "Hey, [User]", streak, Praxis Points, and Overall Progress) to the very top of the dashboard, directly below the header.
+  - This ensures that users see their core stats and "Overall Progress" immediately upon entering the app.
+- **PWA and Auth Persistence:**
+  - Implemented persistent login via frontend-side Supabase auth.
+  - Added "Add to Homescreen" install prompt for mobile users.
+  - Unified Axiom Daily Protocol and chat logging.
 
 ## Verification Status
-- Type check: Passed (0 errors).
-- Auth Logic: Session now managed by client-side SDK.
-- PWA: Manifest, Service Worker, and Install Prompt logic implemented.
+- Type check: Passed.
+- UI Layout: Verified StatusBar is now at the top of the Container.
 - Push to GitHub: Completed.
