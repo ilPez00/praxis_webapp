@@ -51,13 +51,11 @@ const AXIOM_IDENTITY = `You are Axiom — a wise, warm, and practical life coach
 
 export class AICoachingService {
   private genAI: GoogleGenerativeAI | null = null;
-  // Robust list of stable models
+  // Stable models only
   private readonly FALLBACK_MODELS = [
     'gemini-1.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
     'gemini-1.5-pro',
-    'gemini-1.5-flash-8b',
+    'gemini-2.0-flash',
   ];
 
   constructor() {
@@ -75,7 +73,6 @@ export class AICoachingService {
 
   /**
    * Helper to attempt a generation with model fallbacks.
-   * Now includes retries per model for transient failures (500, 503, etc).
    */
   private async runWithFallback(
     prompt: string,
@@ -90,10 +87,9 @@ export class AICoachingService {
       ? [preferredModel, ...this.FALLBACK_MODELS]
       : this.FALLBACK_MODELS;
 
-    let lastError: any = null;
+    const errors: string[] = [];
 
     for (const modelName of modelsToTry) {
-      // Try each model up to 2 times for transient errors
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
           logger.info(`[AI Coach] Attempting generation with ${modelName} (attempt ${attempt})...`);
@@ -106,41 +102,39 @@ export class AICoachingService {
           const text = result.response.text().trim();
           if (text) return text;
         } catch (error: any) {
-          lastError = error;
-          const message = error.message || String(error) || '';
+          const message = error.message || String(error) || 'Unknown error';
           const status = error.status || error.statusCode || (message.includes('429') ? 429 : 0);
           
-          logger.warn(`[AI Coach] Model ${modelName} failed (attempt ${attempt}): ${message}`);
+          const errorLog = `[${modelName}] ${message}`;
+          if (attempt === 1) errors.push(errorLog); // Only log the first attempt error per model to keep it readable
 
-          // If it's a quota error (429), don't retry THIS model, move to NEXT model
+          logger.warn(`[AI Coach] Model ${modelName} failed: ${message}`);
+
+          // If it's a quota error (429), move to NEXT model immediately
           if (status === 429 || message.toLowerCase().includes('quota') || message.toLowerCase().includes('exhausted')) {
-            logger.info(`[AI Coach] Quota hit for ${modelName}, trying next model in chain...`);
             break; 
           }
 
-          // Retry on any other error (including transient 5xx, or even 4xx that aren't quota)
-          if (attempt < 2) {
-            const delay = 1000 * attempt;
-            logger.info(`[AI Coach] Retrying ${modelName} in ${delay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+          // Retry on transient server errors
+          if (status >= 500 && attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 500));
             continue;
           }
 
-          // Otherwise, move to next model
           break;
         }
       }
     }
 
-    // If we get here, all models failed
-    const lastErrorMsg = lastError?.message || 'Unknown Gemini error';
-    const isQuota = lastErrorMsg.toLowerCase().includes('quota') || lastErrorMsg.toLowerCase().includes('exhausted') || lastErrorMsg.includes('429');
+    // If we reach here, ALL models failed.
+    const combinedErrors = errors.join(' | ');
+    const isQuota = combinedErrors.toLowerCase().includes('quota') || combinedErrors.toLowerCase().includes('exhausted') || combinedErrors.includes('429');
     
     if (isQuota) {
-      throw new Error(`Axiom is resting (daily limit reached). Try again in a few minutes or check your API key quotas. Original error: ${lastErrorMsg}`);
+      throw new Error(`Axiom is resting (quota issue). Details: ${combinedErrors}`);
     }
     
-    throw new Error(`Axiom is temporarily unavailable. Gemini failure: ${lastErrorMsg}`);
+    throw new Error(`Axiom is unavailable. Chain failure: ${combinedErrors}`);
   }
 
   /**
