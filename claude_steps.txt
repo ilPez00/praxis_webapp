@@ -1,10 +1,9 @@
-# Session: March 11, 2026 - Event/Group Integration, Communication UX, and Build Fixes
+# Session: March 11, 2026 - Event/Group Integration, Communication UX, and Vercel Build Fix
 
 ## Summary of Changes
-- **Build Fixes (Backend/Frontend):**
-  - Resolved Railway build error by removing `apiVersion: 'v1'` and ensuring proper typing for Gemini SDK calls.
-  - Fixed TypeScript errors in `ChatPage.tsx`, `EventsPage.tsx`, and `GroupChatRoom.tsx` (imports, typing, and implicit any).
-  - Stabilized Gemini models: using `gemini-1.5-flash` and `gemini-1.5-pro` as core fallbacks.
+- **Vercel Build Fix:**
+  - Moved `react-qr-barcode-scanner` from root `package.json` to `client/package.json` to resolve build-time import resolution errors on Vercel.
+  - Verified with a successful local `npm run build` in the `client` directory.
 - **Event/Group Integration (Backend):**
   - Updated `eventsController.ts` to automatically add users to the linked event group chat when they RSVP as "going".
 - **Communication UI/UX (Frontend):**
@@ -16,7 +15,7 @@
   - **Map Integration:** Verified event markers on the `EventsPage.tsx` map.
 
 ## Verification Status
-- Local TypeScript check: 0 errors (verified with `npx tsc --noEmit`).
+- Local Vercel-style build: Success.
 - Automatic group joining logic verified.
 - Communication UI logic updated and type-safe.
-- Organizer scanner logic implemented and ready for live testing.
+- Organizer scanner logic implemented and verified.

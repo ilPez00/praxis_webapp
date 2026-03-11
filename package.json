@@ -19,7 +19,6 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "google-auth-library": "^10.5.0",
-    "react-qr-barcode-scanner": "^2.1.23",
     "stripe": "^20.3.1",
     "winston": "^3.19.0"
   },
