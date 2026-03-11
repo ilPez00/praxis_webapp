@@ -1,23 +1,16 @@
-# Session: March 11, 2026 - Admin Debugging, Build Reliability, and Event Map
+# Session: March 11, 2026 - Critical Fixes for AI Coach and Event Map
 
 ## Summary of Changes
-- **Admin Debugging (Backend/Frontend):**
-  - Updated `aiCoachingController.ts` to fetch user admin status.
-  - Enhanced `friendlyAiError` to conditionally return raw Gemini error messages (`detailed` field) only for admin users.
-  - Updated `AICoachPage.tsx` to handle and display this `detailedError` in a dedicated debug `Alert` box.
-- **Build Fixes (Vercel/Railway):**
-  - Resolved `react-qr-barcode-scanner` resolution error by moving it to `client/package.json`.
-  - Fixed Gemini SDK `apiVersion` and `Content` object typing issues.
-  - Resolved several TypeScript errors in `ChatPage.tsx`, `EventsPage.tsx`, and `GroupChatRoom.tsx`.
-- **Event/Group Integration:**
-  - Automatic event-group joining logic verified and live.
-  - Consolidated "Messages" view with group chat support and replies.
-  - Attendee QR scanner for organizers integrated into `EventsPage.tsx`.
-- **Event Map Enhancement:**
-  - Integrated `LocationMap` into the "Events" tab, similar to the "Places" section.
-  - Added `MapsFrame` helper to event cards, providing direct links to OpenStreetMap for events with coordinates.
+- **Axiom (AI Coach) Fix:**
+  - Restored accidentally deleted `useEffect` initialization and `loadCachedBrief` logic in `AICoachPage.tsx`. This was causing the "loading forever" issue.
+  - Retained the new **Admin Debug Mode**: Admins will see raw Gemini error messages in a red alert box if the service fails.
+- **Event Map Verification:**
+  - Confirmed `EventsPage.tsx` correctly renders `LocationMap` with event markers.
+  - Verified `DiscoverPage.tsx` correctly renders `EventsPage` when the "Events" tab is active.
+- **Build & Reliability:**
+  - Stabilized Gemini SDK calls and model fallbacks.
+  - Unified dependency management for Vercel builds.
 
 ## Verification Status
-- Local build: Success (`npm run build` in client).
 - Type check: 0 errors (`npx tsc --noEmit`).
 - Push to GitHub: Completed.

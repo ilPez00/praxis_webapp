@@ -98,6 +98,15 @@ const AICoachPage: React.FC = () => {
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // ── load cached brief ─────────────────────────────────────────────────────
+
+  const loadCachedBrief = useCallback(async () => {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/ai-coaching/brief`, { headers });
+    if (!res.ok) return null;
+    return res.json() as Promise<{ brief: CoachingReport; generated_at: string } | null>;
+  }, []);
+
   // ── generate fresh brief (inline, blocking) ───────────────────────────────
 
   const generateBrief = useCallback(async () => {
@@ -121,7 +130,16 @@ const AICoachPage: React.FC = () => {
     }
   }, []);
 
-  // ... background update trigger remains same ...
+  // ── fire background trigger (rate-limited on backend) ────────────────────
+
+  const triggerBackgroundUpdate = useCallback(async () => {
+    try {
+      const headers = await getAuthHeaders();
+      await fetch(`${API_URL}/ai-coaching/trigger`, { method: 'POST', headers });
+    } catch {
+      // silently ignore — non-critical
+    }
+  }, []);
 
   // ── Manual Refresh ────────────────────────────────────────────────────────
 
@@ -131,7 +149,57 @@ const AICoachPage: React.FC = () => {
     setRefreshing(false);
   };
 
-  // ... initialise and realtime remains same ...
+  // ── initialise ────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      // 1. Try cache first — instant display
+      const cached = await loadCachedBrief();
+      if (!cancelled && cached) {
+        setReport(cached.brief);
+        setGeneratedAt(cached.generated_at);
+        setLoadingReport(false);
+        // 2. Kick off background refresh in parallel
+        triggerBackgroundUpdate();
+        return;
+      }
+
+      // 3. No cache — generate inline
+      if (!cancelled) await generateBrief();
+    })();
+
+    return () => { cancelled = true; };
+  }, [loadCachedBrief, generateBrief, triggerBackgroundUpdate]);
+
+  // ── Supabase realtime — auto-refresh when background job finishes ─────────
+
+  useEffect(() => {
+    let userId: string | null = null;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      userId = session?.user?.id ?? null;
+      if (!userId) return;
+
+      const channel = supabase
+        .channel('coaching_briefs_updates')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'coaching_briefs', filter: `user_id=eq.${userId}` },
+          (payload) => {
+            const row = payload.new as any;
+            if (row?.brief) {
+              setReport(row.brief);
+              setGeneratedAt(row.generated_at);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    });
+  }, []);
 
   // ── follow-up Q&A ─────────────────────────────────────────────────────────
 
