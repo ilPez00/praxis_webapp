@@ -1,1 +1,0 @@
-import{d as s,j as o}from"./index-DrBrutQc.js";const a=s(o.jsx("path",{d:"M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"})),n=s(o.jsx("path",{d:"M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"}));export{n as F,a as S};
