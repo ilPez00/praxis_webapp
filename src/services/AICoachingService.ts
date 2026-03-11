@@ -139,17 +139,15 @@ export class AICoachingService {
                 const message = error.message || String(error);
                 const status = error.status || error.statusCode || 0;
                 
-                // Track unique errors to show in debug box
-                const shortMsg = message.split(':')[0] || message;
-                errors.push(`[${modelName}|${apiVersion}|K${this.currentKeyIndex}] ${shortMsg}`);
+                // Track full errors to show in debug box (no more splitting)
+                errors.push(`[${modelName}|${apiVersion}|K${this.currentKeyIndex}] ${message}`);
 
-                // If key is definitely bad (expired/invalid/quota), rotate immediately
+                // If key is bad, rotate
                 if (status === 429 || status === 400 || message.includes('API key') || message.includes('quota')) {
                   this.rotateKey();
-                  break; // try next key
+                  break; 
                 }
                 
-                // If 404 or unsupported method, try next API version or model
                 if (status === 404 || message.includes('not found') || message.includes('not supported')) {
                   break; 
                 }
