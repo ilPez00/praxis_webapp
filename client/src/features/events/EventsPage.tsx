@@ -333,6 +333,7 @@ const EventsPage: React.FC = () => {
 
         {/* Map */}
         <LocationMap
+          userLocation={userGeo || undefined}
           markers={events
             .filter(e => e.latitude != null && e.longitude != null)
             .map(e => ({

@@ -263,6 +263,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId }) => {
 
       {/* Map */}
       <LocationMap
+        userLocation={userGeo || undefined}
         markers={places
           .filter(p => p.latitude != null && p.longitude != null)
           .map(p => ({

@@ -27,34 +27,47 @@ export interface MapMarker {
 interface LocationMapProps {
   markers: MapMarker[];
   height?: number;
+  userLocation?: { lat: number; lng: number };
 }
 
 // Helper component to auto-fit bounds when markers change
-function MapAutoFit({ markers }: { markers: MapMarker[] }) {
+function MapAutoFit({ markers, userLocation }: { markers: MapMarker[], userLocation?: { lat: number; lng: number } }) {
   const map = useMap();
   React.useEffect(() => {
-    if (markers.length === 0) return;
+    if (markers.length === 0) {
+      if (userLocation) {
+        map.setView([userLocation.lat, userLocation.lng], 13);
+      }
+      return;
+    }
     if (markers.length === 1) {
       map.setView([markers[0].lat, markers[0].lng], 14);
     } else {
       const bounds = L.latLngBounds(markers.map(m => [m.lat, m.lng]));
       map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [map, markers]);
+  }, [map, markers, userLocation]);
   return null;
 }
 
-const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340 }) => {
+const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340, userLocation }) => {
   const validMarkers = markers.filter(m => m.lat != null && m.lng != null);
 
-  if (validMarkers.length === 0) return null;
+  // Default center if no markers or user location (Europe/Milan as neutral default for Praxis context)
+  const defaultCenter: [number, number] = [45.4642, 9.1900];
+  
+  let center: [number, number] = defaultCenter;
 
-  const center: [number, number] = validMarkers.length === 1 
-    ? [validMarkers[0].lat, validMarkers[0].lng]
-    : [
-        validMarkers.reduce((s, m) => s + m.lat, 0) / validMarkers.length,
-        validMarkers.reduce((s, m) => s + m.lng, 0) / validMarkers.length
-      ];
+  if (validMarkers.length > 0) {
+    center = validMarkers.length === 1 
+      ? [validMarkers[0].lat, validMarkers[0].lng]
+      : [
+          validMarkers.reduce((s, m) => s + m.lat, 0) / validMarkers.length,
+          validMarkers.reduce((s, m) => s + m.lng, 0) / validMarkers.length
+        ];
+  } else if (userLocation) {
+    center = [userLocation.lat, userLocation.lng];
+  }
 
   return (
     <Box sx={{ 
@@ -64,11 +77,12 @@ const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340 }) => {
       height,
       border: '1px solid rgba(255,255,255,0.07)', 
       boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
-      zIndex: 1 // Ensure Leaflet doesn't overlap app navigation
+      zIndex: 1,
+      bgcolor: '#0A0B14' // Background color while map tiles load
     }}>
       <MapContainer 
         center={center} 
-        zoom={validMarkers.length === 1 ? 14 : 10} 
+        zoom={validMarkers.length === 1 ? 14 : (validMarkers.length > 1 ? 10 : 12)} 
         style={{ width: '100%', height: '100%' }}
         scrollWheelZoom={false}
       >
@@ -78,7 +92,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ markers, height = 340 }) => {
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         
-        <MapAutoFit markers={validMarkers} />
+        <MapAutoFit markers={validMarkers} userLocation={userLocation} />
 
         {validMarkers.map(m => (
           <Marker key={m.id} position={[m.lat, m.lng]}>
