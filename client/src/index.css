@@ -11,3 +11,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Electron Draggable Regions */
+.draggable {
+  -webkit-app-region: drag;
+}
+
+.draggable button, 
+.draggable a, 
+.draggable .MuiIconButton-root,
+.draggable input,
+.draggable [role="button"] {
+  -webkit-app-region: no-drag;
+}

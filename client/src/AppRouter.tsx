@@ -26,10 +26,13 @@ const basename = (!isElectron && window.location.hostname === 'ilpez00.github.io
   : '';
 
 const AppRouter: React.FC = () => {
+  // Detect if we are in a widget view (either via hash or path)
+  const isWidget = window.location.hash.includes('widget') || window.location.pathname.includes('widget');
+
   return (
     <Router basename={basename}>
-      <Navbar />
-      <InstallPwaBanner />
+      {!isWidget && <Navbar />}
+      {!isWidget && !isElectron && <InstallPwaBanner />}
       <Toaster position="top-right" />
       <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
