@@ -1,23 +1,17 @@
-# Session: March 11, 2026 - Events/Places Enhancements and Sharing
+# Session: March 11, 2026 - Axiom Reliability Overhaul
 
 ## Summary of Changes
-- **Events & Places Editing:**
-  - Added `PUT /events/:id` and `PUT /places/:id` backend routes and controllers.
-  - Enabled creator-only (and admin) editing functionality in `EventsPage.tsx` and `PlacesTab.tsx` with a unified Save/Update dialog.
-- **Event Tagging:**
-  - Added a `type` field to the `events` table (matching `places` tags: Work, Study, Fitness, Social, Performance).
-  - Updated the Event creation/edit dialog to include this tag selector.
-- **Verified Attendee Lists & Rewards:**
-  - Implemented `event_checkins` table to record verified QR scans.
-  - **Rewards:** Both the attendee and the organizer now receive **10 PraxisPoints** upon a successful QR check-in.
-  - Creators can now view a list of verified attendees for their past events via a new "People" icon on the event card.
-- **Enhanced Sharing (References):**
-  - Updated `ReferenceCard` and `ReferencePicker` to support **Places** as shareable attachments in posts and messages.
-  - Unified the attachment logic across `ChatRoom`, `PostFeed`, and `GroupRoom`.
+- **Axiom (AI Coach) Reliability:**
+  - **Aggressive Key Cleaning:** Updated `AICoachingService.ts` to rigorously strip quotes and whitespace from the comma-separated `GEMINI_API_KEY` list. This resolves "expired key" errors caused by improper environment variable formatting.
+  - **Key Rotation on Any Failure:** The service now rotates to the next API key if *any* error occurs (quota, expiration, invalidity), maximizing availability across your 5 keys.
+  - **Reverted to v1beta:** Switched back to the `v1beta` endpoint for all models. This restores built-in JSON support (`responseMimeType`), fixing the "Unknown name responseMimeType" 400 error seen on the `v1` endpoint.
+  - **Enhanced Debugging:** The admin debug box now shows a unique list of errors from *every* key and model attempt in the chain, providing a full picture of the system state.
+  - **Latest Models:** Switched to `-latest` aliases for Gemini 1.5 models for better compatibility.
+- **Features Maintenance:**
+  - Verified Event/Place editing, attendee rewards, and map integration.
 
 ## Verification Status
-- Database migrations for `event_checkins` and `event.type` created.
-- Backend logic for point awarding and authorization verified.
-- Frontend UI updated for editing and attendee management.
-- Type check: 0 errors (`npx tsc --noEmit` passed for both backend and client).
+- Type check: 0 errors (`npx tsc --noEmit`).
+- Rotation logic: Refined to handle any error type.
+- Protocol: JSON mode restored via v1beta.
 - Push to GitHub: Completed.

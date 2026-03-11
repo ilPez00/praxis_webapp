@@ -52,16 +52,22 @@ const AXIOM_IDENTITY = `You are Axiom — a wise, warm, and practical life coach
 export class AICoachingService {
   private apiKeys: string[] = [];
   private currentKeyIndex = 0;
-  // Stable models only
+  
+  // Using the most stable 'latest' aliases
   private readonly FALLBACK_MODELS = [
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro-latest',
     'gemini-2.0-flash',
   ];
 
   constructor() {
     const keyString = process.env.GEMINI_API_KEY || '';
-    this.apiKeys = keyString.split(',').map(k => k.trim()).filter(Boolean);
+    // Clean keys: split by comma, remove quotes, trim whitespace
+    this.apiKeys = keyString
+      .split(',')
+      .map(k => k.replace(/['"]+/g, '').trim())
+      .filter(Boolean);
+
     if (this.apiKeys.length === 0) {
       logger.warn('[AICoachingService] No GEMINI_API_KEY set — Axiom coaching will be unavailable.');
     } else {
@@ -81,7 +87,7 @@ export class AICoachingService {
   private rotateKey() {
     if (this.apiKeys.length > 1) {
       this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
-      logger.info(`[AI Coach] Rotated to API key index ${this.currentKeyIndex}`);
+      logger.info(`[AI Coach] Rotated to API key index ${this.currentKeyIndex} (Next key starts with: ${this.apiKeys[this.currentKeyIndex]?.slice(0, 4)}...)`);
     }
   }
 
@@ -103,24 +109,19 @@ export class AICoachingService {
 
     const errors: string[] = [];
 
-    // Try each model
     for (const modelName of modelsToTry) {
-      // Force v1 for 1.5 models. 
-      // V1 does NOT support responseMimeType: 'application/json' in many SDK versions, 
-      // so we handle JSON parsing manually from text.
-      const apiVersion = modelName.includes('1.5') ? 'v1' : 'v1beta';
+      // Revert to v1beta for better JSON support and compatibility
+      const apiVersion = 'v1beta';
       
-      // Try each API Key we have
       for (let keyAttempt = 0; keyAttempt < this.apiKeys.length; keyAttempt++) {
         const genAI = this.getGenAI();
 
         for (let attempt = 1; attempt <= 2; attempt++) {
           try {
-            logger.info(`[AI Coach] Attempting ${modelName} via ${apiVersion} (Key #${this.currentKeyIndex}, attempt ${attempt})...`);
+            logger.info(`[AI Coach] Model: ${modelName} | Key #${this.currentKeyIndex} | Attempt ${attempt}`);
             
             const generationConfig: any = {};
-            // Only use responseMimeType on v1beta
-            if (isJson && apiVersion === 'v1beta') {
+            if (isJson) {
               generationConfig.responseMimeType = 'application/json';
             }
 
@@ -134,41 +135,35 @@ export class AICoachingService {
             if (text) return text;
           } catch (error: any) {
             const message = error.message || String(error) || 'Unknown error';
-            const status = error.status || error.statusCode || (message.includes('429') ? 429 : 0);
+            const status = error.status || error.statusCode || (message.includes('429') ? 429 : (message.includes('400') ? 400 : 0));
             
-            const errorLog = `[${modelName}] ${message}`;
-            if (attempt === 1 && keyAttempt === 0) errors.push(errorLog);
+            // Log error for this specific key
+            const errorLog = `[Key #${this.currentKeyIndex}|${modelName}] ${message}`;
+            errors.push(errorLog);
 
-            logger.warn(`[AI Coach] Model ${modelName} failed with Key #${this.currentKeyIndex}: ${message}`);
+            logger.warn(`[AI Coach] Error: ${message}`);
 
-            // If it's a quota error (429), rotate key and try again with SAME model
-            if (status === 429 || message.toLowerCase().includes('quota') || message.toLowerCase().includes('exhausted')) {
+            // On ANY key failure (expired, quota, etc), rotate and try next key with SAME model
+            if (this.apiKeys.length > 1) {
               this.rotateKey();
-              break; // Break inner retry loop to try with next key (keyAttempt loop)
+              break; // break attempt loop to try with new key
             }
 
-            // Retry on transient server errors
+            // If only one key, retry on transient server errors
             if (status >= 500 && attempt < 2) {
               await new Promise(resolve => setTimeout(resolve, 500));
               continue;
             }
 
-            // For other errors (like 400), move to next model/key
-            break;
+            break; // Move to next keyAttempt (which will use the same index if no more keys)
           }
         }
       }
     }
 
     // If we reach here, ALL models and ALL keys failed.
-    const combinedErrors = errors.join(' | ');
-    const isQuota = combinedErrors.toLowerCase().includes('quota') || combinedErrors.toLowerCase().includes('exhausted') || combinedErrors.includes('429');
-    
-    if (isQuota) {
-      throw new Error(`Axiom is resting (quota issue across ${this.apiKeys.length} keys). Details: ${combinedErrors}`);
-    }
-    
-    throw new Error(`Axiom is unavailable. Chain failure: ${combinedErrors}`);
+    const combinedErrors = Array.from(new Set(errors)).join(' | '); // Use Set to unique-ify errors
+    throw new Error(`Axiom is unavailable. System failure across all keys/models. Details: ${combinedErrors}`);
   }
 
   /**
