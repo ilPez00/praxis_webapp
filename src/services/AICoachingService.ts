@@ -51,13 +51,18 @@ export class AICoachingService {
       .filter(k => k.startsWith('AIza'));
     this.apiKeys = Array.from(new Set(cleanedKeys));
 
+    // Load balancing: pick a random starting key to distribute usage across projects
+    if (this.apiKeys.length > 0) {
+      this.currentKeyIndex = Math.floor(Math.random() * this.apiKeys.length);
+    }
+
     // DeepSeek key
     this.deepseekApiKey = (process.env.DEEPSEEK_API_KEY || '').trim();
 
     if (this.apiKeys.length === 0 && !this.deepseekApiKey) {
       logger.warn('[AICoachingService] No AI keys (Gemini or DeepSeek) found.');
     } else {
-      logger.info(`[AICoachingService] Active with ${this.apiKeys.length} Gemini keys and DeepSeek: ${!!this.deepseekApiKey}`);
+      logger.info(`[AICoachingService] Ready. Start Key: ${this.currentKeyIndex}. DeepSeek: ${!!this.deepseekApiKey}`);
     }
   }
 
@@ -87,6 +92,19 @@ export class AICoachingService {
   }
 
   /**
+   * Diagnostic: Lists all models available for the current key.
+   */
+  private async listAvailableModels(key: string): Promise<string[]> {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+      const data = await res.json();
+      return (data.models || []).map((m: any) => m.name.replace('models/', ''));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Helper to attempt a generation with model fallbacks (including DeepSeek).
    */
   private async runWithFallback(
@@ -94,12 +112,11 @@ export class AICoachingService {
   ): Promise<string> {
     const errors: string[] = [];
 
-    // 1. Try DeepSeek first if available (often more reliable/higher quality)
+    // 1. Try DeepSeek first if available
     if (this.deepseekApiKey) {
       const deepseekModels = ['deepseek-chat', 'deepseek-reasoner'];
       for (const modelName of deepseekModels) {
         try {
-          logger.info(`[AI Coach] Attempting DeepSeek: ${modelName}...`);
           const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -117,23 +134,23 @@ export class AICoachingService {
           if (res.ok && data.choices?.[0]?.message?.content) {
             return data.choices[0].message.content.trim();
           }
-          errors.push(`[DeepSeek|${modelName}] ${res.status}: ${data.error?.message || 'Unknown error'}`);
+          errors.push(`[DS|${modelName}] ${res.status}`);
         } catch (err: any) {
-          errors.push(`[DeepSeek|${modelName}] FetchEx: ${err.message}`);
+          errors.push(`[DS|${modelName}] FetchEx`);
         }
       }
     }
 
-    // 2. Fallback to Gemini keys
+    // 2. Fallback to Gemini keys pool
     if (this.apiKeys.length === 0) {
-      throw new Error(`Axiom Offline. DeepSeek failed and no Gemini keys available. Errors: ${errors.join(' | ')}`);
+      throw new Error(`Axiom Offline. No Gemini keys available. DS Errors: ${errors.join(' | ')}`);
     }
 
     const baseModels = [
       'gemini-1.5-flash',
       'gemini-1.5-pro',
+      'gemini-pro',
       'gemini-2.0-flash',
-      'gemini-pro', 
     ];
 
     const triedKeys = new Set<number>();
@@ -158,7 +175,7 @@ export class AICoachingService {
 
             const rawText = await response.text();
             let data: any;
-            try { data = JSON.parse(rawText); } catch { continue; }
+            try { data = JSON.parse(rawText); } catch { errors.push(`[K${keyIdx}|${modelName}] Non-JSON`); continue; }
             
             if (response.ok) {
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -168,26 +185,27 @@ export class AICoachingService {
               }
             }
 
-            const errorMsg = data.error?.message || response.statusText || 'Unknown error';
             const status = response.status;
-            
-            if (status !== 404) {
-              errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${status}: ${errorMsg.split('\n')[0]}`);
-            }
+            // Record result for this specific key
+            errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${status}`);
 
             if (status === 429 || status === 403 || status === 401) break; 
           } catch (error: any) {
-            errors.push(`[K${keyIdx}|FetchEx] ${error.message}`);
+            errors.push(`[K${keyIdx}|FetchEx]`);
             break;
           }
         }
         const lastErr = errors[errors.length - 1];
-        if (lastErr?.includes('429') || lastErr?.includes('403')) break;
+        if (lastErr?.includes('429') || lastErr?.includes('403') || lastErr?.includes('401')) break;
       }
     }
 
-    const uniqueErrors = Array.from(new Set(errors)).slice(0, 10).join(' | ');
-    throw new Error(`Axiom Offline. Details: ${uniqueErrors}`);
+    // Optional Discovery log if all failed
+    let discovered = '';
+    try { discovered = ` | Available: ${(await this.listAvailableModels(this.apiKeys[0])).slice(0, 3).join(',')}`; } catch {}
+
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 15).join(' | ');
+    throw new Error(`Axiom Offline. Tried ${this.apiKeys.length} keys. Status: ${uniqueErrors}${discovered}`);
   }
 
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {

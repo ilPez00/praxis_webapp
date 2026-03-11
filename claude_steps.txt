@@ -1,16 +1,16 @@
-# Session: March 11, 2026 - DeepSeek Integration and Multi-Provider AI
+# Session: March 11, 2026 - Axiom Load Balancing & Deep Diagnostics
 
 ## Summary of Changes
-- **Axiom Multi-Provider Overhaul:**
-  - **DeepSeek Integration:** Updated `AICoachingService.ts` to support the DeepSeek API (OpenAI-compatible).
-  - **Provider Prioritization:** Axiom now tries DeepSeek models (`deepseek-chat` and `deepseek-reasoner`) first, as they often offer higher availability and specialized reasoning capabilities.
-  - **Robust Fallback:** If DeepSeek is unavailable or hits a quota, the system automatically falls back to the existing 6-key Gemini rotation pool.
-  - **Manual JSON Parsing:** Retained and refined the safe text-to-JSON parsing logic to ensure compatibility across both DeepSeek and Gemini outputs.
-- **Environment:**
-  - Added `DEEPSEEK_API_KEY` support to the backend.
-  - Updated `.env.example` with the new provider configuration.
+- **Axiom (AI Coach) Load Balancing:**
+  - **Randomized Entry:** Updated `AICoachingService.ts` to pick a **random starting key** from the pool for every new request. This prevents the system from always exhausting the first few keys while leaving the last ones (like Key #6) unused.
+  - **Explicit Key Status:** Improved the debug reporter to show the status of **every unique key** in the pool. Identical error messages are no longer collapsed, so you can see exactly which keys hit 429 (Quota) vs 404 (Disabled API).
+  - **Dud Key Deprioritization:** If a key returns a 403 (Forbidden) or 401 (Invalid), the system now breaks from that key's model loop immediately to find a working key faster.
+- **Provider Resilience:**
+  - Integrated **DeepSeek** as the primary provider (if `DEEPSEEK_API_KEY` is present), falling back to the 7-key Gemini pool.
+  - Unified error reporting across all providers.
 
 ## Verification Status
 - Type check: Passed.
-- Provider logic: DeepSeek-first fallback chain implemented and verified.
+- Load balancing: Logic verified (random initialization).
+- Diagnostics: Enhanced to show individual key results.
 - Push to GitHub: Completed.
