@@ -118,9 +118,11 @@ export class AICoachingService {
             break; 
           }
 
-          // If it's a transient server error (500, 503, 504), wait a bit and retry the same model
-          if (status >= 500 && attempt < 2) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          // Retry on any other error (including transient 5xx, or even 4xx that aren't quota)
+          if (attempt < 2) {
+            const delay = 1000 * attempt;
+            logger.info(`[AI Coach] Retrying ${modelName} in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
             continue;
           }
 
@@ -131,10 +133,12 @@ export class AICoachingService {
     }
 
     // If we get here, all models failed
-    const errorMsg = lastError?.message || 'All Gemini models failed to respond.';
-    if (errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('exhausted')) {
+    const lastErrorMsg = lastError?.message || '';
+    if (lastErrorMsg.toLowerCase().includes('quota') || lastErrorMsg.toLowerCase().includes('exhausted')) {
       throw new Error('Axiom is resting (daily limit reached). Please try again later.');
     }
+    
+    // For anything else, show the generic "unavailable" message
     throw new Error('Axiom is temporarily unavailable. Please try again in a moment.');
   }
 

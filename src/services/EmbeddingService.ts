@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabaseClient';
  */
 export class EmbeddingService {
   private genAI: GoogleGenerativeAI | null = null;
-  private embeddingModel: any = null; // Type for the embedding model
+  private readonly FALLBACK_MODELS = ['text-embedding-004', 'text-embedding-001'];
 
   /** Whether the Gemini API key was found and the model is ready. */
   public readonly available: boolean;
@@ -30,11 +30,6 @@ export class EmbeddingService {
       return;
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    // Explicitly using v1 to avoid experimental v1beta issues if possible
-    // Note: The SDK currently defaults to v1beta for some methods, we can try to force it.
-    this.embeddingModel = this.genAI.getGenerativeModel({ 
-      model: "text-embedding-004"
-    }, { apiVersion: 'v1' });
     this.available = true;
   }
 
@@ -45,41 +40,38 @@ export class EmbeddingService {
    * @returns A promise that resolves to an array of numbers representing the embedding.
    */
   public async getEmbedding(text: string): Promise<number[]> {
-    if (!this.embeddingModel) {
-      throw new Error('EmbeddingService: Gemini model not available. Check GEMINI_API_KEY.');
+    if (!this.genAI) {
+      throw new Error('EmbeddingService: Gemini SDK not initialized.');
     }
-    try {
-      // For text-embedding-004, taskType is required. 
-      // RETRIEVAL_DOCUMENT is for the content being indexed.
-      const result = await this.embeddingModel.embedContent({
-        content: { parts: [{ text }] },
-        taskType: "RETRIEVAL_DOCUMENT",
-      });
-      return result.embedding.values;
-    } catch (error: any) {
-      logger.error('Error generating embedding:', error.message);
-      
-      // Fallback 1: try without explicit taskType (for older models or versions)
-      if (error.message?.includes('task_type')) {
-        try {
-          const res = await this.embeddingModel.embedContent(text);
-          return res.embedding.values;
-        } catch {}
-      }
 
-      // Fallback 2: try embedding-001 if 004 is unavailable
-      if (error.message?.includes('not found') || error.message?.includes('404')) {
-        logger.info('text-embedding-004 failed, trying embedding-001...');
-        const fallbackModel = this.genAI!.getGenerativeModel({ model: "embedding-001" }, { apiVersion: 'v1' });
+    let lastError: any = null;
+    for (const modelName of this.FALLBACK_MODELS) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          const result = await fallbackModel.embedContent(text);
+          const model = this.genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
+          const result = await model.embedContent({
+            content: { parts: [{ text }] },
+            taskType: "RETRIEVAL_DOCUMENT",
+          });
           return result.embedding.values;
-        } catch (err2: any) {
-          logger.error('Fallback embedding-001 also failed:', err2.message);
+        } catch (error: any) {
+          lastError = error;
+          const status = error.status || error.statusCode || 0;
+          const message = error.message || '';
+
+          if (status === 429 || message.toLowerCase().includes('quota')) {
+            break; // Move to next model
+          }
+
+          if (attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+            continue;
+          }
+          break; // Move to next model
         }
       }
-      throw error;
     }
+    throw lastError || new Error('All embedding models failed.');
   }
 
   /**

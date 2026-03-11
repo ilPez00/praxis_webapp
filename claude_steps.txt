@@ -1,21 +1,25 @@
-# Session: March 11, 2026 - Axiom Source Cleanup & Reliability
+# Session: March 11, 2026 - Axiom Reliability & Semantic Matching
 
 ## Summary of Changes
 - **Axiom Rebrand & Identity:**
   - Renamed "Master Roshi" to "Axiom" project-wide.
-  - Refined `AXIOM_IDENTITY` to emphasize direct, practical advice without book citations.
-- **Source Removal (Axiom Training):**
-  - Removed `src/services/KnowledgeBaseService.ts` which was designed to inject PDF text into AI prompts.
-  - Deleted the `sources/` directory containing the underlying PDF books (Zero to One, Antifragile, Atomic Habits, etc.).
-  - Uninstalled `pdf-parse` and its type definitions to remove the unused dependency.
+  - Refined `AXIOM_IDENTITY` for direct, practical coaching.
 - **AI Coaching Robustness (Backend):**
-  - Implemented a 6-model fallback chain in `AICoachingService.ts`.
-  - Added automatic retries (up to 2 attempts) for transient server errors.
-  - Improved error reporting for quota limits and system availability.
-- **UI Refinement (Mobile):**
-  - Removed redundant "Groups" entry from the mobile hamburger menu.
+  - Implemented a 6-model fallback chain and automatic retries for server errors in `AICoachingService.ts`.
+  - Refined retry logic to handle all non-quota errors with progressive backoff.
+- **Semantic Matching & Embeddings:**
+  - Verified `MatchingEngineService.ts` correctly implements Algorithm 1 (S_AB compatibility) with `EmbeddingService`.
+  - Updated `EmbeddingService.ts` with its own fallback chain (`text-embedding-004` -> `text-embedding-001`) and retry logic.
+  - Verified `goalController.ts` triggers fire-and-forget embedding generation upon goal tree updates.
+  - Verified `goal_embeddings` table and `match_users_by_goals` RPC exist in Supabase migrations.
+- **Source Removal:**
+  - Deleted `KnowledgeBaseService.ts` and the `sources/` PDF directory.
+  - Uninstalled `pdf-parse` as it's no longer needed.
+- **UI Refinement:**
+  - Removed "Groups" from the mobile hamburger menu (accessible via Chat).
 
 ## Verification Status
-- Full project search confirms "Axiom" is the only coach identity and no "KnowledgeBase" remains.
-- Unnecessary dependencies (`pdf-parse`) removed.
+- Full project search confirms "Axiom" is the only coach identity.
+- Service resilience improved with expanded model sets and retry logic for both generation and embeddings.
+- GitHub vs. Local discrepancy noted: Changes are committed locally but must be **pushed** to GitHub for Vercel/Railway deployment.
 - TypeScript type checks passed.
