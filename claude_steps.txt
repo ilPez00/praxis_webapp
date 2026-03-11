@@ -1,17 +1,23 @@
-# Session: March 11, 2026 - Axiom Reliability Overhaul
+# Session: March 11, 2026 - Bug Fixes and Feature Completion
 
 ## Summary of Changes
-- **Axiom (AI Coach) Reliability:**
-  - **Aggressive Key Cleaning:** Updated `AICoachingService.ts` to rigorously strip quotes and whitespace from the comma-separated `GEMINI_API_KEY` list. This resolves "expired key" errors caused by improper environment variable formatting.
-  - **Key Rotation on Any Failure:** The service now rotates to the next API key if *any* error occurs (quota, expiration, invalidity), maximizing availability across your 5 keys.
-  - **Reverted to v1beta:** Switched back to the `v1beta` endpoint for all models. This restores built-in JSON support (`responseMimeType`), fixing the "Unknown name responseMimeType" 400 error seen on the `v1` endpoint.
-  - **Enhanced Debugging:** The admin debug box now shows a unique list of errors from *every* key and model attempt in the chain, providing a full picture of the system state.
-  - **Latest Models:** Switched to `-latest` aliases for Gemini 1.5 models for better compatibility.
-- **Features Maintenance:**
-  - Verified Event/Place editing, attendee rewards, and map integration.
+- **Bug Fix (Events Editing):**
+  - Resolved 500 Internal Server Error when updating events.
+  - Corrected field mapping: mapped camelCase frontend payload fields (`eventDate`, `eventTime`) to snake_case database columns (`event_date`, `event_time`) in `updateEvent` controller.
+- **Axiom Reliability Overhaul:**
+  - Implemented aggressive API key cleaning to prevent whitespace/quote issues.
+  - Added key rotation on ANY error (expiration, invalid, quota).
+  - Reverted to `v1beta` for robust JSON support.
+  - Enhanced admin debugging with multi-key failure reports.
+- **Events & Places Enhancements:**
+  - Enabled creator-only editing for events and places.
+  - Added `type` tagging to events.
+  - Implemented dual-reward system: 10 PraxisPoints for both attendee and organizer upon verified QR check-in.
+  - Added "Verified Attendee List" view for event creators.
+- **Sharing Improvements:**
+  - Enabled physical/digital Places to be shared as attachments in posts and messages via `ReferencePicker`.
 
 ## Verification Status
 - Type check: 0 errors (`npx tsc --noEmit`).
-- Rotation logic: Refined to handle any error type.
-- Protocol: JSON mode restored via v1beta.
+- Event editing fix verified via code inspection.
 - Push to GitHub: Completed.

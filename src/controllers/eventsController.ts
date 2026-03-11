@@ -365,7 +365,7 @@ export const checkinEvent = catchAsync(async (req: Request, res: Response, _next
 export const updateEvent = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user?.id;
-  const updates = req.body;
+  const { title, description, eventDate, eventTime, location, latitude, longitude, city, type } = req.body;
 
   const { data: event } = await supabase.from('events').select('creator_id').eq('id', id).single();
   if (!event) throw new NotFoundError('Event not found.');
@@ -375,8 +375,23 @@ export const updateEvent = catchAsync(async (req: Request, res: Response) => {
     throw new ForbiddenError('Not authorized to edit this event.');
   }
 
+  const updates: any = {
+    title: title?.trim(),
+    description: description?.trim() || null,
+    event_date: eventDate,
+    event_time: eventTime || null,
+    location: location?.trim() || null,
+    latitude: latitude ?? null,
+    longitude: longitude ?? null,
+    city: city || null,
+    type: type || null,
+  };
+
   const { data, error } = await supabase.from('events').update(updates).eq('id', id).select().single();
-  if (error) throw new InternalServerError(error.message);
+  if (error) {
+    logger.error('Error updating event:', error.message);
+    throw new InternalServerError(error.message);
+  }
 
   res.json(data);
 });
