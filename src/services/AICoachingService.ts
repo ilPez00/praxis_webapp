@@ -131,12 +131,13 @@ export class AICoachingService {
     }
 
     // If we get here, all models failed
-    const lastErrorMsg = lastError?.message || '';
-    if (lastErrorMsg.toLowerCase().includes('quota') || lastErrorMsg.toLowerCase().includes('exhausted')) {
-      throw new Error('Axiom is resting (daily limit reached). Please try again later.');
+    const lastErrorMsg = lastError?.message || 'Unknown Gemini error';
+    const isQuota = lastErrorMsg.toLowerCase().includes('quota') || lastErrorMsg.toLowerCase().includes('exhausted');
+    
+    if (isQuota) {
+      throw new Error(`Axiom is resting (daily limit reached). Original error: ${lastErrorMsg}`);
     }
     
-    // For anything else, show the real error for debugging (as requested)
     throw new Error(`Axiom is temporarily unavailable. Gemini failure: ${lastErrorMsg}`);
   }
 

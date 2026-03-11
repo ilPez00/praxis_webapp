@@ -342,6 +342,7 @@ const MatchesPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
 
   const [realMatches, setRealMatches] = useState<MatchProfile[]>([]);
+  const [matchCache, setMatchCache] = useState<Record<string, MatchProfile[]>>({});
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [compatibilityFilter, setCompatibilityFilter] = useState(0);
@@ -364,6 +365,14 @@ const MatchesPage: React.FC = () => {
 
   useEffect(() => {
     if (userLoading || !user) return;
+    const cacheKey = selectedDomain || 'all';
+    
+    if (matchCache[cacheKey]) {
+      setRealMatches(matchCache[cacheKey]);
+      setLoading(false);
+      return;
+    }
+
     const fetchMatches = async () => {
       setLoading(true);
       try {
@@ -384,6 +393,7 @@ const MatchesPage: React.FC = () => {
           lastCheckinDate: m.lastCheckinDate ?? null,
         }));
         setRealMatches(enrichedMatches);
+        setMatchCache(prev => ({ ...prev, [cacheKey]: enrichedMatches }));
       } catch {
         setRealMatches([]);
       } finally {
@@ -391,7 +401,7 @@ const MatchesPage: React.FC = () => {
       }
     };
     fetchMatches();
-  }, [user, userLoading, selectedDomain]);
+  }, [user, userLoading, selectedDomain, matchCache]);
 
   const applyFilters = (list: MatchProfile[]) =>
     list.filter((m) => {

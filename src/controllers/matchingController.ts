@@ -53,10 +53,10 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
     throw new NotFoundError('User goal tree not found.');
   }
 
-  // 2. Fetch all other users' goal trees + profiles (for domain_proficiency)
+  // 2. Fetch up to 50 other users' goal trees + profiles (for domain_proficiency)
   const [{ data: allGoalTrees, error: allGoalTreesError }, { data: otherProfiles }] = await Promise.all([
-    supabase.from('goal_trees').select('*').neq('userId', userId),
-    supabase.from('profiles').select('id, domain_proficiency').neq('id', userId),
+    supabase.from('goal_trees').select('*').neq('userId', userId).limit(50),
+    supabase.from('profiles').select('id, domain_proficiency').neq('id', userId).limit(50),
   ]);
 
   if (allGoalTreesError) {

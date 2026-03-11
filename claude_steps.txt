@@ -1,16 +1,17 @@
-# Session: March 11, 2026 - Critical Fixes for AI Coach and Event Map
+# Session: March 11, 2026 - Performance Optimization and Debugging
 
 ## Summary of Changes
-- **Axiom (AI Coach) Fix:**
-  - Restored accidentally deleted `useEffect` initialization and `loadCachedBrief` logic in `AICoachPage.tsx`. This was causing the "loading forever" issue.
-  - Retained the new **Admin Debug Mode**: Admins will see raw Gemini error messages in a red alert box if the service fails.
-- **Event Map Verification:**
-  - Confirmed `EventsPage.tsx` correctly renders `LocationMap` with event markers.
-  - Verified `DiscoverPage.tsx` correctly renders `EventsPage` when the "Events" tab is active.
+- **Axiom (AI Coach) Debugging:**
+  - Updated `AICoachingService.ts` to include the **original Gemini error message** in the error thrown to the controller.
+  - This ensures that admins see the real underlying issue (e.g., API key, model access, or true quota) in the red debug box.
+- **Performance Optimization (Discover/People):**
+  - **Backend:** Added a `.limit(50)` to the slow-path matching query in `matchingController.ts`. This prevents the engine from trying to compare the user against the entire database at once, which was causing the lag.
+  - **Frontend:** Implemented a session-based `matchCache` in `MatchesPage.tsx`. Switching between tabs or domain filters no longer triggers redundant API calls if the data was already fetched in the current session.
 - **Build & Reliability:**
-  - Stabilized Gemini SDK calls and model fallbacks.
-  - Unified dependency management for Vercel builds.
+  - Maintained all previous build fixes and event-group integrations.
 
 ## Verification Status
+- Frontend caching verified: Component state now persists match results.
+- Backend query optimization: User fetch capped at 50 for the complex comparison loop.
 - Type check: 0 errors (`npx tsc --noEmit`).
 - Push to GitHub: Completed.
