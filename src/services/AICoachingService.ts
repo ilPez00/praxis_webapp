@@ -59,9 +59,6 @@ export class AICoachingService {
     }
   }
 
-  /**
-   * Diagnostic: Lists all models available for the current key.
-   */
   private async listAvailableModels(key: string): Promise<string[]> {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
@@ -75,12 +72,14 @@ export class AICoachingService {
   private async runWithFallback(prompt: string): Promise<string> {
     if (this.apiKeys.length === 0) throw new Error('GEMINI_API_KEY not set.');
 
-    // Prioritizing 2.0 models as they appear enabled in user logs
+    // UPDATED: Using the models identified in the discovery log
     const baseModels = [
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+      'gemini-2.0-flash-001',
+      'gemini-2.0-flash-lite-001',
       'gemini-2.0-flash',
-      'gemini-2.0-flash-lite-preview-02-05',
       'gemini-1.5-flash',
-      'gemini-pro', 
     ];
     
     const errors: string[] = [];
@@ -123,18 +122,21 @@ export class AICoachingService {
               errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${status}: ${errorMsg.split('\n')[0]}`);
             }
 
-            if (status === 429 || status === 403 || status === 401) break; 
+            // Quota limit hit: move to next key immediately for this model
+            if (status === 429) break; 
+            // Permission issue: stop using this key for now
+            if (status === 403 || status === 401) break;
           } catch (error: any) {
             errors.push(`[K${keyIdx}|FetchEx] ${error.message}`);
             break;
           }
         }
+        // If the key is dead or exhausted, move to next key
         const lastErr = errors[errors.length - 1];
         if (lastErr?.includes('429') || lastErr?.includes('403')) break;
       }
     }
 
-    // Diagnostic fallback: find out what models ARE available
     const discovery = await this.listAvailableModels(this.apiKeys[0]);
     const discoveredStr = discovery.length > 0 ? ` | Available: ${discovery.slice(0, 5).join(', ')}` : '';
 
