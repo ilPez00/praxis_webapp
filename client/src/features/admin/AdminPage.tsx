@@ -5,7 +5,7 @@ import {
   IconButton, Chip, Avatar, TextField, InputAdornment, CircularProgress,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip,
   Divider, Tabs, Tab, Select, MenuItem, FormControl, InputLabel,
-  Grid,
+  Grid, Stack,
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import BlockIcon from '@mui/icons-material/Block';
@@ -338,7 +338,9 @@ const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState(0);
   const [axiomPrompt, setAxiomPrompt] = useState('');
+  const [axiomStrategy, setAxiomStrategy] = useState<'first' | 'last' | 'random'>('random');
   const [savingPrompt, setSavingPrompt] = useState(false);
+  const [updatingStrategy, setUpdatingStrategy] = useState(false);
   const [triggeringScan, setTriggeringScan] = useState(false);
 
   // ── Users state ─────────────────────────────────────────────────────────────
@@ -361,12 +363,34 @@ const AdminPage: React.FC = () => {
       const headers = await authHeaders();
       const res = await fetch(`${API_URL}/admin/config`, { headers });
       const configs: SystemConfig[] = await res.json();
+      
       const prompt = configs.find(c => c.key === 'axiom_prompt');
       if (prompt) setAxiomPrompt(prompt.value);
+
+      const strategy = configs.find(c => c.key === 'axiom_key_strategy');
+      if (strategy) setAxiomStrategy(strategy.value as any);
     } catch {
-      toast.error('Failed to fetch Axiom prompt.');
+      toast.error('Failed to fetch Axiom settings.');
     }
   }, []);
+
+  const handleUpdateStrategy = async (newStrategy: 'first' | 'last' | 'random') => {
+    setUpdatingStrategy(true);
+    try {
+      const headers = await authHeaders();
+      await fetch(`${API_URL}/admin/config/axiom_key_strategy`, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: newStrategy }),
+      });
+      setAxiomStrategy(newStrategy);
+      toast.success(`Strategy set to ${newStrategy}`);
+    } catch {
+      toast.error('Failed to update strategy.');
+    } finally {
+      setUpdatingStrategy(false);
+    }
+  };
 
   const handleUpdatePrompt = async () => {
     setSavingPrompt(true);
@@ -1633,6 +1657,44 @@ const AdminPage: React.FC = () => {
                   >
                     {savingPrompt ? <CircularProgress size={20} sx={{ color: 'inherit' }} /> : 'Save Prompt'}
                   </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Key Pool Strategy */}
+            <Grid size={{ xs: 12 }}>
+              <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 3 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>API Key Pool Strategy</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Choose where Axiom starts looking for an available Gemini key in your .env pool.
+                  </Typography>
+                  <Stack direction="row" spacing={2}>
+                    <Button 
+                      variant={axiomStrategy === 'first' ? 'contained' : 'outlined'} 
+                      onClick={() => handleUpdateStrategy('first')}
+                      disabled={updatingStrategy}
+                      sx={{ borderRadius: '10px', fontWeight: 700 }}
+                    >
+                      Start from First
+                    </Button>
+                    <Button 
+                      variant={axiomStrategy === 'last' ? 'contained' : 'outlined'} 
+                      onClick={() => handleUpdateStrategy('last')}
+                      disabled={updatingStrategy}
+                      sx={{ borderRadius: '10px', fontWeight: 700 }}
+                    >
+                      Start from Last
+                    </Button>
+                    <Button 
+                      variant={axiomStrategy === 'random' ? 'contained' : 'outlined'} 
+                      onClick={() => handleUpdateStrategy('random')}
+                      disabled={updatingStrategy}
+                      sx={{ borderRadius: '10px', fontWeight: 700 }}
+                    >
+                      Balanced (Random)
+                    </Button>
+                  </Stack>
                 </CardContent>
               </Card>
             </Grid>

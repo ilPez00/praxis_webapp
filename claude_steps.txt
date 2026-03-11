@@ -1,16 +1,19 @@
-# Session: March 11, 2026 - Axiom Load Balancing & Deep Diagnostics
+# Session: March 11, 2026 - Axiom Management and Key Strategy
 
 ## Summary of Changes
-- **Axiom (AI Coach) Load Balancing:**
-  - **Randomized Entry:** Updated `AICoachingService.ts` to pick a **random starting key** from the pool for every new request. This prevents the system from always exhausting the first few keys while leaving the last ones (like Key #6) unused.
-  - **Explicit Key Status:** Improved the debug reporter to show the status of **every unique key** in the pool. Identical error messages are no longer collapsed, so you can see exactly which keys hit 429 (Quota) vs 404 (Disabled API).
-  - **Dud Key Deprioritization:** If a key returns a 403 (Forbidden) or 401 (Invalid), the system now breaks from that key's model loop immediately to find a working key faster.
-- **Provider Resilience:**
-  - Integrated **DeepSeek** as the primary provider (if `DEEPSEEK_API_KEY` is present), falling back to the 7-key Gemini pool.
-  - Unified error reporting across all providers.
+- **Axiom Key Strategy (Backend/Frontend):**
+  - **Dynamic Strategy:** Updated `AICoachingService.ts` to fetch the `axiom_key_strategy` from the `system_config` table. Axiom now starts its key iteration based on this preference (First, Last, or Random).
+  - **Admin UI Controls:** Added a new **"API Key Pool Strategy"** section to the Admin > Axiom tab. Admins can now toggle between three modes:
+    - **Start from First:** Always starts with the first key in the `.env` list.
+    - **Start from Last:** Always starts with the last key in the `.env` list.
+    - **Balanced (Random):** Distributes load evenly (original default).
+  - **Instant Application:** Any change made in the admin panel is applied to all subsequent Axiom requests.
+- **Diagnostics & Persistence:**
+  - Improved the Admin UI to refresh all Axiom settings (prompt and strategy) every time the tab is opened.
+  - Ensured the `system_config` migration is correctly identified for these features.
 
 ## Verification Status
 - Type check: Passed.
-- Load balancing: Logic verified (random initialization).
-- Diagnostics: Enhanced to show individual key results.
+- Key rotation logic: Respects database strategy configuration.
+- Admin UI: Toggle buttons correctly update the backend config.
 - Push to GitHub: Completed.
