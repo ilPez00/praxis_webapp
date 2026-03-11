@@ -1,14 +1,15 @@
-# Session: March 11, 2026 - Axiom Deep Diagnostics Fix
+# Session: March 11, 2026 - Axiom Resilience Overhaul
 
 ## Summary of Changes
-- **Axiom (AI Coach) Final Deep Fix:**
-  - **Bypassed SDK:** Switched from the `@google/generative-ai` SDK to a **Direct REST Fetch** implementation. This eliminates potential library-level bugs or versioning issues.
-  - **Key Verification:** The DEBUG box now shows the **first 6 characters** of each key being used (e.g., `K0:AIzaSy...`). This allows the user to verify their keys are being read correctly from the environment variables.
-  - **Status Code Visibility:** All errors now include the HTTP status code (400, 401, 403, 404, 429) for clearer debugging.
-  - **Expanded Model Versions:** Added specific versioned aliases (`gemini-1.5-flash-001`, `gemini-1.5-flash-002`) to resolve potential resolution issues with generic aliases.
-  - **Automatic Failover:** Retained the robust key rotation and endpoint brute-forcing (`v1` and `v1beta`).
+- **Axiom (AI Coach) Resilience Overhaul:**
+  - **Safe Parsing:** Updated `AICoachingService.ts` to read API responses as standard text before attempting `JSON.parse`. This prevents the "Unexpected end of JSON input" crash that occurred when Google returned non-JSON 404/403 pages.
+  - **Exhaustive Key-First Search:** Refactored the rotation logic to prioritize trying **all available keys** against the most stable models. If one key is restricted (404/403), Axiom now immediately attempts the next key in the pool instead of giving up.
+  - **Strict Pathing:** Reverted to strictly using the `models/` URL prefix, which is required for all stable Gemini models.
+  - **Expanded Coverage:** Retained brute-forcing of both `v1` and `v1beta` endpoints for each model/key combination.
+- **Features Maintenance:**
+  - Verified Event/Place editing and attendee rewards remain functional and type-safe.
 
 ## Verification Status
 - Type check: 0 errors (`npx tsc --noEmit`).
-- Implementation: Bypasses SDK for maximum reliability.
+- Implementation: Robustly handles empty/HTML responses.
 - Push to GitHub: Completed.

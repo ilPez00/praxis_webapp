@@ -53,16 +53,6 @@ export class AICoachingService {
   private apiKeys: string[] = [];
   private currentKeyIndex = 0;
   
-  // Most stable base model names + versioned specifics
-  private readonly FALLBACK_MODELS = [
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-001',
-    'gemini-1.5-flash-002',
-    'gemini-1.5-pro',
-    'gemini-1.5-pro-001',
-    'gemini-1.0-pro',
-  ];
-
   constructor() {
     const keyString = process.env.GEMINI_API_KEY || '';
     // Clean keys: split by comma, remove quotes, trim whitespace, remove invisible chars
@@ -86,11 +76,6 @@ export class AICoachingService {
     return this.apiKeys.length > 0;
   }
 
-  private getGenAI(): GoogleGenerativeAI {
-    const key = this.apiKeys[this.currentKeyIndex];
-    return new GoogleGenerativeAI(key);
-  }
-
   private rotateKey() {
     if (this.apiKeys.length > 1) {
       this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
@@ -109,11 +94,12 @@ export class AICoachingService {
     }
 
     const preferredModel = process.env.GEMINI_MODEL;
+    // Base stable models
     const baseModels = [
       'gemini-1.5-flash',
       'gemini-1.5-pro',
-      'gemini-pro',
-      'gemini-1.5-flash-001',
+      'gemini-2.0-flash',
+      'gemini-pro', 
     ];
     
     const modelsToTry = preferredModel 
@@ -123,6 +109,7 @@ export class AICoachingService {
     const errors: string[] = [];
     const triedKeys = new Set<number>();
 
+    // Key-First Exhaustive Rotation
     for (let i = 0; i < this.apiKeys.length; i++) {
       const keyIdx = (this.currentKeyIndex + i) % this.apiKeys.length;
       if (triedKeys.has(keyIdx)) continue;
@@ -133,54 +120,61 @@ export class AICoachingService {
 
       for (const modelName of modelsToTry) {
         for (const apiVersion of ['v1beta', 'v1'] as const) {
-          // Patterns to try: 1. models/name (standard), 2. name (legacy/direct)
-          const variations = [`models/${modelName}`, modelName];
+          try {
+            const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+              })
+            });
 
-          for (const path of variations) {
-            try {
-              const url = `https://generativelanguage.googleapis.com/${apiVersion}/${path}:generateContent?key=${key}`;
-              const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }]
-                })
-              });
-
-              const data = await response.json();
-              
-              if (response.ok) {
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) {
-                  this.currentKeyIndex = keyIdx; 
-                  return text.trim();
-                }
-              }
-
-              const errorMsg = data.error?.message || response.statusText || 'Unknown error';
-              const status = response.status;
-              
-              // Only log if it's not a standard 404 to keep debug box clean
-              if (status !== 404 || path === variations[variations.length - 1]) {
-                errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}|${apiVersion}] ${status}: ${errorMsg.split('\n')[0]}`);
-              }
-
-              if (status === 429 || status === 403 || status === 401) {
-                break; 
-              }
-            } catch (error: any) {
-              errors.push(`[K${keyIdx}|FetchEx] ${error.message}`);
-              break;
+            // Read as text first to prevent JSON parse crashes
+            const rawText = await response.text();
+            if (!rawText) {
+              errors.push(`[K${keyIdx}|${modelName}|${apiVersion}] ${response.status}: Empty body`);
+              continue;
             }
+
+            let data: any;
+            try {
+              data = JSON.parse(rawText);
+            } catch (e) {
+              errors.push(`[K${keyIdx}|${modelName}|${apiVersion}] ${response.status}: Non-JSON response`);
+              continue;
+            }
+            
+            if (response.ok) {
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                this.currentKeyIndex = keyIdx; // Persist known good key
+                return text.trim();
+              }
+            }
+
+            const errorMsg = data.error?.message || response.statusText || 'Unknown error';
+            const status = response.status;
+            
+            errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}|${apiVersion}] ${status}: ${errorMsg.split('\n')[0]}`);
+
+            // Key-breaking errors: move to next KEY
+            if (status === 429 || status === 403 || status === 401) {
+              break; 
+            }
+          } catch (error: any) {
+            errors.push(`[K${keyIdx}|FetchEx] ${error.message}`);
+            break;
           }
-          if (errors[errors.length - 1]?.includes('429') || errors[errors.length - 1]?.includes('403')) break;
         }
-        if (errors[errors.length - 1]?.includes('429') || errors[errors.length - 1]?.includes('403')) break;
+        // If the key is exhausted/invalid, don't try more models with it
+        const lastErr = errors[errors.length - 1];
+        if (lastErr?.includes('429') || lastErr?.includes('403') || lastErr?.includes('401')) break;
       }
     }
 
-    const uniqueErrors = Array.from(new Set(errors)).slice(0, 12).join(' | ');
-    throw new Error(`Axiom Offline. Tried ${this.apiKeys.length} keys. Errors: ${uniqueErrors}`);
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 10).join(' | ');
+    throw new Error(`Axiom Offline. Tried ${this.apiKeys.length} keys. Details: ${uniqueErrors}`);
   }
 
   /**
@@ -191,7 +185,7 @@ export class AICoachingService {
     try {
       const text = await this.runWithFallback(prompt);
       
-      // Manual extraction of JSON from the response
+      // Extract JSON block
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       const cleaned = jsonMatch ? jsonMatch[0] : text;
       
@@ -208,8 +202,7 @@ export class AICoachingService {
   }
 
   /**
-   * Generates a short weekly narrative (2-3 sentences) in Axiom's voice.
-   * Used for the Dashboard "This week" card.
+   * Generates a short weekly narrative.
    */
   public async generateWeeklyNarrative(stats: {
     userName: string;
@@ -246,8 +239,7 @@ Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
   }
 
   /**
-   * Generates a conversational follow-up response to a user's question.
-   * Returns plain text.
+   * Generates a conversational follow-up response.
    */
   public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
     try {
