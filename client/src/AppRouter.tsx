@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 import { CircularProgress, Box } from '@mui/material';
 import Navbar from './components/common/Navbar';
+import InstallPwaBanner from './components/common/InstallPwaBanner';
 import PrivateRoute from './features/auth/PrivateRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
@@ -28,6 +29,7 @@ const AppRouter: React.FC = () => {
   return (
     <Router basename={basename}>
       <Navbar />
+      <InstallPwaBanner />
       <Toaster position="top-right" />
       <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>

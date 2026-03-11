@@ -27,13 +27,19 @@ const LoginForm: React.FC = () => {
     e.preventDefault();
     setMessage('');
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, { email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
       setIsError(false);
-      setMessage(response.data.message);
+      setMessage('Login successful!');
       navigate('/dashboard');
     } catch (error: any) {
       setIsError(true);
-      setMessage(error.response?.data?.message || 'Login failed.');
+      setMessage(error.message || 'Login failed.');
     }
   };
 

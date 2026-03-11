@@ -1,24 +1,17 @@
-# Session: March 11, 2026 - Data Population, Dashboard Integration, and Axiom Scaling
+# Session: March 11, 2026 - PWA Support and Auth Persistence
 
 ## Summary of Changes
-- **Data Population (Italy & Europe):**
-  - Populated the database with 100% verified real-world events for 2026 (Rome Marathon, Milan Design Week, Berlin Marathon, Web Summit Lisbon, etc.).
-  - Conducted a deep search for the **Veneto Region** and added 10 high-relevance entries, including the 2026 Winter Olympics (Cortina), Venice Biennale, and H-FARM Innovation Hub.
-  - Created an `events.txt` prompt for future AI-assisted data research.
-  - Provided a `populate_praxis.sh` bash script for manual API-based data entry.
-- **Dashboard & Communication:**
-  - Integrated the **Axiom Daily Protocol** directly onto the main Dashboard as a pinned interactive widget.
-  - Enabled **Chat Logging** for Axiom: All user interactions and AI responses are now stored in the `messages` table (marked with `is_ai: true`).
-- **Axiom Scaling & Reliability:**
-  - Implemented **Dynamic Load Balancing**: The system now picks a random starting key from the pool to distribute usage across multiple Google accounts.
-  - Added **DeepSeek Integration** as a priority provider, falling back to the 7-key Gemini pool if unavailable.
-  - Refined the fallback logic to be "Key-First," ensuring every available key is tried against stable models before reporting failure.
-- **Admin Controls:**
-  - Added a **Key Pool Strategy** selector in the Admin Panel (First vs Last vs Random).
-  - Maintained the live **System Prompt Editor** for real-time Axiom identity updates.
+- **Auth Persistence (Stay Logged In):**
+  - Moved the email/password login logic from the backend axios call to a direct frontend `supabase.auth.signInWithPassword` call in `LoginForm.tsx`.
+  - This allows the frontend Supabase client to automatically manage and persist session tokens in `localStorage`, resolving the issue where users had to re-login every time.
+- **PWA Support (Add to Homescreen):**
+  - Created `client/public/sw.js`: A basic service worker for PWA support and asset caching.
+  - Updated `client/src/index.tsx`: Added service worker registration logic.
+  - Created `client/src/components/common/InstallPwaBanner.tsx`: A snackbar-style banner that detects if the app can be installed and provides a "one-click" install button using the `beforeinstallprompt` event.
+  - Updated `client/src/AppRouter.tsx`: Integrated the `InstallPwaBanner` into the main application layout.
 
 ## Verification Status
 - Type check: Passed (0 errors).
-- Data integrity: All new events/places verified with coordinates and tags.
-- Connectivity: Axiom verified online and load-balanced.
+- Auth Logic: Session now managed by client-side SDK.
+- PWA: Manifest, Service Worker, and Install Prompt logic implemented.
 - Push to GitHub: Completed.
