@@ -46,16 +46,9 @@ export class AxiomScanService {
     // 1. Fetch user profile for location context
     const { data: profile } = await supabase.from('profiles').select('city, latitude, longitude').eq('id', userId).single();
     const userCity = profile?.city || 'Unknown';
-    const userLat = profile?.latitude;
-    const userLng = profile?.longitude;
 
-    // 2. Fetch deep context with geographic filtering
-    let eventsQuery = supabase.from('events').select('*').gte('event_date', today);
-    if (userCity !== 'Unknown') eventsQuery = eventsQuery.ilike('city', `%${userCity}%`);
-    
-    let placesQuery = supabase.from('places').select('*');
-    if (userCity !== 'Unknown') placesQuery = placesQuery.ilike('city', `%${userCity}%`);
-
+    // 2. Fetch deep context
+    // We fetch more items to ensure Axiom always has something to pick from
     const [
       goalsRes,
       trackerRes,
@@ -66,36 +59,41 @@ export class AxiomScanService {
     ] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('userId', userId).single(),
       supabase.from('trackers').select('*, tracker_entries(*)').eq('user_id', userId),
-      eventsQuery.limit(10),
-      placesQuery.limit(10),
-      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
+      supabase.from('events').select('*').gte('event_date', today).limit(20),
+      supabase.from('places').select('*').limit(20),
+      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 10 }),
       supabase.from('coaching_offers').select('*').limit(10),
     ]);
 
-    const prompt = `You are Axiom. Generate a high-performance daily protocol for ${userName}.
+    const prompt = `You are Axiom. Generate a high-performance daily protocol for user ${userName}.
     
-### Student Location: ${userCity} (${userLat || '?'}, ${userLng || '?'})
+### User Location: ${userCity}
 
 ### Context:
 - Goals: ${JSON.stringify(goalsRes.data?.nodes || [])}
 - Tracked Progress: ${JSON.stringify(trackerRes.data || [])}
-- Nearby Events: ${JSON.stringify(eventsRes.data || [])}
-- Nearby Places: ${JSON.stringify(placesRes.data || [])}
-- Aligned Students: ${JSON.stringify(matchRes.data || [])}
+- Available Events: ${JSON.stringify(eventsRes.data || [])}
+- Available Places: ${JSON.stringify(placesRes.data || [])}
+- Aligned Users: ${JSON.stringify(matchRes.data || [])}
 - Services: ${JSON.stringify(servicesRes.data || [])}
 
 ### Task:
-Provide a JSON response with exactly these 7 keys. You MUST prioritize items that are NEARBY (same city) and MATCH the student's goals.
+Provide a JSON response with exactly these keys. 
+You MUST prioritize items that are NEARBY (same city) and MATCH the user's goals. 
+YOU MUST ALWAYS PICK ONE MATCH, ONE EVENT, AND ONE PLACE. Never return "null" or "N/A" for these. Pick the best possible candidate from the lists above.
 
 1. "message": "A short (1-2 sentence) motivating morning message in Axiom's voice."
 2. "match": { "id": "ID", "name": "string", "reason": "why they match goals" }
-3. "resources": [ { "goal": "string", "suggestion": "string", "details": "string" } ] (Provide ONE per goal).
-4. "event": { "id": "ID", "title": "string", "reason": "why attend" }
-5. "place": { "id": "ID", "name": "string", "reason": "why go here" }
-6. "challenge": { "type": "bet|duel", "target": "string", "terms": "string" }
+3. "event": { "id": "ID", "title": "string", "reason": "why attend" }
+4. "place": { "id": "ID", "name": "string", "reason": "why go here" }
+5. "challenge": { "type": "bet|duel", "target": "string", "terms": "string" }
+6. "resources": [ { "goal": "string", "suggestion": "string", "details": "string" } ] (Provide ONE per goal).
 7. "routine": [ { "time": "HH:MM", "task": "string", "alignment": "string" } ]
+8. "motivation": "A 2-3 sentence overall take on the user's current trajectory."
+9. "strategy": [ { "goal": "string", "domain": "string", "progress": number, "insight": "string", "steps": ["step1", "step2"] } ] (The original per-goal guidance).
+10. "network": "Advice on leveraging the community/network."
 
-CRITICAL: Use actual IDs from the context. If no nearby event/place exists, pick the best matching one from the list.
+CRITICAL: Use actual IDs from the context. All text fields MUST be strings.
 
 JSON ONLY:`;
 
@@ -103,9 +101,21 @@ JSON ONLY:`;
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     const recommendations = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
 
+    // Save to the daily briefs table
     await supabase.from('axiom_daily_briefs').upsert({
       user_id: userId,
       brief: recommendations,
+      generated_at: new Date().toISOString()
+    });
+
+    // Also update the main 'coaching_briefs' table so the per-goal strategy is mirrored there
+    await supabase.from('coaching_briefs').upsert({
+      user_id: userId,
+      brief: {
+        motivation: recommendations.motivation,
+        strategy: recommendations.strategy,
+        network: recommendations.network
+      },
       generated_at: new Date().toISOString()
     });
   }
