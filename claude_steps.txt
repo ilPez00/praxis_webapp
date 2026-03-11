@@ -1,19 +1,16 @@
-# Session: March 11, 2026 - Axiom Stability and UI Finalization
+# Session: March 11, 2026 - DeepSeek Integration and Multi-Provider AI
 
 ## Summary of Changes
-- **Axiom Rendering Fix:**
-  - Overhauled `AICoachPage.tsx` to resolve the blank page and infinite loading issues.
-  - **Click-to-Wake:** If no cached strategy is found, Axiom now displays an informative "Axiom is ready" state with a manual **"Wake Up Axiom"** button instead of remaining blank.
-  - **Independent Protocol Loading:** The "Daily Protocol" (midnight scan results) now loads independently of the full coaching report, ensuring you see your recommendations even while the strategy is generating.
-  - **Safe UI Rendering:** Implemented string-casting for all AI-generated fields to prevent React from crashing on nested objects.
-- **Admin & Reliability:**
-  - Fixed the "Prompt Reverting" issue by ensuring the Admin Page refetches from the database every time the Axiom tab is opened.
-  - Stabilized the Gemini fallback chain to prioritize 1.5 models across 6 rotating keys.
-- **Midnight Scan Enhancement:**
-  - Strengthened system instructions to ensure Axiom always includes clickable `id` fields for matched students, events, and places.
+- **Axiom Multi-Provider Overhaul:**
+  - **DeepSeek Integration:** Updated `AICoachingService.ts` to support the DeepSeek API (OpenAI-compatible).
+  - **Provider Prioritization:** Axiom now tries DeepSeek models (`deepseek-chat` and `deepseek-reasoner`) first, as they often offer higher availability and specialized reasoning capabilities.
+  - **Robust Fallback:** If DeepSeek is unavailable or hits a quota, the system automatically falls back to the existing 6-key Gemini rotation pool.
+  - **Manual JSON Parsing:** Retained and refined the safe text-to-JSON parsing logic to ensure compatibility across both DeepSeek and Gemini outputs.
+- **Environment:**
+  - Added `DEEPSEEK_API_KEY` support to the backend.
+  - Updated `.env.example` with the new provider configuration.
 
 ## Verification Status
 - Type check: Passed.
-- UI flow: Verified manual trigger and empty state handling.
-- Data integrity: Instruction set updated for clickable ID enforcement.
+- Provider logic: DeepSeek-first fallback chain implemented and verified.
 - Push to GitHub: Completed.

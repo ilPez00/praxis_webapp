@@ -40,8 +40,10 @@ const AXIOM_IDENTITY_DEFAULT = `You are Axiom — a wise, warm, and practical li
 export class AICoachingService {
   private apiKeys: string[] = [];
   private currentKeyIndex = 0;
+  private deepseekApiKey: string | null = null;
   
   constructor() {
+    // Gemini keys
     const keyString = process.env.GEMINI_API_KEY || '';
     const rawKeys = keyString.split(',');
     const cleanedKeys = rawKeys
@@ -49,15 +51,18 @@ export class AICoachingService {
       .filter(k => k.startsWith('AIza'));
     this.apiKeys = Array.from(new Set(cleanedKeys));
 
-    if (this.apiKeys.length === 0) {
-      logger.warn('[AICoachingService] No valid GEMINI_API_KEY found.');
+    // DeepSeek key
+    this.deepseekApiKey = (process.env.DEEPSEEK_API_KEY || '').trim();
+
+    if (this.apiKeys.length === 0 && !this.deepseekApiKey) {
+      logger.warn('[AICoachingService] No AI keys (Gemini or DeepSeek) found.');
     } else {
-      logger.info(`[AICoachingService] Active with ${this.apiKeys.length} unique keys.`);
+      logger.info(`[AICoachingService] Active with ${this.apiKeys.length} Gemini keys and DeepSeek: ${!!this.deepseekApiKey}`);
     }
   }
 
   get isConfigured(): boolean {
-    return this.apiKeys.length > 0;
+    return this.apiKeys.length > 0 || !!this.deepseekApiKey;
   }
 
   private rotateKey() {
@@ -81,27 +86,56 @@ export class AICoachingService {
     }
   }
 
-  private async listAvailableModels(key: string): Promise<string[]> {
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-      const data = await res.json();
-      return (data.models || []).map((m: any) => m.name.replace('models/', ''));
-    } catch {
-      return [];
-    }
-  }
+  /**
+   * Helper to attempt a generation with model fallbacks (including DeepSeek).
+   */
+  private async runWithFallback(
+    prompt: string
+  ): Promise<string> {
+    const errors: string[] = [];
 
-  private async runWithFallback(prompt: string): Promise<string> {
-    if (this.apiKeys.length === 0) throw new Error('GEMINI_API_KEY not set.');
+    // 1. Try DeepSeek first if available (often more reliable/higher quality)
+    if (this.deepseekApiKey) {
+      const deepseekModels = ['deepseek-chat', 'deepseek-reasoner'];
+      for (const modelName of deepseekModels) {
+        try {
+          logger.info(`[AI Coach] Attempting DeepSeek: ${modelName}...`);
+          const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.deepseekApiKey}`
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [{ role: 'user', content: prompt }],
+              temperature: 0.7
+            })
+          });
+
+          const data = await res.json();
+          if (res.ok && data.choices?.[0]?.message?.content) {
+            return data.choices[0].message.content.trim();
+          }
+          errors.push(`[DeepSeek|${modelName}] ${res.status}: ${data.error?.message || 'Unknown error'}`);
+        } catch (err: any) {
+          errors.push(`[DeepSeek|${modelName}] FetchEx: ${err.message}`);
+        }
+      }
+    }
+
+    // 2. Fallback to Gemini keys
+    if (this.apiKeys.length === 0) {
+      throw new Error(`Axiom Offline. DeepSeek failed and no Gemini keys available. Errors: ${errors.join(' | ')}`);
+    }
 
     const baseModels = [
       'gemini-1.5-flash',
       'gemini-1.5-pro',
       'gemini-2.0-flash',
-      'gemini-pro',
+      'gemini-pro', 
     ];
-    
-    const errors: string[] = [];
+
     const triedKeys = new Set<number>();
 
     for (let i = 0; i < this.apiKeys.length; i++) {
@@ -152,11 +186,8 @@ export class AICoachingService {
       }
     }
 
-    const discovery = await this.listAvailableModels(this.apiKeys[0]);
-    const discoveredStr = discovery.length > 0 ? ` | Available: ${discovery.slice(0, 5).join(', ')}` : '';
-
-    const uniqueErrors = Array.from(new Set(errors)).slice(0, 15).join(' | ');
-    throw new Error(`Axiom remains Offline. Tried ${this.apiKeys.length} keys. Details: ${uniqueErrors}${discoveredStr}`);
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 10).join(' | ');
+    throw new Error(`Axiom Offline. Details: ${uniqueErrors}`);
   }
 
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
@@ -167,6 +198,7 @@ export class AICoachingService {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       return JSON.parse(jsonMatch ? jsonMatch[0] : text);
     } catch (error: any) {
+      logger.error('Error generating coaching report:', error.message);
       throw new Error(error.message);
     }
   }
