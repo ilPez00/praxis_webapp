@@ -1,4 +1,4 @@
-# Session: March 11, 2026 - Axiom Rebrand & AI Fallback Logic
+# Session: March 11, 2026 - Axiom Rebrand, AI Fallback, and UI Refinement
 
 ## Summary of Changes
 - **Axiom Rebrand (Full Codebase):**
@@ -10,7 +10,10 @@
   - Implemented a fallback chain: `gemini-2.0-flash` -> `gemini-1.5-pro` -> `gemini-1.5-flash`.
   - Retained support for `GEMINI_MODEL` environment variable (tried first if present).
   - Improved error logging and user-facing error messages ("Axiom is resting" for quota, "Axiom is unavailable" for other errors).
+- **UI Refinement (Mobile):**
+  - Removed redundant "Groups" entry from the mobile hamburger menu in `Navbar.tsx` (now accessible via "Chat").
 
 ## Verification Status
-- Full project search for "Roshi" confirms 0 instances in source code (only in build artifacts).
-- TypeScript type checks passed for both backend and frontend.
+- Full project search for "Roshi" confirms 0 instances in source code.
+- Mobile menu verified in `Navbar.tsx` code.
+- TypeScript type checks passed.

@@ -693,7 +693,6 @@ const Navbar: React.FC = () => {
                 { label: 'Today', to: '/dashboard', icon: <DashboardIcon />, primary: true },
                 { label: 'Discover', to: '/discover', icon: <ExploreIcon />, primary: true },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
-                { label: 'Groups', to: '/groups', icon: <ForumIcon />, primary: true },
                 { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
