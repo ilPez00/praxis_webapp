@@ -197,11 +197,9 @@ const AICoachPage: React.FC = () => {
           setReport(cached.brief);
           setGeneratedAt(cached.generated_at);
           setLoadingReport(false);
-          // 2. Kick off background refresh in parallel
-          triggerBackgroundUpdate();
         } else if (!cancelled) {
-          // 3. No cache — generate inline
-          await generateBrief();
+          setLoadingReport(false);
+          // Don't generate inline anymore per new requirement
         }
       } catch (err) {
         if (!cancelled) {
@@ -269,6 +267,8 @@ const AICoachPage: React.FC = () => {
         throw new Error(errorMsg);
       }
       setChat(prev => [...prev, { role: 'coach', text: body.response }]);
+      // Fulfills requirement: trigger background update when talked to by pro users
+      triggerBackgroundUpdate();
     } catch (err: any) {
       const msg: string = err.message || '';
       const isQuota = msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('resting') || msg.includes('429');

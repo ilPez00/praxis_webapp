@@ -409,14 +409,6 @@ const ProfilePage: React.FC = () => {
     setProfile(data);
     setIsEditing(false);
     toast.success('Profile saved!');
-    // Fire-and-forget Axiom brief refresh (rate-limited on backend)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.access_token) return;
-      fetch(`${API_URL}/ai-coaching/trigger`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-      }).catch(() => {});
-    });
   };
 
   const handleCancel = () => {

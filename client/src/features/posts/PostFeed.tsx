@@ -264,14 +264,6 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
       setText('');
       clearFile();
       setPostRef(null);
-      // Fire-and-forget Axiom brief refresh
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        fetch(`${API_URL}/ai-coaching/trigger`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        }).catch(() => {});
-      }
     } catch (err: any) {
       console.error('Post submit error:', err);
       toast.error(err.message || 'Failed to post. Please try again.');
