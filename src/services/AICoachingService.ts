@@ -53,11 +53,13 @@ export class AICoachingService {
   private apiKeys: string[] = [];
   private currentKeyIndex = 0;
   
-  // Most stable base model names
+  // Most stable base model names + versioned specifics
   private readonly FALLBACK_MODELS = [
     'gemini-1.5-flash',
+    'gemini-1.5-flash-001',
+    'gemini-1.5-flash-002',
     'gemini-1.5-pro',
-    'gemini-1.5-flash-8b',
+    'gemini-1.5-pro-001',
     'gemini-1.0-pro',
   ];
 
@@ -93,7 +95,6 @@ export class AICoachingService {
 
   /**
    * Helper to attempt a generation with model fallbacks.
-   * Completely avoids "JSON mode" to ensure 100% compatibility with v1 and v1beta.
    */
   private async runWithFallback(
     prompt: string
@@ -111,36 +112,53 @@ export class AICoachingService {
 
     for (const modelName of modelsToTry) {
       for (const apiVersion of ['v1', 'v1beta'] as const) {
-        for (let keyAttempt = 0; keyAttempt < Math.min(this.apiKeys.length, 5); keyAttempt++) {
-          const genAI = this.getGenAI();
+        // Try up to all keys for this specific model/version combo
+        for (let keyAttempt = 0; keyAttempt < this.apiKeys.length; keyAttempt++) {
+          const key = this.apiKeys[this.currentKeyIndex];
+          const keyPrefix = key?.slice(0, 6) || '????';
 
           try {
-            // Standard generation — no special config, highest compatibility
-            const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion });
-            const result = await model.generateContent(prompt);
-            const text = result.response.text().trim();
-            if (text) return text;
-          } catch (error: any) {
-            const message = error.message || String(error);
-            const status = error.status || error.statusCode || 0;
-            
-            errors.push(`[${modelName}|${apiVersion}|K${this.currentKeyIndex}] ${message.split('\n')[0]}`);
+            // Try via Direct REST Fetch first (bypasses SDK issues)
+            const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+              })
+            });
 
-            // Rotate on key-specific errors
-            if (status === 429 || status === 401 || (status === 400 && message.includes('key'))) {
+            const data = await response.json();
+            
+            if (response.ok) {
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) return text.trim();
+            }
+
+            const errorMsg = data.error?.message || response.statusText || 'Unknown REST error';
+            const status = response.status;
+            
+            errors.push(`[${modelName}|${apiVersion}|K${this.currentKeyIndex}:${keyPrefix}] ${status}: ${errorMsg.split('\n')[0]}`);
+
+            // Logic: if it's a key issue, rotate and CONTINUE with same model/version
+            if (status === 429 || status === 401 || (status === 400 && errorMsg.includes('key'))) {
               this.rotateKey();
               continue; 
             }
             
-            // If 404 or unsupported, move to next version/model
-            if (status === 404 || message.includes('not found')) break;
+            // If 404, this specific model/version is likely wrong, move to next version/model
+            if (status === 404) break;
+
+          } catch (error: any) {
+            errors.push(`[${modelName}|FetchEx|K${this.currentKeyIndex}] ${error.message}`);
+            this.rotateKey();
           }
         }
       }
     }
 
-    const uniqueErrors = Array.from(new Set(errors)).slice(0, 8).join(' | ');
-    throw new Error(`Axiom remains offline. Tried multiple keys/versions. Errors: ${uniqueErrors}`);
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 10).join(' | ');
+    throw new Error(`Axiom Offline. Details: ${uniqueErrors}`);
   }
 
   /**

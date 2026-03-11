@@ -1,16 +1,14 @@
-# Session: March 11, 2026 - Axiom Universal Compatibility Fix
+# Session: March 11, 2026 - Axiom Deep Diagnostics Fix
 
 ## Summary of Changes
-- **Axiom (AI Coach) Final Fix:**
-  - **Removed JSON Mode:** Eliminated `responseMimeType` and `generationConfig` entirely. This resolves the `400 Bad Request` that was breaking the stable `v1` endpoint.
-  - **Universal Brute-force:** Axiom now uses a standard text prompt which is 100% compatible across all Gemini models and API versions (`v1` and `v1beta`).
-  - **Manual JSON Parsing:** Implemented regex-based JSON extraction to safely retrieve structured data from standard text responses.
-  - **Expanded Model Set:** Added `gemini-1.5-flash-8b` and `gemini-1.0-pro` back into the chain to ensure coverage even for highly restricted API keys.
-  - **Improved Rotation:** Key rotation now triggers on any key-related failure (400, 401, 429).
-- **Service Integration:**
-  - Updated `AxiomScanService.ts` to support the new single-argument `runWithFallback` logic.
+- **Axiom (AI Coach) Final Deep Fix:**
+  - **Bypassed SDK:** Switched from the `@google/generative-ai` SDK to a **Direct REST Fetch** implementation. This eliminates potential library-level bugs or versioning issues.
+  - **Key Verification:** The DEBUG box now shows the **first 6 characters** of each key being used (e.g., `K0:AIzaSy...`). This allows the user to verify their keys are being read correctly from the environment variables.
+  - **Status Code Visibility:** All errors now include the HTTP status code (400, 401, 403, 404, 429) for clearer debugging.
+  - **Expanded Model Versions:** Added specific versioned aliases (`gemini-1.5-flash-001`, `gemini-1.5-flash-002`) to resolve potential resolution issues with generic aliases.
+  - **Automatic Failover:** Retained the robust key rotation and endpoint brute-forcing (`v1` and `v1beta`).
 
 ## Verification Status
 - Type check: 0 errors (`npx tsc --noEmit`).
-- Protocol: Switched to standard text mode for maximum compatibility.
+- Implementation: Bypasses SDK for maximum reliability.
 - Push to GitHub: Completed.
