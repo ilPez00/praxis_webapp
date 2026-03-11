@@ -90,13 +90,16 @@ export class AICoachingService {
     const errors: string[] = [];
 
     for (const modelName of modelsToTry) {
+      // Force v1 for 1.5 models to avoid the v1beta 404 issue seen in logs
+      const apiVersion = modelName.includes('1.5') ? 'v1' : 'v1beta';
+      
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          logger.info(`[AI Coach] Attempting generation with ${modelName} (attempt ${attempt})...`);
+          logger.info(`[AI Coach] Attempting ${modelName} via ${apiVersion} (attempt ${attempt})...`);
           const model = this.genAI.getGenerativeModel({
             model: modelName,
             ...(isJson ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
-          });
+          }, { apiVersion });
 
           const result = await model.generateContent(prompt);
           const text = result.response.text().trim();
