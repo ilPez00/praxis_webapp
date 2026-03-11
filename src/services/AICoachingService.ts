@@ -51,10 +51,11 @@ const MASTER_ROSHI_IDENTITY = `You are Axiom — a wise, warm, and practical lif
 
 export class AICoachingService {
   private genAI: GoogleGenerativeAI | null = null;
-  private readonly MODEL = 'gemini-1.5-flash';
+  private readonly MODEL: string;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
+    this.MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
     if (apiKey) {
       this.genAI = new GoogleGenerativeAI(apiKey);
     } else {

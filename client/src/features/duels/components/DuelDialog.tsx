@@ -70,9 +70,26 @@ const DuelDialog: React.FC<DuelDialogProps> = ({ open, onClose, opponentId, oppo
         supabase.from('profiles').select('praxis_points').eq('id', user.id).single(),
       ]);
 
-      setOpponentGoals(oppRes.data.nodes || []);
-      setMyGoals(myRes.data.nodes || []);
+      const oppGoals: GoalNode[] = oppRes.data.nodes || [];
+      const mGoals: GoalNode[] = myRes.data.nodes || [];
+      
+      // Sort: shared domains first
+      const myDomains = new Set(mGoals.map(g => g.domain));
+      const sortedOppGoals = [...oppGoals].sort((a, b) => {
+        const aShared = myDomains.has(a.domain) ? 1 : 0;
+        const bShared = myDomains.has(b.domain) ? 1 : 0;
+        return bShared - aShared;
+      });
+
+      setOpponentGoals(sortedOppGoals);
+      setMyGoals(mGoals);
       setMyPoints(profRes.data?.praxis_points || 0);
+
+      // Pre-select first shared goal if available
+      const firstShared = sortedOppGoals.find(g => myDomains.has(g.domain));
+      if (firstShared) {
+        setSelectedGoal(firstShared);
+      }
     } catch (err) {
       console.error('Failed to fetch duel data:', err);
       toast.error('Could not load goals for dueling.');
@@ -80,12 +97,6 @@ const DuelDialog: React.FC<DuelDialogProps> = ({ open, onClose, opponentId, oppo
       setLoading(false);
     }
   };
-
-  const sharedDomains = opponentGoals
-    .map(g => g.domain)
-    .filter(d => myGoals.some(mg => mg.domain === d));
-  
-  const uniqueSharedDomains = Array.from(new Set(sharedDomains));
 
   const handleCreateDuel = async () => {
     if (!selectedGoal && !customTitle.trim()) {
@@ -161,13 +172,25 @@ const DuelDialog: React.FC<DuelDialogProps> = ({ open, onClose, opponentId, oppo
                                     sx={{ 
                                       height: 18, fontSize: '0.65rem', 
                                       bgcolor: `${DOMAIN_COLORS[goal.domain]}15`, 
-                                      color: DOMAIN_COLORS[goal.domain] 
+                                      color: DOMAIN_COLORS[goal.domain],
+                                      fontWeight: 700,
+                                      border: `1px solid ${DOMAIN_COLORS[goal.domain]}40`
                                     }} 
                                   />
                                   {isShared && (
-                                    <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700 }}>
-                                      Shared Interest ✨
-                                    </Typography>
+                                    <Box component="span" sx={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      gap: 0.5, 
+                                      bgcolor: 'rgba(16,185,129,0.1)', 
+                                      px: 1, 
+                                      borderRadius: 10,
+                                      border: '1px solid rgba(16,185,129,0.2)'
+                                    }}>
+                                      <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 800, fontSize: '0.6rem' }}>
+                                        ⭐ Shared Goal Interest
+                                      </Typography>
+                                    </Box>
                                   )}
                                 </Box>
                               }
