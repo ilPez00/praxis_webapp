@@ -55,18 +55,14 @@ export class AICoachingService {
   
   constructor() {
     const keyString = process.env.GEMINI_API_KEY || '';
-    // Clean keys: split by comma, remove quotes, trim whitespace, remove invisible chars
     const rawKeys = keyString.split(',');
-    
     const cleanedKeys = rawKeys
       .map(k => k.replace(/['"\s\u200B-\u200D\uFEFF]+/g, '').trim())
-      .filter(k => k.startsWith('AIza')); // Only keep valid-looking keys
-
-    // Remove duplicates to avoid wasting attempts
+      .filter(k => k.startsWith('AIza'));
     this.apiKeys = Array.from(new Set(cleanedKeys));
 
     if (this.apiKeys.length === 0) {
-      logger.warn('[AICoachingService] No valid GEMINI_API_KEY found starting with AIza.');
+      logger.warn('[AICoachingService] No valid GEMINI_API_KEY found.');
     } else {
       logger.info(`[AICoachingService] Active with ${this.apiKeys.length} unique keys.`);
     }
@@ -79,37 +75,28 @@ export class AICoachingService {
   private rotateKey() {
     if (this.apiKeys.length > 1) {
       this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
-      logger.info(`[AI Coach] Rotated to Key index ${this.currentKeyIndex}`);
     }
   }
 
-  /**
-   * Helper to attempt a generation with model fallbacks.
-   */
-  private async runWithFallback(
-    prompt: string
-  ): Promise<string> {
-    if (this.apiKeys.length === 0) {
-      throw new Error('GEMINI_API_KEY is not configured.');
-    }
+  private async runWithFallback(prompt: string): Promise<string> {
+    if (this.apiKeys.length === 0) throw new Error('GEMINI_API_KEY not set.');
 
     const preferredModel = process.env.GEMINI_MODEL;
-    // Base stable models
+    // Exhaustive list of every possible stable alias
     const baseModels = [
       'gemini-1.5-flash',
+      'gemini-1.5-flash-latest',
       'gemini-1.5-pro',
+      'gemini-1.5-pro-latest',
+      'gemini-pro',
+      'gemini-1.5-flash-8b',
       'gemini-2.0-flash',
-      'gemini-pro', 
     ];
     
-    const modelsToTry = preferredModel 
-      ? [preferredModel, ...baseModels]
-      : baseModels;
-
+    const modelsToTry = preferredModel ? [preferredModel, ...baseModels] : baseModels;
     const errors: string[] = [];
     const triedKeys = new Set<number>();
 
-    // Key-First Exhaustive Rotation
     for (let i = 0; i < this.apiKeys.length; i++) {
       const keyIdx = (this.currentKeyIndex + i) % this.apiKeys.length;
       if (triedKeys.has(keyIdx)) continue;
@@ -125,30 +112,17 @@ export class AICoachingService {
             const response = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-              })
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
 
-            // Read as text first to prevent JSON parse crashes
             const rawText = await response.text();
-            if (!rawText) {
-              errors.push(`[K${keyIdx}|${modelName}|${apiVersion}] ${response.status}: Empty body`);
-              continue;
-            }
-
             let data: any;
-            try {
-              data = JSON.parse(rawText);
-            } catch (e) {
-              errors.push(`[K${keyIdx}|${modelName}|${apiVersion}] ${response.status}: Non-JSON response`);
-              continue;
-            }
+            try { data = JSON.parse(rawText); } catch { continue; }
             
             if (response.ok) {
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
               if (text) {
-                this.currentKeyIndex = keyIdx; // Persist known good key
+                this.currentKeyIndex = keyIdx;
                 return text.trim();
               }
             }
@@ -156,10 +130,14 @@ export class AICoachingService {
             const errorMsg = data.error?.message || response.statusText || 'Unknown error';
             const status = response.status;
             
-            errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}|${apiVersion}] ${status}: ${errorMsg.split('\n')[0]}`);
+            // Log key-specific failures
+            if (status !== 404) {
+              errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${status}: ${errorMsg.split('\n')[0]}`);
+            }
 
-            // Key-breaking errors: move to next KEY
+            // Quota/Key issue: move to next KEY immediately
             if (status === 429 || status === 403 || status === 401) {
+              await new Promise(r => setTimeout(r, 500)); // Be kind before rotating
               break; 
             }
           } catch (error: any) {
@@ -167,9 +145,9 @@ export class AICoachingService {
             break;
           }
         }
-        // If the key is exhausted/invalid, don't try more models with it
+        // If the key is dead for this model, it's likely dead for all for now
         const lastErr = errors[errors.length - 1];
-        if (lastErr?.includes('429') || lastErr?.includes('403') || lastErr?.includes('401')) break;
+        if (lastErr?.includes('429') || lastErr?.includes('403')) break;
       }
     }
 
@@ -177,187 +155,32 @@ export class AICoachingService {
     throw new Error(`Axiom Offline. Tried ${this.apiKeys.length} keys. Details: ${uniqueErrors}`);
   }
 
-  /**
-   * Generates a full structured coaching report.
-   */
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
     const prompt = this.buildReportPrompt(context);
     try {
       const text = await this.runWithFallback(prompt);
-      
-      // Extract JSON block
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       const cleaned = jsonMatch ? jsonMatch[0] : text;
-      
-      try {
-        return JSON.parse(cleaned) as CoachingReport;
-      } catch {
-        logger.error('[AI Coach] JSON parse failed. Raw response:', text.slice(0, 500));
-        throw new Error('Axiom returned text instead of data. Please try again.');
-      }
+      return JSON.parse(cleaned) as CoachingReport;
     } catch (error: any) {
       logger.error('Error generating coaching report:', error.message);
       throw new Error(error.message);
     }
   }
 
-  /**
-   * Generates a short weekly narrative.
-   */
-  public async generateWeeklyNarrative(stats: {
-    userName: string;
-    streak: number;
-    checkinsThisWeek: number;
-    topGoal?: string;
-    topDomain?: string;
-    overallProgress?: number; // avg 0-100
-  }): Promise<string> {
-    const { userName, streak, checkinsThisWeek, topGoal, topDomain, overallProgress } = stats;
-    const prompt = `${AXIOM_IDENTITY}
-
-You are writing a weekly progress narrative for ${userName}.
-
-Stats this week:
-- Check-ins: ${checkinsThisWeek}/7 days
-- Current streak: ${streak} days
-${topGoal ? `- Main focus: "${topGoal}"${topDomain ? ` (${topDomain})` : ''}` : '- No active goals set yet'}
-${overallProgress !== undefined ? `- Average goal progress: ${overallProgress}%` : ''}
-
-Write 2-3 short sentences in Axiom's voice that:
-1. Acknowledge what they showed this week (specific, not generic)
-2. Name the most important thing to focus on next
-3. End with something that creates a tiny bit of urgency or excitement
-
-Tone: warm, direct, no fluff. No greeting, no sign-off. Just the narrative.`;
-
-    try {
-      return await this.runWithFallback(prompt);
-    } catch (error: any) {
-      logger.error('Error generating weekly narrative:', error.message);
-      throw new Error(error.message);
-    }
+  public async generateWeeklyNarrative(stats: any): Promise<string> {
+    const prompt = `${AXIOM_IDENTITY}\n\nUser stats: ${JSON.stringify(stats)}\n\nWrite 2 short sentences in Axiom's voice about their progress.`;
+    try { return await this.runWithFallback(prompt); } 
+    catch (error: any) { throw new Error(error.message); }
   }
 
-  /**
-   * Generates a conversational follow-up response.
-   */
   public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
-    try {
-      const prompt = this.buildFollowUpPrompt(userPrompt, context);
-      return await this.runWithFallback(prompt);
-    } catch (error: any) {
-      logger.error('Error generating coaching response:', error.message);
-      throw new Error(error.message);
-    }
+    const prompt = `${AXIOM_IDENTITY}\n\nContext: ${JSON.stringify(context)}\n\nUser asks: "${userPrompt}"\n\nRespond as Axiom.`;
+    try { return await this.runWithFallback(prompt); } 
+    catch (error: any) { throw new Error(error.message); }
   }
-
-  // ---------------------------------------------------------------------------
-  // Prompt builders
-  // ---------------------------------------------------------------------------
 
   private buildReportPrompt(ctx: CoachingContext): string {
-    const goalsText = ctx.goals.length === 0
-      ? 'No goals set yet.'
-      : ctx.goals.map(g => {
-          let line = `- "${g.name}" (${g.domain}, ${g.progress}% complete)`;
-          if (g.description) line += `. Description: ${g.description}`;
-          if (g.completionMetric) line += `. Success metric: ${g.completionMetric}`;
-          if (g.targetDate) line += `. Target date: ${g.targetDate}`;
-          return line;
-        }).join('\n');
-
-    const feedbackText = ctx.recentFeedback.length === 0
-      ? 'No recent feedback.'
-      : ctx.recentFeedback.map(f =>
-          `- On "${f.goalName}": grade="${f.grade}" from ${f.giverName}${f.comment ? ` — "${f.comment}"` : ''}`
-        ).join('\n');
-
-    const achievementsText = ctx.achievements.length === 0
-      ? 'No completed achievements yet.'
-      : ctx.achievements.map(a => `- Completed "${a.goalName}" on ${a.date}`).join('\n');
-
-    const networkText = ctx.network.length === 0
-      ? 'No network connections yet.'
-      : ctx.network.map(n => `- ${n.name} (domains: ${n.domains.join(', ') || 'unknown'})`).join('\n');
-
-    const boardsText = ctx.boards.length === 0
-      ? 'Not a member of any community boards yet.'
-      : ctx.boards.map(b => `- "${b.name}"${b.domain ? ` [${b.domain}]` : ''}${b.description ? `: ${b.description}` : ''}`).join('\n');
-
-    return `${AXIOM_IDENTITY}
-
----
-
-## Student Profile
-Name: ${ctx.userName}
-${ctx.bio ? `Bio: ${ctx.bio}` : ''}
-Current streak: ${ctx.streak} days
-Praxis Points: ${ctx.praxisPoints}
-
-## Goals
-${goalsText}
-
-## Recent Peer Feedback
-${feedbackText}
-
-## Achievements
-${achievementsText}
-
-## Network Connections
-${networkText}
-
-## Community Boards
-${boardsText}
-
----
-
-## Instructions
-You are Axiom delivering a coaching report. Keep advice concrete, practical, and personal. Reference what you know about performance, habits, nutrition, and execution when relevant.
-
-Return ONLY valid JSON matching this schema (no markdown, no extra text):
-{
-  "motivation": "<2-3 sentences from Axiom — warm, personal, grounded in their actual situation (goals, streak, recent activity). Acknowledge where they are honestly. If things are going well, say so. If there's room to grow, say that too — but with care, not pressure.>",
-  "strategy": [
-    {
-      "goal": "<exact goal name>",
-      "domain": "<domain>",
-      "progress": <number 0-100>,
-      "insight": "<1 sentence specific insight about their current progress>",
-      "steps": ["<concrete action step 1>", "<concrete action step 2>", "<concrete action step 3>"]
-    }
-  ],
-  "network": "<2-3 sentences on how ${ctx.userName} should leverage their network and community boards — be specific about which connections or boards are most relevant and what actions to take>"
-}
-
-Generate one strategy entry per goal. Every insight and step must be concrete, actionable, and drawn from this student's actual data.`;
-  }
-
-  private buildFollowUpPrompt(userPrompt: string, ctx: CoachingContext): string {
-    const goalsSummary = ctx.goals
-      .map(g => `${g.name} (${g.domain}, ${g.progress}% done)`)
-      .join('; ') || 'none';
-
-    const networkSummary = ctx.network.map(n => n.name).join(', ') || 'none';
-    const boardsSummary = ctx.boards.map(b => b.name).join(', ') || 'none';
-
-    return `${AXIOM_IDENTITY}
-
----
-
-## About ${ctx.userName}
-Streak: ${ctx.streak} days | Praxis Points: ${ctx.praxisPoints}
-Goals: ${goalsSummary}
-Network: ${networkSummary}
-Boards: ${boardsSummary}
-
----
-
-${ctx.userName} asks: "${userPrompt}"
-
-Respond as Axiom. Match your response to what they actually need:
-- If they're asking for a plan, schedule, or step-by-step breakdown — give them one, with concrete specifics.
-- If they're asking for advice or a perspective — be direct and grounded.
-- If they want encouragement — give it genuinely, not generically. Reference something real about their situation.
-- Keep it conversational. Don't pad, don't lecture. Longer is fine if the question warrants it.`;
+    return `${AXIOM_IDENTITY}\n\nStudent: ${ctx.userName}\nGoals: ${JSON.stringify(ctx.goals)}\n\nReturn valid JSON with keys: motivation (string), strategy (array of {goal, domain, progress, insight, steps}), network (string).`;
   }
 }
