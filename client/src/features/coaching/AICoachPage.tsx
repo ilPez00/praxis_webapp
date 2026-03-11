@@ -191,16 +191,26 @@ const AICoachPage: React.FC = () => {
 
     (async () => {
       // 1. Try cache first — instant display
-      const cached = await loadCachedBrief();
-      if (!cancelled && cached) {
-        setReport(cached.brief);
-        setGeneratedAt(cached.generated_at);
-        setLoadingReport(false);
-        // 2. Kick off background refresh in parallel
-        triggerBackgroundUpdate();
-      } else if (!cancelled) {
-        // 3. No cache — generate inline
-        await generateBrief();
+      try {
+        const cached = await loadCachedBrief();
+        if (!cancelled && cached) {
+          setReport(cached.brief);
+          setGeneratedAt(cached.generated_at);
+          setLoadingReport(false);
+          // 2. Kick off background refresh in parallel
+          triggerBackgroundUpdate();
+        } else if (!cancelled) {
+          // 3. No cache — generate inline
+          await generateBrief();
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to initialize coach:', err);
+          setLoadingReport(false);
+          setReportError('Axiom is having trouble waking up. Please try again.');
+        }
+      } finally {
+        if (!cancelled) setLoadingReport(false);
       }
 
       // 4. Load daily midnight scan results

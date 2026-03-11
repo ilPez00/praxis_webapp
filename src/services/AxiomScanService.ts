@@ -60,7 +60,7 @@ export class AxiomScanService {
       supabase.from('coaching_offers').select('*').limit(10),
     ]);
 
-    const prompt = `You are Axiom. Generate a high-performance daily brief for ${userName}.
+    const prompt = `You are Axiom. Generate a high-performance daily protocol for ${userName}.
     
 ### Context:
 - Goals: ${JSON.stringify(goalsRes.data?.nodes || [])}
@@ -71,13 +71,16 @@ export class AxiomScanService {
 - Services: ${JSON.stringify(servicesRes.data || [])}
 
 ### Task:
-Provide a JSON response with exactly:
-1. "match": { "id": "...", "name": "...", "reason": "..." } (the best clickable student).
-2. "resources": [ { "goal": "...", "suggestion": "...", "details": "..." } ] (ONE specific resource per goal. If they study Kant, suggest Schopenhauer. If muscle, a specific routine).
-3. "event": { "id": "...", "title": "...", "reason": "..." } (clickable event).
-4. "place": { "id": "...", "name": "...", "reason": "..." } (clickable place).
-5. "challenge": { "type": "bet|duel", "target": "...", "terms": "..." } (suggest a specific competitive action).
-6. "routine": [ { "time": "...", "task": "...", "alignment": "..." } ] (A full day plan considering 9-5 work hours).
+You MUST provide a JSON response with exactly these 6 keys. For match, event, and place, you MUST include the "id" field from the context provided above so they are clickable.
+
+1. "match": { "id": "MUST_BE_STUDENT_ID", "name": "...", "reason": "..." }
+2. "resources": [ { "goal": "exact goal name", "suggestion": "book/plan name", "details": "specific actionable advice" } ] (Provide ONE per goal).
+3. "event": { "id": "MUST_BE_EVENT_ID", "title": "...", "reason": "..." }
+4. "place": { "id": "MUST_BE_PLACE_ID", "name": "...", "reason": "..." }
+5. "challenge": { "type": "bet|duel", "target": "specific competitive action", "terms": "stake or goal" }
+6. "routine": [ { "time": "e.g. 07:00", "task": "...", "alignment": "how it fits goals" } ] (Assume 9-5 work hours, focus on morning/evening/breaks).
+
+CRITICAL: You must use the actual IDs provided in the context for 'id' fields. If no context exists for a category, use "null" for the id.
 
 JSON ONLY:`;
 

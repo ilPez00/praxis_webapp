@@ -1,17 +1,18 @@
-# Session: March 11, 2026 - Axiom Admin Controls and Performance
+# Session: March 11, 2026 - Axiom Stability and Data Integrity Fixes
 
 ## Summary of Changes
-- **Axiom Admin Controls (Backend/Frontend):**
-  - **Dynamic Prompting:** Created `system_config` table to store global settings like the `axiom_prompt`. Axiom now fetches its identity from this table with a hardcoded fallback.
-  - **Admin UI:** Added a new **"Axiom"** tab to the `AdminPage.tsx`.
-  - **Prompt Editor:** Admins can now view and edit the Axiom system prompt directly from the webapp.
-  - **Manual Trigger:** Added a "Trigger Global Midnight Scan Now" button for admins to manually run the daily recommendation engine at any time.
-- **Performance & Reliability:**
-  - Optimized matching engine by capping user comparisons to the top 50 in the slow-path loop.
-  - Resolved build and deployment errors related to Gemini SDK versions and missing dependencies.
-  - Fully stabilized Axiom across 6 rotating API keys using universal text-based parsing.
+- **Axiom Loading Fix:**
+  - Updated `AICoachPage.tsx` to ensure `setLoadingReport(false)` is always called, even on cache misses or fetch errors. Added a `try/catch` block to the initialization effect to prevent "loading forever" loops.
+- **Admin Prompt Integrity:**
+  - Updated `AdminPage.tsx` to refresh the `axiomPrompt` from the database every time the Axiom tab is selected. This ensures that the UI always reflects the actual stored value and prevents it from appearing to revert to the default.
+- **Axiom Protocol Precision:**
+  - Refined the `AxiomScanService.ts` system prompt with stricter instructions for generating the "Daily Protocol".
+  - Explicitly required Axiom to use the actual `id` fields from the provided context for matches, events, and places to ensure they are clickable in the frontend.
+- **Service Resilience:**
+  - Maintained the exhaustive key rotation and universal compatibility mode for Gemini connections.
 
 ## Verification Status
 - Type check: Passed.
-- Admin features: UI and API endpoints implemented and type-safe.
+- Prompt persistence: UI now fetches fresh data on tab switch.
+- Protocol schema: Instructions tightened to prevent missing ID fields.
 - Push to GitHub: Completed.

@@ -511,8 +511,8 @@ const AdminPage: React.FC = () => {
     if (tab === 4 && challenges.length === 0) fetchChallenges();
     if (tab === 5 && services.length === 0) fetchServices();
     if (tab === 6 && coaches.length === 0) fetchCoaches();
-    if (tab === 7 && !axiomPrompt) fetchAxiomPrompt();
-  }, [tab, user, fetchAxiomPrompt, axiomPrompt]);
+    if (tab === 7) fetchAxiomPrompt();
+  }, [tab, user, fetchAxiomPrompt]);
 
   // ── User actions ─────────────────────────────────────────────────────────────
 
