@@ -102,26 +102,26 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
         <Grid container spacing={2}>
           {/* Quick Hits */}
           <Grid size={{ xs: 12, sm: 4 }}>
-            <GlassCard sx={{ p: 1.5, height: '100%', cursor: 'pointer', border: '1px solid rgba(139,92,246,0.1)' }} onClick={() => navigate(`/profile/${data.match?.id || 'null'}`)}>
+            <GlassCard sx={{ p: 1.5, height: '100%', cursor: 'pointer', border: '1px solid rgba(139,92,246,0.1)' }} onClick={() => navigate(`/profile/${data?.match?.id || 'null'}`)}>
               <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 800, display: 'block', mb: 0.5 }}>BEST MATCH</Typography>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{String(data.match?.name || 'None found')}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{String(data.match?.reason || 'Update goals to find matches')}</Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{String(data?.match?.name || 'None found')}</Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{String(data?.match?.reason || 'Update goals to find matches')}</Typography>
             </GlassCard>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 4 }}>
             <GlassCard sx={{ p: 1.5, height: '100%', cursor: 'pointer', border: '1px solid rgba(236,72,153,0.1)' }} onClick={() => navigate(`/discover?tab=events`)}>
               <Typography variant="caption" sx={{ color: '#EC4899', fontWeight: 800, display: 'block', mb: 0.5 }}>EVENT</Typography>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{String(data.event?.title || 'None found')}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{String(data.event?.reason || 'Check back tomorrow')}</Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{String(data?.event?.title || 'None found')}</Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{String(data?.event?.reason || 'Check back tomorrow')}</Typography>
             </GlassCard>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 4 }}>
             <GlassCard sx={{ p: 1.5, height: '100%', cursor: 'pointer', border: '1px solid rgba(99,102,241,0.1)' }} onClick={() => navigate(`/discover?tab=places`)}>
               <Typography variant="caption" sx={{ color: '#6366F1', fontWeight: 800, display: 'block', mb: 0.5 }}>PLACE</Typography>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{String(data.place?.name || 'None found')}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{String(data.place?.reason || 'Explore your city')}</Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{String(data?.place?.name || 'None found')}</Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{String(data?.place?.reason || 'Explore your city')}</Typography>
             </GlassCard>
           </Grid>
 
@@ -130,12 +130,14 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
             <Box sx={{ mt: 1 }}>
               <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 800, display: 'block', mb: 1 }}>GOAL RESOURCES</Typography>
               <Stack spacing={1}>
-                {Array.isArray(data.resources) && data.resources.slice(0, 2).map((res, i) => (
+                {Array.isArray(data?.resources) && data.resources.length > 0 ? data.resources.slice(0, 2).map((res, i) => (
                   <Box key={i} sx={{ bgcolor: 'rgba(255,255,255,0.03)', p: 1.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700, fontSize: '0.65rem' }}>{String(res.goal)}</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }}>{String(res.suggestion)}</Typography>
+                    <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700, fontSize: '0.65rem' }}>{String(res?.goal || 'General')}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }}>{String(res?.suggestion || 'Reviewing progress...')}</Typography>
                   </Box>
-                ))}
+                )) : (
+                  <Typography variant="caption" color="text.disabled">No specific resources for today.</Typography>
+                )}
               </Stack>
             </Box>
           </Grid>
@@ -145,8 +147,8 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
             <Box sx={{ mt: 1 }}>
               <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block', mb: 1 }}>DAILY CHALLENGE</Typography>
               <Box sx={{ p: 1.5, bgcolor: 'rgba(245,158,11,0.05)', borderRadius: 2, border: '1px dashed #F59E0B' }}>
-                <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block' }}>{String(data.challenge?.type || 'Competition')}</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }}>{String(data.challenge?.target || 'Stay consistent today')}</Typography>
+                <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block' }}>{String(data?.challenge?.type || 'Protocol')}</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }}>{String(data?.challenge?.target || 'Stay consistent today')}</Typography>
               </Box>
             </Box>
           </Grid>

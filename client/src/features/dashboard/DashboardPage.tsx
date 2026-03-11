@@ -355,15 +355,15 @@ const DashboardPage: React.FC = () => {
         </Box>
 
         {/* ── Status bar ── */}
-        {currentUserId && (
+        {currentUserId && user && (
           <StatusBar
             userName={userName}
-            streak={localStreak ?? (user?.current_streak ?? 0)}
-            points={localPoints ?? (user?.praxis_points ?? 0)}
+            streak={localStreak ?? (user.current_streak ?? 0)}
+            points={localPoints ?? (user.praxis_points ?? 0)}
             avgProgress={avgProgress}
             hasGoals={hasGoals}
             userId={currentUserId}
-            lastActivityDate={user?.last_activity_date}
+            lastActivityDate={user.last_activity_date}
             onCheckIn={(s, p) => { setLocalStreak(s); setLocalPoints(p); }}
           />
         )}
