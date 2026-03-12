@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { API_URL } from '../../../lib/api';
@@ -8,7 +9,6 @@ import {
   Typography,
   Grid,
   Stack,
-  CircularProgress,
   IconButton,
   Tooltip,
   Avatar,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -11,7 +12,6 @@ import {
   Grid,
   Stack,
   Chip,
-  CircularProgress,
   Avatar,
   LinearProgress,
   Button,

@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import { supabase } from '../lib/supabaseClient';
 import { GoalTree } from '../models/GoalTree';
 import { GoalNode } from '../models/GoalNode';
@@ -552,7 +553,7 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
 
   // 3. Build new node
   const newNode: GoalNode & Record<string, any> = {
-    id: crypto.randomUUID(),
+    id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
     name: name.trim(),
     customDetails: description ?? undefined,
     domain: domain ?? 'General',

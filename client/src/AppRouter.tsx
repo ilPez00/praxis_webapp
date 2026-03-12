@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
+import { Box } from '@mui/material';
 import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
-import { CircularProgress, Box } from '@mui/material';
 import Navbar from './components/common/Navbar';
 import InstallPwaBanner from './components/common/InstallPwaBanner';
 import PrivateRoute from './features/auth/PrivateRoute';

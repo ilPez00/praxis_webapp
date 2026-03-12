@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import axios from 'axios';
+import CircularProgress from '@mui/material/CircularProgress';
 import {
     Container,
     Box,
@@ -17,7 +18,6 @@ import {
     Accordion,
     AccordionSummary,
     AccordionDetails,
-    CircularProgress,
     Stack,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';

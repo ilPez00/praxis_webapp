@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import CircularProgress from '@mui/material/CircularProgress';
 import {
   Box,
   Container,
   Typography,
   Chip,
   Stack,
-  CircularProgress,
   IconButton,
   Tooltip,
 } from '@mui/material';

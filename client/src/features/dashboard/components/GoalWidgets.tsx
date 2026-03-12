@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import CircularProgress from '@mui/material/CircularProgress';
 import {
-  Box, Typography, Button, TextField, Chip, CircularProgress,
+  Box, Typography, Button, TextField, Chip,
   Tooltip, IconButton, Stack, Collapse, Divider, LinearProgress,
   Popover, Slider,
 } from '@mui/material';
@@ -1634,7 +1635,8 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], onPro
   };
 
   // One card per root node (no parentId)
-  const rootNodes = allNodes.filter(n => !n.parentId);
+  const nodes = Array.isArray(allNodes) ? allNodes : [];
+  const rootNodes = nodes.filter(n => !n.parentId);
   const trackerMap = Object.fromEntries(trackers.map(t => [t.type, t]));
   const betByNodeId = Object.fromEntries(activeBets.map(b => [b.goal_node_id, b]));
 

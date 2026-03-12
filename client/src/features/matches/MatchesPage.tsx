@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
 import GlassCard from '../../components/common/GlassCard';
+import CircularProgress from '@mui/material/CircularProgress';
 import {
   Container,
   Box,
@@ -12,7 +13,6 @@ import {
   Avatar,
   Chip,
   Button,
-  CircularProgress,
   Stack,
   Slider,
   Collapse,

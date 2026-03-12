@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
@@ -15,7 +16,6 @@ import {
   Button,
   TextField,
   Stack,
-  CircularProgress,
   Alert,
   Avatar,
   Chip,

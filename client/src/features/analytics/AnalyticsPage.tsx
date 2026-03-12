@@ -5,11 +5,11 @@ import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import GlassCard from '../../components/common/GlassCard';
+import CircularProgress from '@mui/material/CircularProgress';
 import {
   Container,
   Box,
   Typography,
-  CircularProgress,
   Alert,
   Stack,
   Chip,

@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import { TRACKER_TYPES, TRACKER_MAP, TrackerType } from './trackerTypes';
@@ -32,7 +33,6 @@ import {
   DialogActions,
   TextField,
   MenuItem,
-  CircularProgress,
   Tooltip,
   Divider,
 } from '@mui/material';

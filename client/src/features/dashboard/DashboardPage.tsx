@@ -17,12 +17,12 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import HubIcon from '@mui/icons-material/Hub';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 
+import CircularProgress from '@mui/material/CircularProgress';
 import {
   Container,
   Box,
   Typography,
   Button,
-  CircularProgress,
   Alert,
   Stack,
   Grid,
