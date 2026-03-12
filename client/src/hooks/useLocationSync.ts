@@ -8,29 +8,35 @@ export function useLocationSync() {
   useEffect(() => {
     if (!user?.id) return;
 
-    // Throttle: only update once per session or every hour
-    const lastUpdate = sessionStorage.getItem('praxis_last_geo_sync');
-    const now = Date.now();
-    if (lastUpdate && now - parseInt(lastUpdate) < 3600000) return;
+    try {
+      // Throttle: only update once per session or every hour
+      const lastUpdate = sessionStorage.getItem('praxis_last_geo_sync');
+      const now = Date.now();
+      if (lastUpdate && now - parseInt(lastUpdate) < 3600000) return;
 
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude, longitude } = pos.coords;
-          try {
-            await supabase
-              .from('profiles')
-              .update({ latitude, longitude })
-              .eq('id', user.id);
-            sessionStorage.setItem('praxis_last_geo_sync', now.toString());
-            console.log('[GeoSync] Updated coordinates.');
-          } catch (err) {
-            console.error('[GeoSync] Error:', err);
-          }
-        },
-        () => console.warn('[GeoSync] Access denied.'),
-        { enableHighAccuracy: false, timeout: 10000 }
-      );
+      if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            try {
+              await supabase
+                .from('profiles')
+                .update({ latitude, longitude })
+                .eq('id', user.id);
+              sessionStorage.setItem('praxis_last_geo_sync', now.toString());
+              console.log('[GeoSync] Updated coordinates.');
+            } catch (err) {
+              console.warn('[GeoSync] Non-fatal DB error:', err);
+            }
+          },
+          (err) => {
+            console.warn('[GeoSync] Permission or signal error:', err.message);
+          },
+          { enableHighAccuracy: false, timeout: 5000 }
+        );
+      }
+    } catch (err) {
+      console.warn('[GeoSync] Global geo failure (non-fatal):', err);
     }
   }, [user?.id]);
 }

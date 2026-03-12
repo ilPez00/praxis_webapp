@@ -1,33 +1,18 @@
-# Session: March 11, 2026 - UX Consolidation, Stability & Performance
+# Session: March 11, 2026 - Nuclear Stability & Import Audit
 
 ## Summary of Changes
-- **Unified Domain System:**
-  - Created a centralized domain registry in `client/src/types/Domain.ts` with 9 core categories (Body, Mind, Craft, etc.).
-  - Applied these standardized colors, icons, and labels across **User Matches, Places, and Events** for a cohesive visual language.
-- **Enhanced Discovery & Filtering:**
-  - Implemented category-based filtering for the **Events** tab, matching the functionality of the Places tab.
-  - Optimized the Discovery Hub with `useSWR` for faster, cached data fetching.
-  - Added pagination ("Load More") to the user matches list to maintain high performance.
-- **Critical Stability Fixes:**
-  - **Login Loop Resolved:** Optimized the `versionControl.ts` logic to immediately commit version changes before reloading, preventing infinite refresh loops on mobile.
-  - **Grid Standardisation:** Converted all remaining components to the modern MUI v2 `Grid` syntax (`size` prop), resolving build-blocking structural errors.
-  - **Hard Reset:** Upgraded the `ErrorBoundary` with a "Hard Reset" button that performs a complete local storage and cache wipe for recovery.
-- **Infrastructure:**
-  - Formally installed `swr` in the client dependencies.
-  - Refined the Service Worker (`sw.js`) to strictly prioritize network-first delivery for application logic.
-- **Build & Dependency Management:**
-  - Resolved Vercel build failure (`ERESOLVE`) by pinning `@types/react` and `@types/react-dom` to version 18.
-  - Added npm `overrides` to `client/package.json` to prevent root-level or Dependabot updates from forcing incompatible React 19 types.
+- **"Ghost" Import Resolution:**
+  - Standardized core component imports across `AppRouter.tsx`, `ChatPage.tsx`, and `DiscoverPage.tsx` using direct paths (e.g., `@mui/material/CircularProgress`). This prevents `ReferenceError` crashes in production where the bundler occasionally fails to resolve destructured MUI imports.
+- **Global Error Hardening:**
+  - Wrapped `enforceFreshContent` (version control) and `useLocationSync` (geolocation) in `try/catch` blocks. If geolocation or cache-clearing fails on specific mobile browsers, the app will now gracefully proceed with loading instead of triggering a global crash.
+  - Moved the `ErrorBoundary` deeper into the tree (inside the `Router`) so that initialization failures in secondary systems don't block the entire app from rendering.
+- **Service Worker "Suicide" Mode:**
+  - Updated `sw.js` to immediately unregister itself and wipe every cache upon activation. This ensures that no browser is stuck with stale, broken assets from previous sessions.
+- **Build Verification:**
+  - Incremented version to **v6-final** and updated the Login screen debug tag.
 
 ## Verification Status
-- Type check: Passed (0 errors across the entire codebase).
-- Build Integrity: Structural JSX and MUI version conflicts resolved.
-- UX: Filtering and category synchronization verified across all community tabs.
-- Stability: Version-based cache clearing tested and safe for deployment.
+- Type check: Passed.
+- Build Integrity: Direct imports verified for all reported crashing components.
+- Mobile Compatibility: Added defensive safety wrappers for geolocation and service workers.
 - Push to GitHub: Completed.
-Session 28: UI/UX Refinement & Location System Fixes
-- Added 'hideMap' prop to PlacesTab and EventsPage to prevent redundant map rendering in DiscoverPage.
-- Updated DiscoverPage to pass 'hideMap={true}' to child components, ensuring only the unified Hero Map is shown.
-- Modified matchingController.ts to include latitude/longitude in enriched match profiles.
-- Verified that user markers now appear on the Discovery Map alongside places and events.
-- Standardized Grid layout syntax for better MUI v6 compatibility.

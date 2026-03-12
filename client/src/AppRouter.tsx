@@ -1,11 +1,11 @@
 import React, { Suspense } from 'react';
-import CircularProgress from '@mui/material/CircularProgress';
-import { Box } from '@mui/material';
 import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
 import Navbar from './components/common/Navbar';
 import InstallPwaBanner from './components/common/InstallPwaBanner';
 import PrivateRoute from './features/auth/PrivateRoute';
-import ErrorBoundary from './components/common/ErrorBoundary';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import routes from './config/routes';
 import { useLocationSync } from './hooks/useLocationSync';
@@ -16,20 +16,17 @@ const PageLoader = () => (
   </Box>
 );
 
-// For Electron apps loading from file://, HashRouter is necessary.
-// We detect Electron via the user agent or a global flag.
 const isElectron = /electron/i.test(navigator.userAgent);
 const Router = isElectron ? HashRouter : BrowserRouter;
 
-// On GitHub Pages the app is served at /praxis_webapp, so React Router needs
-// that as a basename. On Vercel / local dev it runs at the root.
 const basename = (!isElectron && window.location.hostname === 'ilpez00.github.io')
   ? '/praxis_webapp'
   : '';
 
 const AppRouter: React.FC = () => {
+  // Global background syncs (safe wrapped)
   useLocationSync();
-  // Detect if we are in a widget view (either via hash or path)
+
   const isWidget = window.location.hash.includes('widget') || window.location.pathname.includes('widget');
 
   return (
@@ -37,8 +34,10 @@ const AppRouter: React.FC = () => {
       {!isWidget && <Navbar />}
       {!isWidget && !isElectron && <InstallPwaBanner />}
       <Toaster position="top-right" />
-      <ErrorBoundary>
-        <Suspense fallback={<PageLoader />}>
+      
+      {/* ErrorBoundary moved deep to catch route-level crashes only */}
+      <Suspense fallback={<PageLoader />}>
+        <ErrorBoundary>
           <Routes>
             {routes.map((route, index) => (
               route.private ? (
@@ -50,8 +49,8 @@ const AppRouter: React.FC = () => {
               )
             ))}
           </Routes>
-        </Suspense>
-      </ErrorBoundary>
+        </ErrorBoundary>
+      </Suspense>
     </Router>
   );
 };
