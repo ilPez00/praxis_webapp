@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import {
   Box, Typography, Button, Stack, Chip, Grid, CircularProgress,
@@ -18,7 +17,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import GlassCard from '../../components/common/GlassCard';
 import LocationMap from '../../components/common/LocationMap';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
+import { usePlaces } from '../../hooks/useFetch';
 
 const PLACE_TYPES = [
   { value: 'gym', label: '🏋️ Gym', color: '#F97316' },
@@ -96,11 +96,16 @@ interface PlacesTabProps {
 }
 
 const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false }) => {
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');
   const [nearbyMode, setNearbyMode] = useState(false);
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Optimized fetch using SWR
+  const { data: places = [], loading, mutate: refetchPlaces } = usePlaces(
+    filterType,
+    nearbyMode && userGeo ? userGeo : undefined
+  );
+
   const [geoLoading, setGeoLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -127,35 +132,27 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
     checkAdmin();
   }, [currentUserId]);
 
-  const getAuthHeader = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-  };
-
-  const fetchPlaces = useCallback(async (geo?: { lat: number; lng: number }) => {
-    try {
-      const headers = await getAuthHeader();
-      const params = new URLSearchParams();
-      if (filterType) params.set('type', filterType);
-      if (geo) { params.set('lat', String(geo.lat)); params.set('lng', String(geo.lng)); params.set('radius', '100'); }
-      const { data } = await axios.get(`${API_URL}/places?${params}`, { headers });
-      setPlaces(Array.isArray(data) ? data : []);
-    } catch { setPlaces([]); }
-    finally { setLoading(false); }
-  }, [filterType]);
-
-  useEffect(() => { fetchPlaces(nearbyMode && userGeo ? userGeo : undefined); }, [fetchPlaces, nearbyMode, userGeo]);
-
   const handleNearby = () => {
-    if (nearbyMode) { setNearbyMode(false); setUserGeo(null); fetchPlaces(); return; }
-    if (!navigator.geolocation) { toast.error('Geolocation not supported.'); return; }
+    if (nearbyMode) {
+      setNearbyMode(false);
+      setUserGeo(null);
+      return;
+    }
+    if (!navigator.geolocation) {
+      toast.error('Geolocation not supported.');
+      return;
+    }
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserGeo(geo); setNearbyMode(true); fetchPlaces(geo); setGeoLoading(false);
+        setUserGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setNearbyMode(true);
+        setGeoLoading(false);
       },
-      () => { toast.error('Location access denied.'); setGeoLoading(false); },
+      () => {
+        toast.error('Location access denied.');
+        setGeoLoading(false);
+      },
       { enableHighAccuracy: false, timeout: 10000 }
     );
   };
@@ -163,7 +160,11 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
   const autoFillGeo = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setFormLat(String(pos.coords.latitude.toFixed(5))); setFormLng(String(pos.coords.longitude.toFixed(5))); toast.success('Location detected!'); },
+      (pos) => {
+        setFormLat(String(pos.coords.latitude.toFixed(5)));
+        setFormLng(String(pos.coords.longitude.toFixed(5)));
+        toast.success('Location detected!');
+      },
       () => toast.error('Location access denied.'),
       { enableHighAccuracy: false, timeout: 10000 }
     );
@@ -190,58 +191,72 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
   };
 
   const handleSave = async () => {
-    if (!formName.trim()) { toast.error('Name is required.'); return; }
+    if (!formName.trim()) {
+      toast.error('Name is required.');
+      return;
+    }
     setSaving(true);
     try {
-      const headers = await getAuthHeader();
       const payload = {
-        name: formName.trim(), type: formType,
-        address: formAddress.trim() || null, city: formCity.trim() || null,
-        latitude: formLat ? parseFloat(formLat) : null, longitude: formLng ? parseFloat(formLng) : null,
-        description: formDesc.trim() || null, website: formWebsite.trim() || null,
+        name: formName.trim(),
+        type: formType,
+        address: formAddress.trim() || null,
+        city: formCity.trim() || null,
+        latitude: formLat ? parseFloat(formLat) : null,
+        longitude: formLng ? parseFloat(formLng) : null,
+        description: formDesc.trim() || null,
+        website: formWebsite.trim() || null,
         schedule: formSchedule.trim() || null,
       };
 
       if (editingId) {
-        await axios.put(`${API_URL}/places/${editingId}`, payload, { headers });
+        await api.put(`/places/${editingId}`, payload);
         toast.success('Place updated!');
       } else {
-        await axios.post(`${API_URL}/places`, payload, { headers });
+        await api.post('/places', payload);
         toast.success('Place added!');
       }
-      
+
       setDialogOpen(false);
       resetForm();
-      fetchPlaces(nearbyMode && userGeo ? userGeo : undefined);
-    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to save place.'); }
-    finally { setSaving(false); }
+      refetchPlaces();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save place.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleJoin = async (place: Place) => {
-    const headers = await getAuthHeader();
     const isMember = place.members.some(m => m.user_id === currentUserId);
     try {
       if (isMember) {
-        await axios.delete(`${API_URL}/places/${place.id}/join`, { headers });
+        await api.delete(`/places/${place.id}/join`);
         toast.success('Left place.');
       } else {
-        await axios.post(`${API_URL}/places/${place.id}/join`, {}, { headers });
+        await api.post(`/places/${place.id}/join`);
         toast.success('Joined place!');
       }
-      fetchPlaces(nearbyMode && userGeo ? userGeo : undefined);
-    } catch { toast.error('Failed to update membership.'); }
+      refetchPlaces();
+    } catch {
+      toast.error('Failed to update membership.');
+    }
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this place?')) return;
     try {
-      const headers = await getAuthHeader();
-      await axios.delete(`${API_URL}/places/${id}`, { headers });
+      await api.delete(`/places/${id}`);
       toast.success('Place removed.');
-      fetchPlaces(nearbyMode && userGeo ? userGeo : undefined);
-    } catch { toast.error('Failed to delete place.'); }
+      refetchPlaces();
+    } catch {
+      toast.error('Failed to delete place.');
+    }
   };
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+  if (loading && places.length === 0) {
+    return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+  }
 
   return (
     <Box sx={compact ? {} : { py: 4 }}>
@@ -280,8 +295,8 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
           <LocationMap
             userLocation={userGeo || undefined}
             markers={places
-              .filter(p => p.latitude != null && p.longitude != null)
-              .map(p => ({
+              .filter((p: any) => p.latitude != null && p.longitude != null)
+              .map((p: any) => ({
                 id: p.id,
                 title: p.name,
                 subtitle: p.city || p.address || undefined,
@@ -306,13 +321,13 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
           </GlassCard>
         ) : (
           <Grid container spacing={2}>
-            {places.map(place => {
+            {places.map((place: Place) => {
               const cfg = typeConfig(place.type);
               const isMember = place.members.some(m => m.user_id === currentUserId);
               const isOwner = place.owner_id === currentUserId;
               const canManage = isOwner || isAdmin;
               return (
-                <Grid key={place.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                <Grid key={place.id} item xs={12} sm={6} md={4}>
                   <GlassCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                       <Chip
@@ -410,8 +425,8 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
             <TextField fullWidth label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} multiline rows={2} />
             <TextField fullWidth label="Address" value={formAddress} onChange={e => setFormAddress(e.target.value)} />
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="City" value={formCity} onChange={e => setFormCity(e.target.value)} /></Grid>
-              <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Schedule" value={formSchedule} onChange={e => setFormSchedule(e.target.value)} /></Grid>
+              <Grid item xs={12} sm={6}><TextField fullWidth label="City" value={formCity} onChange={e => setFormCity(e.target.value)} /></Grid>
+              <Grid item xs={12} sm={6}><TextField fullWidth label="Schedule" value={formSchedule} onChange={e => setFormSchedule(e.target.value)} /></Grid>
             </Grid>
             <TextField fullWidth label="Website" value={formWebsite} onChange={e => setFormWebsite(e.target.value)} />
             <Box>
@@ -420,8 +435,8 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
                 <Button size="small" startIcon={<MyLocationIcon />} onClick={autoFillGeo}>Detect</Button>
               </Stack>
               <Grid container spacing={2}>
-                <Grid size={{ xs: 6 }}><TextField fullWidth size="small" label="Lat" value={formLat} onChange={e => setFormLat(e.target.value)} /></Grid>
-                <Grid size={{ xs: 6 }}><TextField fullWidth size="small" label="Lng" value={formLng} onChange={e => setFormLng(e.target.value)} /></Grid>
+                <Grid item xs={6}><TextField fullWidth size="small" label="Lat" value={formLat} onChange={e => setFormLat(e.target.value)} /></Grid>
+                <Grid item xs={6}><TextField fullWidth size="small" label="Lng" value={formLng} onChange={e => setFormLng(e.target.value)} /></Grid>
               </Grid>
             </Box>
           </Stack>

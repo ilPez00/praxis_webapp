@@ -1,17 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import BarcodeScanner from 'react-qr-barcode-scanner';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { API_URL } from '../../lib/api';
-import { supabase } from '../../lib/supabase';
-import GlassCard from '../../components/common/GlassCard';
-import LocationMap from '../../components/common/LocationMap';
 import {
   Container, Box, Typography, Button, Stack, Chip, Grid,
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, CircularProgress, Avatar, Tooltip, IconButton,
-  MenuItem, List, ListItem, ListItemAvatar, ListItemText,
+  MenuItem,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EventIcon from '@mui/icons-material/Event';
@@ -24,9 +17,14 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import QrCodeIcon from '@mui/icons-material/QrCode2';
 import PeopleIcon from '@mui/icons-material/People';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+
+import { supabase } from '../../lib/supabase';
+import api from '../../lib/api';
+import { useEvents } from '../../hooks/useFetch';
+import GlassCard from '../../components/common/GlassCard';
+import LocationMap from '../../components/common/LocationMap';
 
 function MapsFrame({ lat, lng, name }: { lat: number; lng: number; name: string }) {
   const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(name)}`;
@@ -107,17 +105,15 @@ const RSVP_OPTIONS: { status: 'going' | 'maybe' | 'not_going'; label: string; co
 
 const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Optimized fetch using SWR
+  const { data: events = [], loading, mutate: refetchEvents } = useEvents();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [qrDialog, setQrDialog] = useState<{ open: boolean; token: string; eventTitle: string; eventId: string }>({ open: false, token: '', eventTitle: '', eventId: '' });
-  const [scanDialog, setScanDialog] = useState<{ open: boolean; eventId: string; eventTitle: string }>({ open: false, eventId: '', eventTitle: '' });
-  const [scanning, setScanning] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [attendeeDialog, setAttendeeDialog] = useState<{ open: boolean; eventId: string; eventTitle: string; list: any[] }>({ open: false, eventId: '', eventTitle: '', list: [] });
-  const [eventType, setEventType] = useState('');
-
+  
   const [nearbyMode, setNearbyMode] = useState(false);
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
@@ -130,8 +126,7 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const [city, setCity] = useState('');
   const [formLat, setFormLat] = useState('');
   const [formLng, setFormLng] = useState('');
-
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [eventType, setEventType] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -143,69 +138,19 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
     });
   }, []);
 
-  const getAuthHeader = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-  };
-
-  const handleShowQR = async (eventId: string, eventTitle: string) => {
-    try {
-      const headers = await getAuthHeader();
-      const res = await axios.get(`${API_URL}/events/${eventId}/checkin-token`, { headers });
-      const { token } = res.data as { token: string };
-      setQrDialog({ open: true, token, eventTitle, eventId });
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Could not generate check-in QR.');
-    }
-  };
-
-  const handleScanAttendee = (eventId: string, eventTitle: string) => {
-    setScanDialog({ open: true, eventId, eventTitle });
-  };
-
-  const processCheckinToken = async (qrValue: string) => {
-    if (scanning) return;
-    setScanning(true);
-    try {
-      const url = new URL(qrValue);
-      const token = url.searchParams.get('token');
-      const eventId = url.searchParams.get('eventId');
-      if (!token || !eventId) throw new Error('Invalid QR code.');
-      const headers = await getAuthHeader();
-      const res = await axios.post(`${API_URL}/events/${eventId}/checkin`, { token }, { headers });
-      if (res.data.alreadyCheckedIn) toast.success('Already checked in!', { icon: 'ℹ️' });
-      else toast.success('Check-in successful! +50 PP awarded.');
-      setScanDialog(s => ({ ...s, open: false }));
-    } catch (err: any) {
-      toast.error(err.message || 'Check-in failed.');
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const fetchEvents = useCallback(async (geo?: { lat: number; lng: number }) => {
-    try {
-      const headers = await getAuthHeader();
-      const params = geo ? `?lat=${geo.lat}&lng=${geo.lng}&radius=100` : '';
-      const res = await axios.get(`${API_URL}/events${params}`, { headers });
-      setEvents(Array.isArray(res.data) ? res.data : []);
-    } catch {
-      setEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchEvents(); }, [fetchEvents]);
-
   const handleToggleNearby = () => {
-    if (nearbyMode) { setNearbyMode(false); setUserGeo(null); fetchEvents(); return; }
+    if (nearbyMode) { 
+      setNearbyMode(false); 
+      setUserGeo(null); 
+      return; 
+    }
     if (!navigator.geolocation) { toast.error('Geolocation not supported.'); return; }
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserGeo(geo); setNearbyMode(true); fetchEvents(geo); setGeoLoading(false);
+        setUserGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }); 
+        setNearbyMode(true); 
+        setGeoLoading(false);
       },
       () => { toast.error('Location access denied.'); setGeoLoading(false); },
       { enableHighAccuracy: false, timeout: 10000 }
@@ -215,7 +160,11 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const autoFillGeo = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setFormLat(String(pos.coords.latitude.toFixed(5))); setFormLng(String(pos.coords.longitude.toFixed(5))); toast.success('Detected!'); },
+      (pos) => { 
+        setFormLat(String(pos.coords.latitude.toFixed(5))); 
+        setFormLng(String(pos.coords.longitude.toFixed(5))); 
+        toast.success('Detected!'); 
+      },
       () => toast.error('Denied.'),
       { enableHighAccuracy: false, timeout: 10000 }
     );
@@ -235,16 +184,6 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
     setDialogOpen(true);
   };
 
-  const fetchAttendees = async (eventId: string, eventTitle: string) => {
-    try {
-      const headers = await getAuthHeader();
-      const res = await axios.get(`${API_URL}/events/${eventId}/attendees`, { headers });
-      setAttendeeDialog({ open: true, eventId, eventTitle, list: res.data });
-    } catch {
-      toast.error('Failed to load list.');
-    }
-  };
-
   const resetForm = () => {
     setTitle(''); setDescription(''); setEventDate(new Date().toISOString().slice(0, 10)); 
     setEventTime(''); setLocation(''); setCity(''); setFormLat(''); setFormLng('');
@@ -255,7 +194,6 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
     if (!title.trim() || !eventDate) { toast.error('Title and date required.'); return; }
     setSaving(true);
     try {
-      const headers = await getAuthHeader();
       const payload = {
         title: title.trim(), description: description.trim() || undefined,
         eventDate, eventTime: eventTime || undefined,
@@ -264,41 +202,52 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
         type: eventType || undefined,
       };
       if (editingEvent) {
-        await axios.put(`${API_URL}/events/${editingEvent.id}`, payload, { headers });
+        await api.put(`/events/${editingEvent.id}`, payload);
         toast.success('Updated!');
       } else {
-        await axios.post(`${API_URL}/events`, payload, { headers });
+        await api.post('/events', payload);
         toast.success('Created!');
       }
       setDialogOpen(false);
       resetForm();
-      await fetchEvents();
-    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to save.'); }
-    finally { setSaving(false); }
+      refetchEvents();
+    } catch (err: any) { 
+      toast.error(err.response?.data?.message || 'Failed to save.'); 
+    } finally { 
+      setSaving(false); 
+    }
   };
 
   const handleRsvp = async (eventId: string, status: 'going' | 'maybe' | 'not_going', currentStatus: string | undefined) => {
     if (!currentUserId) return;
     try {
-      const headers = await getAuthHeader();
-      if (currentStatus === status) await axios.delete(`${API_URL}/events/${eventId}/rsvp`, { headers });
-      else await axios.post(`${API_URL}/events/${eventId}/rsvp`, { status }, { headers });
-      await fetchEvents();
-    } catch { toast.error('Failed to RSVP.'); }
+      if (currentStatus === status) {
+        await api.delete(`/events/${eventId}/rsvp`);
+      } else {
+        await api.post(`/events/${eventId}/rsvp`, { status });
+      }
+      refetchEvents();
+    } catch { 
+      toast.error('Failed to RSVP.'); 
+    }
   };
 
   const handleDelete = async (eventId: string) => {
+    if (!window.confirm('Delete this event?')) return;
     try {
-      const headers = await getAuthHeader();
-      await axios.delete(`${API_URL}/events/${eventId}`, { headers });
+      await api.delete(`/events/${eventId}`);
       toast.success('Deleted.');
-      await fetchEvents();
-    } catch { toast.error('Failed to delete.'); }
+      refetchEvents();
+    } catch { 
+      toast.error('Failed to delete.'); 
+    }
   };
 
   const minDateStr = new Date().toISOString().slice(0, 10);
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+  if (loading && events.length === 0) {
+    return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+  }
 
   return (
     <Box sx={compact ? {} : { py: 4 }}>
@@ -331,8 +280,8 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
           <LocationMap
             userLocation={userGeo || undefined}
             markers={events
-              .filter(e => e.latitude != null && e.longitude != null)
-              .map(e => ({
+              .filter((e: any) => e.latitude != null && e.longitude != null)
+              .map((e: any) => ({
                 id: e.id,
                 title: e.title,
                 subtitle: `${formatDate(e.event_date)}${e.city ? ' · ' + e.city : ''}`,
@@ -357,13 +306,13 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
           </GlassCard>
         ) : (
           <Grid container spacing={3}>
-            {events.map(event => {
+            {events.map((event: CalendarEvent) => {
               const myRsvp = event.rsvps?.find(r => r.user_id === currentUserId);
               const going = event.rsvps?.filter(r => r.status === 'going').length ?? 0;
               const canManage = event.creator_id === currentUserId || isAdmin;
 
               return (
-                <Grid key={event.id} size={{ xs: 12, md: 6, lg: 4 }}>
+                <Grid size={{ xs: 12, md: 6, lg: 4 }} key={event.id}>
                   <GlassCard sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                       <Box sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: '8px', px: 1.2, py: 0.4, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>

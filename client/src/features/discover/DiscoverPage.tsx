@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import {
   Box,
   Container,
@@ -17,9 +16,9 @@ import EventIcon from '@mui/icons-material/Event';
 import AppsIcon from '@mui/icons-material/Apps';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { useUser } from '../../hooks/useUser';
-import { API_URL } from '../../lib/api';
 import LocationMap, { MapMarker } from '../../components/common/LocationMap';
 import GlassCard from '../../components/common/GlassCard';
+import { useMatches, usePlaces, useEvents } from '../../hooks/useFetch';
 
 // Lazy load the list components for better performance
 const MatchesPage = React.lazy(() => import('../matches/MatchesPage'));
@@ -28,18 +27,20 @@ const EventsPage = React.lazy(() => import('../events/EventsPage'));
 
 type FilterType = 'all' | 'people' | 'places' | 'events';
 
-// Shared cache for markers to avoid redundant fetches
-let markerCache: MapMarker[] | null = null;
-
 const DiscoverPage: React.FC = () => {
   const { user } = useUser();
   const location = useLocation();
   const navigate = useNavigate();
 
   const [filter, setFilter] = useState<FilterType>('all');
-  const [markers, setMarkers] = useState<MapMarker[]>(markerCache || []);
-  const [loadingMarkers, setLoadingLoadingMarkers] = useState(!markerCache);
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Fetch data using optimized SWR hooks
+  const { data: matches, loading: loadingMatches, mutate: mutateMatches } = useMatches(user?.id);
+  const { data: places, loading: loadingPlaces, mutate: mutatePlaces } = usePlaces();
+  const { data: events, loading: loadingEvents, mutate: mutateEvents } = useEvents();
+
+  const isLoading = loadingMatches || loadingPlaces || loadingEvents;
 
   // Sync state with URL
   useEffect(() => {
@@ -68,89 +69,62 @@ const DiscoverPage: React.FC = () => {
     }
   }, []);
 
-  const fetchMarkers = useCallback(async (force = false) => {
-    if (!user?.id) return;
-    if (!force && markerCache) {
-      setMarkers(markerCache);
-      setLoadingLoadingMarkers(false);
-      return;
-    }
+  // Consolidate markers from all data sources
+  const allMarkers = useMemo(() => {
+    const newMarkers: MapMarker[] = [];
 
-    setLoadingLoadingMarkers(true);
-    try {
-      // Fetch all 3 types in parallel
-      const [peopleRes, placesRes, eventsRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/matches/${user.id}`),
-        axios.get(`${API_URL}/places`),
-        axios.get(`${API_URL}/events`)
-      ]);
+    // Process People
+    (matches || []).filter((p: any) => p.latitude && p.longitude).forEach((p: any) => newMarkers.push({
+      id: p.userId,
+      title: p.name,
+      subtitle: p.domains?.join(', '),
+      lat: p.latitude,
+      lng: p.longitude,
+      type: 'user',
+      avatarUrl: p.avatarUrl
+    }));
 
-      const newMarkers: MapMarker[] = [];
+    // Process Places
+    (places || []).filter((p: any) => p.latitude && p.longitude).forEach((p: any) => newMarkers.push({
+      id: p.id,
+      title: p.name,
+      subtitle: p.type,
+      lat: p.latitude,
+      lng: p.longitude,
+      type: 'place'
+    }));
 
-      // Process People
-      if (peopleRes.status === 'fulfilled') {
-        const people = (peopleRes.value.data || []).filter((p: any) => p.latitude && p.longitude);
-        people.forEach((p: any) => newMarkers.push({
-          id: p.userId,
-          title: p.name,
-          subtitle: p.domains?.join(', '),
-          lat: p.latitude,
-          lng: p.longitude,
-          type: 'user',
-          avatarUrl: p.avatarUrl
-        }));
-      }
+    // Process Events
+    (events || []).filter((e: any) => e.latitude && e.longitude).forEach((e: any) => newMarkers.push({
+      id: e.id,
+      title: e.title,
+      subtitle: e.event_date,
+      lat: e.latitude,
+      lng: e.longitude,
+      type: 'event'
+    }));
 
-      // Process Places
-      if (placesRes.status === 'fulfilled') {
-        const places = (placesRes.value.data || []).filter((p: any) => p.latitude && p.longitude);
-        places.forEach((p: any) => newMarkers.push({
-          id: p.id,
-          title: p.name,
-          subtitle: p.type,
-          lat: p.latitude,
-          lng: p.longitude,
-          type: 'place'
-        }));
-      }
+    return newMarkers;
+  }, [matches, places, events]);
 
-      // Process Events
-      if (eventsRes.status === 'fulfilled') {
-        const events = (eventsRes.value.data || []).filter((e: any) => e.latitude && e.longitude);
-        events.forEach((e: any) => newMarkers.push({
-          id: e.id,
-          title: e.title,
-          subtitle: e.event_date,
-          lat: e.latitude,
-          lng: e.longitude,
-          type: 'event'
-        }));
-      }
+  const filteredMarkers = useMemo(() => {
+    return allMarkers.filter(m => {
+      if (filter === 'all') return true;
+      if (filter === 'people') return m.type === 'user';
+      if (filter === 'places') return m.type === 'place';
+      if (filter === 'events') return m.type === 'event';
+      return true;
+    });
+  }, [allMarkers, filter]);
 
-      markerCache = newMarkers;
-      setMarkers(newMarkers);
-    } catch (err) {
-      console.error('Failed to load markers:', err);
-    } finally {
-      setLoadingLoadingMarkers(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    fetchMarkers();
-  }, [fetchMarkers]);
-
-  const filteredMarkers = markers.filter(m => {
-    if (filter === 'all') return true;
-    if (filter === 'people') return m.type === 'user';
-    if (filter === 'places') return m.type === 'place';
-    if (filter === 'events') return m.type === 'event';
-    return true;
-  });
+  const handleRefresh = () => {
+    mutateMatches();
+    mutatePlaces();
+    mutateEvents();
+  };
 
   const handleMarkerClick = (id: string, type?: string) => {
     if (type === 'user') navigate(`/profile/${id}`);
-    // For others, let the popup handle it or scroll to item
   };
 
   return (
@@ -212,8 +186,8 @@ const DiscoverPage: React.FC = () => {
             {filter === 'all' ? 'Community Hub' : filter.charAt(0).toUpperCase() + filter.slice(1)}
           </Typography>
           <Tooltip title="Refresh data">
-            <IconButton onClick={() => fetchMarkers(true)} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
-              {loadingMarkers ? <CircularProgress size={20} /> : <FilterListIcon />}
+            <IconButton onClick={handleRefresh} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
+              {isLoading ? <CircularProgress size={20} /> : <FilterListIcon />}
             </IconButton>
           </Tooltip>
         </Box>

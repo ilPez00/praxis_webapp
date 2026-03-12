@@ -1,22 +1,18 @@
+import axios from 'axios';
+import { supabase } from './supabase';
+
 /**
  * Base URL for all backend API calls.
  * Set REACT_APP_API_URL in client/.env for production.
- * Defaults to /api for production (co-located with frontend)
- * or http://localhost:3001/api for local development.
  */
 const getBaseUrl = () => {
-  // Vite exposes env vars via import.meta.env, not process.env
   const envUrl = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_API_URL : undefined;
   if (envUrl) return envUrl;
 
-  // If we are in the browser
   if (typeof window !== 'undefined') {
-    // If we are on localhost but NOT port 3001 (i.e., we are the frontend at 3000)
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return 'http://localhost:3001/api';
     }
-    
-    // In production, call Railway directly
     return 'https://web-production-646a4.up.railway.app/api';
   }
 
@@ -24,3 +20,23 @@ const getBaseUrl = () => {
 };
 
 export const API_URL = getBaseUrl();
+
+/**
+ * Centralized API client with automatic authentication.
+ */
+const api = axios.create({
+  baseURL: API_URL,
+});
+
+// Request interceptor to add Supabase JWT
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+export default api;

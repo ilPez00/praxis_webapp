@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -24,6 +24,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import ChatIcon from '@mui/icons-material/Chat';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import toast from 'react-hot-toast';
 
 interface MatchProfile {
@@ -41,54 +42,6 @@ interface MatchProfile {
   isDemo?: boolean;
 }
 
-interface MockMatch {
-  id: string;
-  name: string;
-  compatibility: number;
-  sharedDomains: string[];
-  sharedGoals: string[];
-  bio: string;
-  avatarUrl: string;
-  progressPace: number;
-  overallProgress: number;
-}
-
-const mockMatches: MockMatch[] = [
-  {
-    id: '1',
-    name: 'Marcus Aurelius',
-    compatibility: 0.98,
-    sharedDomains: ['Philosophy', 'Leadership'],
-    sharedGoals: ['Daily Reflection', 'Stoic Practice'],
-    bio: 'Focusing on what I can control and letting go of the rest.',
-    avatarUrl: 'https://i.pravatar.cc/150?u=marcus',
-    progressPace: 1.2,
-    overallProgress: 85,
-  },
-  {
-    id: '2',
-    name: 'Leonardo da Vinci',
-    compatibility: 0.92,
-    sharedDomains: ['Art', 'Engineering', 'Anatomy'],
-    sharedGoals: ['Mastering Perspective', 'Observational Drawing'],
-    bio: 'Exploring the intersection of art and science through curiosity.',
-    avatarUrl: 'https://i.pravatar.cc/150?u=leo',
-    progressPace: 0.9,
-    overallProgress: 70,
-  },
-  {
-    id: '3',
-    name: 'Ada Lovelace',
-    compatibility: 0.88,
-    sharedDomains: ['Mathematics', 'Computing'],
-    sharedGoals: ['Analytical Engine algorithms', 'Poetical Science'],
-    bio: 'Developing the first complex algorithms for computing machines.',
-    avatarUrl: 'https://i.pravatar.cc/150?u=ada',
-    progressPace: 1.5,
-    overallProgress: 95,
-  },
-];
-
 const PRAXIS_DOMAINS = [
   'Body & Health',
   'Mind & Learning',
@@ -101,40 +54,22 @@ const PRAXIS_DOMAINS = [
   'Friendship & Social',
 ];
 
+const INITIAL_PAGE_SIZE = 9;
+
 const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const navigate = useNavigate();
   const { user, loading: userLoading } = useUser();
 
   const [realMatches, setRealMatches] = useState<MatchProfile[]>([]);
-  const [matchCache, setMatchCache] = useState<Record<string, MatchProfile[]>>({});
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [compatibilityFilter, setCompatibilityFilter] = useState(0);
   const [selectedDomainsFilter, setSelectedDomainsFilter] = useState<string[]>([]);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
-
-  const demoProfiles: MatchProfile[] = mockMatches.map((m: MockMatch) => ({
-    userId: m.id,
-    score: m.compatibility,
-    name: m.name,
-    avatarUrl: m.avatarUrl,
-    domains: m.sharedDomains,
-    bio: m.bio,
-    sharedGoals: m.sharedGoals,
-    progressPace: m.progressPace,
-    overallProgress: m.overallProgress,
-    isDemo: true,
-  }));
+  const [visibleCount, setVisibleCount] = useState(INITIAL_PAGE_SIZE);
 
   useEffect(() => {
     if (userLoading || !user) return;
-    const cacheKey = selectedDomain || 'all';
-    
-    if (matchCache[cacheKey]) {
-      setRealMatches(matchCache[cacheKey]);
-      setLoading(false);
-      return;
-    }
 
     const fetchMatches = async () => {
       setLoading(true);
@@ -156,7 +91,6 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
           lastCheckinDate: m.lastCheckinDate ?? null,
         }));
         setRealMatches(enrichedMatches);
-        setMatchCache(prev => ({ ...prev, [cacheKey]: enrichedMatches }));
       } catch {
         setRealMatches([]);
       } finally {
@@ -166,16 +100,19 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
     fetchMatches();
   }, [user, userLoading, selectedDomain]);
 
-  const applyFilters = (list: MatchProfile[]) =>
-    list.filter((m) => {
+  // Memoized filtered list for performance
+  const allFiltered = useMemo(() => {
+    return realMatches.filter((m) => {
       const pct = Math.round(m.score * 100);
       return pct >= compatibilityFilter &&
         (selectedDomainsFilter.length === 0 || 
          selectedDomainsFilter.some(d => m.domains.includes(d)));
     });
+  }, [realMatches, compatibilityFilter, selectedDomainsFilter]);
 
-  const allDisplayed = applyFilters(realMatches.length > 0 ? realMatches : demoProfiles);
-  const showingDemo = realMatches.length === 0;
+  const displayedMatches = useMemo(() => {
+    return allFiltered.slice(0, visibleCount);
+  }, [allFiltered, visibleCount]);
 
   const handleToggleDomainFilter = (domain: string) => {
     setSelectedDomainsFilter(prev => 
@@ -184,19 +121,11 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   };
 
   const handleChat = (match: MatchProfile) => {
-    if (match.isDemo) {
-      toast('This is a demo profile — build your goal tree to find real matches!', { icon: '👤' });
-      return;
-    }
     toast.success(`Opening chat with ${match.name}!`);
     navigate(`/chat/${user!.id}/${match.userId}`);
   };
 
   const handleViewProfile = (match: MatchProfile) => {
-    if (match.isDemo) {
-      toast('This is a demo profile — find real matches by building your goal tree!', { icon: '👤' });
-      return;
-    }
     navigate(`/profile/${match.userId}`);
   };
 
@@ -204,7 +133,7 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 2 }}>
         <CircularProgress color="primary" size={48} />
-        <Typography color="text.secondary">Finding your people…</Typography>
+        <Typography color="text.secondary">Calculating alignments…</Typography>
       </Box>
     );
   }
@@ -220,7 +149,7 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
                 <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.5px' }}>Your Matches</Typography>
               </Box>
               <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
-                {showingDemo ? 'Sample profiles — build your goal tree to see real matches' : `${allDisplayed.length} people aligned with your goals`}
+                {allFiltered.length} people aligned with your trajectory
               </Typography>
             </Box>
             <Button
@@ -267,12 +196,12 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
 
       <Container maxWidth={compact ? false : "lg"} sx={compact ? { p: 0 } : {}}>
         <Grid container spacing={compact ? 2 : 3}>
-          {allDisplayed.length === 0 ? (
+          {displayedMatches.length === 0 ? (
             <Grid size={{ xs: 12 }}><Box sx={{ py: 8, textAlign: 'center', opacity: 0.5 }}><Typography variant="h6">No matches found.</Typography></Box></Grid>
           ) : (
-            allDisplayed.map((match) => (
+            displayedMatches.map((match) => (
               <Grid size={{ xs: 12, sm: compact ? 12 : 6, md: compact ? 6 : 4 }} key={match.userId}>
-                <GlassCard sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', borderColor: 'primary.main', boxShadow: '0 12px 40px rgba(245,158,11,0.1)' } }}>
+                <GlassCard sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', borderColor: 'primary.main', boxShadow: '0 12px 40px rgba(245,158,11,0.1)' } }}>
                   <Box sx={{ position: 'absolute', top: 16, right: 16, bgcolor: 'primary.main', color: '#0A0B14', px: 1.5, py: 0.5, borderRadius: '10px', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(245,158,11,0.3)', zIndex: 2 }}>
                     {Math.round(match.score * 100)}%
                   </Box>
@@ -283,14 +212,14 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
                         <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.2 }}>{match.name}</Typography>
                         <Stack direction="row" spacing={1} alignItems="center">
                           {match.currentStreak !== undefined && match.currentStreak > 0 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><LocalFireDepartmentIcon sx={{ color: '#F97316', fontSize: 16 }} /><Typography variant="caption" sx={{ fontWeight: 800, color: '#F97316' }}>{match.currentStreak}d</Typography></Box>}
-                          <Typography variant="caption" sx={{ color: 'text.disabled' }}>{match.isDemo ? 'Guide' : 'Student'}</Typography>
+                          <Typography variant="caption" sx={{ color: 'text.disabled' }}>Student</Typography>
                         </Stack>
                       </Box>
                     </Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: 40 }}>{match.bio || 'Building a life of intentional progress.'}</Typography>
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 900 }}>Shared Domains</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1 }}>{match.domains.slice(0, 3).map((d) => <Chip key={d} label={d} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: 'rgba(255,255,255,0.05)', color: 'text.secondary' }} />)}</Box>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1 }}>{match.domains.slice(0, 3).map((d) => <Chip key={d} label={d} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(255,255,255,0.05)', color: 'text.secondary' }} />)}</Box>
                     </Box>
                     <Box sx={{ mb: 1 }}>
                       <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 800 }}>Matching Goals</Typography>
@@ -306,6 +235,19 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
             ))
           )}
         </Grid>
+
+        {allFiltered.length > visibleCount && (
+          <Box sx={{ mt: 6, display: 'flex', justifyContent: 'center' }}>
+            <Button
+              variant="outlined"
+              onClick={() => setVisibleCount(prev => prev + INITIAL_PAGE_SIZE)}
+              startIcon={<ExpandMoreIcon />}
+              sx={{ borderRadius: '12px', px: 4, fontWeight: 800, borderColor: 'rgba(255,255,255,0.12)', color: 'text.primary' }}
+            >
+              Load More
+            </Button>
+          </Box>
+        )}
       </Container>
     </Box>
   );

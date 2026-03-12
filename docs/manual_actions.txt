@@ -572,3 +572,16 @@ SET
 WHERE city IS NULL OR city = 'Unknown';
 
 SUCCESS: no error; profiles now supports stated_location and all users are centered in Verona.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLIENT OPTIMIZATIONS (Session 61 — Centralized API & SWR Caching)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Run in terminal from project root:
+     cd client && npm install swr
+
+  2. Verify:
+     Open Network Tab -> Switch between Dashboard and Discover. 
+     Data should load instantly (SWR) and Authorization headers should be 
+     injected automatically by the new centralized API client (api.ts).
+

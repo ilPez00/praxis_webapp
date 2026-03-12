@@ -1,4 +1,4 @@
-const CACHE_NAME = 'praxis-cache-v2026-03-11-v1'; // Versioned cache name
+const CACHE_NAME = 'praxis-cache-v2026-03-11-v3'; // Bumped for new SW strategy
 
 const ASSETS_TO_CACHE = [
   '/',
@@ -24,7 +24,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('[SW] Clearing old cache:', cacheName);
+            console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -33,31 +33,44 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Force network-first for ALL requests to avoid stale assets after deployment
-// Vite's hashed filenames will handle the long-term caching once the initial index.html is fresh
+// Strategy: Bypassing SW for internal JS/CSS to let browser HTTP cache/headers handle it
+// while providing a network-first fallback for offline support.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  
-  // Navigation or main entry: strictly network first
-  if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
+  const isInternal = url.origin === self.location.origin;
+  const isAsset = url.pathname.includes('/assets/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
+
+  if (event.request.mode === 'navigate' || (isInternal && isAsset)) {
+    // Strictly Network-First with Cache-Busting fallback
     event.respondWith(
       fetch(event.request)
-        .catch(() => caches.match('/index.html'))
+        .then(response => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          if (event.request.mode === 'navigate') return caches.match('/index.html');
+          return null;
+        })
     );
     return;
   }
 
-  // Other assets: Network first, then cache
+  // Generic Cache-First for other things (images, fonts)
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // Cache successful responses for next time (offline support)
-        if (response && response.status === 200 && response.type === 'basic') {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request).then(res => {
+        if (res && res.status === 200 && isInternal) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         }
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+        return res;
+      });
+    })
   );
 });

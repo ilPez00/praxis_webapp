@@ -1,6 +1,9 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
-// import logger from '../../src/utils/logger'; // Removed as this is a frontend component
+import { Box, Typography, Button, Paper, Stack } from '@mui/material';
+import { nuclearReset } from '../utils/versionControl';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import HomeIcon from '@mui/icons-material/Home';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface Props {
   children?: ReactNode;
@@ -39,14 +42,12 @@ class ErrorBoundary extends Component<Props, State> {
    * It receives two parameters: error and errorInfo.
    */
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Uncaught error:", error, errorInfo); // Log to console
-    // logger.error('Frontend Error:', { error: error.message, componentStack: errorInfo.componentStack, stack: error.stack }); // Removed backend logger call
+    console.error("Uncaught error captured by boundary:", error, errorInfo);
     this.setState({ error, errorInfo });
   }
 
   public render() {
     if (this.state.hasError) {
-      // You can render any custom fallback UI
       return (
         <Box
           sx={{
@@ -57,29 +58,77 @@ class ErrorBoundary extends Component<Props, State> {
             minHeight: '100vh',
             textAlign: 'center',
             p: 3,
+            background: 'radial-gradient(circle at center, #111827 0%, #0A0B14 100%)',
           }}
         >
-          <Paper elevation={3} sx={{ p: 4, maxWidth: 600 }}>
-            <Typography variant="h4" color="error" gutterBottom>
-              Oops! Something went wrong.
+          <Paper 
+            elevation={24} 
+            sx={{ 
+              p: 5, 
+              maxWidth: 500, 
+              borderRadius: '24px', 
+              bgcolor: 'rgba(17, 24, 39, 0.8)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+            }}
+          >
+            <Box sx={{ 
+              width: 64, height: 64, borderRadius: '20px', 
+              bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              mx: 'auto', mb: 3
+            }}>
+              <RestartAltIcon sx={{ fontSize: 40 }} />
+            </Box>
+
+            <Typography variant="h5" sx={{ fontWeight: 900, mb: 1.5, letterSpacing: '-0.02em' }}>
+              Interface Reset Required
             </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph>
-              We're sorry for the inconvenience. Our team has been notified, and we're working to fix the issue.
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 4, lineHeight: 1.6 }}>
+              A critical error occurred, likely due to outdated browser cache after a system update. 
+              Try a regular reload first, or use <strong>Hard Reset</strong> to clear all local data.
             </Typography>
-            <Button variant="contained" color="primary" onClick={() => window.location.href = '/'} sx={{ mt: 2, mr: 2 }}>
-              Go to Home
-            </Button>
-            <Button variant="outlined" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
-              Reload Page
-            </Button>
+
+            <Stack spacing={2}>
+              <Button 
+                fullWidth
+                variant="contained" 
+                color="primary" 
+                startIcon={<RefreshIcon />}
+                onClick={() => window.location.reload()} 
+                sx={{ borderRadius: '12px', py: 1.5, fontWeight: 800 }}
+              >
+                Reload Page
+              </Button>
+
+              <Button 
+                fullWidth
+                variant="outlined" 
+                color="warning" 
+                startIcon={<RestartAltIcon />}
+                onClick={() => nuclearReset()}
+                sx={{ borderRadius: '12px', py: 1.5, fontWeight: 800, borderColor: 'rgba(245, 158, 11, 0.3)' }}
+              >
+                Hard Reset (Clear Cache)
+              </Button>
+
+              <Button 
+                fullWidth
+                variant="text" 
+                startIcon={<HomeIcon />}
+                onClick={() => window.location.href = '/'} 
+                sx={{ color: 'text.disabled', fontWeight: 700 }}
+              >
+                Back to Login
+              </Button>
+            </Stack>
+
             {process.env.NODE_ENV === 'development' && this.state.error && (
-              <Box sx={{ mt: 4, textAlign: 'left', p: 2, border: '1px solid #eee', borderRadius: 1, bgcolor: '#f9f9f9' }}>
-                <Typography variant="h6">Error Details:</Typography>
-                <Typography variant="body2" color="error">
+              <Box sx={{ mt: 4, textAlign: 'left', p: 2, border: '1px solid rgba(255,255,255,0.05)', borderRadius: 2, bgcolor: 'rgba(0,0,0,0.2)' }}>
+                <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace' }}>
                   {this.state.error.toString()}
-                </Typography>
-                <Typography variant="caption" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                  {this.state.errorInfo?.componentStack}
                 </Typography>
               </Box>
             )}

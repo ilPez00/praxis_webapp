@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../../lib/api';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
@@ -28,6 +27,7 @@ import {
   Stack,
   Grid,
 } from '@mui/material';
+import { API_URL } from '../../lib/api';
 
 const DashboardPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
@@ -51,37 +51,32 @@ const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     if (!currentUserId) return;
-    (async () => {
+    const fetchData = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const res = await axios.get(`${API_URL}/bets/${currentUserId}`, {
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        });
-        const all = Array.isArray(res.data) ? res.data : [];
-        setActiveBets(all.filter((b: any) => b.status === 'active'));
-      } catch { setActiveBets([]); }
-    })();
+        const headers = { Authorization: `Bearer ${session?.access_token}` };
+        
+        const [betsRes, goalsRes] = await Promise.all([
+          axios.get(`${API_URL}/bets/${currentUserId}`, { headers }),
+          axios.get(`${API_URL}/goals/${currentUserId}`)
+        ]);
+
+        const allBets = Array.isArray(betsRes.data) ? betsRes.data : [];
+        setActiveBets(allBets.filter((b: any) => b.status === 'active'));
+        setGoalTree(goalsRes.data);
+      } catch (err: any) {
+        setError(`Dashboard error: ${err?.message || String(err)}`);
+      } finally {
+        setLoadingContent(false);
+      }
+    };
+    fetchData();
   }, [currentUserId]);
 
   useEffect(() => {
     if (!user?.id) return;
     if (!localStorage.getItem(`praxis_tour_seen_${user.id}`)) setTourOpen(true);
   }, [user?.id]);
-
-  useEffect(() => {
-    if (!currentUserId) return;
-    (async () => {
-      setLoadingContent(true);
-      try {
-        const res = await axios.get(`${API_URL}/goals/${currentUserId}`);
-        setGoalTree(res.data);
-      } catch (err: any) {
-        setError(`Dashboard error: ${err?.message || String(err)}`);
-      } finally {
-        setLoadingContent(false);
-      }
-    })();
-  }, [currentUserId]);
 
   if (userLoading || loadingContent) {
     return (
@@ -119,81 +114,105 @@ const DashboardPage: React.FC = () => {
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 12 }}>
       <Container maxWidth="lg">
-
-        {/* ── 1. Top Briefing ── */}
-        <Box sx={{ pt: 4 }}>
-          {currentUserId && (
-            <AxiomMorningBrief
-              userName={userName}
-              streak={localStreak ?? (user?.current_streak ?? 0)}
-              points={localPoints ?? (user?.praxis_points ?? 0)}
-              avgProgress={avgProgress}
-              hasGoals={hasGoals}
-              userId={currentUserId}
-              onCheckIn={(s, p) => { setLocalStreak(s); setLocalPoints(p); }}
-            />
-          )}
-        </Box>
-
-        {/* ── 2. Progress Hub ── */}
-        <Box sx={{ mb: 6 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, px: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <TrackChangesIcon color="primary" /> Active Goal Widgets
-            </Typography>
-            <Button variant="text" size="small" onClick={() => navigate('/analytics')} startIcon={<InsightsIcon />} sx={{ fontWeight: 700 }}>
-              Full Analytics
-            </Button>
-          </Box>
+        <ErrorBoundary>
           
-          {currentUserId && hasGoals && (
-            <ErrorBoundary fallback={null}>
-              <GoalWidgets
+          {/* ── 1. Top Briefing ── */}
+          <Box sx={{ pt: 4 }}>
+            {currentUserId && (
+              <AxiomMorningBrief
+                userName={userName}
+                streak={localStreak ?? (user?.current_streak ?? 0)}
+                points={localPoints ?? (user?.praxis_points ?? 0)}
+                avgProgress={avgProgress}
+                hasGoals={hasGoals}
                 userId={currentUserId}
-                allNodes={allNodes}
-                activeBets={activeBets}
-                onProgressUpdate={(nodeId, newProgress) => {
-                  setGoalTree(prev => {
-                    if (!prev) return prev;
-                    return {
-                      ...prev,
-                      nodes: prev.nodes.map((n: any) =>
-                        n.id === nodeId ? { ...n, progress: newProgress } : n
-                      ),
-                    };
-                  });
-                }}
+                onCheckIn={(s, p) => { setLocalStreak(s); setLocalPoints(p); }}
               />
-            </ErrorBoundary>
-          )}
-        </Box>
+            )}
+          </Box>
 
-        {/* ── 3. Trackers & Community ── */}
-        <Grid container spacing={4}>
-          <Grid size={{ xs: 12, md: 5 }}>
-            <Box sx={{ position: 'sticky', top: 84 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, px: 1 }}>
-                <HubIcon sx={{ color: '#8B5CF6' }} />
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>Metrics & Network</Typography>
-              </Box>
-              <GlassCard sx={{ p: 3, mb: 3 }}>
-                <TrackerSection userId={currentUserId!} />
-              </GlassCard>
-            </Box>
+          {/* ── 2. Content Layout ── */}
+          <Grid container spacing={4}>
+            
+            {/* Main Column: Trackers and Goals */}
+            <Grid size={{ xs: 12, lg: 8 }}>
+              <Stack spacing={5}>
+                
+                {/* Trackers Section */}
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, px: 1 }}>
+                    <InsightsIcon color="primary" />
+                    <Typography variant="h6" sx={{ fontWeight: 800 }}>Daily Performance</Typography>
+                  </Box>
+                  <GlassCard sx={{ p: 3 }}>
+                    <TrackerSection userId={currentUserId!} />
+                  </GlassCard>
+                </Box>
+
+                {/* Goal Focus */}
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, px: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <TrackChangesIcon color="primary" /> Active Goal Focus
+                    </Typography>
+                    <Button variant="text" size="small" onClick={() => navigate('/analytics')} sx={{ fontWeight: 700 }}>
+                      View Analytics
+                    </Button>
+                  </Box>
+                  
+                  {currentUserId && hasGoals && (
+                    <GoalWidgets
+                      userId={currentUserId}
+                      allNodes={allNodes}
+                      activeBets={activeBets}
+                      onProgressUpdate={(nodeId, newProgress) => {
+                        setGoalTree(prev => {
+                          if (!prev) return prev;
+                          return {
+                            ...prev,
+                            nodes: prev.nodes.map((n: any) =>
+                              n.id === nodeId ? { ...n, progress: newProgress } : n
+                            ),
+                          };
+                        });
+                      }}
+                    />
+                  )}
+                </Box>
+              </Stack>
+            </Grid>
+
+            {/* Sidebar: Hub Access & Community Feed */}
+            <Grid size={{ xs: 12, lg: 4 }}>
+              <Stack spacing={5}>
+                
+                {/* Community Hub Card */}
+                <GlassCard sx={{ p: 3, background: 'linear-gradient(135deg, rgba(245,158,11,0.05) 0%, rgba(139,92,246,0.05) 100%)' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <HubIcon sx={{ fontSize: 18, color: '#8B5CF6' }} /> COMMUNITY HUB
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Connect with matched builders and find nearby study spots or events.
+                  </Typography>
+                  <Button fullWidth variant="outlined" onClick={() => navigate('/discover')} sx={{ borderRadius: '10px', fontWeight: 800 }}>
+                    Open Map
+                  </Button>
+                </GlassCard>
+
+                {/* Local Activity Feed */}
+                <Box>
+                  <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>RECENT ACTIVITY</Typography>
+                  <PostFeed 
+                    context="general" 
+                    feedUserId={currentUserId} 
+                    personalized 
+                  />
+                </Box>
+              </Stack>
+            </Grid>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 7 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, px: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>Community Activity</Typography>
-            </Box>
-            <PostFeed 
-              context="general" 
-              feedUserId={currentUserId} 
-              personalized 
-            />
-          </Grid>
-        </Grid>
-
+        </ErrorBoundary>
       </Container>
 
       <QuickActionFAB onPostClick={handleOpenCompose} />
