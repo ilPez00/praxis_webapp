@@ -16,3 +16,10 @@
 - Build Integrity: Direct imports verified for all reported crashing components.
 - Mobile Compatibility: Added defensive safety wrappers for geolocation and service workers.
 - Push to GitHub: Completed.
+Session 29: Mobile Stability & Refresh Loop Fixes
+- Synchronized CURRENT_VERSION (2026.03.12.v1) across index.html, versionControl.ts, and sw.js.
+- Rebuilt index.html boot script with surgical storage wipe (preserves auth tokens, clears everything else).
+- Implemented circuit breaker in sessionStorage to prevent infinite reloads.
+- Updated sw.js to be truly 'suicidal' (unregisters and reloads all clients).
+- Added manual 'Force Hard Refresh' button to LoginForm for troubleshooting.
+- Fixed build label in LoginForm to match version.

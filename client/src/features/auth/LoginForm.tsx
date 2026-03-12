@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { nuclearReset } from '../../utils/versionControl';
 import {
   Box,
   Typography,
@@ -15,6 +16,7 @@ import {
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import GoogleIcon from '@mui/icons-material/Google';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -138,9 +140,23 @@ const LoginForm: React.FC = () => {
               </MuiLink>
             </Typography>
 
-            <Box sx={{ mt: 8, opacity: 0.3, textAlign: 'center' }}>
+            <Box sx={{ mt: 6, p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1, textAlign: 'center' }}>
+                Having issues on mobile?
+              </Typography>
+              <Button
+                fullWidth size="small" variant="text" color="inherit"
+                onClick={nuclearReset}
+                startIcon={<RestartAltIcon sx={{ fontSize: '1rem' }} />}
+                sx={{ fontSize: '0.65rem', opacity: 0.6, '&:hover': { opacity: 1 } }}
+              >
+                Force Hard Refresh & Clear Cache
+              </Button>
+            </Box>
+
+            <Box sx={{ mt: 4, opacity: 0.3, textAlign: 'center' }}>
               <Typography sx={{ fontSize: '0.6rem', letterSpacing: '0.1em' }}>
-                PRAXIS BUILD: 2026.03.11.V8-STABLE
+                PRAXIS BUILD: 2026.03.12.V1-STABLE
               </Typography>
             </Box>
           </Box>

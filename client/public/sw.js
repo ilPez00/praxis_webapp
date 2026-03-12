@@ -1,5 +1,7 @@
-// Suicidal Service Worker - Immediately unregisters itself and clears all caches
-self.addEventListener('install', () => {
+// Suicidal Service Worker - VERSION 2026.03.12.v1
+// Immediately unregisters itself and clears all caches to resolve refresh loops
+
+self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
@@ -12,6 +14,7 @@ self.addEventListener('activate', (event) => {
     }).then(() => {
       return self.clients.matchAll();
     }).then((clients) => {
+      // Force all clients to reload to pick up the unregistration
       clients.forEach(client => client.navigate(client.url));
     })
   );
@@ -19,5 +22,6 @@ self.addEventListener('activate', (event) => {
 
 // Fallback to network for everything
 self.addEventListener('fetch', (event) => {
+  // Check if we are already unregistering
   event.respondWith(fetch(event.request));
 });

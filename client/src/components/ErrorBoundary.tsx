@@ -1,9 +1,10 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Box, Typography, Button, Paper, Stack } from '@mui/material';
+import { Box, Typography, Button, Paper, Stack, Collapse } from '@mui/material';
 import { nuclearReset } from '../utils/versionControl';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import HomeIcon from '@mui/icons-material/Home';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 interface Props {
   children?: ReactNode;
@@ -13,34 +14,21 @@ interface State {
   hasError: boolean;
   error?: Error;
   errorInfo?: ErrorInfo;
+  showDetails: boolean;
 }
 
-/**
- * @class ErrorBoundary
- * @extends Component
- * @description React Error Boundary component to catch JavaScript errors
- * anywhere in their child component tree, log those errors, and display a fallback UI.
- */
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: undefined,
     errorInfo: undefined,
+    showDetails: false,
   };
 
-  /**
-   * @description This static method is called after an error has been thrown by a descendant component.
-   * It receives the error that was thrown as a parameter. This method should return an object to update state.
-   */
-  public static getDerivedStateFromError(_: Error): State {
-    // Update state so the next render will show the fallback UI.
-    return { hasError: true };
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error, showDetails: false };
   }
 
-  /**
-   * @description This method is called after an error has been thrown by a descendant component.
-   * It receives two parameters: error and errorInfo.
-   */
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error captured by boundary:", error, errorInfo);
     this.setState({ error, errorInfo });
@@ -87,8 +75,8 @@ class ErrorBoundary extends Component<Props, State> {
             </Typography>
             
             <Typography variant="body2" color="text.secondary" sx={{ mb: 4, lineHeight: 1.6 }}>
-              A critical error occurred, likely due to outdated browser cache after a system update. 
-              Try a regular reload first, or use <strong>Hard Reset</strong> to clear all local data.
+              A critical error occurred. This often happens after a major system update when the browser tries to use old cached files. 
+              Use <strong>Hard Reset</strong> to clear all local data.
             </Typography>
 
             <Stack spacing={2}>
@@ -111,7 +99,7 @@ class ErrorBoundary extends Component<Props, State> {
                 onClick={() => nuclearReset()}
                 sx={{ borderRadius: '12px', py: 1.5, fontWeight: 800, borderColor: 'rgba(245, 158, 11, 0.3)' }}
               >
-                Hard Reset (Clear Cache)
+                Hard Reset (Nuclear)
               </Button>
 
               <Button 
@@ -125,11 +113,31 @@ class ErrorBoundary extends Component<Props, State> {
               </Button>
             </Stack>
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <Box sx={{ mt: 4, textAlign: 'left', p: 2, border: '1px solid rgba(255,255,255,0.05)', borderRadius: 2, bgcolor: 'rgba(0,0,0,0.2)' }}>
-                <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace' }}>
-                  {this.state.error.toString()}
-                </Typography>
+            {this.state.error && (
+              <Box sx={{ mt: 4, textAlign: 'left' }}>
+                <Button 
+                  size="small" 
+                  onClick={() => this.setState({ showDetails: !this.state.showDetails })}
+                  startIcon={<ExpandMoreIcon sx={{ transform: this.state.showDetails ? 'rotate(180deg)' : 'none' }} />}
+                  sx={{ color: 'text.disabled', fontSize: '0.65rem' }}
+                >
+                  Technical Details
+                </Button>
+                <Collapse in={this.state.showDetails}>
+                  <Box sx={{ 
+                    mt: 1, p: 2, 
+                    border: '1px solid rgba(255,255,255,0.05)', 
+                    borderRadius: 2, bgcolor: 'rgba(0,0,0,0.2)',
+                    maxHeight: 200, overflow: 'auto'
+                  }}>
+                    <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', display: 'block', mb: 1 }}>
+                      {this.state.error.name}: {this.state.error.message}
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.disabled', fontSize: '0.6rem', whiteSpace: 'pre-wrap' }}>
+                      {this.state.error.stack}
+                    </Typography>
+                  </Box>
+                </Collapse>
               </Box>
             )}
           </Paper>

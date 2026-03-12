@@ -13,17 +13,17 @@
     <link rel="manifest" href="/manifest.json" />
     <title>Praxis</title>
 
-    <!-- STABLE CACHE RESET SCRIPT - VERSION 2026.03.11.V8 -->
+    <!-- STABLE CACHE RESET SCRIPT - VERSION 2026.03.12.v1 -->
     <script>
       (function() {
-        var CURRENT_VERSION = '2026.03.11.v8';
+        var CURRENT_VERSION = '2026.03.12.v1';
         var storedVersion = localStorage.getItem('praxis_app_version');
         
         // CIRCUIT BREAKER: Don't reload if we already did it in this session
         var alreadyReloaded = sessionStorage.getItem('praxis_circuit_breaker');
 
         if (storedVersion !== CURRENT_VERSION && !alreadyReloaded) {
-          console.log('[Stability] Version mismatch. Updating...');
+          console.log('[Stability] Version mismatch (' + (storedVersion || 'none') + ' -> ' + CURRENT_VERSION + '). Updating...');
           
           // 1. Set version FIRST to stop the loop
           localStorage.setItem('praxis_app_version', CURRENT_VERSION);
@@ -32,27 +32,35 @@
           // 2. Clear Caches & Service Workers (Async)
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(regs) {
-              for (var i = 0; i < regs.length; i++) regs[i].unregister();
+              for (var i = 0; i < regs.length; i++) {
+                try { regs[i].unregister(); } catch(e) {}
+              }
             });
           }
           if ('caches' in window) {
             caches.keys().then(function(names) {
-              for (var i = 0; i < names.length; i++) caches.delete(names[i]);
+              for (var i = 0; i < names.length; i++) {
+                try { caches.delete(names[i]); } catch(e) {}
+              }
             });
           }
 
-          // 3. Surgical Storage Wipe (Keep the version we just set!)
+          // 3. Surgical Storage Wipe (Keep only vital auth & version!)
+          var keepKeys = ['praxis_app_version', 'supabase.auth.token', 'sb-web-production-646a4-auth-token'];
           var keys = Object.keys(localStorage);
           for (var i = 0; i < keys.length; i++) {
-            if (keys[i] !== 'praxis_app_version') {
+            if (keepKeys.indexOf(keys[i]) === -1 && keys[i].indexOf('supabase.auth') === -1) {
               localStorage.removeItem(keys[i]);
             }
           }
 
-          // 4. Final Reload
-          setTimeout(function() {
-            window.location.reload();
-          }, 200);
+          // 4. Final Reload with a guard to prevent multiple rapid triggers
+          if (!window.praxis_reloading) {
+            window.praxis_reloading = true;
+            setTimeout(function() {
+              window.location.reload(true); // true forces bypass of local cache
+            }, 800);
+          }
         }
       })();
     </script>
