@@ -137,6 +137,12 @@ const LoginForm: React.FC = () => {
                 Sign up free
               </MuiLink>
             </Typography>
+
+            <Box sx={{ mt: 8, opacity: 0.3, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: '0.6rem', letterSpacing: '0.1em' }}>
+                PRAXIS BUILD: 2026.03.11.V5-STABLE
+              </Typography>
+            </Box>
           </Box>
         </Box>
       </Box>

@@ -78,9 +78,10 @@ function MapsFrame({ lat, lng, name }: { lat: number; lng: number; name: string 
 interface PlacesTabProps {
   currentUserId?: string;
   compact?: boolean;
+  hideMap?: boolean;
 }
 
-const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false }) => {
+const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, hideMap = false }) => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');
@@ -277,19 +278,21 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
             </Button>
           </Box>
 
-          <LocationMap
-            userLocation={userGeo || undefined}
-            markers={filteredPlaces
-              .filter(p => p.latitude != null && p.longitude != null)
-              .map(p => ({
-                id: p.id,
-                title: p.name,
-                subtitle: p.city || p.address || undefined,
-                lat: p.latitude!,
-                lng: p.longitude!,
-                type: 'place'
-              }))}
-          />
+          {!hideMap && (
+            <LocationMap
+              userLocation={userGeo || undefined}
+              markers={filteredPlaces
+                .filter(p => p.latitude != null && p.longitude != null)
+                .map(p => ({
+                  id: p.id,
+                  title: p.name,
+                  subtitle: p.city || p.address || undefined,
+                  lat: p.latitude!,
+                  lng: p.longitude!,
+                  type: 'place'
+                }))}
+            />
+          )}
         </Container>
       )}
 

@@ -206,17 +206,17 @@ const DiscoverPage: React.FC = () => {
               </Box>
               <Box>
                 <Typography variant="overline" sx={{ color: '#6366F1', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>Recommended Places</Typography>
-                <PlacesTab currentUserId={user?.id} compact />
+                <PlacesTab currentUserId={user?.id} compact hideMap />
               </Box>
               <Box>
                 <Typography variant="overline" sx={{ color: '#EC4899', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>Upcoming Events</Typography>
-                <EventsPage compact />
+                <EventsPage compact hideMap />
               </Box>
             </Stack>
           )}
           {filter === 'people' && <MatchesPage />}
-          {filter === 'places' && <PlacesTab currentUserId={user?.id} />}
-          {filter === 'events' && <EventsPage />}
+          {filter === 'places' && <PlacesTab currentUserId={user?.id} hideMap />}
+          {filter === 'events' && <EventsPage hideMap />}
         </React.Suspense>
       </Container>
     </Box>

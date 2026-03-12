@@ -25,3 +25,9 @@
 - UX: Filtering and category synchronization verified across all community tabs.
 - Stability: Version-based cache clearing tested and safe for deployment.
 - Push to GitHub: Completed.
+Session 28: UI/UX Refinement & Location System Fixes
+- Added 'hideMap' prop to PlacesTab and EventsPage to prevent redundant map rendering in DiscoverPage.
+- Updated DiscoverPage to pass 'hideMap={true}' to child components, ensuring only the unified Hero Map is shown.
+- Modified matchingController.ts to include latitude/longitude in enriched match profiles.
+- Verified that user markers now appear on the Discovery Map alongside places and events.
+- Standardized Grid layout syntax for better MUI v6 compatibility.

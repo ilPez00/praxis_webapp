@@ -106,7 +106,7 @@ const RSVP_OPTIONS: { status: 'going' | 'maybe' | 'not_going'; label: string; co
   { status: 'not_going', label: 'Not going', color: '#6B7280', icon: <CancelIcon fontSize="small" /> },
 ];
 
-const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
+const EventsPage: React.FC<{ compact?: boolean; hideMap?: boolean }> = ({ compact = false, hideMap = false }) => {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -305,19 +305,21 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
             </Stack>
           </Box>
 
-          <LocationMap
-            userLocation={userGeo || undefined}
-            markers={filteredEvents
-              .filter((e: any) => e.latitude != null && e.longitude != null)
-              .map((e: any) => ({
-                id: e.id,
-                title: e.title,
-                subtitle: `${formatDate(e.event_date)}${e.city ? ' · ' + e.city : ''}`,
-                lat: e.latitude!,
-                lng: e.longitude!,
-                type: 'event'
-              }))}
-          />
+          {!hideMap && (
+            <LocationMap
+              userLocation={userGeo || undefined}
+              markers={filteredEvents
+                .filter((e: any) => e.latitude != null && e.longitude != null)
+                .map((e: any) => ({
+                  id: e.id,
+                  title: e.title,
+                  subtitle: `${formatDate(e.event_date)}${e.city ? ' · ' + e.city : ''}`,
+                  lat: e.latitude!,
+                  lng: e.longitude!,
+                  type: 'event'
+                }))}
+            />
+          )}
         </Container>
       )}
 

@@ -291,51 +291,13 @@ root.render(
   </React.StrictMode>
 );
 
+/* 
 // Service Worker Management & Force Reset
 const registerServiceWorker = () => {
   if ('serviceWorker' in navigator) {
-    // Force unregister if URL contains ?reset=1
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('reset') === '1') {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        for (let registration of registrations) {
-          registration.unregister();
-        }
-        caches.keys().then(names => {
-          for (let name of names) caches.delete(name);
-        });
-        console.log('Force reset triggered: SW and Caches cleared.');
-        // Remove the reset param and reload
-        window.location.href = window.location.origin + window.location.pathname;
-      });
-      return;
-    }
-
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then(registration => {
-        console.log('SW registered: ', registration);
-        
-        // Handle updates: reload page if a new SW is installed
-        registration.onupdatefound = () => {
-          const installingWorker = registration.installing;
-          if (installingWorker) {
-            installingWorker.onstatechange = () => {
-              if (installingWorker.state === 'installed') {
-                if (navigator.serviceWorker.controller) {
-                  console.log('New content is available; please refresh.');
-                  // Force a clean reload to bypass any zombie cache
-                  window.location.reload();
-                }
-              }
-            };
-          }
-        };
-      }).catch(registrationError => {
-        console.log('SW registration failed: ', registrationError);
-      });
-    });
+    // ... logic disabled for stability ...
   }
 };
-
 registerServiceWorker();
+*/
 

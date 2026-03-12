@@ -83,7 +83,7 @@ async function enrichMatches(rawMatches: { userId: string; score: number }[]): P
   const userIds = rawMatches.map(m => m.userId);
 
   const [{ data: profiles }, { data: trees }] = await Promise.all([
-    supabase.from('profiles').select('id, name, avatar_url, bio, current_streak, last_activity_date').in('id', userIds),
+    supabase.from('profiles').select('id, name, avatar_url, bio, current_streak, last_activity_date, latitude, longitude').in('id', userIds),
     supabase.from('goal_trees').select('userId, nodes').in('userId', userIds),
   ]);
 
@@ -108,6 +108,8 @@ async function enrichMatches(rawMatches: { userId: string; score: number }[]): P
       bio: p?.bio,
       currentStreak: p?.current_streak ?? 0,
       lastCheckinDate: p?.last_activity_date,
+      latitude: p?.latitude,
+      longitude: p?.longitude,
       domains,
       sharedGoals,
     };
