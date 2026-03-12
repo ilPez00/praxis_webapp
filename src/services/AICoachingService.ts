@@ -223,7 +223,7 @@ export class AICoachingService {
 
   public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
     const identity = await this.getIdentity();
-    const prompt = `${identity}\n\nUser: ${userPrompt}\nContext: ${JSON.stringify(context)}\n\nIMPORTANT: Respond in the following language: ${context.language}.`;
+    const prompt = `${identity}\nContext: ${JSON.stringify(context)}\nUser: ${userPrompt}\nReply concisely in ${context.language}.`;
     try { return await this.runWithFallback(prompt); } 
     catch (error: any) { throw new Error(error.message); }
   }

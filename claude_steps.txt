@@ -75,3 +75,9 @@ Session 41: Multi-language Support (i18n)
 - Created SQL migration to store user language in 'profiles' table.
 - Updated Axiom (AI) to respond in the user's preferred language.
 - Implemented language sync between frontend and backend on login.
+Session 42: Token Optimization & Vercel Build Fix
+- Created client/.npmrc with legacy-peer-deps=true to fix Vercel build conflict.
+- Optimized Axiom token usage by limiting feedback, achievements, and network context.
+- Refined goal filtering to send only root or active nodes to AI.
+- Prioritized 'Flash' models (gemini-2.0-flash) for faster, cheaper processing.
+- Shortened AI prompts to be more concise and direct.
