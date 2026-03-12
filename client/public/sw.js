@@ -1,4 +1,4 @@
-const CACHE_NAME = 'praxis-cache-v2'; // Incremented version
+const CACHE_NAME = 'praxis-cache-v3'; // Incremented version to v3
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -10,7 +10,7 @@ const ASSETS_TO_CACHE = [
 
 // Install event - cache core assets
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Force the waiting service worker to become the active service worker
+  self.skipWaiting(); 
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -18,7 +18,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate event - cleanup old caches
+// Activate event - cleanup old caches and claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -30,27 +30,50 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      console.log('[SW] Activated and claiming clients.');
+      return self.clients.claim();
+    })
   );
 });
 
-// Fetch event - Network-first for the main page to avoid loading stale JS hashes
+// Fetch event
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // For the main app entry or navigation requests, try network first
+  // 1. Navigation requests: Network-first, fallback to cached index.html
   if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
     event.respondWith(
       fetch(event.request)
-        .catch(() => caches.match('/index.html'))
+        .then((response) => {
+          // If network is ok, return it
+          if (response.ok) return response;
+          // If it's a 404/500, still try cache as last resort
+          return caches.match('/index.html') || response;
+        })
+        .catch(() => {
+          // Network failure (offline), return cached index
+          return caches.match('/index.html');
+        })
     );
     return;
   }
 
-  // For other assets, try cache first, then network
+  // 2. API requests: Bypass cache entirely
+  if (url.pathname.startsWith('/api')) {
+    return; // Let the browser handle it normally
+  }
+
+  // 3. Static assets: Cache-first, fallback to network
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request).then((networkResponse) => {
+        // Optional: you could cache new successful asset requests here
+        return networkResponse;
+      });
     })
   );
 });
