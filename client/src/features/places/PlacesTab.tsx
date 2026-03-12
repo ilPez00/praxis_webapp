@@ -327,7 +327,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
               const isOwner = place.owner_id === currentUserId;
               const canManage = isOwner || isAdmin;
               return (
-                <Grid key={place.id} item xs={12} sm={6} md={4}>
+                <Grid key={place.id} size={{ xs: 12, sm: 6, md: 4 }}>
                   <GlassCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                       <Chip
@@ -425,8 +425,8 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
             <TextField fullWidth label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} multiline rows={2} />
             <TextField fullWidth label="Address" value={formAddress} onChange={e => setFormAddress(e.target.value)} />
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}><TextField fullWidth label="City" value={formCity} onChange={e => setFormCity(e.target.value)} /></Grid>
-              <Grid item xs={12} sm={6}><TextField fullWidth label="Schedule" value={formSchedule} onChange={e => setFormSchedule(e.target.value)} /></Grid>
+              <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="City" value={formCity} onChange={e => setFormCity(e.target.value)} /></Grid>
+              <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Schedule" value={formSchedule} onChange={e => setFormSchedule(e.target.value)} /></Grid>
             </Grid>
             <TextField fullWidth label="Website" value={formWebsite} onChange={e => setFormWebsite(e.target.value)} />
             <Box>
@@ -435,8 +435,8 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false })
                 <Button size="small" startIcon={<MyLocationIcon />} onClick={autoFillGeo}>Detect</Button>
               </Stack>
               <Grid container spacing={2}>
-                <Grid item xs={6}><TextField fullWidth size="small" label="Lat" value={formLat} onChange={e => setFormLat(e.target.value)} /></Grid>
-                <Grid item xs={6}><TextField fullWidth size="small" label="Lng" value={formLng} onChange={e => setFormLng(e.target.value)} /></Grid>
+                <Grid size={{ xs: 6 }}><TextField fullWidth size="small" label="Lat" value={formLat} onChange={e => setFormLat(e.target.value)} /></Grid>
+                <Grid size={{ xs: 6 }}><TextField fullWidth size="small" label="Lng" value={formLng} onChange={e => setFormLng(e.target.value)} /></Grid>
               </Grid>
             </Box>
           </Stack>

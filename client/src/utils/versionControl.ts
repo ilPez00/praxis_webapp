@@ -1,6 +1,6 @@
 // Increment this version number whenever you want to force all users to clear their cache and reload
 // Current: v2 - Adding aggressive cache busting
-const CURRENT_VERSION = '2026.03.11.v2';
+const CURRENT_VERSION = '2026.03.11.v3';
 
 export function enforceFreshContent() {
   if (typeof window === 'undefined') return;
