@@ -1,20 +1,27 @@
-# Session: March 11, 2026 - Unified Domain System & Event Filtering
+# Session: March 11, 2026 - UX Consolidation, Stability & Performance
 
 ## Summary of Changes
-- **Standardized Domain System:**
-  - Created `client/src/types/Domain.ts`: A centralized source of truth for all Praxis goal categories (e.g., "Body & Health", "Mind & Learning").
-  - Each domain now has a consistent color, icon, and label used across Users, Places, and Events.
-- **Event Filtering:**
-  - Added a "Category" filter to `EventsPage.tsx`, allowing users to filter upcoming community events by goal domain.
-  - Implemented a more compact and visual "Domain Chip" on event cards to quickly identify the focus of the event.
-- **Unified Discovery Tags:**
-  - Updated `PlacesTab.tsx` to use the shared domain system for place types, replacing the previous hardcoded list.
-  - Standardized `MatchesPage.tsx` to use the same domain chips and colors for "Shared Domains," creating a unified visual language.
-- **Performance Improvements:**
-  - Added pagination ("Load More") and `useMemo` optimization to `MatchesPage.tsx` to handle large numbers of user matches without UI lag.
+- **Unified Domain System:**
+  - Created a centralized domain registry in `client/src/types/Domain.ts` with 9 core categories (Body, Mind, Craft, etc.).
+  - Applied these standardized colors, icons, and labels across **User Matches, Places, and Events** for a cohesive visual language.
+- **Enhanced Discovery & Filtering:**
+  - Implemented category-based filtering for the **Events** tab, matching the functionality of the Places tab.
+  - Optimized the Discovery Hub with `useSWR` for faster, cached data fetching.
+  - Added pagination ("Load More") to the user matches list to maintain high performance.
+- **Critical Stability Fixes:**
+  - **Login Loop Resolved:** Optimized the `versionControl.ts` logic to immediately commit version changes before reloading, preventing infinite refresh loops on mobile.
+  - **Grid Standardisation:** Converted all remaining components to the modern MUI v2 `Grid` syntax (`size` prop), resolving build-blocking structural errors.
+  - **Hard Reset:** Upgraded the `ErrorBoundary` with a "Hard Reset" button that performs a complete local storage and cache wipe for recovery.
+- **Infrastructure:**
+  - Formally installed `swr` in the client dependencies.
+  - Refined the Service Worker (`sw.js`) to strictly prioritize network-first delivery for application logic.
+- **Build & Dependency Management:**
+  - Resolved Vercel build failure (`ERESOLVE`) by pinning `@types/react` and `@types/react-dom` to version 18.
+  - Added npm `overrides` to `client/package.json` to prevent root-level or Dependabot updates from forcing incompatible React 19 types.
 
 ## Verification Status
-- Type check: Passed.
-- Filtering: Verified filtering works consistently across Events, Places, and Users.
-- UI Consistency: Confirmed all 3 discovery tabs use the same category list and colors.
+- Type check: Passed (0 errors across the entire codebase).
+- Build Integrity: Structural JSX and MUI version conflicts resolved.
+- UX: Filtering and category synchronization verified across all community tabs.
+- Stability: Version-based cache clearing tested and safe for deployment.
 - Push to GitHub: Completed.
