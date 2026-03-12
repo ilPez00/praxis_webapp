@@ -1,24 +1,25 @@
-# Session: March 11, 2026 - Major UI/UX Rework & Unified Discovery Hub
+# Session: March 11, 2026 - Location System & Discover Optimization
 
 ## Summary of Changes
-- **Unified Discovery Hub (`DiscoverPage.tsx`):**
-  - Transformed the Discover page into a map-centric "Hub" where People, Places, and Events are visible simultaneously.
-  - Replaced tabs with a floating, horizontal-scrolling chip bar (`[Everything] [Users] [Places] [Events]`).
-  - Implemented custom map markers: Users (avatars with orange borders), Places (indigo dots), and Events (pink dots).
-  - Created "Compact Mode" for `MatchesPage`, `PlacesTab`, and `EventsPage` to allow seamless integration into the unified hub without redundant headers or maps.
-- **Messages & Groups Rework:**
-  - **Segmented Chat List (`ChatPage.tsx`):** Separated Direct Messages from Community Boards using collapsible Accordions for better organization.
-  - **Axiom Context Header (`GroupChatRoom.tsx`):** Added a pinned, expandable header in group chats that shows the shared objective and a specific "Axiom Tip" for that collective.
-  - **Sleeker Replies:** Refined the message reply UI with a subtle "quoted" style and better color contrast.
-- **Dashboard Refinement:**
-  - Consolidated the top-of-page experience into the **Axiom Morning Briefing** hero section.
-  - Standardized the "Overall Progress" bar at the top of the hero card.
-- **System Integrity:**
-  - Fixed multiple TypeScript errors related to missing imports and MUI v2 Grid syntax.
-  - Verified all new components are fully responsive and functional.
+- **Location System:**
+  - Updated `GettingStartedPage.tsx` (onboarding) to include a "Set your home base" step. Users can manually state their location (e.g. "Verona, Italy") or use GPS detection.
+  - Implemented `useLocationSync.ts` hook: Automatically requests geolocation permission and updates the user's `latitude` and `longitude` in the database once per session.
+  - Set default location for all current users to **Verona, Italy** (45.4384, 10.9916).
+  - Updated `manual_actions.txt` with required SQL to add the `stated_location` column.
+- **Discover Optimization:**
+  - Implemented a session-based `markerCache` in `DiscoverPage.tsx`. This prevents the "sluggish" behavior caused by refetching hundreds of markers every time the user toggles filters or re-visits the tab.
+  - Fixed redundant API calls by ensuring markers are only fetched when the cache is empty or manually refreshed.
+- **System Stability:**
+  - Fixed missing `IconButton` import in the onboarding flow.
+  - Integrated location sync globally into `AppRouter.tsx`.
+
+## Future Plans
+- Implement marker clustering if the user base in Verona grows too dense.
+- Add "Distance from me" sorting to the discovery lists.
 
 ## Verification Status
 - Type check: Passed.
-- Map Integration: Markers and filtering verified.
-- Mobile Layout: Confirmed "Compact Mode" scales correctly.
+- Onboarding: Step 1 now asks for location.
+- Geo Sync: Verified logic in AppRouter.
+- Cache: Discover tab markers persist between sub-tab switches.
 - Push to GitHub: Completed.

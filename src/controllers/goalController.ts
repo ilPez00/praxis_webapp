@@ -571,7 +571,7 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 4. Save updated nodes + rootNodes
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
+    .update({ nodes: updatedNodes, '"rootNodes"': updatedRootNodes })
     .eq('"userId"', userId);
   if (saveErr) throw new InternalServerError(`Failed to save new node: ${saveErr.message}`);
 

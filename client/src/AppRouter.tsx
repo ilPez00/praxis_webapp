@@ -7,6 +7,7 @@ import PrivateRoute from './features/auth/PrivateRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import routes from './config/routes';
+import { useLocationSync } from './hooks/useLocationSync';
 
 const PageLoader = () => (
   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -26,6 +27,7 @@ const basename = (!isElectron && window.location.hostname === 'ilpez00.github.io
   : '';
 
 const AppRouter: React.FC = () => {
+  useLocationSync();
   // Detect if we are in a widget view (either via hash or path)
   const isWidget = window.location.hash.includes('widget') || window.location.pathname.includes('widget');
 

@@ -212,7 +212,7 @@ const DiscoverPage: React.FC = () => {
             {filter === 'all' ? 'Community Hub' : filter.charAt(0).toUpperCase() + filter.slice(1)}
           </Typography>
           <Tooltip title="Refresh data">
-            <IconButton onClick={fetchMarkers} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
+            <IconButton onClick={() => fetchMarkers(true)} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
               {loadingMarkers ? <CircularProgress size={20} /> : <FilterListIcon />}
             </IconButton>
           </Tooltip>
