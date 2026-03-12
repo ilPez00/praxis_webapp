@@ -4,34 +4,60 @@
     <meta charset="utf-8" />
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#0A0B14" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Praxis — Goal Accountability Network"
     />
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>Praxis</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+
+    <!-- NUCLEAR CACHE CLEAR SCRIPT - VERSION 2026.03.11.V7 -->
     <script>
+      (function() {
+        var CURRENT_VERSION = '2026.03.11.v7';
+        var storedVersion = localStorage.getItem('praxis_app_version');
+        if (storedVersion !== CURRENT_VERSION) {
+          console.log('[Nuclear] Version mismatch. Cleaning all state...');
+          localStorage.clear();
+          sessionStorage.clear();
+          localStorage.setItem('praxis_app_version', CURRENT_VERSION);
+          
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              for (var i = 0; i < regs.length; i++) regs[i].unregister();
+            });
+          }
+          
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              for (var i = 0; i < names.length; i++) caches.delete(names[i]);
+            });
+          }
+          
+          // Force a clean reload with a cache-busting query param
+          window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now());
+        }
+      })();
+    </script>
+
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
       (function(l) {
-        if (l.search[1] === '/') {
-          var decoded = l.search.slice(1).split('&').map(function(s) {
-            return s.replace(/~and~/g, '&');
-          });
-          var basePath = l.pathname.replace(/\/$/, '');
-          window.history.replaceState(
-            null, null,
-            basePath + decoded[0] + (decoded[1] ? '?' + decoded[1] : '') + l.hash
+        if (l.search[1] === '/' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded + l.hash
           );
         }
       }(window.location));
     </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
   </body>
