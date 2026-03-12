@@ -37,3 +37,8 @@ Session 32: Role-based Debug Console
 - Added 'role' field to User model and useUser hook.
 - Restricted Eruda mobile console to 'admin', 'moderator', and 'staff' roles.
 - Moved Eruda initialization from static index.html to reactive AppRouter.tsx.
+Session 33: Admin 'Grant Pro' Feature
+- Added togglePremium controller function to adminController.ts.
+- Added PUT /admin/users/:id/premium route to adminRoutes.ts.
+- Implemented handleTogglePremium in AdminPage.tsx.
+- Added 'Grant Pro' button (StarsIcon) to User list in Admin panel.

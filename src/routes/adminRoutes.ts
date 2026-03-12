@@ -7,7 +7,7 @@ import {
   listAllServices, adminDeleteService, listAllCoaches, decayPoints, promoteUser,
   leaderboardBonus,
   streakAlerts,
-  getSystemConfig, updateSystemConfig, triggerAxiomScan
+  getSystemConfig, updateSystemConfig, triggerAxiomScan, togglePremium
 } from '../controllers/adminController';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -46,6 +46,7 @@ router.get('/services', authenticateToken, requireAdmin, listAllServices);
 router.delete('/services/:id', authenticateToken, requireAdmin, adminDeleteService);
 router.get('/coaches', authenticateToken, requireAdmin, listAllCoaches);
 router.put('/users/:id/role', authenticateToken, requireAdmin, promoteUser);
+router.put('/users/:id/premium', authenticateToken, requireAdmin, togglePremium);
 
 // Axiom & Config
 router.get('/config', authenticateToken, requireAdmin, getSystemConfig);

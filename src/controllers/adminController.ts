@@ -728,6 +728,23 @@ export const promoteUser = catchAsync(async (req: Request, res: Response) => {
 });
 
 /**
+ * PUT /admin/users/:id/premium
+ * Toggle a user's is_premium status.
+ */
+export const togglePremium = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { is_premium } = req.body;
+
+  if (typeof is_premium !== 'boolean') throw new BadRequestError('is_premium must be a boolean.');
+
+  const { error } = await supabase.from('profiles').update({ is_premium }).eq('id', id);
+  if (error) throw new InternalServerError(`Failed to update premium status: ${error.message}`);
+
+  logger.info(`Admin ${req.user?.id} set is_premium=${is_premium} for user ${id}`);
+  res.json({ success: true, is_premium });
+});
+
+/**
  * POST /admin/cron/leaderboard-bonus
  * Daily leaderboard bonus: #1 +500 PP, top 10 +200 PP, top 100 +50 PP.
  * Security: X-Admin-Secret header (for cron service) or JWT admin.

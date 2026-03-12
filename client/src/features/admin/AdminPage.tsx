@@ -588,6 +588,24 @@ const AdminPage: React.FC = () => {
     } catch { toast.error('Failed.'); }
   };
 
+  const handleTogglePremium = async (userId: string, current: boolean) => {
+    try {
+      const is_premium = !current;
+      const res = await apiFetch(`/admin/users/${userId}/premium`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_premium }),
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_premium } : u));
+        toast.success(is_premium ? 'User granted Pro status.' : 'Pro status revoked.');
+      } else {
+        const b = await res.json().catch(() => ({}));
+        toast.error((b as any).message || 'Failed to update premium status.');
+      }
+    } catch { toast.error('Failed.'); }
+  };
+
   const handleModifyPoints = async (userId: string, sign: 1 | -1) => {
     const raw = ppAmounts[userId] || '100';
     const amount = parseInt(raw, 10);
@@ -939,6 +957,11 @@ const AdminPage: React.FC = () => {
                             <Tooltip title={u.role === 'moderator' || u.is_admin ? 'Demote to user' : 'Make moderator'}>
                               <IconButton size="small" onClick={() => handlePromoteUser(u.id, (u.role === 'moderator' || u.is_admin) ? 'user' : 'moderator')} sx={{ color: '#3B82F6', opacity: 0.6, '&:hover': { opacity: 1 } }}>
                                 <WorkspacePremiumIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title={u.is_premium ? 'Revoke Pro' : 'Grant Pro'}>
+                              <IconButton size="small" onClick={() => handleTogglePremium(u.id, !!u.is_premium)} sx={{ color: u.is_premium ? 'secondary.main' : 'text.disabled', opacity: u.is_premium ? 1 : 0.6, '&:hover': { opacity: 1 } }}>
+                                <StarsIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                             {isBanned(u) ? (
