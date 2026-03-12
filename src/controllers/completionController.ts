@@ -94,7 +94,7 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
     const { data: tree } = await supabase
       .from('goal_trees')
       .select('nodes')
-      .eq('userId', requesterId)
+      .eq('user_id', requesterId)
       .single();
 
     if (tree?.nodes) {

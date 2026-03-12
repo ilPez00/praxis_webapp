@@ -42,7 +42,7 @@ export const getProgressOverTime = catchAsync(async (req: Request, res: Response
   const { data: goalTreeData, error: goalTreeError } = await supabase
     .from('goal_trees')
     .select('nodes')
-    .eq('userId', userId)
+    .eq('user_id', userId)
     .single();
 
   if (goalTreeError && goalTreeError.code !== 'PGRST116') {
@@ -85,7 +85,7 @@ export const getDomainPerformance = catchAsync(async (req: Request, res: Respons
   const { data: goalTreeData, error: goalTreeError } = await supabase
     .from('goal_trees')
     .select('nodes')
-    .eq('userId', userId)
+    .eq('user_id', userId)
     .single();
 
   if (goalTreeError && goalTreeError.code !== 'PGRST116') {
@@ -132,7 +132,7 @@ export const getFeedbackTrends = catchAsync(async (req: Request, res: Response, 
   const { data: feedbackData, error: feedbackError } = await supabase
     .from('feedback')
     .select('grade')
-    .eq('receiverId', userId)
+    .eq('receiver_id', userId)
     .limit(100); // Limit to recent feedback for trends
 
   if (feedbackError) {
@@ -177,7 +177,7 @@ export const getAchievementRate = catchAsync(async (req: Request, res: Response,
   const { data: goalTreeData, error: goalTreeError } = await supabase
     .from('goal_trees')
     .select('nodes')
-    .eq('userId', userId)
+    .eq('user_id', userId)
     .single();
 
   if (goalTreeError && goalTreeError.code !== 'PGRST116') {

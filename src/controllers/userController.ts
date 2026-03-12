@@ -32,13 +32,13 @@ export const getLeaderboard = catchAsync(async (req: Request, res: Response, _ne
   const profileIds = profileList.map((p) => p.id);
   const { data: goalTrees } = await supabase
     .from('goal_trees')
-    .select('"userId", nodes')
-    .in('"userId"', profileIds);
+    .select('user_id, nodes')
+    .in('user_id', profileIds);
 
   // Build a map: userId → Set of domains
   const domainsByUser: Record<string, Set<string>> = {};
   for (const tree of goalTrees ?? []) {
-    const uid = (tree as any).userId;
+    const uid = (tree as any).user_id;
     const nodes: any[] = Array.isArray((tree as any).nodes) ? (tree as any).nodes : [];
     const domains = new Set<string>();
     for (const node of nodes) {
@@ -53,7 +53,7 @@ export const getLeaderboard = catchAsync(async (req: Request, res: Response, _ne
     const { data: myTree } = await supabase
       .from('goal_trees')
       .select('nodes')
-      .eq('"userId"', userId)
+      .eq('user_id', userId)
       .single();
     const myNodes: any[] = Array.isArray(myTree?.nodes) ? myTree!.nodes : [];
     for (const node of myNodes) {
@@ -315,7 +315,7 @@ export const deleteMyAccount = catchAsync(async (req: Request, res: Response, _n
   if (!userId) throw new UnauthorizedError('Not authenticated.');
 
   // Delete goal tree first (not always cascade-linked)
-  await supabase.from('goal_trees').delete().eq('"userId"', userId);
+  await supabase.from('goal_trees').delete().eq('user_id', userId);
 
   // Delete profile — FK cascades handle most related data
   await supabase.from('profiles').delete().eq('id', userId);
@@ -337,7 +337,7 @@ export const resetMyGoals = catchAsync(async (req: Request, res: Response, _next
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated.');
 
-  const { error } = await supabase.from('goal_trees').delete().eq('"userId"', userId);
+  const { error } = await supabase.from('goal_trees').delete().eq('user_id', userId);
   if (error) throw new InternalServerError('Failed to reset goal tree.');
 
   // Also reset edit count so they get a free initial setup
@@ -355,7 +355,7 @@ export const getPublicStats = catchAsync(async (_req: Request, res: Response, _n
 
   const [profilesRes, treesRes, checkinsRes] = await Promise.allSettled([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    supabase.from('goal_trees').select('userId', { count: 'exact', head: true }),
+    supabase.from('goal_trees').select('user_id', { count: 'exact', head: true }),
     supabase.from('checkins').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
   ]);
 

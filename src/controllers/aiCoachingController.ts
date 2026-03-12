@@ -76,7 +76,7 @@ async function buildContext(userId: string): Promise<CoachingContext> {
       supabase
         .from('goal_trees')
         .select('nodes')
-        .eq('userId', userId)
+        .eq('user_id', userId)
         .maybeSingle(),
 
       // 3. Recent feedback (received by this user) - limit 3

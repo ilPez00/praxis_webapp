@@ -105,7 +105,7 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
     const { data: treeRow } = await supabase
       .from('goal_trees')
       .select('nodes')
-      .eq('userId', userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (!treeRow?.nodes) throw new NotFoundError('Goal tree not found');

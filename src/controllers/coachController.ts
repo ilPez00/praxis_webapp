@@ -43,7 +43,7 @@ export const listCoaches = catchAsync(async (req: Request, res: Response, _next:
   const { data: myTree } = await supabase
     .from('goal_trees')
     .select('nodes')
-    .eq('"userId"', userId)
+    .eq('user_id', userId)
     .single();
 
   const myNodes: any[] = Array.isArray(myTree?.nodes) ? myTree!.nodes : [];

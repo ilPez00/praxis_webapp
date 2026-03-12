@@ -96,7 +96,7 @@ export const listDuels = catchAsync(async (req: Request, res: Response, _next: N
 
   // Fetch viewer's goal domains for relevance scoring
   const { data: goalTree } = await supabase
-    .from('goal_trees').select('nodes').eq('"userId"', viewerId).single();
+    .from('goal_trees').select('nodes').eq('user_id', viewerId).single();
   const viewerDomains = new Set<string>(
     ((goalTree as any)?.nodes || []).map((n: any) => n.domain).filter(Boolean)
   );
@@ -104,11 +104,11 @@ export const listDuels = catchAsync(async (req: Request, res: Response, _next: N
   // Fetch challenger goal domains in bulk
   const creatorIds = [...new Set(duels.map((d: any) => d.creator_id))];
   const { data: creatorTrees } = await supabase
-    .from('goal_trees').select('"userId", nodes').in('"userId"', creatorIds);
+    .from('goal_trees').select('user_id, nodes').in('user_id', creatorIds);
 
   const creatorDomainMap = new Map<string, Set<string>>();
   for (const tree of creatorTrees || []) {
-    const uid = (tree as any).userId;
+    const uid = (tree as any).user_id;
     const domains = new Set<string>(
       ((tree as any).nodes || []).map((n: any) => n.domain).filter(Boolean)
     );

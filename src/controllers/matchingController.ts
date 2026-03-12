@@ -51,17 +51,17 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
 
   // 2. Fallback: Structural Comparison (Still fast, O(N))
   logger.info(`[Matching] Running fallback path for ${userId}...`);
-  const { data: userGoalTree } = await supabase.from('goal_trees').select('*').eq('userId', userId).single();
+  const { data: userGoalTree } = await supabase.from('goal_trees').select('*').eq('user_id', userId).single();
   
   if (!userGoalTree) return res.json([]);
 
-  const { data: others } = await supabase.from('goal_trees').select('*').neq('userId', userId).limit(40);
+  const { data: others } = await supabase.from('goal_trees').select('*').neq('user_id', userId).limit(40);
   
   const matches = [];
   for (const other of (others || [])) {
     const score = await matchingEngine.calculateCompatibilityScore(userGoalTree as GoalTree, other as GoalTree);
     if (score > 0.1) {
-      matches.push({ userId: other.userId, score });
+      matches.push({ userId: (other as any).user_id, score });
     }
   }
 
@@ -84,11 +84,11 @@ async function enrichMatches(rawMatches: { userId: string; score: number }[]): P
 
   const [{ data: profiles }, { data: trees }] = await Promise.all([
     supabase.from('profiles').select('id, name, avatar_url, bio, current_streak, last_activity_date, latitude, longitude').in('id', userIds),
-    supabase.from('goal_trees').select('userId, nodes').in('userId', userIds),
+    supabase.from('goal_trees').select('user_id, nodes').in('user_id', userIds),
   ]);
 
   const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
-  const treeMap = new Map((trees ?? []).map((t: any) => [t.userId, t.nodes ?? []]));
+  const treeMap = new Map((trees ?? []).map((t: any) => [t.user_id, t.nodes ?? []]));
 
   return rawMatches.map(m => {
     const p = profileMap.get(m.userId);

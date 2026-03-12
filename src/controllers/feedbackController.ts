@@ -54,7 +54,7 @@ export const submitFeedback = catchAsync(async (req: Request, res: Response, nex
   const { data: receiverGoalTreeData, error: treeFetchError } = await supabase
     .from('goal_trees')
     .select('*')
-    .eq('userId', receiverId)
+    .eq('user_id', receiverId)
     .single();
 
   if (treeFetchError && treeFetchError.code !== 'PGRST116') {
@@ -86,7 +86,7 @@ export const submitFeedback = catchAsync(async (req: Request, res: Response, nex
     const { data: updatedTree, error: updateTreeError } = await supabase
       .from('goal_trees')
       .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
-      .eq('userId', receiverId)
+      .eq('user_id', receiverId)
       .select()
       .single();
 
