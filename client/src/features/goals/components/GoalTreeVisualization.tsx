@@ -119,6 +119,7 @@ interface Props {
   domainProficiency?: Record<string, number>;
   memberSince?: string;
   onNodeClick?: (node: GoalNode) => void;
+  onRootClick?: () => void;
 }
 
 const GoalTreeVisualization: React.FC<Props> = ({
@@ -126,6 +127,7 @@ const GoalTreeVisualization: React.FC<Props> = ({
   domainProficiency = {},
   memberSince,
   onNodeClick,
+  onRootClick,
 }) => {
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -316,18 +318,41 @@ const GoalTreeVisualization: React.FC<Props> = ({
           />
         ))}
 
-        {/* Origin circle */}
-        <circle cx={rootCX} cy={rootCY} r={ROOT_R + 4} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={6} />
-        <circle cx={rootCX} cy={rootCY} r={ROOT_R} fill="rgba(8,9,18,0.96)" stroke="rgba(255,255,255,0.18)" strokeWidth={1.5} />
-        <circle cx={rootCX} cy={rootCY} r={4} fill="rgba(255,255,255,0.45)" />
-        {dateLabel && (
-          <>
-            <rect x={rootCX - 30} y={rootCY + ROOT_R + 6} width={60} height={14} rx={7} fill="rgba(0,0,0,0.4)" />
-            <text x={rootCX} y={rootCY + ROOT_R + 15} textAnchor="middle" fontSize="8.5" fill="rgba(255,255,255,0.4)" fontFamily="inherit">
-              {dateLabel}
+        {/* Origin circle (Trunk) - Click to add top-level goal */}
+        <g 
+          style={{ cursor: onRootClick ? 'pointer' : 'default' }} 
+          onClick={() => onRootClick?.()}
+          onMouseEnter={() => setHovered('__origin__')}
+          onMouseLeave={() => setHovered(null)}
+        >
+          <circle 
+            cx={rootCX} cy={rootCY} r={ROOT_R + 4} 
+            fill="none" 
+            stroke={hovered === '__origin__' ? 'rgba(245,158,11,0.2)' : "rgba(255,255,255,0.05)"} 
+            strokeWidth={6} 
+          />
+          <circle 
+            cx={rootCX} cy={rootCY} r={ROOT_R} 
+            fill="rgba(8,9,18,0.96)" 
+            stroke={hovered === '__origin__' ? '#F59E0B' : "rgba(255,255,255,0.18)"} 
+            strokeWidth={1.5} 
+          />
+          <circle cx={rootCX} cy={rootCY} r={4} fill={hovered === '__origin__' ? '#F59E0B' : "rgba(255,255,255,0.45)"} />
+          {dateLabel && (
+            <>
+              <rect x={rootCX - 30} y={rootCY + ROOT_R + 6} width={60} height={14} rx={7} fill="rgba(0,0,0,0.4)" />
+              <text x={rootCX} y={rootCY + ROOT_R + 15} textAnchor="middle" fontSize="8.5" fill="rgba(255,255,255,0.4)" fontFamily="inherit">
+                {dateLabel}
+              </text>
+            </>
+          )}
+          {hovered === '__origin__' && (
+            <text x={rootCX} y={rootCY - ROOT_R - 10} textAnchor="middle" fontSize="10" fill="#F59E0B" fontWeight="800">
+              ADD NEW GOAL
             </text>
-          </>
-        )}
+          )}
+        </g>
+
 
         {/* ── All nodes ─────────────────────────────────────────────────────── */}
         {flatNodes.map((ln) => {

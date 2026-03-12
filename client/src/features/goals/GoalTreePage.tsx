@@ -113,6 +113,9 @@ const GoalTreePage: React.FC = () => {
   const [suspendNode, setSuspendNode] = useState<FrontendGoalNode | null>(null);
   const [suspending, setSuspending] = useState(false);
 
+  // New goal domain selection
+  const [newGoalDomain, setNewGoalDomain] = useState<Domain | ''>('');
+
   // Countdown tick — re-renders every minute so timers stay live
   const [, setTick] = useState(0);
 
@@ -189,14 +192,26 @@ const GoalTreePage: React.FC = () => {
     setDmPartners(partners);
   };
 
+  const handleRootClick = () => {
+    if (!isOwnTree) return;
+    setEditingNode(null);
+    setNewGoalDomain('');
+    setIsBranching(true);
+    setEditName('');
+    setEditDesc('');
+    setEditMetric('');
+    setEditTargetDate('');
+    setEditProgress(0);
+  };
+
   const handleNodeClick = (node: FrontendGoalNode) => {
     if (!isOwnTree) return;
     
-    // If it's a domain node, treat as "Add Sub-goal" to that domain (activating it)
+    // If it's a domain node, treat as "Add Goal" to that domain (full goal, side by side)
     if (node.id.startsWith('__dom__')) {
-      // Find a dummy "parent" or just pre-fill domain
       const domain = node.domain;
-      setEditingNode(node);
+      setNewGoalDomain(domain);
+      setEditingNode(null);
       setIsBranching(true);
       setEditName('');
       setEditDesc('');
@@ -230,7 +245,12 @@ const GoalTreePage: React.FC = () => {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingNode || !currentUserId || !editName.trim()) return;
+    if (!currentUserId || !editName.trim()) return;
+    if (isBranching && !editingNode && !newGoalDomain) {
+      toast.error('Please select a domain.');
+      return;
+    }
+
     setSavingEdit(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -238,6 +258,9 @@ const GoalTreePage: React.FC = () => {
 
       if (isBranching) {
         // Costs 500 PP
+        const domain = editingNode ? editingNode.domain : (newGoalDomain as Domain);
+        const parentId = editingNode ? editingNode.id : undefined;
+
         const res = await axios.post(
           `${API_URL}/goals/${currentUserId}/node`,
           {
@@ -245,14 +268,14 @@ const GoalTreePage: React.FC = () => {
             description: editDesc.trim() || undefined,
             completionMetric: editMetric.trim() || undefined,
             targetDate: editTargetDate || undefined,
-            parentId: editingNode.id.startsWith('__dom__') ? undefined : editingNode.id,
-            domain: editingNode.domain,
+            parentId,
+            domain,
           },
           { headers }
         );
-        toast.success(editingNode.id.startsWith('__dom__') ? 'New goal added! -500 PP' : 'Sub-goal added! -500 PP');
+        toast.success(parentId ? 'Sub-goal added! -500 PP' : 'New goal added! -500 PP');
         if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
-      } else {
+      } else if (editingNode) {
         // Costs 100 PP for metadata changes
         const bNode = backendNodes.find(n => n.id === editingNode.id);
         const metadataChanged = 
@@ -478,6 +501,7 @@ const GoalTreePage: React.FC = () => {
             domainProficiency={domainProficiency}
             memberSince={memberSince}
             onNodeClick={isOwnTree ? handleNodeClick : undefined}
+            onRootClick={isOwnTree ? handleRootClick : undefined}
           />
         </Box>
       )}
@@ -690,22 +714,39 @@ const GoalTreePage: React.FC = () => {
       </Dialog>
 
       {/* Edit/Branch Dialog — Consolidated UI */}
-      <Dialog open={!!editingNode} onClose={() => setEditingNode(null)} maxWidth="sm" fullWidth
+      <Dialog open={isBranching || !!editingNode} onClose={() => { setEditingNode(null); setIsBranching(false); }} maxWidth="sm" fullWidth
         PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {isBranching ? <AddCircleOutlineIcon sx={{ color: 'primary.main' }} /> : <EditNoteIcon sx={{ color: 'primary.main' }} />}
-            {isBranching ? `Add Sub-goal to: ${editingNode?.title}` : 'Goal Details'}
+            {isBranching 
+              ? (editingNode ? `Add Sub-goal to: ${editingNode.title}` : 'Add New Goal to Tree') 
+              : 'Goal Details'}
           </Box>
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} placeholder="What is the goal?" />
+            {isBranching && !editingNode && (
+               <TextField
+                 select
+                 fullWidth
+                 label="Select Domain"
+                 value={newGoalDomain}
+                 onChange={(e) => setNewGoalDomain(e.target.value as Domain)}
+               >
+                 {Object.values(Domain).map((dom) => (
+                   <MenuItem key={dom} value={dom}>
+                     {dom}
+                   </MenuItem>
+                 ))}
+               </TextField>
+            )}
+            <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} placeholder={isBranching ? "What is the new goal?" : "Goal name"} />
             <TextField fullWidth label="Description" multiline rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Details..." />
             <TextField fullWidth label="Success Metric" multiline rows={2} value={editMetric} onChange={e => setEditMetric(e.target.value)} placeholder="How will you know it's done?" />
             <TextField fullWidth label="Target Date" type="date" InputLabelProps={{ shrink: true }} value={editTargetDate} onChange={e => setEditTargetDate(e.target.value)} inputProps={{ min: new Date().toISOString().slice(0, 10) }} />
             
-            {!isBranching && (
+            {!isBranching && editingNode && (
                <Box sx={{ mt: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                     <Typography variant="body2" color="text.secondary">Progress</Typography>
@@ -761,15 +802,15 @@ const GoalTreePage: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setEditingNode(null)} sx={{ color: 'text.secondary' }}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim()} 
+          <Button onClick={() => { setEditingNode(null); setIsBranching(false); }} sx={{ color: 'text.secondary' }}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim() || (isBranching && !editingNode && !newGoalDomain)} 
             sx={{ borderRadius: '10px' }}>
-            {savingEdit ? 'Saving...' : (isBranching ? 'Add Sub-goal (500 PP)' : (
-              (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') || 
+            {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Sub-goal (500 PP)' : 'Add New Goal (500 PP)') : (
+              (editingNode && (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') || 
                editDesc.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.customDetails || '') ||
                editMetric.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.completionMetric || '') ||
                editTargetDate !== (backendNodes.find(n => n.id === editingNode?.id)?.targetDate || '')
-              ) ? 'Save Details (100 PP)' : 'Save Progress'
+              )) ? 'Save Details (100 PP)' : 'Save Progress'
             ))}
           </Button>
         </DialogActions>

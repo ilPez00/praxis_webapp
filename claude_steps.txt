@@ -46,3 +46,8 @@ Session 34: User-centric Map Focusing
 - Modified LocationMap.tsx to prioritize userLocation for initial centering.
 - Updated DiscoverPage.tsx to provide user's profile coordinates as location fallback.
 - Improved MapAutoFit logic with refs to prevent jitter and infinite loops.
+Session 35: Goal vs Sub-goal Distinction
+- Made the trunk origin circle clickable for adding root-level goals.
+- Updated domain nodes to act as shortcuts for adding new goals in that domain.
+- Differentiated between 'New Goal' and 'Sub-goal' in dialogs and backend logic.
+- Added domain selector for goals created from the root trunk.
