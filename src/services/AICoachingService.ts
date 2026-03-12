@@ -140,9 +140,6 @@ export class AICoachingService {
     if (strategy === 'random') startIndex = Math.floor(Math.random() * this.apiKeys.length);
 
     const baseModels = [
-      'gemini-2.5-flash',
-      'gemini-2.5-pro',
-      'gemini-2.0-flash-lite-preview-02-05',
       'gemini-2.0-flash',
       'gemini-1.5-flash',
       'gemini-pro',
@@ -205,7 +202,7 @@ export class AICoachingService {
 
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
     const identity = await this.getIdentity();
-    const prompt = `${identity}\n\nStudent: ${context.userName}\nLanguage: ${context.language}\nGoals: ${JSON.stringify(context.goals)}\n\nIMPORTANT: Respond in the language specified above (${context.language}). Return JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}.`;
+    const prompt = `${identity}\nStudent: ${context.userName}\nLanguage: ${context.language}\nGoals: ${JSON.stringify(context.goals)}\nActionable JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}. Respond concise in ${context.language}.`;
     try {
       const text = await this.runWithFallback(prompt);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -219,7 +216,7 @@ export class AICoachingService {
   public async generateWeeklyNarrative(stats: any): Promise<string> {
     const identity = await this.getIdentity();
     const lang = stats.language || 'en';
-    const prompt = `${identity}\n\nStats: ${JSON.stringify(stats)}\n\nWrite 2 short sentences about progress. IMPORTANT: You MUST write these sentences in the following language: ${lang}.`;
+    const prompt = `${identity}\nStats: ${JSON.stringify(stats)}\nWrite 2 concise sentences on progress in ${lang}.`;
     try { return await this.runWithFallback(prompt); } 
     catch (error: any) { throw new Error(error.message); }
   }

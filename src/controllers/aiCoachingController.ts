@@ -79,66 +79,65 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .eq('userId', userId)
         .maybeSingle(),
 
-      // 3. Recent feedback (received by this user)
-      // Column names: try both camelCase (legacy) and snake_case — maybeSingle gracefully handles missing table
+      // 3. Recent feedback (received by this user) - limit 3
       supabase
         .from('feedback')
         .select('grade, comment')
         .or(`receiverId.eq.${userId},receiver_id.eq.${userId}`)
-        .limit(5),
+        .limit(3),
 
-      // 4. Achievements
+      // 4. Achievements - limit 3
       supabase
         .from('achievements')
         .select('title, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(5),
+        .limit(3),
 
-      // 5. Joined community boards
+      // 5. Joined community boards - limit 3
       supabase
         .from('chat_room_members')
-        .select('chat_rooms(name, domain, description)')
-        .eq('user_id', userId),
+        .select('chat_rooms(name, domain)')
+        .eq('user_id', userId)
+        .limit(3),
 
-      // 6. DM conversation partner IDs (people they've messaged)
+      // 6. DM conversation partner IDs - limit 50 for selection
       supabase
         .from('messages')
         .select('sender_id, receiver_id')
         .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-        .is('room_id', null) // DMs only, not group messages
-        .limit(100),
+        .is('room_id', null)
+        .limit(50),
     ]);
 
   // --- Profile ---
   const profile = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
-  const userName = profile?.name || 'User';
-  const bio = profile?.bio || undefined;
+  const userName = (profile?.name || 'User').slice(0, 50);
+  const bio = profile?.bio ? profile.bio.slice(0, 200) : undefined;
   const streak = profile?.current_streak ?? 0;
   const praxisPoints = profile?.praxis_points ?? 0;
   const language = profile?.language || 'en';
 
-  // --- Goals ---
+  // --- Goals (Token-optimized: only send root nodes or active sub-nodes) ---
   const rawNodes: any[] = goalTreeRes.status === 'fulfilled'
     ? (goalTreeRes.value.data?.nodes ?? [])
     : [];
 
-  const goals = rawNodes.map((n: any) => ({
-    name: n.name || n.title || 'Unnamed goal',
-    domain: n.domain || 'General',
-    progress: Math.round((n.progress ?? 0) * (n.progress <= 1 ? 100 : 1)), // normalise 0-1 or 0-100
-    description: n.customDetails || undefined,
-    completionMetric: n.completionMetric || undefined,
-    targetDate: n.targetDate || undefined,
-  }));
+  const goals = rawNodes
+    .filter((n: any) => !n.parentId || (n.progress > 0 && n.progress < 1))
+    .slice(0, 15) // limit total nodes sent
+    .map((n: any) => ({
+      name: (n.name || n.title || 'Goal').slice(0, 60),
+      domain: n.domain || 'General',
+      progress: Math.round((n.progress ?? 0) * (n.progress <= 1 ? 100 : 1)),
+      description: n.customDetails ? n.customDetails.slice(0, 100) : undefined,
+    }));
 
   // --- Feedback ---
   const rawFeedback: any[] = feedbackRes.status === 'fulfilled' ? (feedbackRes.value.data ?? []) : [];
   const recentFeedback = rawFeedback.map((fb: any) => ({
     grade: fb.grade,
-    comment: fb.comment || undefined,
-    giverName: 'Peer', // avoid extra join; giver name is secondary info
-    goalName: 'Goal',
+    comment: fb.comment ? fb.comment.slice(0, 100) : undefined,
   }));
 
   // --- Achievements ---
@@ -147,8 +146,8 @@ async function buildContext(userId: string): Promise<CoachingContext> {
     : [];
 
   const achievements = rawAchievements.map((a: any) => ({
-    goalName: a.title || 'Achievement',
-    date: a.created_at ? new Date(a.created_at).toLocaleDateString() : 'recently',
+    goalName: (a.title || 'Achievement').slice(0, 60),
+    date: a.created_at ? new Date(a.created_at).toISOString().slice(0, 10) : 'recently',
   }));
 
   // --- Boards ---
@@ -160,12 +159,11 @@ async function buildContext(userId: string): Promise<CoachingContext> {
     .map((m: any) => m.chat_rooms)
     .filter(Boolean)
     .map((r: any) => ({
-      name: r.name || 'Unnamed board',
-      domain: r.domain || undefined,
-      description: r.description || undefined,
+      name: r.name,
+      domain: r.domain,
     }));
 
-  // --- Network: resolve DM partner IDs → profiles + goal domains ---
+  // --- Network: limit to 5 partners ---
   let network: CoachingContext['network'] = [];
 
   if (dmPartnersRes.status === 'fulfilled') {
@@ -175,7 +173,7 @@ async function buildContext(userId: string): Promise<CoachingContext> {
       const other = m.sender_id === userId ? m.receiver_id : m.sender_id;
       if (other) partnerIdSet.add(other);
     }
-    const partnerIds = Array.from(partnerIdSet).slice(0, 10); // cap at 10 contacts
+    const partnerIds = Array.from(partnerIdSet).slice(0, 5); // cap at 5 contacts
 
     if (partnerIds.length > 0) {
       const [partnerProfilesRes, partnerTreesRes] = await Promise.allSettled([
