@@ -26,6 +26,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import toast from 'react-hot-toast';
+import { PRAXIS_DOMAINS, getDomainConfig } from '../../types/Domain';
 
 interface MatchProfile {
   userId: string;
@@ -41,18 +42,6 @@ interface MatchProfile {
   lastCheckinDate?: string | null;
   isDemo?: boolean;
 }
-
-const PRAXIS_DOMAINS = [
-  'Body & Health',
-  'Mind & Learning',
-  'Craft & Career',
-  'Money & Assets',
-  'Environment & Gear',
-  'Spirit & Purpose',
-  'Culture & Hobbies',
-  'Intimacy & Romance',
-  'Friendship & Social',
-];
 
 const INITIAL_PAGE_SIZE = 9;
 
@@ -162,12 +151,12 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
           </Box>
 
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-            {PRAXIS_DOMAINS.map((domain) => {
-              const isSelected = selectedDomain === domain;
+            {PRAXIS_DOMAINS.map((d) => {
+              const isSelected = selectedDomain === d.value;
               return (
                 <Chip
-                  key={domain} label={domain} onClick={() => setSelectedDomain(isSelected ? null : domain)}
-                  sx={{ fontWeight: 600, fontSize: '0.78rem', bgcolor: isSelected ? 'primary.main' : 'rgba(255,255,255,0.05)', color: isSelected ? '#0A0B14' : 'text.secondary', border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.1)' }}
+                  key={d.value} label={d.label} onClick={() => setSelectedDomain(isSelected ? null : d.value)}
+                  sx={{ fontWeight: 600, fontSize: '0.78rem', bgcolor: isSelected ? d.color : 'rgba(255,255,255,0.05)', color: isSelected ? '#fff' : 'text.secondary', border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.1)' }}
                 />
               );
             })}
@@ -183,8 +172,8 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Typography gutterBottom sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Filter by Shared Domains</Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {PRAXIS_DOMAINS.map((domain) => (
-                      <Chip key={domain} label={domain} size="small" onClick={() => handleToggleDomainFilter(domain)} sx={{ cursor: 'pointer', bgcolor: selectedDomainsFilter.includes(domain) ? 'primary.main' : 'transparent', color: selectedDomainsFilter.includes(domain) ? '#0A0B14' : 'inherit', border: '1px solid rgba(255,255,255,0.1)' }} />
+                    {PRAXIS_DOMAINS.map((d) => (
+                      <Chip key={d.value} label={d.label} size="small" onClick={() => handleToggleDomainFilter(d.value)} sx={{ cursor: 'pointer', bgcolor: selectedDomainsFilter.includes(d.value) ? d.color : 'transparent', color: selectedDomainsFilter.includes(d.value) ? '#fff' : 'inherit', border: '1px solid rgba(255,255,255,0.1)' }} />
                     ))}
                   </Box>
                 </Grid>
@@ -219,7 +208,14 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: 40 }}>{match.bio || 'Building a life of intentional progress.'}</Typography>
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 900 }}>Shared Domains</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1 }}>{match.domains.slice(0, 3).map((d) => <Chip key={d} label={d} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(255,255,255,0.05)', color: 'text.secondary' }} />)}</Box>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1 }}>
+                        {match.domains.slice(0, 3).map((d) => {
+                          const dCfg = getDomainConfig(d);
+                          return (
+                            <Chip key={d} label={dCfg.label} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: `${dCfg.color}15`, color: dCfg.color }} />
+                          );
+                        })}
+                      </Box>
                     </Box>
                     <Box sx={{ mb: 1 }}>
                       <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 800 }}>Matching Goals</Typography>

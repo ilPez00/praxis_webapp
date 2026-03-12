@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import {
   Container, Box, Typography, Button, Stack, Chip, Grid,
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, CircularProgress, Avatar, Tooltip, IconButton,
-  MenuItem,
+  MenuItem, FormControl, InputLabel, Select,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EventIcon from '@mui/icons-material/Event';
@@ -19,12 +19,14 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import PeopleIcon from '@mui/icons-material/People';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 import { useEvents } from '../../hooks/useFetch';
 import GlassCard from '../../components/common/GlassCard';
 import LocationMap from '../../components/common/LocationMap';
+import { PRAXIS_DOMAINS, getDomainConfig } from '../../types/Domain';
 
 function MapsFrame({ lat, lng, name }: { lat: number; lng: number; name: string }) {
   const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(name)}`;
@@ -82,6 +84,7 @@ interface CalendarEvent {
   created_at: string;
   creator: { id: string; name: string; avatar_url: string | null } | null;
   rsvps: EventRsvp[];
+  type: string | null;
 }
 
 function formatDate(dateStr: string): string {
@@ -108,8 +111,9 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Optimized fetch using SWR
-  const { data: events = [], loading, mutate: refetchEvents } = useEvents();
+  const { data: rawEvents = [], loading, mutate: refetchEvents } = useEvents();
 
+  const [filterType, setFilterType] = useState<string>('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
@@ -126,7 +130,7 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const [city, setCity] = useState('');
   const [formLat, setFormLat] = useState('');
   const [formLng, setFormLng] = useState('');
-  const [eventType, setEventType] = useState('');
+  const [formType, setFormType] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -137,6 +141,14 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
       }
     });
   }, []);
+
+  const filteredEvents = useMemo(() => {
+    let list = Array.isArray(rawEvents) ? rawEvents : [];
+    if (filterType) {
+      list = list.filter((e: any) => e.type === filterType);
+    }
+    return list;
+  }, [rawEvents, filterType]);
 
   const handleToggleNearby = () => {
     if (nearbyMode) { 
@@ -180,14 +192,14 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
     setCity(event.city || '');
     setFormLat(event.latitude?.toString() || '');
     setFormLng(event.longitude?.toString() || '');
-    setEventType((event as any).type || '');
+    setFormType(event.type || '');
     setDialogOpen(true);
   };
 
   const resetForm = () => {
     setTitle(''); setDescription(''); setEventDate(new Date().toISOString().slice(0, 10)); 
     setEventTime(''); setLocation(''); setCity(''); setFormLat(''); setFormLng('');
-    setEventType(''); setEditingEvent(null);
+    setFormType(''); setEditingEvent(null);
   };
 
   const handleSave = async () => {
@@ -199,7 +211,7 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
         eventDate, eventTime: eventTime || undefined,
         location: location.trim() || undefined, city: city.trim() || undefined,
         latitude: formLat ? parseFloat(formLat) : undefined, longitude: formLng ? parseFloat(formLng) : undefined,
-        type: eventType || undefined,
+        type: formType || undefined,
       };
       if (editingEvent) {
         await api.put(`/events/${editingEvent.id}`, payload);
@@ -245,7 +257,7 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
 
   const minDateStr = new Date().toISOString().slice(0, 10);
 
-  if (loading && events.length === 0) {
+  if (loading && rawEvents.length === 0) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
   }
 
@@ -253,10 +265,26 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
     <Box sx={compact ? {} : { py: 4 }}>
       {!compact && (
         <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
-            <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, mb: 4 }}>
+            <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h4" sx={{ fontWeight: 900 }}>Events</Typography>
             </Box>
+            
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel>Category</InputLabel>
+              <Select 
+                value={filterType} 
+                label="Category" 
+                onChange={e => setFilterType(e.target.value)} 
+                sx={{ borderRadius: '10px' }}
+              >
+                <MenuItem value="">All categories</MenuItem>
+                {PRAXIS_DOMAINS.map(d => (
+                  <MenuItem key={d.value} value={d.value}>{d.icon} {d.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <Stack direction="row" spacing={1}>
               <Button
                 variant={nearbyMode ? 'contained' : 'outlined'}
@@ -279,7 +307,7 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
 
           <LocationMap
             userLocation={userGeo || undefined}
-            markers={events
+            markers={filteredEvents
               .filter((e: any) => e.latitude != null && e.longitude != null)
               .map((e: any) => ({
                 id: e.id,
@@ -293,31 +321,41 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
         </Container>
       )}
 
-      <Container maxWidth={compact ? false : "lg"} sx={compact ? { p: 0 } : {}}>
-        {events.length === 0 ? (
+      <Container maxWidth={compact ? false : "lg"} sx={compact ? { p: 0, mt: 2 } : { mt: 4 }}>
+        {filteredEvents.length === 0 ? (
           <GlassCard sx={{ p: 6, textAlign: 'center' }}>
             <EventIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 700 }}>No upcoming events</Typography>
-            {!compact && (
-              <Button variant="outlined" sx={{ mt: 3, borderRadius: '10px' }} onClick={() => setDialogOpen(true)}>
-                Add Event
+            <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 700 }}>No events found</Typography>
+            {filterType && (
+              <Button variant="text" sx={{ mt: 1 }} onClick={() => setFilterType('')}>
+                Clear filters
               </Button>
             )}
           </GlassCard>
         ) : (
           <Grid container spacing={3}>
-            {events.map((event: CalendarEvent) => {
+            {filteredEvents.map((event: CalendarEvent) => {
               const myRsvp = event.rsvps?.find(r => r.user_id === currentUserId);
               const going = event.rsvps?.filter(r => r.status === 'going').length ?? 0;
               const canManage = event.creator_id === currentUserId || isAdmin;
+              const dConfig = getDomainConfig(event.type || '');
 
               return (
                 <Grid size={{ xs: 12, md: 6, lg: 4 }} key={event.id}>
                   <GlassCard sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                      <Box sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: '8px', px: 1.2, py: 0.4, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                        <EventIcon sx={{ fontSize: 14 }} />
-                        <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.7rem' }}>{formatDate(event.event_date)}</Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: '8px', px: 1.2, py: 0.4, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                          <EventIcon sx={{ fontSize: 14 }} />
+                          <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.7rem' }}>{formatDate(event.event_date)}</Typography>
+                        </Box>
+                        {event.type && (
+                          <Chip 
+                            label={dConfig.label} 
+                            size="small" 
+                            sx={{ height: 24, bgcolor: `${dConfig.color}15`, color: dConfig.color, fontWeight: 700, fontSize: '0.65rem' }} 
+                          />
+                        )}
                       </Box>
                       {canManage && (
                         <Stack direction="row" spacing={0.5}>
@@ -374,14 +412,21 @@ const EventsPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <TextField fullWidth label="Title *" value={title} onChange={e => setTitle(e.target.value)} />
-            <TextField select fullWidth label="Event Type" value={eventType} onChange={e => setEventType(e.target.value)}>
-              <MenuItem value=""><em>None</em></MenuItem>
-              <MenuItem value="Work">Work</MenuItem>
-              <MenuItem value="Study">Study</MenuItem>
-              <MenuItem value="Fitness">Fitness</MenuItem>
-              <MenuItem value="Social">Social</MenuItem>
-              <MenuItem value="Performance">Performance</MenuItem>
-            </TextField>
+            
+            <FormControl fullWidth>
+              <InputLabel>Category</InputLabel>
+              <Select
+                value={formType}
+                label="Category"
+                onChange={e => setFormType(e.target.value)}
+              >
+                <MenuItem value=""><em>None</em></MenuItem>
+                {PRAXIS_DOMAINS.map(d => (
+                  <MenuItem key={d.value} value={d.value}>{d.icon} {d.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField fullWidth label="Description" value={description} onChange={e => setDescription(e.target.value)} multiline rows={3} />
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Date *" type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} inputProps={{ min: minDateStr }} InputLabelProps={{ shrink: true }} /></Grid>
