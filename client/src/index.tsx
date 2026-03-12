@@ -14,7 +14,7 @@ enforceFreshContent();
 if (typeof window !== 'undefined') {
   const originalError = window.onerror;
   window.onerror = (message, source, lineno, colno, error) => {
-    const msg = String(message).toLowerCase();
+    const msg = String(message || '').toLowerCase();
     if (msg.includes('scrolltop') || msg.includes('resizeobserver')) {
       console.warn('[Silenced Error]', msg);
       return true; // Stop propagation
@@ -23,7 +23,7 @@ if (typeof window !== 'undefined') {
   };
 
   window.addEventListener('unhandledrejection', (event) => {
-    const msg = String(event.reason).toLowerCase();
+    const msg = String(event.reason?.message || event.reason || '').toLowerCase();
     if (msg.includes('scrolltop') || msg.includes('resizeobserver')) {
       event.preventDefault();
       console.warn('[Silenced Promise Rejection]', msg);

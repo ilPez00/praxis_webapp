@@ -1,6 +1,6 @@
 // Version Control - Forces users to clear cache on major updates
 // Consistent with index.html boot script
-const CURRENT_VERSION = '2026.03.12.v3'; 
+const CURRENT_VERSION = '2026.03.12.v4'; 
 
 export function enforceFreshContent() {
   if (typeof window === 'undefined') return;

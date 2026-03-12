@@ -61,3 +61,6 @@ Session 38: Backend Goal Creation Fix
 - Fixed 500 error in createGoalNode by adding missing 'children' array to new nodes.
 - Corrected Domain fallback to a valid enum value (Personal Goals).
 - Switched to null instead of undefined for JSONB compatibility in optional fields.
+Session 39: Error Handler Null-Safety
+- Made error silencing scripts in index.html and index.tsx null-safe for messages.
+- Upgraded all versions to 2026.03.12.v4 to resolve the crash.
