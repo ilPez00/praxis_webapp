@@ -1,6 +1,5 @@
-// Increment this version number whenever you want to force all users to clear their cache and reload
-// Current: v2 - Adding aggressive cache busting
-const CURRENT_VERSION = '2026.03.11.v3';
+// Version Control - Forces users to clear cache on major updates
+const CURRENT_VERSION = '2026.03.11.v4'; // Increment this to force reset
 
 export function enforceFreshContent() {
   if (typeof window === 'undefined') return;
@@ -8,58 +7,50 @@ export function enforceFreshContent() {
   const storedVersion = localStorage.getItem('praxis_app_version');
 
   if (storedVersion !== CURRENT_VERSION) {
-    console.log(`[VersionControl] Version mismatch: ${storedVersion} -> ${CURRENT_VERSION}. Forcing nuclear refresh...`);
+    console.log(`[VersionControl] Resetting to ${CURRENT_VERSION}`);
     
-    // Nuclear Reset
-    try {
-      // 1. Clear all caches
-      if ('caches' in window) {
-        caches.keys().then((names) => {
-          for (const name of names) caches.delete(name);
-        });
-      }
+    // Set version immediately to prevent reload loops
+    localStorage.setItem('praxis_app_version', CURRENT_VERSION);
 
-      // 2. Unregister all service workers
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (const registration of registrations) {
-            registration.unregister();
-          }
-        });
-      }
-
-      // 3. Clear storage (optional but safe for version mismatch)
-      // We don't want to log people out unnecessarily, but if the app is crashing, it might be due to bad state.
-      // For now, let's just set the version so we don't loop.
-      localStorage.setItem('praxis_app_version', CURRENT_VERSION);
-
-      // 4. Force hard reload from server
-      setTimeout(() => {
-        // Appending a timestamp to bypass CDN/Browser HTTP cache for the index.html
-        window.location.href = window.location.origin + '?v=' + Date.now();
-      }, 800);
-    } catch (err) {
-      console.error('[VersionControl] Reset failed:', err);
-      localStorage.setItem('praxis_app_version', CURRENT_VERSION);
+    // 1. Unregister Service Workers
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister());
+      });
     }
+
+    // 2. Clear Caches
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(n => caches.delete(n));
+      });
+    }
+
+    // 3. Brief delay then reload
+    setTimeout(() => {
+      window.location.reload();
+    }, 200);
   }
 }
 
 export async function nuclearReset() {
-  console.log('[VersionControl] Manual nuclear reset initiated...');
+  console.log('[VersionControl] Performing manual nuclear reset...');
   
-  if ('caches' in window) {
-    const names = await caches.keys();
-    await Promise.all(names.map(n => caches.delete(n)));
-  }
-
   if ('serviceWorker' in navigator) {
     const regs = await navigator.serviceWorker.getRegistrations();
     await Promise.all(regs.map(r => r.unregister()));
   }
 
+  if ('caches' in window) {
+    const names = await caches.keys();
+    await Promise.all(names.map(n => caches.delete(n)));
+  }
+
   localStorage.clear();
   sessionStorage.clear();
   
-  window.location.href = window.location.origin + '?reset=' + Date.now();
+  // Set version so we don't trigger enforceFreshContent loop
+  localStorage.setItem('praxis_app_version', CURRENT_VERSION);
+  
+  window.location.href = window.location.origin + '/?reset=' + Date.now();
 }
