@@ -12,6 +12,10 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
   const { userId } = req.params;
   const domainFilter = req.query.domain as string | undefined;
 
+  if (!userId || userId === 'none') {
+    return res.json([]);
+  }
+
   // --- Fast path: pgvector RPC (requires goal_embeddings table + GEMINI_API_KEY) ---
   try {
     const { data: rpcMatches, error: rpcError } = await supabase.rpc('match_users_by_goals', {

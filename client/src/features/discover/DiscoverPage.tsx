@@ -66,13 +66,17 @@ const DiscoverPage: React.FC = () => {
   }, []);
 
   const fetchMarkers = useCallback(async () => {
+    if (!user?.id) return;
     setLoadingLoadingMarkers(true);
     try {
+      const { data: { session } } = await axios.get(`${API_URL}/auth/session`).catch(() => ({ data: { session: null } }));
+      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+
       // Fetch all 3 types in parallel
       const [peopleRes, placesRes, eventsRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/matches/${user?.id || 'none'}`),
-        axios.get(`${API_URL}/places`),
-        axios.get(`${API_URL}/events`)
+        axios.get(`${API_URL}/matches/${user.id}`, { headers }),
+        axios.get(`${API_URL}/places`, { headers }),
+        axios.get(`${API_URL}/events`, { headers })
       ]);
 
       const newMarkers: MapMarker[] = [];

@@ -134,7 +134,7 @@ export const getGoalTree = catchAsync(async (req: Request, res: Response, next: 
   const { data, error } = await supabase
     .from('goal_trees')
     .select('*') // Select all columns of the goal tree
-    .eq('userId', userId)
+    .eq('"userId"', userId)
     .single(); // Expect a single goal tree per user
 
   // Handle errors, excluding 'PGRST116' which indicates no rows found (expected for new users)
@@ -213,7 +213,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   const { data: existingTreeData, error: fetchExistingTreeError } = await supabase
     .from('goal_trees')
     .select('nodes')
-    .eq('userId', userId)
+    .eq('"userId"', userId)
     .single();
 
   if (fetchExistingTreeError && fetchExistingTreeError.code !== 'PGRST116') {
@@ -303,7 +303,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   const { data: existingTree, error: fetchError } = await supabase
     .from('goal_trees')
     .select('id')
-    .eq('userId', userId)
+    .eq('"userId"', userId)
     .single();
 
   if (fetchError && fetchError.code !== 'PGRST116') {
@@ -329,7 +329,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     const { data, error } = await supabase
       .from('goal_trees')
       .update({ nodes, rootNodes: safeRootNodes })
-      .eq('userId', userId)
+      .eq('"userId"', userId)
       .select()
       .single();
 
@@ -364,7 +364,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     // If no tree exists, create a new one
     const { data, error } = await supabase
       .from('goal_trees')
-      .insert([{ userId, nodes, rootNodes: safeRootNodes }])
+      .insert([{ '"userId"': userId, nodes, '"rootNodes"': safeRootNodes }])
       .select()
       .single();
 
@@ -409,7 +409,7 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
     .select('nodes, "rootNodes"')
-    .eq('userId', userId)
+    .eq('"userId"', userId)
     .single();
 
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
@@ -437,7 +437,7 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
   const { error: updateErr } = await supabase
     .from('goal_trees')
     .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
-    .eq('userId', userId);
+    .eq('"userId"', userId);
 
   if (updateErr) throw new InternalServerError(`Failed to update node: ${updateErr.message}`);
 
@@ -538,7 +538,7 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
     .select('nodes, "rootNodes"')
-    .eq('userId', userId)
+    .eq('"userId"', userId)
     .single();
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found. Create your initial tree first.');
 
@@ -572,7 +572,7 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const { error: saveErr } = await supabase
     .from('goal_trees')
     .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
-    .eq('userId', userId);
+    .eq('"userId"', userId);
   if (saveErr) throw new InternalServerError(`Failed to save new node: ${saveErr.message}`);
 
   // 5. Increment edit count + deduct PP
@@ -618,7 +618,7 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
     .select('nodes, "rootNodes"')
-    .eq('userId', userId)
+    .eq('"userId"', userId)
     .single();
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
@@ -648,7 +648,7 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const { error: saveErr } = await supabase
     .from('goal_trees')
     .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
-    .eq('userId', userId);
+    .eq('"userId"', userId);
   if (saveErr) throw new InternalServerError(`Failed to save node update: ${saveErr.message}`);
 
   // 5. Increment edit count + deduct PP
@@ -680,7 +680,7 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
     .select('nodes, "rootNodes"')
-    .eq('userId', userId)
+    .eq('"userId"', userId)
     .single();
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
@@ -712,7 +712,7 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const { error: saveErr } = await supabase
     .from('goal_trees')
     .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
-    .eq('userId', userId);
+    .eq('"userId"', userId);
   if (saveErr) throw new InternalServerError(`Failed to delete node: ${saveErr.message}`);
 
   res.json({ message: 'Node deleted.', deletedCount: toDelete.size });
