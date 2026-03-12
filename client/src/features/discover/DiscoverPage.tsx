@@ -28,14 +28,17 @@ const EventsPage = React.lazy(() => import('../events/EventsPage'));
 
 type FilterType = 'all' | 'people' | 'places' | 'events';
 
+// Shared cache for markers to avoid redundant fetches
+let markerCache: MapMarker[] | null = null;
+
 const DiscoverPage: React.FC = () => {
   const { user } = useUser();
   const location = useLocation();
   const navigate = useNavigate();
 
   const [filter, setFilter] = useState<FilterType>('all');
-  const [markers, setMarkers] = useState<MapMarker[]>([]);
-  const [loadingMarkers, setLoadingLoadingMarkers] = useState(true);
+  const [markers, setMarkers] = useState<MapMarker[]>(markerCache || []);
+  const [loadingMarkers, setLoadingLoadingMarkers] = useState(!markerCache);
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null);
 
   // Sync state with URL
@@ -65,18 +68,21 @@ const DiscoverPage: React.FC = () => {
     }
   }, []);
 
-  const fetchMarkers = useCallback(async () => {
+  const fetchMarkers = useCallback(async (force = false) => {
     if (!user?.id) return;
+    if (!force && markerCache) {
+      setMarkers(markerCache);
+      setLoadingLoadingMarkers(false);
+      return;
+    }
+
     setLoadingLoadingMarkers(true);
     try {
-      const { data: { session } } = await axios.get(`${API_URL}/auth/session`).catch(() => ({ data: { session: null } }));
-      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-
       // Fetch all 3 types in parallel
       const [peopleRes, placesRes, eventsRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/matches/${user.id}`, { headers }),
-        axios.get(`${API_URL}/places`, { headers }),
-        axios.get(`${API_URL}/events`, { headers })
+        axios.get(`${API_URL}/matches/${user.id}`),
+        axios.get(`${API_URL}/places`),
+        axios.get(`${API_URL}/events`)
       ]);
 
       const newMarkers: MapMarker[] = [];
@@ -121,6 +127,7 @@ const DiscoverPage: React.FC = () => {
         }));
       }
 
+      markerCache = newMarkers;
       setMarkers(newMarkers);
     } catch (err) {
       console.error('Failed to load markers:', err);

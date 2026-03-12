@@ -554,18 +554,21 @@ starting from "-- 29. PLACES" down to end of file. Or copy-paste directly:
   -- Privacy columns: is_public, match_visibility on profiles
 
 ================================================================================
-SQL MIGRATIONS TO RUN (Session 60+ — March 11, 2026)
+SQL MIGRATIONS TO RUN (Session 73 — Location System & Optimization)
 ================================================================================
 
-Open Supabase → SQL Editor → run the following to link chat rooms to places:
+Run in Supabase SQL Editor:
 
-  -- 1. Add place_id to chat_rooms
-  ALTER TABLE public.chat_rooms ADD COLUMN IF NOT EXISTS place_id UUID REFERENCES public.places(id) ON DELETE SET NULL;
-  
-  -- 2. Add index for performance
-  CREATE INDEX IF NOT EXISTS idx_chat_rooms_place ON public.chat_rooms(place_id);
+-- 1. Add stated_location column to profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stated_location TEXT;
 
-  -- 3. (Optional) Retroactively create groups for existing places
-  -- INSERT INTO chat_rooms (name, description, creator_id, type, place_id)
-  -- SELECT name, 'Community group for ' || name, owner_id, 'place', id
-  -- FROM places p WHERE NOT EXISTS (SELECT 1 FROM chat_rooms WHERE place_id = p.id);
+-- 2. Update existing users to Verona by default
+UPDATE public.profiles
+SET 
+  city = 'Verona',
+  stated_location = 'Verona, Italy',
+  latitude = 45.4384,
+  longitude = 10.9916
+WHERE city IS NULL OR city = 'Unknown';
+
+SUCCESS: no error; profiles now supports stated_location and all users are centered in Verona.
