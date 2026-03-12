@@ -136,7 +136,7 @@ export const getUserProfile = catchAsync(async (req: Request, res: Response, nex
 const UPDATABLE_PROFILE_FIELDS = new Set([
   'name', 'age', 'bio', 'avatar_url', 'banner_url',
   'latitude', 'longitude', 'city', 'location',
-  'occupation', 'education', 'sex',
+  'occupation', 'education', 'sex', 'language',
   'social_instagram', 'social_twitter', 'social_linkedin',
   'social_whatsapp', 'social_telegram',
   'is_public', 'match_visibility',

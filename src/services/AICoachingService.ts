@@ -16,6 +16,7 @@ export interface CoachingContext {
   bio?: string;
   streak: number;
   praxisPoints: number;
+  language: string;
   goals: GoalContext[];
   recentFeedback: Array<{ grade: string; comment?: string; giverName: string; goalName: string }>;
   achievements: Array<{ goalName: string; date: string }>;
@@ -204,7 +205,7 @@ export class AICoachingService {
 
   public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
     const identity = await this.getIdentity();
-    const prompt = `${identity}\n\nStudent: ${context.userName}\nGoals: ${JSON.stringify(context.goals)}\n\nReturn JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}.`;
+    const prompt = `${identity}\n\nStudent: ${context.userName}\nLanguage: ${context.language}\nGoals: ${JSON.stringify(context.goals)}\n\nIMPORTANT: Respond in the language specified above (${context.language}). Return JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}.`;
     try {
       const text = await this.runWithFallback(prompt);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -217,14 +218,15 @@ export class AICoachingService {
 
   public async generateWeeklyNarrative(stats: any): Promise<string> {
     const identity = await this.getIdentity();
-    const prompt = `${identity}\n\nStats: ${JSON.stringify(stats)}\n\nWrite 2 short sentences about progress.`;
+    const lang = stats.language || 'en';
+    const prompt = `${identity}\n\nStats: ${JSON.stringify(stats)}\n\nWrite 2 short sentences about progress. IMPORTANT: You MUST write these sentences in the following language: ${lang}.`;
     try { return await this.runWithFallback(prompt); } 
     catch (error: any) { throw new Error(error.message); }
   }
 
   public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
     const identity = await this.getIdentity();
-    const prompt = `${identity}\n\nUser: ${userPrompt}\nContext: ${JSON.stringify(context)}`;
+    const prompt = `${identity}\n\nUser: ${userPrompt}\nContext: ${JSON.stringify(context)}\n\nIMPORTANT: Respond in the following language: ${context.language}.`;
     try { return await this.runWithFallback(prompt); } 
     catch (error: any) { throw new Error(error.message); }
   }

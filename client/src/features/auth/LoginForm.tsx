@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { nuclearReset } from '../../utils/versionControl';
@@ -13,17 +13,43 @@ import {
   Link as MuiLink,
   Alert,
   Divider,
+  MenuItem,
+  Menu,
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import GoogleIcon from '@mui/icons-material/Google';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import LanguageIcon from '@mui/icons-material/Language';
+
+const LANGUAGES = [
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
+];
 
 const LoginForm: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState('');
+
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
-  const navigate = useNavigate();
+  const [langAnchor, setLangAnchor] = useState<null | HTMLElement>(null);
+
+  const handleLanguageOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setLangAnchor(event.currentTarget);
+  };
+
+  const handleLanguageClose = () => {
+    setLangAnchor(null);
+  };
+
+  const handleLanguageChange = (code: string) => {
+    i18n.changeLanguage(code);
+    handleLanguageClose();
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +61,12 @@ const LoginForm: React.FC = () => {
       });
 
       if (error) throw error;
+
+      // Sync language to backend if possible
+      if (data.user) {
+        axios.put(`${API_URL}/users/${data.user.id}`, { language: i18n.language })
+          .catch(e => console.warn('Lang sync failed', e));
+      }
 
       setIsError(false);
       setMessage('Login successful!');
@@ -50,6 +82,9 @@ const LoginForm: React.FC = () => {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/dashboard`,
+        data: {
+          language: i18n.language
+        }
       },
     });
     if (error) { setIsError(true); setMessage(error.message); }
@@ -92,10 +127,39 @@ const LoginForm: React.FC = () => {
         flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
         p: { xs: 3, md: 6 },
       }}>
+        <Box sx={{ position: 'absolute', top: 20, right: 20 }}>
+          <Button
+            size="small"
+            startIcon={<LanguageIcon />}
+            onClick={handleLanguageOpen}
+            sx={{ borderRadius: '20px', bgcolor: 'rgba(255,255,255,0.05)', color: 'text.primary', px: 2 }}
+          >
+            {LANGUAGES.find(l => l.code === i18n.language)?.label || 'Language'}
+          </Button>
+          <Menu
+            anchorEl={langAnchor}
+            open={Boolean(langAnchor)}
+            onClose={handleLanguageClose}
+            PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', mt: 1 } }}
+          >
+            {LANGUAGES.map((lang) => (
+              <MenuItem 
+                key={lang.code} 
+                onClick={() => handleLanguageChange(lang.code)}
+                selected={i18n.language === lang.code}
+                sx={{ gap: 1.5, fontSize: '0.9rem' }}
+              >
+                <span>{lang.flag}</span>
+                {lang.label}
+              </MenuItem>
+            ))}
+          </Menu>
+        </Box>
+
         <Box sx={{ width: '100%', maxWidth: 400 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>Welcome back</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>{t('login_title')}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-            Sign in to continue your journey.
+            {t('login_subtitle')}
           </Typography>
 
           {message && <Alert severity={isError ? 'error' : 'success'} sx={{ mb: 3 }}>{message}</Alert>}
@@ -103,12 +167,12 @@ const LoginForm: React.FC = () => {
           <Box component="form" onSubmit={handleLogin} noValidate>
             <Stack spacing={2}>
               <TextField
-                fullWidth required label="Email Address" type="email"
+                fullWidth required label={t('email')} type="email"
                 autoComplete="email" autoFocus
                 value={email} onChange={(e) => setEmail(e.target.value)}
               />
               <TextField
-                fullWidth required label="Password" type="password"
+                fullWidth required label={t('password')} type="password"
                 autoComplete="current-password"
                 value={password} onChange={(e) => setPassword(e.target.value)}
               />
@@ -119,7 +183,7 @@ const LoginForm: React.FC = () => {
               endIcon={<ArrowForwardIcon />}
               sx={{ mt: 3, mb: 2, py: 1.5 }}
             >
-              Sign In
+              {t('sign_in')}
             </Button>
 
             <Divider sx={{ my: 2, color: 'text.disabled', fontSize: '0.75rem' }}>or</Divider>
@@ -134,15 +198,15 @@ const LoginForm: React.FC = () => {
             </Button>
 
             <Typography variant="body2" color="text.secondary" textAlign="center">
-              Don't have an account?{' '}
+              {t('no_account')}{' '}
               <MuiLink component={RouterLink} to="/signup" sx={{ fontWeight: 600 }}>
-                Sign up free
+                {t('sign_up')}
               </MuiLink>
             </Typography>
 
             <Box sx={{ mt: 6, p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
               <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1, textAlign: 'center' }}>
-                Having issues on mobile?
+                {t('mobile_issues')}
               </Typography>
               <Button
                 fullWidth size="small" variant="text" color="inherit"
@@ -150,7 +214,7 @@ const LoginForm: React.FC = () => {
                 startIcon={<RestartAltIcon sx={{ fontSize: '1rem' }} />}
                 sx={{ fontSize: '0.65rem', opacity: 0.6, '&:hover': { opacity: 1 } }}
               >
-                Force Hard Refresh & Clear Cache
+                {t('force_refresh')}
               </Button>
             </Box>
 

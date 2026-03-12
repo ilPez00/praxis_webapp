@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import CircularProgress from '@mui/material/CircularProgress';
 import {
   Box,
@@ -28,6 +29,7 @@ const EventsPage = React.lazy(() => import('../events/EventsPage'));
 type FilterType = 'all' | 'people' | 'places' | 'events';
 
 const DiscoverPage: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useUser();
   const location = useLocation();
   const navigate = useNavigate();
@@ -157,10 +159,10 @@ const DiscoverPage: React.FC = () => {
             scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' }
           }}>
             {[
-              { id: 'all', label: 'Everything', icon: <AppsIcon fontSize="small" /> },
-              { id: 'people', label: 'Users', icon: <PersonSearchIcon fontSize="small" /> },
-              { id: 'places', label: 'Places', icon: <PlaceIcon fontSize="small" /> },
-              { id: 'events', label: 'Events', icon: <EventIcon fontSize="small" /> },
+              { id: 'all', label: t('everything'), icon: <AppsIcon fontSize="small" /> },
+              { id: 'people', label: t('people'), icon: <PersonSearchIcon fontSize="small" /> },
+              { id: 'places', label: t('places'), icon: <PlaceIcon fontSize="small" /> },
+              { id: 'events', label: t('events'), icon: <EventIcon fontSize="small" /> },
             ].map((btn) => (
               <Chip
                 key={btn.id}
@@ -189,7 +191,7 @@ const DiscoverPage: React.FC = () => {
       <Container maxWidth="lg" sx={{ mt: -4, position: 'relative', zIndex: 2, pb: 10 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
           <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.02em', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-            {filter === 'all' ? 'Community Hub' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+            {filter === 'all' ? t('community_hub') : filter.charAt(0).toUpperCase() + filter.slice(1)}
           </Typography>
           <Tooltip title="Refresh data">
             <IconButton onClick={handleRefresh} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>

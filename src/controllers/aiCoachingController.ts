@@ -68,7 +68,7 @@ async function buildContext(userId: string): Promise<CoachingContext> {
       // 1. Profile
       supabase
         .from('profiles')
-        .select('name, bio, current_streak, praxis_points')
+        .select('name, bio, current_streak, praxis_points, language')
         .eq('id', userId)
         .single(),
 
@@ -116,6 +116,7 @@ async function buildContext(userId: string): Promise<CoachingContext> {
   const bio = profile?.bio || undefined;
   const streak = profile?.current_streak ?? 0;
   const praxisPoints = profile?.praxis_points ?? 0;
+  const language = profile?.language || 'en';
 
   // --- Goals ---
   const rawNodes: any[] = goalTreeRes.status === 'fulfilled'
@@ -204,7 +205,7 @@ async function buildContext(userId: string): Promise<CoachingContext> {
     }
   }
 
-  return { userName, bio, streak, praxisPoints, goals, recentFeedback, achievements, network, boards };
+  return { userName, bio, streak, praxisPoints, language, goals, recentFeedback, achievements, network, boards };
 }
 
 // ---------------------------------------------------------------------------
@@ -316,7 +317,7 @@ export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response,
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const [profileRes, checkinsRes, goalTreeRes] = await Promise.allSettled([
-    supabase.from('profiles').select('name, current_streak').eq('id', userId).single(),
+    supabase.from('profiles').select('name, current_streak, language').eq('id', userId).single(),
     supabase.from('checkins').select('id', { count: 'exact', head: true })
       .eq('user_id', userId).gte('checked_in_at', sevenDaysAgo.toISOString()),
     supabase.from('goal_trees').select('nodes').eq('userId', userId).maybeSingle(),
@@ -341,6 +342,7 @@ export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response,
       topGoal: topNode ? (topNode.name || topNode.title) : undefined,
       topDomain: topNode?.domain,
       overallProgress: avgProgress,
+      language: profile?.language || 'en',
     });
 
     narrativeCache.set(userId, { narrative, generatedAt: Date.now() });

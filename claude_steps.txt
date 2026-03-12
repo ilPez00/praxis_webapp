@@ -68,3 +68,10 @@ Session 40: Goal Controller Snake Case Fix
 - Fixed Internal Server Error by switching to snake_case column names (user_id, root_nodes).
 - Updated root_nodes logic to store arrays of IDs as expected by the DB.
 - Standardized all CRUD operations in goalController.ts.
+Session 41: Multi-language Support (i18n)
+- Installed i18next and react-i18next for frontend translations.
+- Configured i18n with Italian, Spanish, French, and Russian support.
+- Added language selector to LoginForm and translated core labels.
+- Created SQL migration to store user language in 'profiles' table.
+- Updated Axiom (AI) to respond in the user's preferred language.
+- Implemented language sync between frontend and backend on login.
