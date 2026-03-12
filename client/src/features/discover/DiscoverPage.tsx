@@ -60,14 +60,20 @@ const DiscoverPage: React.FC = () => {
 
   // Get user location for map centering
   useEffect(() => {
+    // Priority 1: User Profile Coordinates
+    if (user?.latitude && user?.longitude) {
+      setUserGeo({ lat: user.latitude, lng: user.longitude });
+    }
+
+    // Priority 2: Real-time Geolocation (if permitted)
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
         () => console.warn('Location access denied'),
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: false, timeout: 5000 }
       );
     }
-  }, []);
+  }, [user?.latitude, user?.longitude]);
 
   // Consolidate markers from all data sources
   const allMarkers = useMemo(() => {

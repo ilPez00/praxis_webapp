@@ -36,20 +36,27 @@ interface LocationMapProps {
 // Helper component to auto-fit bounds when markers change
 function MapAutoFit({ markers, userLocation }: { markers: MapMarker[], userLocation?: { lat: number; lng: number } }) {
   const map = useMap();
+  const hasAutoCentered = React.useRef(false);
+
   React.useEffect(() => {
-    if (markers.length === 0) {
-      if (userLocation) {
-        map.setView([userLocation.lat, userLocation.lng], 12);
-      }
+    // 1. Prioritize User Location for initial view
+    if (userLocation && !hasAutoCentered.current) {
+      map.setView([userLocation.lat, userLocation.lng], 12);
+      hasAutoCentered.current = true;
       return;
     }
+
+    // 2. Fallback to Marker bounds if no user location or after initial center
+    if (markers.length === 0) return;
+
     if (markers.length === 1) {
       map.setView([markers[0].lat, markers[0].lng], 14);
     } else {
       const bounds = L.latLngBounds(markers.map(m => [m.lat, m.lng]));
-      map.fitBounds(bounds, { padding: [50, 50] });
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
   }, [map, markers, userLocation]);
+  
   return null;
 }
 

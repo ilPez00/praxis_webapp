@@ -42,3 +42,7 @@ Session 33: Admin 'Grant Pro' Feature
 - Added PUT /admin/users/:id/premium route to adminRoutes.ts.
 - Implemented handleTogglePremium in AdminPage.tsx.
 - Added 'Grant Pro' button (StarsIcon) to User list in Admin panel.
+Session 34: User-centric Map Focusing
+- Modified LocationMap.tsx to prioritize userLocation for initial centering.
+- Updated DiscoverPage.tsx to provide user's profile coordinates as location fallback.
+- Improved MapAutoFit logic with refs to prevent jitter and infinite loops.
