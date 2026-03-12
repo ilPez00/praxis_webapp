@@ -55,3 +55,5 @@ Session 36: Goal Tree Fixes & Subgoal Logic
 - Added parentId to Frontend GoalNode type and populated it in buildFrontendTree.
 - Fixed subgoal creation by properly managing parentId context in the Edit/Branch dialog.
 - Ensured domain selection is correctly handled for both root goals and subgoals.
+Session 37: Fix MenuItem ReferenceError
+- Added missing MenuItem import in GoalTreePage.tsx.
