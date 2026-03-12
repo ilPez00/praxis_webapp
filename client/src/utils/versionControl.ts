@@ -1,39 +1,20 @@
 // Version Control - Forces users to clear cache on major updates
-const CURRENT_VERSION = '2026.03.11.v6-final'; 
+// Consistent with index.html boot script
+const CURRENT_VERSION = '2026.03.11.v8'; 
 
 export function enforceFreshContent() {
   if (typeof window === 'undefined') return;
 
   try {
     const storedVersion = localStorage.getItem('praxis_app_version');
-
     if (storedVersion !== CURRENT_VERSION) {
-      console.log(`[VersionControl] Resetting to ${CURRENT_VERSION}`);
-      
-      // Set version immediately to prevent reload loops
+      console.log(`[VersionControl] App version mismatch detected in JS layer.`);
+      // We don't reload here anymore to avoid flickering; index.html handled it.
+      // But we update the key just in case.
       localStorage.setItem('praxis_app_version', CURRENT_VERSION);
-
-      // 1. Unregister Service Workers
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          regs.forEach(r => r.unregister());
-        }).catch(() => {});
-      }
-
-      // 2. Clear Caches
-      if ('caches' in window) {
-        caches.keys().then(names => {
-          names.forEach(n => caches.delete(n));
-        }).catch(() => {});
-      }
-
-      // 3. Brief delay then reload
-      setTimeout(() => {
-        window.location.reload();
-      }, 300);
     }
   } catch (err) {
-    console.warn('[VersionControl] Non-fatal error during sync:', err);
+    console.warn('[VersionControl] Sync warning:', err);
   }
 }
 
@@ -55,7 +36,7 @@ export async function nuclearReset() {
   localStorage.clear();
   sessionStorage.clear();
   
-  // Set version so we don't trigger enforceFreshContent loop
+  // Set version so we don't trigger mismatch loops
   localStorage.setItem('praxis_app_version', CURRENT_VERSION);
   
   window.location.href = window.location.origin + '/?reset=' + Date.now();

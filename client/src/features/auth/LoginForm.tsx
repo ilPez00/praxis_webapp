@@ -140,7 +140,7 @@ const LoginForm: React.FC = () => {
 
             <Box sx={{ mt: 8, opacity: 0.3, textAlign: 'center' }}>
               <Typography sx={{ fontSize: '0.6rem', letterSpacing: '0.1em' }}>
-                PRAXIS BUILD: 2026.03.11.V5-STABLE
+                PRAXIS BUILD: 2026.03.11.V8-STABLE
               </Typography>
             </Box>
           </Box>

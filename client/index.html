@@ -13,31 +13,46 @@
     <link rel="manifest" href="/manifest.json" />
     <title>Praxis</title>
 
-    <!-- NUCLEAR CACHE CLEAR SCRIPT - VERSION 2026.03.11.V7 -->
+    <!-- STABLE CACHE RESET SCRIPT - VERSION 2026.03.11.V8 -->
     <script>
       (function() {
-        var CURRENT_VERSION = '2026.03.11.v7';
+        var CURRENT_VERSION = '2026.03.11.v8';
         var storedVersion = localStorage.getItem('praxis_app_version');
-        if (storedVersion !== CURRENT_VERSION) {
-          console.log('[Nuclear] Version mismatch. Cleaning all state...');
-          localStorage.clear();
-          sessionStorage.clear();
-          localStorage.setItem('praxis_app_version', CURRENT_VERSION);
+        
+        // CIRCUIT BREAKER: Don't reload if we already did it in this session
+        var alreadyReloaded = sessionStorage.getItem('praxis_circuit_breaker');
+
+        if (storedVersion !== CURRENT_VERSION && !alreadyReloaded) {
+          console.log('[Stability] Version mismatch. Updating...');
           
+          // 1. Set version FIRST to stop the loop
+          localStorage.setItem('praxis_app_version', CURRENT_VERSION);
+          sessionStorage.setItem('praxis_circuit_breaker', 'true');
+
+          // 2. Clear Caches & Service Workers (Async)
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(regs) {
               for (var i = 0; i < regs.length; i++) regs[i].unregister();
             });
           }
-          
           if ('caches' in window) {
             caches.keys().then(function(names) {
               for (var i = 0; i < names.length; i++) caches.delete(names[i]);
             });
           }
-          
-          // Force a clean reload with a cache-busting query param
-          window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now());
+
+          // 3. Surgical Storage Wipe (Keep the version we just set!)
+          var keys = Object.keys(localStorage);
+          for (var i = 0; i < keys.length; i++) {
+            if (keys[i] !== 'praxis_app_version') {
+              localStorage.removeItem(keys[i]);
+            }
+          }
+
+          // 4. Final Reload
+          setTimeout(function() {
+            window.location.reload();
+          }, 200);
         }
       })();
     </script>
