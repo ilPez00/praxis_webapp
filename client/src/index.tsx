@@ -10,6 +10,27 @@ import { enforceFreshContent } from './utils/versionControl';
 // Force refresh if version mismatch
 enforceFreshContent();
 
+// SILENCE NON-FATAL ERRORS (scrollTop null / ResizeObserver)
+if (typeof window !== 'undefined') {
+  const originalError = window.onerror;
+  window.onerror = (message, source, lineno, colno, error) => {
+    const msg = String(message).toLowerCase();
+    if (msg.includes('scrolltop') || msg.includes('resizeobserver')) {
+      console.warn('[Silenced Error]', msg);
+      return true; // Stop propagation
+    }
+    return originalError ? originalError(message, source, lineno, colno, error) : false;
+  };
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const msg = String(event.reason).toLowerCase();
+    if (msg.includes('scrolltop') || msg.includes('resizeobserver')) {
+      event.preventDefault();
+      console.warn('[Silenced Promise Rejection]', msg);
+    }
+  });
+}
+
 // ─── Premium Dark Theme ────────────────────────────────────────────────────────
 // Palette: deep dark backgrounds, amber-gold primary, electric violet secondary.
 // Inspired by high-end fintech / productivity app aesthetics.

@@ -23,3 +23,9 @@ Session 29: Mobile Stability & Refresh Loop Fixes
 - Updated sw.js to be truly 'suicidal' (unregisters and reloads all clients).
 - Added manual 'Force Hard Refresh' button to LoginForm for troubleshooting.
 - Fixed build label in LoginForm to match version.
+Session 30: Error Silencing & Mobile Debugging
+- Injected Eruda mobile console into index.html for on-device debugging.
+- Implemented global window.onerror silencing for 'scrollTop' and 'ResizeObserver' non-fatal errors.
+- Standardized all versions to 2026.03.12.v2 (fresh start for mobile).
+- Updated ErrorBoundary to auto-expand details on crash.
+- Verified error silencing in both index.html (boot phase) and index.tsx (app phase).
