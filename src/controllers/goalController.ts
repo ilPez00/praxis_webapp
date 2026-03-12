@@ -552,16 +552,17 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   }
 
   // 3. Build new node
-  const newNode: GoalNode & Record<string, any> = {
-    id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
+  const newNode: any = {
+    id: (crypto as any).randomUUID ? (crypto as any).randomUUID() : Math.random().toString(36).substring(2, 15),
     name: name.trim(),
-    customDetails: description ?? undefined,
-    domain: domain ?? 'General',
-    targetDate: targetDate ?? undefined,
-    completionMetric: completionMetric ?? undefined,
-    parentId: parentId ?? undefined,
+    customDetails: description ?? null,
+    domain: domain || Domain.PERSONAL_GOALS,
+    targetDate: targetDate ?? null,
+    completionMetric: completionMetric ?? null,
+    parentId: parentId ?? null,
     progress: 0,
     weight: 1,
+    children: [],
     created_at: new Date().toISOString(),
   };
 
@@ -572,7 +573,10 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 4. Save updated nodes + rootNodes
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, '"rootNodes"': updatedRootNodes })
+    .update({ 
+      nodes: updatedNodes, 
+      '"rootNodes"': updatedRootNodes 
+    })
     .eq('"userId"', userId);
   if (saveErr) throw new InternalServerError(`Failed to save new node: ${saveErr.message}`);
 

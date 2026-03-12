@@ -57,3 +57,7 @@ Session 36: Goal Tree Fixes & Subgoal Logic
 - Ensured domain selection is correctly handled for both root goals and subgoals.
 Session 37: Fix MenuItem ReferenceError
 - Added missing MenuItem import in GoalTreePage.tsx.
+Session 38: Backend Goal Creation Fix
+- Fixed 500 error in createGoalNode by adding missing 'children' array to new nodes.
+- Corrected Domain fallback to a valid enum value (Personal Goals).
+- Switched to null instead of undefined for JSONB compatibility in optional fields.
