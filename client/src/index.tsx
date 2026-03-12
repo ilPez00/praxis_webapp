@@ -5,6 +5,10 @@ import AppRouter from './AppRouter';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { enforceFreshContent } from './utils/versionControl';
+
+// Force refresh if version mismatch
+enforceFreshContent();
 
 // ─── Premium Dark Theme ────────────────────────────────────────────────────────
 // Palette: deep dark backgrounds, amber-gold primary, electric violet secondary.
