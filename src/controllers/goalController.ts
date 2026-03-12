@@ -328,7 +328,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     // If a tree exists, update it with the new nodes and root nodes
     const { data, error } = await supabase
       .from('goal_trees')
-      .update({ nodes, rootNodes: safeRootNodes })
+      .update({ nodes, '"rootNodes"': safeRootNodes })
       .eq('"userId"', userId)
       .select()
       .single();
@@ -436,7 +436,7 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
 
   const { error: updateErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
+    .update({ nodes: updatedNodes, '"rootNodes"': updatedRootNodes })
     .eq('"userId"', userId);
 
   if (updateErr) throw new InternalServerError(`Failed to update node: ${updateErr.message}`);
@@ -647,7 +647,7 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 4. Save
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
+    .update({ nodes: updatedNodes, '"rootNodes"': updatedRootNodes })
     .eq('"userId"', userId);
   if (saveErr) throw new InternalServerError(`Failed to save node update: ${saveErr.message}`);
 
@@ -711,7 +711,7 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 3. Save
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
+    .update({ nodes: updatedNodes, '"rootNodes"': updatedRootNodes })
     .eq('"userId"', userId);
   if (saveErr) throw new InternalServerError(`Failed to delete node: ${saveErr.message}`);
 
