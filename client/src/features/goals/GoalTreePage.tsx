@@ -49,6 +49,7 @@ function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
       weight: Math.round(n.weight * 100) / 100,
       progress: Math.round(n.progress * 100),
       domain: n.domain as Domain,
+      parentId: n.parentId,
       children: [],
     });
   }
@@ -769,7 +770,16 @@ const GoalTreePage: React.FC = () => {
           {!isBranching && editingNode && (
              <Stack direction="row" spacing={1} sx={{ mt: 3, flexWrap: 'wrap', gap: 1 }}>
                 <Button size="small" variant="outlined" startIcon={<AccountTreeIcon />} 
-                  onClick={() => setIsBranching(true)}
+                  onClick={() => {
+                    setEditingNode(editingNode); // Keep parent
+                    setNewGoalDomain('');        // Not a root goal
+                    setIsBranching(true);
+                    setEditName('');
+                    setEditDesc('');
+                    setEditMetric('');
+                    setEditTargetDate('');
+                    setEditProgress(0);
+                  }}
                   sx={{ borderRadius: '8px', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.4)' }}
                 >
                    Add Sub-goal

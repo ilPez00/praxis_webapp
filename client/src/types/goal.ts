@@ -12,6 +12,7 @@ export interface GoalNode {
     weight: number; // 0-100, importance percentage within parent
     progress: number; // 0-100, completion percentage
     status?: 'active' | 'suspended' | 'completed';
+    parentId?: string;
     children: GoalNode[];
     domain?: Domain; // Only on top-level nodes for categorization
 }
