@@ -29,3 +29,7 @@ Session 30: Error Silencing & Mobile Debugging
 - Standardized all versions to 2026.03.12.v2 (fresh start for mobile).
 - Updated ErrorBoundary to auto-expand details on crash.
 - Verified error silencing in both index.html (boot phase) and index.tsx (app phase).
+Session 31: Transition Ref Fixes
+- Wrapped common GlassCard in React.forwardRef to support MUI transitions.
+- Wrapped internal GlassCard in InstallPwaBanner in React.forwardRef to fix Snackbar crash.
+- Standardized all versions to 2026.03.12.v3.

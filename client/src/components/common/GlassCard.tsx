@@ -16,17 +16,15 @@ export interface GlassCardProps extends Omit<PaperProps, 'sx'> {
  * Provides a semi-transparent frosted-glass surface with backdrop blur,
  * a subtle inner border, and an optional colored glow shadow.
  *
- * Usage:
- *   <GlassCard glow="primary" sx={{ p: 3 }}>...</GlassCard>
- *   <GlassCard glowColor="rgba(16,185,129,0.2)" sx={{ p: 3 }}>...</GlassCard>
+ * Wrapped in forwardRef to support MUI transitions (Fade, Grow, etc).
  */
-const GlassCard: React.FC<GlassCardProps> = ({
+const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(({
   glow = 'none',
   glowColor,
   sx,
   children,
   ...rest
-}) => {
+}, ref) => {
   const resolvedGlow = glowColor
     ? `0 0 40px ${glowColor}, 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)`
     : glow === 'primary'
@@ -38,6 +36,7 @@ const GlassCard: React.FC<GlassCardProps> = ({
   return (
     <Paper
       {...rest}
+      ref={ref}
       sx={{
         background: 'rgba(17,24,39,0.82)',
         backdropFilter: 'blur(20px)',
@@ -62,6 +61,6 @@ const GlassCard: React.FC<GlassCardProps> = ({
       {children}
     </Paper>
   );
-};
+});
 
 export default GlassCard;

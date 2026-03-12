@@ -109,17 +109,20 @@ const InstallPwaBanner: React.FC = () => {
 };
 
 // Internal minimal GlassCard since we might not have it in common yet or want to customize it
-const GlassCard: React.FC<{ children: React.ReactNode; sx?: any }> = ({ children, sx }) => (
-  <Box sx={{
-    backdropFilter: 'blur(12px)',
-    borderRadius: '16px',
-    backgroundColor: 'rgba(17, 24, 39, 0.8)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    ...sx,
-  }}>
+const GlassCard = React.forwardRef<HTMLDivElement, { children: React.ReactNode; sx?: any }>(({ children, sx }, ref) => (
+  <Box 
+    ref={ref}
+    sx={{
+      backdropFilter: 'blur(12px)',
+      borderRadius: '16px',
+      backgroundColor: 'rgba(17, 24, 39, 0.8)',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      ...sx,
+    }}
+  >
     {children}
   </Box>
-);
+));
 
 // Internal minimal Stack
 const Stack: React.FC<{ children: React.ReactNode; direction?: string; spacing?: number; sx?: any }> = ({ children, direction = 'column', spacing = 0, sx }) => (
