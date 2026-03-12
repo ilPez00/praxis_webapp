@@ -25,6 +25,7 @@ export interface User {
   profile_boosted_until?: string;
   badge?: string;
   is_admin?: boolean;
+  role?: 'user' | 'staff' | 'moderator' | 'admin';
   reliability_score?: number;
   karma_score?: number;
   occupation?: string;

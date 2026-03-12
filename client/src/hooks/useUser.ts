@@ -69,6 +69,7 @@ export const useUser = () => {
         profile_boosted_until: profile.profile_boosted_until ?? undefined,
         badge: profile.badge ?? undefined,
         is_admin: profile.is_admin ?? false,
+        role: profile.role ?? 'user',
         reliability_score: profile.reliability_score ?? 0,
         karma_score: profile.karma_score ?? 0,
         username: profile.username ?? undefined,

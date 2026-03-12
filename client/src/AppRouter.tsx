@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import routes from './config/routes';
 import { useLocationSync } from './hooks/useLocationSync';
+import { useUser } from './hooks/useUser';
 
 const PageLoader = () => (
   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -24,8 +25,30 @@ const basename = (!isElectron && window.location.hostname === 'ilpez00.github.io
   : '';
 
 const AppRouter: React.FC = () => {
+  const { user } = useUser();
+  
   // Global background syncs (safe wrapped)
   useLocationSync();
+
+  // ─── Conditional Mobile Debug Console (Eruda) ───
+  useEffect(() => {
+    const isPrivileged = user?.is_admin || ['admin', 'moderator', 'staff'].includes(user?.role || '');
+    const eruda = (window as any).eruda;
+
+    if (isPrivileged && eruda) {
+      try {
+        eruda.init();
+        console.log('[Debug] Eruda initialized for privileged user.');
+      } catch (e) {
+        console.warn('[Debug] Eruda init failed', e);
+      }
+    } else if (!isPrivileged && eruda) {
+      try {
+        // Try to destroy if user is no longer privileged or logged out
+        eruda.destroy();
+      } catch (e) {}
+    }
+  }, [user]);
 
   const isWidget = window.location.hash.includes('widget') || window.location.pathname.includes('widget');
 

@@ -33,3 +33,7 @@ Session 31: Transition Ref Fixes
 - Wrapped common GlassCard in React.forwardRef to support MUI transitions.
 - Wrapped internal GlassCard in InstallPwaBanner in React.forwardRef to fix Snackbar crash.
 - Standardized all versions to 2026.03.12.v3.
+Session 32: Role-based Debug Console
+- Added 'role' field to User model and useUser hook.
+- Restricted Eruda mobile console to 'admin', 'moderator', and 'staff' roles.
+- Moved Eruda initialization from static index.html to reactive AppRouter.tsx.
