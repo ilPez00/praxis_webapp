@@ -135,7 +135,7 @@ export const getGoalTree = catchAsync(async (req: Request, res: Response, next: 
   const { data, error } = await supabase
     .from('goal_trees')
     .select('*') // Select all columns of the goal tree
-    .eq('"userId"', userId)
+    .eq('user_id', userId)
     .single(); // Expect a single goal tree per user
 
   // Handle errors, excluding 'PGRST116' which indicates no rows found (expected for new users)
@@ -329,8 +329,11 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     // If a tree exists, update it with the new nodes and root nodes
     const { data, error } = await supabase
       .from('goal_trees')
-      .update({ nodes, '"rootNodes"': safeRootNodes })
-      .eq('"userId"', userId)
+      .update({ 
+        nodes, 
+        root_nodes: safeRootNodes.map((n: any) => n.id) 
+      })
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -365,7 +368,11 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     // If no tree exists, create a new one
     const { data, error } = await supabase
       .from('goal_trees')
-      .insert([{ '"userId"': userId, nodes, '"rootNodes"': safeRootNodes }])
+      .insert([{ 
+        user_id: userId, 
+        nodes, 
+        root_nodes: safeRootNodes.map((n: any) => n.id) 
+      }])
       .select()
       .single();
 
@@ -409,14 +416,14 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
   // Fetch current tree
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
-    .select('nodes, "rootNodes"')
-    .eq('"userId"', userId)
+    .select('nodes, root_nodes')
+    .eq('user_id', userId)
     .single();
 
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
-  const rootNodes: GoalNode[] = Array.isArray((tree as any).rootNodes) ? (tree as any).rootNodes : [];
+  const rootNodeIds: string[] = Array.isArray((tree as any).root_nodes) ? (tree as any).root_nodes : [];
 
   // Find the node and update its progress
   let wasComplete = false;
@@ -427,9 +434,6 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
     targetDomain = n.domain || '';
     return { ...n, progress: progress / 100 };
   });
-  const updatedRootNodes = rootNodes.map((n: GoalNode) =>
-    n.id !== nodeId ? n : { ...n, progress: progress / 100 }
-  );
 
   if (updatedNodes.length === nodes.length && !updatedNodes.find(n => n.id === nodeId)) {
     throw new NotFoundError('Goal node not found in tree.');
@@ -437,8 +441,11 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
 
   const { error: updateErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, '"rootNodes"': updatedRootNodes })
-    .eq('"userId"', userId);
+    .update({ 
+      nodes: updatedNodes, 
+      root_nodes: rootNodeIds // Progress update doesn't change which nodes are root
+    })
+    .eq('user_id', userId);
 
   if (updateErr) throw new InternalServerError(`Failed to update node: ${updateErr.message}`);
 
@@ -538,13 +545,13 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 2. Load existing tree
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
-    .select('nodes, "rootNodes"')
-    .eq('"userId"', userId)
+    .select('nodes, root_nodes')
+    .eq('user_id', userId)
     .single();
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found. Create your initial tree first.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
-  const rootNodes: GoalNode[] = Array.isArray((tree as any).rootNodes) ? (tree as any).rootNodes : [];
+  const rootNodeIds: string[] = Array.isArray((tree as any).root_nodes) ? (tree as any).root_nodes : [];
 
   // Validate parentId if supplied
   if (parentId && !nodes.find((n: GoalNode) => n.id === parentId)) {
@@ -568,16 +575,16 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
 
   const updatedNodes = [...nodes, newNode];
   // Root nodes = nodes with no parentId; append if this is a root node
-  const updatedRootNodes = parentId ? rootNodes : [...rootNodes, newNode];
+  const updatedRootNodeIds = parentId ? rootNodeIds : [...rootNodeIds, newNode.id];
 
   // 4. Save updated nodes + rootNodes
   const { error: saveErr } = await supabase
     .from('goal_trees')
     .update({ 
       nodes: updatedNodes, 
-      '"rootNodes"': updatedRootNodes 
+      root_nodes: updatedRootNodeIds 
     })
-    .eq('"userId"', userId);
+    .eq('user_id', userId);
   if (saveErr) throw new InternalServerError(`Failed to save new node: ${saveErr.message}`);
 
   // 5. Increment edit count + deduct PP
@@ -622,13 +629,13 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 2. Load existing tree
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
-    .select('nodes, "rootNodes"')
-    .eq('"userId"', userId)
+    .select('nodes, root_nodes')
+    .eq('user_id', userId)
     .single();
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
-  const rootNodes: GoalNode[] = Array.isArray((tree as any).rootNodes) ? (tree as any).rootNodes : [];
+  const rootNodeIds: string[] = Array.isArray((tree as any).root_nodes) ? (tree as any).root_nodes : [];
 
   // 3. Find and merge
   const idx = nodes.findIndex((n: GoalNode) => n.id === nodeId);
@@ -646,14 +653,14 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const updatedNodes = [...nodes];
   updatedNodes[idx] = updatedNode;
 
-  // Also keep rootNodes in sync
-  const updatedRootNodes = rootNodes.map((n: GoalNode) => n.id === nodeId ? updatedNode : n);
-
   // 4. Save
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, '"rootNodes"': updatedRootNodes })
-    .eq('"userId"', userId);
+    .update({ 
+      nodes: updatedNodes, 
+      root_nodes: rootNodeIds 
+    })
+    .eq('user_id', userId);
   if (saveErr) throw new InternalServerError(`Failed to save node update: ${saveErr.message}`);
 
   // 5. Increment edit count + deduct PP
@@ -684,13 +691,13 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // 1. Load existing tree
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
-    .select('nodes, "rootNodes"')
-    .eq('"userId"', userId)
+    .select('nodes, root_nodes')
+    .eq('user_id', userId)
     .single();
   if (treeErr || !tree) throw new NotFoundError('Goal tree not found.');
 
   const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
-  const rootNodes: GoalNode[] = Array.isArray((tree as any).rootNodes) ? (tree as any).rootNodes : [];
+  const rootNodeIds: string[] = Array.isArray((tree as any).root_nodes) ? (tree as any).root_nodes : [];
 
   if (!nodes.find((n: GoalNode) => n.id === targetNodeId)) {
     throw new NotFoundError('Goal node not found in tree.');
@@ -711,13 +718,16 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   }
 
   const updatedNodes = nodes.filter((n: GoalNode) => !toDelete.has(n.id));
-  const updatedRootNodes = rootNodes.filter((n: GoalNode) => !toDelete.has(n.id));
+  const updatedRootNodeIds = rootNodeIds.filter((id: string) => !toDelete.has(id));
 
   // 3. Save
   const { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ nodes: updatedNodes, '"rootNodes"': updatedRootNodes })
-    .eq('"userId"', userId);
+    .update({ 
+      nodes: updatedNodes, 
+      root_nodes: updatedRootNodeIds 
+    })
+    .eq('user_id', userId);
   if (saveErr) throw new InternalServerError(`Failed to delete node: ${saveErr.message}`);
 
   res.json({ message: 'Node deleted.', deletedCount: toDelete.size });
