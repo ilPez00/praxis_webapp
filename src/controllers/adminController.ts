@@ -399,7 +399,7 @@ export const getUserDetail = catchAsync(async (req: Request, res: Response, _nex
     supabase.from('profiles').select('*').eq('id', id).single(),
     supabase.from('checkins').select('id', { count: 'exact', head: true }).eq('user_id', id),
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', id),
-    supabase.from('goal_trees').select('"userId", nodes, "rootNodes"').eq('"userId"', id).maybeSingle(),
+    supabase.from('goal_trees').select('user_id, nodes, root_nodes').eq('user_id', id).maybeSingle(),
     supabase.from('friendships').select('id', { count: 'exact', head: true })
       .or(`requester_id.eq.${id},recipient_id.eq.${id}`).eq('status', 'accepted'),
     supabase.from('completion_requests').select('id, status', { count: 'exact' }).eq('verifier_id', id),
@@ -409,7 +409,7 @@ export const getUserDetail = catchAsync(async (req: Request, res: Response, _nex
 
   const profile = profileRes.data;
   const tree = treeRes.data as any;
-  const rootNodeCount = Array.isArray(tree?.rootNodes) ? tree.rootNodes.length : 0;
+  const rootNodeCount = Array.isArray(tree?.root_nodes) ? tree.root_nodes.length : 0;
   const totalNodeCount = Array.isArray(tree?.nodes) ? tree.nodes.length : 0;
 
   res.json({

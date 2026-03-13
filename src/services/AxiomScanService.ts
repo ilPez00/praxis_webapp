@@ -60,6 +60,7 @@ export class AxiomScanService {
       messagesRes
     ] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
+
       supabase.from('trackers').select('*, tracker_entries(*)').eq('user_id', userId),
       supabase.from('events').select('*').gte('event_date', today).limit(20),
       supabase.from('places').select('*').limit(20),

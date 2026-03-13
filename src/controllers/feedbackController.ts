@@ -85,7 +85,10 @@ export const submitFeedback = catchAsync(async (req: Request, res: Response, nex
     // 4. Save the updated goal tree back to Supabase
     const { data: updatedTree, error: updateTreeError } = await supabase
       .from('goal_trees')
-      .update({ nodes: updatedNodes, rootNodes: updatedRootNodes })
+      .update({ 
+        nodes: updatedNodes, 
+        root_nodes: updatedRootNodes.map(n => n.id) 
+      })
       .eq('user_id', receiverId)
       .select()
       .single();

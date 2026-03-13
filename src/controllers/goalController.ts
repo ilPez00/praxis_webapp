@@ -214,7 +214,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   const { data: existingTreeData, error: fetchExistingTreeError } = await supabase
     .from('goal_trees')
     .select('nodes')
-    .eq('"userId"', userId)
+    .eq('user_id', userId)
     .single();
 
   if (fetchExistingTreeError && fetchExistingTreeError.code !== 'PGRST116') {
@@ -304,7 +304,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   const { data: existingTree, error: fetchError } = await supabase
     .from('goal_trees')
     .select('id')
-    .eq('"userId"', userId)
+    .eq('user_id', userId)
     .single();
 
   if (fetchError && fetchError.code !== 'PGRST116') {
