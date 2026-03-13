@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   base: '/',
   build: {
-    outDir: 'build',
+    outDir: 'dist',
     sourcemap: false,
     // Ensure we use 'esnext' or similar to avoid issues with some mobile browsers
     // and disable any aggressive minification that might cause reference errors
