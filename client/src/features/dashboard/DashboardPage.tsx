@@ -114,12 +114,21 @@ const DashboardPage: React.FC = () => {
 
   const hasGoals = allNodes.length > 0;
 
-  // DEBUG: console.log('Dashboard Diagnosis:', { currentUserId, loadingContent, hasGoals, nodeCount: allNodes.length, goalTreeExists: !!goalTree, onboarding: user?.onboarding_completed });
+  // VISIBLE DEBUG (will show above setup steps if it fails)
+  const debugInfo = (
+    <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.8)', color: 'white', position: 'fixed', top: 0, left: 0, zIndex: 9999, fontSize: '10px' }}>
+      DASHBOARD DEBUG: user={currentUserId?.slice(0,8)} onboarded={String(user?.onboarding_completed)} hasGoals={String(hasGoals)} nodeCount={allNodes.length} loading={String(loadingContent)}
+    </Box>
+  );
 
   // ONLY redirect to setup if loading is done AND we are SURE there are no goals.
   if (!loadingContent && !hasGoals && currentUserId) {
-    console.log('Redirecting to GettingStartedPage because hasGoals is false', { nodeCount: allNodes.length });
-    return <GettingStartedPage userId={currentUserId} />;
+    return (
+      <>
+        {debugInfo}
+        <GettingStartedPage userId={currentUserId} />
+      </>
+    );
   }
 
   const userName    = user?.name || 'Explorer';
