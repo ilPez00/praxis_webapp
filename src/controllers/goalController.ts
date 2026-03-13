@@ -165,7 +165,13 @@ export const getGoalTree = catchAsync(async (req: Request, res: Response, next: 
  * @param res - The Express response object.
  */
 export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { userId, nodes, rootNodes } = req.body;
+  const userId = req.body.user_id || req.body.userId;
+  const nodes = req.body.nodes;
+  const rootNodes = req.body.root_nodes || req.body.rootNodes;
+
+  if (!userId) {
+    throw new BadRequestError('User ID is required.');
+  }
 
   // Fetch user's premium status and edit count
   const { data: profile, error: profileError } = await supabase

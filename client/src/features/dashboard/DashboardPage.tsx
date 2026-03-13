@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { GoalTree } from '../../models/GoalTree';
@@ -27,13 +27,11 @@ import {
   Stack,
   Grid,
 } from '@mui/material';
-import { API_URL } from '../../lib/api';
 
 const DashboardPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
   const navigate = useNavigate();
 
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [localStreak, setLocalStreak] = useState<number | null>(null);
   const [localPoints, setLocalPoints] = useState<number | null>(null);
   const [goalTree, setGoalTree] = useState<GoalTree | null>(null);
@@ -42,34 +40,35 @@ const DashboardPage: React.FC = () => {
   const [activeBets, setActiveBets] = useState<any[]>([]);
   const [tourOpen, setTourOpen] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      setCurrentUserId(authUser?.id);
-    })();
-  }, []);
+  const currentUserId = user?.id;
 
   useEffect(() => {
     if (!currentUserId) return;
+
     const fetchData = async () => {
+      setLoadingContent(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers = { Authorization: `Bearer ${session?.access_token}` };
-        
         const [betsRes, goalsRes] = await Promise.all([
-          axios.get(`${API_URL}/bets/${currentUserId}`, { headers }),
-          axios.get(`${API_URL}/goals/${currentUserId}`)
+          api.get(`/bets/${currentUserId}`),
+          api.get(`/goals/${currentUserId}`)
         ]);
 
         const allBets = Array.isArray(betsRes.data) ? betsRes.data : [];
         setActiveBets(allBets.filter((b: any) => b.status === 'active'));
         setGoalTree(goalsRes.data);
       } catch (err: any) {
-        setError(`Dashboard error: ${err?.message || String(err)}`);
+        if (err.response?.status === 404) {
+          // Goal tree not found is common for new users
+          setGoalTree(null);
+        } else {
+          console.error('Dashboard fetch error:', err);
+          setError(`Dashboard error: ${err?.message || String(err)}`);
+        }
       } finally {
         setLoadingContent(false);
       }
     };
+
     fetchData();
   }, [currentUserId]);
 
@@ -78,7 +77,7 @@ const DashboardPage: React.FC = () => {
     if (!localStorage.getItem(`praxis_tour_seen_${user.id}`)) setTourOpen(true);
   }, [user?.id]);
 
-  if (userLoading || loadingContent) {
+  if (userLoading || (loadingContent && !goalTree)) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
         <CircularProgress color="primary" />
@@ -95,13 +94,12 @@ const DashboardPage: React.FC = () => {
   }
 
   const allNodes  = Array.isArray(goalTree?.nodes) ? goalTree!.nodes : [];
-  // Support both new snake_case and legacy camelCase from the API response
   const raw_root_data = (goalTree as any)?.root_nodes || (goalTree as any)?.rootNodes || [];
   const root_data = Array.isArray(raw_root_data) ? raw_root_data : [];
   
-  // Resolve root node objects from allNodes using root_data
+  // Resolve root node objects
   const rootGoals = allNodes.filter(n => {
-    // 1. Check if ID exists in root_data array (standard IDs or legacy objects)
+    // 1. Check root_data list
     const isInRootList = root_data.some(r => {
       if (typeof r === 'string') return r === n.id;
       if (typeof r === 'object' && r !== null) return (r as any).id === n.id;
@@ -109,25 +107,21 @@ const DashboardPage: React.FC = () => {
     });
     if (isInRootList) return true;
 
-    // 2. Fallback: any node without a valid parent reference is a root
+    // 2. Fallback: No valid parent
     const pid = n.parentId || (n as any).parent_id;
-    if (!pid || pid === '' || pid === 'root' || pid === 'null') return true;
-    
-    return false;
+    return !pid || pid === '' || pid === 'root' || pid === 'null';
   });
 
-  // hasGoals is true if the user has ANY nodes at all in their tree.
   const hasGoals = allNodes.length > 0;
 
-  // ONLY redirect to setup if we've explicitly finished loading and we're SURE there are no goals.
-  // We check for goalTree === null or empty nodes array.
-  if (!loadingContent && user?.onboarding_completed && !hasGoals && currentUserId && (goalTree === null || (goalTree as any).nodes?.length === 0)) {
+  // ONLY redirect to setup if loading is done AND we are SURE there are no goals.
+  if (!loadingContent && !hasGoals && currentUserId) {
     return <GettingStartedPage userId={currentUserId} />;
   }
 
   const userName    = user?.name || 'Explorer';
   const avgProgress = hasGoals
-    ? Math.round(rootGoals.reduce((s, g) => s + g.progress * 100, 0) / rootGoals.length)
+    ? Math.round(rootGoals.reduce((s, g) => s + (g.progress || 0) * 100, 0) / (rootGoals.length || 1))
     : 0;
 
   const handleOpenCompose = () => {
@@ -139,7 +133,6 @@ const DashboardPage: React.FC = () => {
       <Container maxWidth="lg">
         <ErrorBoundary>
           
-          {/* ── 1. Top Briefing ── */}
           <Box sx={{ pt: 4 }}>
             {currentUserId && (
               <AxiomMorningBrief
@@ -154,14 +147,10 @@ const DashboardPage: React.FC = () => {
             )}
           </Box>
 
-          {/* ── 2. Content Layout ── */}
           <Grid container spacing={4}>
-            
-            {/* Main Column: Trackers and Goals */}
             <Grid size={{ xs: 12, lg: 8 }}>
               <Stack spacing={5}>
                 
-                {/* Trackers Section */}
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, px: 1 }}>
                     <InsightsIcon color="primary" />
@@ -172,7 +161,6 @@ const DashboardPage: React.FC = () => {
                   </GlassCard>
                 </Box>
 
-                {/* Goal Focus */}
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, px: 1 }}>
                     <Typography variant="h6" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -193,7 +181,7 @@ const DashboardPage: React.FC = () => {
                           if (!prev) return prev;
                           return {
                             ...prev,
-                            nodes: prev.nodes.map((n: any) =>
+                            nodes: (prev.nodes || []).map((n: any) =>
                               n.id === nodeId ? { ...n, progress: newProgress } : n
                             ),
                           };
@@ -205,11 +193,8 @@ const DashboardPage: React.FC = () => {
               </Stack>
             </Grid>
 
-            {/* Sidebar: Hub Access & Community Feed */}
             <Grid size={{ xs: 12, lg: 4 }}>
               <Stack spacing={5}>
-                
-                {/* Community Hub Card */}
                 <GlassCard sx={{ p: 3, background: 'linear-gradient(135deg, rgba(245,158,11,0.05) 0%, rgba(139,92,246,0.05) 100%)' }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <HubIcon sx={{ fontSize: 18, color: '#8B5CF6' }} /> COMMUNITY HUB
@@ -222,7 +207,6 @@ const DashboardPage: React.FC = () => {
                   </Button>
                 </GlassCard>
 
-                {/* Local Activity Feed */}
                 <Box>
                   <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>RECENT ACTIVITY</Typography>
                   <PostFeed 
