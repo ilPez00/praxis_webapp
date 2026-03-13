@@ -58,7 +58,7 @@ eval "$(direnv hook zsh)" # Caricamento automatico variabili d'ambiente
 # Alias: Scorciatoie per i comandi
 # ─────────────────────────────────────────────────────────────
 # Gestione Progetto Praxis
-alias praxis='cd /home/gio/Praxis/praxis_webapp && npm run dev > /tmp/backend.log 2>&1 && echo "Backend PID: $!"'
+alias praxis='cd $HOME/Praxis/praxis_webapp && ./run-praxis.sh'
 
 # Sostituzioni programmi standard con versioni migliorate
 alias cat="batcat" # 'cat' con colori e numeri di riga
@@ -355,7 +355,7 @@ mountusb() {
   sudo mount /dev/sdc1 ~/usb_mount
 }
 
-alias praxis='Praxis/praxis_webapp/./start-praxis.sh'
+# praxis tool updated
 
 # ─────────────────────────────────────────────────────────────
 # Configurazione Tema Powerlevel10k (deve essere alla fine)
