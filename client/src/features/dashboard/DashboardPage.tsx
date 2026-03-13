@@ -114,8 +114,11 @@ const DashboardPage: React.FC = () => {
 
   const hasGoals = allNodes.length > 0;
 
+  // DEBUG: console.log('Dashboard Diagnosis:', { currentUserId, loadingContent, hasGoals, nodeCount: allNodes.length, goalTreeExists: !!goalTree, onboarding: user?.onboarding_completed });
+
   // ONLY redirect to setup if loading is done AND we are SURE there are no goals.
   if (!loadingContent && !hasGoals && currentUserId) {
+    console.log('Redirecting to GettingStartedPage because hasGoals is false', { nodeCount: allNodes.length });
     return <GettingStartedPage userId={currentUserId} />;
   }
 
