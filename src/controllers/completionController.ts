@@ -12,10 +12,31 @@ import { pushNotification } from './notificationController';
  * 'completion_request' message in the requester→verifier DM thread.
  */
 export const createCompletionRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { requesterId, verifierId, goalNodeId, goalName } = req.body;
+  const { requesterId, verifierId, goalNodeId, goalName, evidenceUrl } = req.body;
 
   if (!requesterId || !verifierId || !goalNodeId || !goalName) {
     throw new BadRequestError('requesterId, verifierId, goalNodeId, and goalName are required.');
+  }
+  if (!evidenceUrl) {
+    throw new BadRequestError('evidenceUrl is required — attach a photo or video of the completed goal.');
+  }
+
+  // Monthly limit: same verifier→requester pair may only confirm once per calendar month
+  const firstOfMonth = new Date();
+  firstOfMonth.setDate(1);
+  firstOfMonth.setHours(0, 0, 0, 0);
+
+  const { data: recent } = await supabase
+    .from('completion_requests')
+    .select('id')
+    .eq('requester_id', requesterId)
+    .eq('verifier_id', verifierId)
+    .gte('created_at', firstOfMonth.toISOString())
+    .limit(1)
+    .maybeSingle();
+
+  if (recent) {
+    throw new ForbiddenError('This verifier has already confirmed a goal for you this month. Choose a different partner or wait until next month.');
   }
 
   const { data: request, error } = await supabase
@@ -25,6 +46,7 @@ export const createCompletionRequest = catchAsync(async (req: Request, res: Resp
       verifier_id: verifierId,
       goal_node_id: goalNodeId,
       goal_name: goalName,
+      evidence_url: evidenceUrl,
     })
     .select()
     .single();
@@ -38,9 +60,9 @@ export const createCompletionRequest = catchAsync(async (req: Request, res: Resp
   await supabase.from('messages').insert({
     sender_id: requesterId,
     receiver_id: verifierId,
-    content: `I'm claiming completion of my goal: "${goalName}". Can you verify it?`,
+    content: `I'm claiming completion of my goal: "${goalName}". Can you verify it?\n📎 Evidence: ${evidenceUrl}`,
     message_type: 'completion_request',
-    metadata: { requestId: request.id, goalNodeId, goalName },
+    metadata: { requestId: request.id, goalNodeId, goalName, evidenceUrl },
   });
 
   // Notify the verifier
@@ -114,22 +136,17 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
         .eq('goal_node_id', request.goal_node_id)
         .eq('status', 'active');
 
+      // Resolve bets first — pays 1.8× stake to requester already
       await resolveBetsOnGoalCompletion(requesterId, request.goal_node_id);
 
-      // Award +50 PP to requester for peer-verified completion
+      // Verification bonus (intentionally small — bets already carry the main reward)
+      // Re-read balance AFTER bet resolution so we don't overwrite it
       const { data: prof } = await supabase.from('profiles').select('praxis_points').eq('id', requesterId).single();
-      if (prof) await supabase.from('profiles').update({ praxis_points: (prof.praxis_points ?? 0) + 50 }).eq('id', requesterId);
+      if (prof) await supabase.from('profiles').update({ praxis_points: (prof.praxis_points ?? 0) + 20 }).eq('id', requesterId);
 
-      // Award +30 PP to verifier for being a helpful accountability partner
+      // Verifier reward
       const { data: verProf } = await supabase.from('profiles').select('praxis_points').eq('id', verifierId).single();
-      if (verProf) await supabase.from('profiles').update({ praxis_points: (verProf.praxis_points ?? 0) + 30 }).eq('id', verifierId);
-
-      // Award stake points back as bonus for won bets
-      const { data: betProf } = await supabase.from('profiles').select('praxis_points').eq('id', requesterId).single();
-      if (betProf && activeBets?.length) {
-        const totalStake = activeBets.reduce((s: number, b: any) => s + (b.stake_points ?? 0), 0);
-        await supabase.from('profiles').update({ praxis_points: (betProf.praxis_points ?? 0) + totalStake }).eq('id', requesterId);
-      }
+      if (verProf) await supabase.from('profiles').update({ praxis_points: (verProf.praxis_points ?? 0) + 10 }).eq('id', verifierId);
 
       // Auto-create achievement in the community feed for the completed goal
       const completedNode = (tree.nodes as any[]).find((n: any) => n.id === request.goal_node_id);

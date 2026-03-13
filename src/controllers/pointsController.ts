@@ -5,14 +5,16 @@ import { catchAsync, BadRequestError, NotFoundError } from '../utils/appErrors';
 // ── Spend catalogue ───────────────────────────────────────────────────────────
 
 const SPEND_CATALOGUE: Record<string, { cost: number; label: string }> = {
-  boost_visibility:  { cost: 150, label: '24h Boosted Visibility'         },
-  goal_slot:         { cost: 200, label: 'Extra Root Goal Slot'           },
-  coaching_session:  { cost: 500, label: 'AI Coaching Session (Axiom)' },
-  super_match:       { cost: 300, label: 'Super Match (Priority Queue)'   },
-  custom_icon:       { cost: 100, label: 'Custom Goal Icon / Theme'       },
-  skip_grading:      { cost:  80, label: 'Skip Partner Grading Wait'      },
-  bet_stake:         { cost:  50, label: 'Extra Virtual Bet Stake'        },
-  suspend_goal:      { cost:  50, label: 'Suspend a Goal (pause without deleting)' },
+  boost_visibility:    { cost: 150, label: '24h Boosted Visibility'                      },
+  goal_slot:           { cost: 200, label: 'Extra Root Goal Slot'                        },
+  coaching_session:    { cost: 500, label: 'AI Coaching Session (Axiom)'                 },
+  axiom_chat:          { cost:  50, label: 'Axiom Chat Message (free tier)'              },
+  axiom_brief_trigger: { cost: 100, label: 'Trigger Extra Axiom Brief (free tier)'       },
+  super_match:         { cost: 300, label: 'Super Match (Priority Queue)'                },
+  custom_icon:         { cost: 100, label: 'Custom Goal Icon / Theme'                    },
+  skip_grading:        { cost:  80, label: 'Skip Partner Grading Wait'                   },
+  bet_stake:           { cost:  50, label: 'Extra Virtual Bet Stake'                     },
+  suspend_goal:        { cost:  50, label: 'Suspend a Goal (pause without deleting)'     },
 };
 
 /**

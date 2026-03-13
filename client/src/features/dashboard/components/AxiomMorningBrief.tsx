@@ -18,11 +18,16 @@ import {
   useTheme,
   useMediaQuery,
   Divider,
+  IconButton,
+  Collapse,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import EmojiLightbulbIcon from '@mui/icons-material/EmojiObjects';
+import HistoryIcon from '@mui/icons-material/History';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
 interface MorningBriefProps {
   userName: string;
@@ -44,6 +49,12 @@ interface DailyProtocol {
   routine: Array<{ time: string; task: string; alignment: string }>;
 }
 
+interface BriefRecord {
+  date: string;
+  brief: DailyProtocol;
+  generated_at: string;
+}
+
 const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
   userName, streak, points, avgProgress, hasGoals, userId, onCheckIn,
 }) => {
@@ -51,7 +62,9 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const [data, setData] = useState<DailyProtocol | null>(null);
+  const [briefs, setBriefs] = useState<BriefRecord[]>([]);
+  const [briefIndex, setBriefIndex] = useState(0); // 0 = today (most recent)
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkinLoading, setCheckinLoading] = useState(false);
@@ -64,13 +77,19 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
         const { data: { session } } = await supabase.auth.getSession();
         const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
 
-        const [protocolRes, checkinRes] = await Promise.all([
-          supabase.from('axiom_daily_briefs').select('brief').eq('user_id', userId).maybeSingle(),
+        const [briefsRes, checkinRes] = await Promise.all([
+          supabase
+            .from('axiom_daily_briefs')
+            .select('date, brief, generated_at')
+            .eq('user_id', userId)
+            .order('date', { ascending: false })
+            .limit(14),
           axios.get(`${API_URL}/checkins/today`, { params: { userId }, headers }),
         ]);
 
-        if (protocolRes.data?.brief) {
-          setData(protocolRes.data.brief as any);
+        if (briefsRes.data && briefsRes.data.length > 0) {
+          setBriefs(briefsRes.data as BriefRecord[]);
+          setBriefIndex(0);
         }
         setCheckedIn(checkinRes.data.checkedIn);
       } catch (err) {
@@ -112,9 +131,21 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
     );
   }
 
+  const data = briefs[briefIndex]?.brief ?? null;
+  const currentDate = briefs[briefIndex]?.date;
+  const isToday = briefIndex === 0;
+  const hasPrev = briefIndex < briefs.length - 1;
+  const hasNext = briefIndex > 0;
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
   return (
     <Box sx={{ mb: 5 }}>
-      {/* 1. Greeting & Hero Header */}
+      {/* Greeting & Hero Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 2.5, px: 1 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 900, letterSpacing: '-0.03em', mb: 0.5 }}>
@@ -132,27 +163,60 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
           </Stack>
         </Box>
 
-        {!checkedIn && (
-          <Button
-            variant="contained"
-            size="large"
-            onClick={handleCheckIn}
-            disabled={checkinLoading}
-            sx={{
-              borderRadius: '14px',
-              fontWeight: 900,
-              background: 'linear-gradient(135deg, #F97316, #F59E0B)',
-              boxShadow: '0 8px 20px rgba(249,115,22,0.3)',
-              px: 4,
-              height: 48,
-            }}
-          >
-            {checkinLoading ? '...' : 'Check In 🔥'}
-          </Button>
-        )}
+        <Stack direction="row" spacing={1} alignItems="center">
+          {briefs.length > 1 && (
+            <IconButton
+              size="small"
+              onClick={() => setHistoryOpen(v => !v)}
+              sx={{ color: historyOpen ? 'primary.main' : 'text.secondary' }}
+            >
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
+          {isToday && !checkedIn && (
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleCheckIn}
+              disabled={checkinLoading}
+              sx={{
+                borderRadius: '14px',
+                fontWeight: 900,
+                background: 'linear-gradient(135deg, #F97316, #F59E0B)',
+                boxShadow: '0 8px 20px rgba(249,115,22,0.3)',
+                px: 4,
+                height: 48,
+              }}
+            >
+              {checkinLoading ? '...' : 'Check In 🔥'}
+            </Button>
+          )}
+        </Stack>
       </Box>
 
-      {/* 2. Unified Axiom Protocol Card */}
+      {/* History date strip */}
+      <Collapse in={historyOpen}>
+        <Box sx={{ display: 'flex', gap: 1, mb: 2, px: 1, flexWrap: 'wrap' }}>
+          {briefs.map((b, idx) => (
+            <Chip
+              key={b.date}
+              label={idx === 0 ? 'Today' : formatDate(b.date)}
+              size="small"
+              onClick={() => { setBriefIndex(idx); setHistoryOpen(false); }}
+              sx={{
+                fontWeight: briefIndex === idx ? 900 : 500,
+                bgcolor: briefIndex === idx ? 'primary.main' : 'rgba(255,255,255,0.05)',
+                color: briefIndex === idx ? '#000' : 'text.secondary',
+                border: '1px solid',
+                borderColor: briefIndex === idx ? 'primary.main' : 'rgba(255,255,255,0.1)',
+                cursor: 'pointer',
+              }}
+            />
+          ))}
+        </Box>
+      </Collapse>
+
+      {/* Main Protocol Card */}
       <GlassCard sx={{
         p: 0, overflow: 'hidden', borderRadius: '32px',
         border: '1px solid rgba(255,255,255,0.08)',
@@ -182,6 +246,23 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
         )}
 
         <Box sx={{ p: { xs: 3, sm: 4 } }}>
+          {/* Date nav (when not viewing today) */}
+          {!isToday && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+              <IconButton size="small" onClick={() => setBriefIndex(i => i + 1)} disabled={!hasPrev} sx={{ color: 'text.secondary' }}>
+                <ChevronLeftIcon />
+              </IconButton>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', letterSpacing: '0.05em' }}>
+                {formatDate(currentDate)}
+              </Typography>
+              <IconButton size="small" onClick={() => setBriefIndex(i => i - 1)} disabled={!hasNext} sx={{ color: 'text.secondary' }}>
+                <ChevronRightIcon />
+              </IconButton>
+              <Chip label="Back to today" size="small" onClick={() => setBriefIndex(0)}
+                sx={{ ml: 1, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)', cursor: 'pointer' }} />
+            </Box>
+          )}
+
           {/* Axiom Message Area */}
           <Box sx={{ display: 'flex', gap: 3, mb: 4, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
             <Avatar sx={{
@@ -198,29 +279,28 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
                 <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#F59E0B', letterSpacing: '0.02em' }}>
                   AXIOM PROTOCOL
                 </Typography>
-                <Chip 
-                  icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important' }} />} 
-                  label="Daily Brief" 
-                  size="small" 
-                  sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }} 
+                <Chip
+                  icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important' }} />}
+                  label={isToday ? 'Daily Brief' : formatDate(currentDate)}
+                  size="small"
+                  sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}
                 />
               </Box>
               <Typography variant="h6" sx={{ color: 'text.primary', lineHeight: 1.5, fontWeight: 500, fontSize: { xs: '1rem', sm: '1.1rem' }, letterSpacing: '-0.01em' }}>
                 {data?.message || `Focus on showing up today, ${userName}. Discipline is the only shortcut.`}
               </Typography>
-              
-              {/* Daily Tip Chip */}
+
               <Box sx={{ mt: 2.5 }}>
                 <Chip
                   icon={<EmojiLightbulbIcon sx={{ fontSize: '16px !important', color: '#FCD34D !important' }} />}
                   label="Tip: High-intensity blocks work better than long shallow sessions."
                   variant="outlined"
                   onClick={() => navigate('/coaching')}
-                  sx={{ 
-                    borderColor: 'rgba(255,255,255,0.1)', 
-                    bgcolor: 'rgba(255,255,255,0.03)', 
-                    color: 'text.secondary', 
-                    fontSize: '0.75rem', 
+                  sx={{
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: 'rgba(255,255,255,0.03)',
+                    color: 'text.secondary',
+                    fontSize: '0.75rem',
                     height: 32,
                     px: 1,
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' }
@@ -248,9 +328,9 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
                     cursor: item.title ? 'pointer' : 'default', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                     height: '100%',
                     display: 'flex', flexDirection: 'column',
-                    '&:hover': item.title ? { 
-                      bgcolor: 'rgba(255,255,255,0.04)', 
-                      transform: 'translateY(-4px)', 
+                    '&:hover': item.title ? {
+                      bgcolor: 'rgba(255,255,255,0.04)',
+                      transform: 'translateY(-4px)',
                       borderColor: `${item.color}55`,
                       boxShadow: `0 8px 24px ${item.color}15`
                     } : {}
@@ -273,6 +353,50 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
             ))}
           </Grid>
 
+          {/* Routine — horizontally scrollable timeline */}
+          {data?.routine && data.routine.length > 0 && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.1em', px: 0.5 }}>
+                DAILY ROUTINE
+              </Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 1.5,
+                  mt: 1.5,
+                  overflowX: 'auto',
+                  pb: 1,
+                  scrollbarWidth: 'none',
+                  '&::-webkit-scrollbar': { display: 'none' },
+                }}
+              >
+                {data.routine.map((item, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      flexShrink: 0,
+                      width: 140,
+                      p: 2,
+                      borderRadius: '16px',
+                      bgcolor: 'rgba(255,255,255,0.02)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 900, fontSize: '0.75rem', color: '#F59E0B', mb: 0.5 }}>
+                      {item.time}
+                    </Typography>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', lineHeight: 1.3, mb: 0.5 }}>
+                      {item.task}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+                      {item.alignment}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+
           {/* Challenge Hook */}
           {data?.challenge && (
             <Box
@@ -291,13 +415,13 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
                 </Typography>
               </Box>
               <Button
-                variant="outlined" 
+                variant="outlined"
                 size="small"
                 onClick={() => navigate(`/profile/${data.match?.id}`)}
-                sx={{ 
-                  borderRadius: '10px', 
-                  fontSize: '0.75rem', 
-                  fontWeight: 800, 
+                sx={{
+                  borderRadius: '10px',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
                   px: 3,
                   borderColor: 'primary.main',
                   color: 'primary.main',

@@ -11,11 +11,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2026-01-28.clover' as any, // Use the version requested by TS for now
 });
 
+// Prices are the same number in EUR and USD (e.g. €4.99 / $4.99)
 const PP_TIERS: Record<string, { pp: number; amountCents: number; label: string }> = {
   pp_500:  { pp: 500,  amountCents: 499,  label: '500 Praxis Points' },
   pp_1100: { pp: 1100, amountCents: 999,  label: '1100 Praxis Points' },
   pp_3000: { pp: 3000, amountCents: 2499, label: '3000 Praxis Points' },
 };
+const SUPPORTED_CURRENCIES = ['eur', 'usd'] as const;
+type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number];
 
 /**
  * @description Creates a Stripe Checkout Session for a new subscription.
@@ -65,9 +68,13 @@ export const createCheckoutSession = catchAsync(async (req: Request, res: Respon
 });
 
 export const createPPCheckout = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId, email, tier } = req.body as { userId?: string; email?: string; tier?: string };
+  const { userId, email, tier, currency: rawCurrency } = req.body as { userId?: string; email?: string; tier?: string; currency?: string };
   if (!userId || !email || !tier) throw new BadRequestError('userId, email, and tier are required');
   if (!PP_TIERS[tier]) throw new BadRequestError(`Invalid tier. Valid: ${Object.keys(PP_TIERS).join(', ')}`);
+
+  const currency: SupportedCurrency = SUPPORTED_CURRENCIES.includes(rawCurrency as SupportedCurrency)
+    ? (rawCurrency as SupportedCurrency)
+    : 'eur';
 
   const { amountCents, pp, label } = PP_TIERS[tier];
 
@@ -75,7 +82,7 @@ export const createPPCheckout = catchAsync(async (req: Request, res: Response, _
     payment_method_types: ['card'],
     line_items: [{
       price_data: {
-        currency: 'eur',
+        currency,
         unit_amount: amountCents,
         product_data: { name: label, description: 'Praxis Points — spend in marketplace' },
       },

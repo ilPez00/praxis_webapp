@@ -1,25 +1,26 @@
 import { Router } from 'express';
 import { requestReport, requestCoaching, getBrief, getDailyBrief, triggerBriefUpdate, getWeeklyNarrative } from '../controllers/aiCoachingController';
 import { requirePro } from '../middleware/requireTier';
+import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = Router();
 
-// Returns cached brief immediately (no generation)
-router.get('/brief', ...requirePro, getBrief);
+// Returns cached brief immediately — free users can see their weekly brief
+router.get('/brief', authenticateToken, getBrief);
 
-// Returns the midnight automated scan result
-router.get('/daily-brief', ...requirePro, getDailyBrief);
+// Returns the midnight automated scan result — free users see their weekly brief
+router.get('/daily-brief', authenticateToken, getDailyBrief);
 
-// Short Axiom weekly narrative (cached 7 days per user)
+// Short Axiom weekly narrative (Pro only)
 router.get('/weekly-narrative', ...requirePro, getWeeklyNarrative);
 
-// Kicks off a background brief update (rate-limited to 30 min per user)
-router.post('/trigger', ...requirePro, triggerBriefUpdate);
+// Trigger extra brief — free users pay PP, Pro users free (rate-limited 30 min)
+router.post('/trigger', authenticateToken, triggerBriefUpdate);
 
-// Auto-generates full coaching report on demand
+// Full coaching report (Pro only)
 router.post('/report', ...requirePro, requestReport);
 
-// Conversational follow-up question
-router.post('/request', ...requirePro, requestCoaching);
+// Conversational chat — free users pay 50 PP/message, Pro users free
+router.post('/request', authenticateToken, requestCoaching);
 
 export default router;

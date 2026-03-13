@@ -99,6 +99,8 @@ const GoalTreePage: React.FC = () => {
   const [dmPartners, setDmPartners] = useState<DMPartner[]>([]);
   const [selectedVerifier, setSelectedVerifier] = useState<DMPartner | null>(null);
   const [submittingClaim, setSubmittingClaim] = useState(false);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
 
   // Mark Complete (achievement) dialog state
   const [achieveNode, setAchieveNode] = useState<FrontendGoalNode | null>(null);
@@ -388,6 +390,29 @@ const GoalTreePage: React.FC = () => {
 
   const handleSendClaim = async () => {
     if (!claimNode || !selectedVerifier || !currentUserId) return;
+    if (!evidenceFile) {
+      toast.error('Please attach a photo or video as evidence before submitting.');
+      return;
+    }
+    setUploadingEvidence(true);
+    let evidenceUrl = '';
+    try {
+      const ext = evidenceFile.name.split('.').pop();
+      const path = `evidence/${currentUserId}/${claimNode.id}_${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('goal-evidence')
+        .upload(path, evidenceFile, { upsert: true });
+      if (uploadErr) throw new Error(uploadErr.message);
+      const { data: urlData } = supabase.storage.from('goal-evidence').getPublicUrl(path);
+      evidenceUrl = urlData.publicUrl;
+    } catch (err: any) {
+      toast.error('Evidence upload failed: ' + err.message);
+      setUploadingEvidence(false);
+      return;
+    } finally {
+      setUploadingEvidence(false);
+    }
+
     setSubmittingClaim(true);
     try {
       await axios.post(`${API_URL}/completions`, {
@@ -395,9 +420,11 @@ const GoalTreePage: React.FC = () => {
         verifierId: selectedVerifier.userId,
         goalNodeId: claimNode.id,
         goalName: claimNode.title,
+        evidenceUrl,
       });
       toast.success(`Verification request sent to ${selectedVerifier.name}!`);
       setClaimNode(null);
+      setEvidenceFile(null);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send verification request.');
     } finally {
@@ -614,8 +641,35 @@ const GoalTreePage: React.FC = () => {
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
             Claiming completion of <strong style={{ color: '#F59E0B' }}>{claimNode?.title}</strong>.
-            Select a partner from your DMs to verify this achievement:
+            Attach evidence (photo or video), then select a partner from your DMs to verify:
           </Typography>
+
+          {/* Evidence upload */}
+          <Box sx={{ mb: 2, p: 2, borderRadius: 2, border: '1px dashed rgba(245,158,11,0.4)', bgcolor: 'rgba(245,158,11,0.04)' }}>
+            <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block', mb: 1 }}>
+              📎 PROOF REQUIRED
+            </Typography>
+            <Button
+              variant="outlined"
+              component="label"
+              size="small"
+              sx={{ borderColor: 'rgba(255,255,255,0.15)', color: 'text.secondary', fontSize: '0.75rem' }}
+            >
+              {evidenceFile ? evidenceFile.name : 'Upload photo or video'}
+              <input
+                type="file"
+                hidden
+                accept="image/*,video/*"
+                onChange={e => setEvidenceFile(e.target.files?.[0] ?? null)}
+              />
+            </Button>
+            {evidenceFile && (
+              <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
+                {(evidenceFile.size / 1024 / 1024).toFixed(1)} MB
+              </Typography>
+            )}
+          </Box>
+
           {dmPartners.length === 0 ? (
             <Typography color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
               No DM partners found. Message someone first to request verification.
@@ -653,10 +707,10 @@ const GoalTreePage: React.FC = () => {
           </Button>
           <Button
             variant="contained"
-            disabled={!selectedVerifier || submittingClaim}
+            disabled={!selectedVerifier || !evidenceFile || submittingClaim || uploadingEvidence}
             onClick={handleSendClaim}
           >
-            {submittingClaim ? 'Sending…' : 'Send Verification Request'}
+            {uploadingEvidence ? 'Uploading…' : submittingClaim ? 'Sending…' : 'Send Verification Request'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -19,6 +19,14 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     throw new BadRequestError('stakePoints must be a positive integer.');
   }
 
+  // Minimum 7-day deadline — prevents trivial same-day bets for easy PP gains
+  const deadlineDate = new Date(deadline);
+  const minDeadline = new Date();
+  minDeadline.setDate(minDeadline.getDate() + 7);
+  if (isNaN(deadlineDate.getTime()) || deadlineDate < minDeadline) {
+    throw new BadRequestError('Bet deadline must be at least 7 days from today.');
+  }
+
   // Check user has enough points (best-effort — column may not exist yet)
   const { data: profile } = await supabase
     .from('profiles')
@@ -29,6 +37,23 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
   const currentPoints: number = profile?.praxis_points ?? 100;
   if (currentPoints < stakePoints) {
     throw new BadRequestError(`Insufficient Praxis Points (have ${currentPoints}, need ${stakePoints}).`);
+  }
+
+  // Max stake: 500 PP or 50% of balance, whichever is lower — prevents outsized bet wins
+  const maxStake = Math.min(500, Math.floor(currentPoints * 0.5));
+  if (stakePoints > maxStake) {
+    throw new BadRequestError(`Maximum stake is ${maxStake} PP (500 PP cap or 50% of your balance).`);
+  }
+
+  // Max 3 active bets at a time
+  const { count: activeBetCount } = await supabase
+    .from('bets')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'active');
+
+  if ((activeBetCount ?? 0) >= 3) {
+    throw new BadRequestError('You can have at most 3 active bets at a time. Complete or cancel one first.');
   }
 
   // Deduct points (best-effort)
@@ -114,8 +139,8 @@ export const cancelBet = catchAsync(async (req: Request, res: Response, _next: N
 
   if (updateError) throw new InternalServerError('Failed to cancel bet.');
 
-  // Refund 90% of stake (10% house fee on cancellation)
-  const refunded = Math.floor(bet.stake_points * 0.9);
+  // Refund 75% of stake (25% cancellation fee — discourages using bets as risk-free PP)
+  const refunded = Math.floor(bet.stake_points * 0.75);
   const { data: profile } = await supabase
     .from('profiles')
     .select('praxis_points')
@@ -126,7 +151,7 @@ export const cancelBet = catchAsync(async (req: Request, res: Response, _next: N
     .update({ praxis_points: (profile?.praxis_points ?? 0) + refunded })
     .eq('id', userId);
 
-  res.json({ message: 'Bet cancelled. 90% of stake refunded (10% house fee).', refunded });
+  res.json({ message: 'Bet cancelled. 75% of stake refunded (25% cancellation fee).', refunded });
 });
 
 /**

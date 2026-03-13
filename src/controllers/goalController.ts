@@ -254,10 +254,10 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       if (!oldNode || oldNode.progress < 1) {
         // Trigger the creation of an achievement for this completed goal
         await createAchievementFromGoal(newNode, userId, userProfile.name, userProfile.avatar_url || undefined);
-        // Award +50 PP × node weight (normalize weight to 0-1 range)
+        // Award +20 PP × node weight (normalize weight to 0-1 range)
         const normalizedWeight = (newNode.weight ?? 0.5) > 1 ? (newNode.weight ?? 0.5) / 100 : (newNode.weight ?? 0.5);
         const nodePoints = Math.min(
-          Math.max(5, Math.round(50 * normalizedWeight)),
+          Math.max(3, Math.round(20 * normalizedWeight)),
           SINGLE_SAVE_PP_CAP - totalCompletionPoints
         );
         totalCompletionPoints += nodePoints;
@@ -486,7 +486,7 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
       .from('profiles').select('praxis_points, name, avatar_url').eq('id', userId).single();
     if (profile && node) {
       const weight = node?.weight ?? 1;
-      const ppAward = Math.round(50 * weight);
+      const ppAward = Math.round(20 * weight);
       await supabase.from('profiles')
         .update({ praxis_points: (profile.praxis_points ?? 0) + ppAward })
         .eq('id', userId);

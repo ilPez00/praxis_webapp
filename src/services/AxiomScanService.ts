@@ -5,6 +5,87 @@ import logger from '../utils/logger';
 
 const aiCoachingService = new AICoachingService();
 
+// ---------------------------------------------------------------------------
+// Snapshot helpers
+// ---------------------------------------------------------------------------
+
+/** Build a compact text snapshot of a user's current state. */
+async function buildSnapshot(userId: string): Promise<string> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [goalTreeRes, trackersRes, postsRes, checkinRes] = await Promise.all([
+    supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
+    supabase.from('trackers').select('id, name').eq('user_id', userId),
+    supabase
+      .from('posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', today),
+    supabase
+      .from('checkins')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('checked_in_at', today),
+  ]);
+
+  // Goals: root nodes only, name + progress%
+  const nodes: any[] = goalTreeRes.data?.nodes ?? [];
+  const rootGoals = nodes
+    .filter((n: any) => !n.parentId)
+    .map((n: any) => `${(n.name || n.title || 'Goal').slice(0, 40)} ${Math.round((n.progress ?? 0) * 100)}%`);
+
+  // Trackers logged today
+  const trackerIds = (trackersRes.data ?? []).map((t: any) => t.id);
+  let loggedTrackers = 0;
+  if (trackerIds.length > 0) {
+    const { count } = await supabase
+      .from('tracker_entries')
+      .select('id', { count: 'exact', head: true })
+      .in('tracker_id', trackerIds)
+      .gte('logged_at', today);
+    loggedTrackers = count ?? 0;
+  }
+
+  const lines = [
+    `Goals: ${rootGoals.length > 0 ? rootGoals.join(', ') : 'none'}`,
+    `Trackers logged today: ${loggedTrackers}/${trackerIds.length}`,
+    `Posts today: ${postsRes.count ?? 0}`,
+    `Check-ins today: ${checkinRes.count ?? 0}`,
+  ];
+
+  return lines.join('\n');
+}
+
+/** Load yesterday's snapshot text for a user, or null if none. */
+async function loadYesterdaySnapshot(userId: string): Promise<string | null> {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const dateStr = yesterday.toISOString().slice(0, 10);
+
+  const { data } = await supabase
+    .from('axiom_daily_snapshots')
+    .select('snapshot_text')
+    .eq('user_id', userId)
+    .eq('date', dateStr)
+    .maybeSingle();
+
+  return data?.snapshot_text ?? null;
+}
+
+/** Persist today's snapshot. */
+async function saveSnapshot(userId: string, snapshotText: string): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  await supabase.from('axiom_daily_snapshots').upsert({
+    user_id: userId,
+    date: today,
+    snapshot_text: snapshotText,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Scan service
+// ---------------------------------------------------------------------------
+
 export class AxiomScanService {
   public static start() {
     cron.schedule('0 0 * * *', async () => {
@@ -24,7 +105,7 @@ export class AxiomScanService {
 
     const { data: users, error: userError } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, city, is_premium, is_admin')
       .gte('last_activity_date', sevenDaysAgo.toISOString().slice(0, 10));
 
     if (userError) throw userError;
@@ -32,7 +113,25 @@ export class AxiomScanService {
 
     for (const user of users) {
       try {
-        await this.generateDailyRecommendations(user.id, user.name);
+        const isPro = user.is_premium || user.is_admin;
+
+        // Free users: only generate once per 7 days
+        if (!isPro) {
+          const sevenDaysAgoDate = new Date();
+          sevenDaysAgoDate.setDate(sevenDaysAgoDate.getDate() - 7);
+          const { count } = await supabase
+            .from('axiom_daily_briefs')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .gte('date', sevenDaysAgoDate.toISOString().slice(0, 10));
+
+          if ((count ?? 0) >= 1) {
+            logger.info(`[AxiomScan] Skipping free user ${user.name} — brief already generated this week.`);
+            continue;
+          }
+        }
+
+        await this.generateDailyBrief(user.id, user.name, user.city || 'Unknown');
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (err: any) {
         logger.warn(`[AxiomScan] Failed for ${user.name}: ${err.message}`);
@@ -40,91 +139,83 @@ export class AxiomScanService {
     }
   }
 
-  private static async generateDailyRecommendations(userId: string, userName: string) {
+  private static async generateDailyBrief(userId: string, userName: string, userCity: string) {
     const today = new Date().toISOString().slice(0, 10);
-    
-    // 1. Fetch user profile for location context
-    const { data: profile } = await supabase.from('profiles').select('city, latitude, longitude').eq('id', userId).single();
-    const userCity = profile?.city || 'Unknown';
 
-    // 2. Fetch deep context
-    // We fetch more items to ensure Axiom always has something to pick from
-    const [
-      goalsRes,
-      trackerRes,
-      eventsRes,
-      placesRes,
-      matchRes,
-      servicesRes,
-      groupsRes,
-      messagesRes
-    ] = await Promise.all([
-      supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
-
-      supabase.from('trackers').select('*, tracker_entries(*)').eq('user_id', userId),
-      supabase.from('events').select('*').gte('event_date', today).limit(20),
-      supabase.from('places').select('*').limit(20),
-      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 10 }),
-      supabase.from('coaching_offers').select('*').limit(10),
-      supabase.from('chat_room_members').select('chat_rooms(id, name, type, event_id, place_id)').eq('user_id', userId),
-      supabase.from('messages').select('content, created_at, sender_id, room_id').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`).order('created_at', { ascending: false }).limit(20),
+    // Build today's snapshot (lightweight — no full tracker_entries dump)
+    const [todaySnapshot, yesterdaySnapshot] = await Promise.all([
+      buildSnapshot(userId),
+      loadYesterdaySnapshot(userId),
     ]);
 
-    const prompt = `You are Axiom. Generate a high-performance daily protocol for user ${userName}.
-    
-### User Location: ${userCity}
+    // Build the diff context sent to the AI
+    let diffContext: string;
+    if (yesterdaySnapshot) {
+      diffContext = `Yesterday's state:\n${yesterdaySnapshot}\n\nToday's state:\n${todaySnapshot}`;
+    } else {
+      diffContext = `Current state (first brief):\n${todaySnapshot}`;
+    }
 
-### Context:
-- Goals: ${JSON.stringify(goalsRes.data?.nodes || [])}
-- Tracked Progress: ${JSON.stringify(trackerRes.data || [])}
-- Available Events: ${JSON.stringify(eventsRes.data || [])}
-- Available Places: ${JSON.stringify(placesRes.data || [])}
-- Aligned Users: ${JSON.stringify(matchRes.data || [])}
-- Services: ${JSON.stringify(servicesRes.data || [])}
-- Joined Groups: ${JSON.stringify(groupsRes.data?.map((g: any) => g.chat_rooms) || [])}
-- Recent Messages: ${JSON.stringify(messagesRes.data || [])}
+    // Fetch only the minimal extra context needed for match/event/place picks
+    const [matchRes, eventsRes, placesRes] = await Promise.all([
+      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
+      supabase
+        .from('events')
+        .select('id, title, event_date, city')
+        .gte('event_date', today)
+        .limit(10),
+      supabase.from('places').select('id, name, city').limit(10),
+    ]);
 
-### Task:
-Provide a JSON response with exactly these keys. 
-You MUST prioritize items that are NEARBY (same city) and MATCH the user's goals. 
-Use the 'Joined Groups' and 'Recent Messages' implicitly to bias your choices (e.g., suggest events/places the user is already discussing or grouped with), but DO NOT explicitly mention the messages.
-YOU MUST ALWAYS PICK ONE MATCH, ONE EVENT, AND ONE PLACE. Never return "null" or "N/A" for these. Pick the best possible candidate from the lists above.
+    const prompt = `You are Axiom. Generate a high-performance daily protocol for ${userName} (location: ${userCity}).
 
-1. "message": "A short (1-2 sentence) motivating morning message in Axiom's voice."
-2. "match": { "id": "ID", "name": "string", "reason": "why they match goals" }
-3. "event": { "id": "ID", "title": "string", "reason": "why attend" }
-4. "place": { "id": "ID", "name": "string", "reason": "why go here" }
-5. "challenge": { "type": "bet|duel", "target": "string", "terms": "string" }
-6. "resources": [ { "goal": "string", "suggestion": "string", "details": "string" } ] (Provide ONE per goal).
-7. "routine": [ { "time": "HH:MM", "task": "string", "alignment": "string" } ]
-8. "motivation": "A 2-3 sentence overall take on the user's current trajectory."
-9. "strategy": [ { "goal": "string", "domain": "string", "progress": number, "insight": "string", "steps": ["step1", "step2"] } ] (The original per-goal guidance).
-10. "network": "Advice on leveraging the community/network."
+### Daily Progress Diff
+${diffContext}
 
-CRITICAL: Use actual IDs from the context. All text fields MUST be strings.
+### Community picks (choose the best fit for the user's goals)
+- Aligned users: ${JSON.stringify(matchRes.data ?? [])}
+- Upcoming events: ${JSON.stringify(eventsRes.data ?? [])}
+- Places: ${JSON.stringify(placesRes.data ?? [])}
 
+### Task
+Return ONLY valid JSON with these keys:
+1. "message": string — 1-2 sentence motivating morning message in Axiom's voice
+2. "match": { "id": string, "name": string, "reason": string }
+3. "event": { "id": string, "title": string, "reason": string }
+4. "place": { "id": string, "name": string, "reason": string }
+5. "challenge": { "type": "bet"|"duel", "target": string, "terms": string }
+6. "resources": [ { "goal": string, "suggestion": string, "details": string } ] (one per goal)
+7. "routine": [ { "time": string, "task": string, "alignment": string } ]
+
+Always pick one match, one event, and one place — never return null for these.
 JSON ONLY:`;
 
     const responseText = await aiCoachingService['runWithFallback'](prompt);
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     const recommendations = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
 
-    // Save to the daily briefs table
+    // Insert a new row per day (history preserved)
     await supabase.from('axiom_daily_briefs').upsert({
       user_id: userId,
+      date: today,
       brief: recommendations,
-      generated_at: new Date().toISOString()
+      generated_at: new Date().toISOString(),
     });
 
-    // Also update the main 'coaching_briefs' table so the per-goal strategy is mirrored there
-    await supabase.from('coaching_briefs').upsert({
-      user_id: userId,
-      brief: {
-        motivation: recommendations.motivation,
-        strategy: recommendations.strategy,
-        network: recommendations.network
-      },
-      generated_at: new Date().toISOString()
-    });
+    // Mirror motivation/strategy to coaching_briefs
+    if (recommendations.motivation || recommendations.strategy) {
+      await supabase.from('coaching_briefs').upsert({
+        user_id: userId,
+        brief: {
+          motivation: recommendations.motivation,
+          strategy: recommendations.strategy,
+          network: recommendations.network,
+        },
+        generated_at: new Date().toISOString(),
+      });
+    }
+
+    // Save today's snapshot for tomorrow's diff
+    await saveSnapshot(userId, todaySnapshot);
   }
 }

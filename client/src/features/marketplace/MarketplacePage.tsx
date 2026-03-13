@@ -378,9 +378,9 @@ const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) =>
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PP_TIERS = [
-  { tier: 'pp_500',  pp: 500,  price: '€4.99',  label: 'Starter',    highlight: false },
-  { tier: 'pp_1100', pp: 1100, price: '€9.99',  label: 'Popular',    highlight: true  },
-  { tier: 'pp_3000', pp: 3000, price: '€24.99', label: 'Best Value', highlight: false },
+  { tier: 'pp_500',  pp: 500,  eur: '€4.99',  usd: '$4.99',  label: 'Starter',    highlight: false },
+  { tier: 'pp_1100', pp: 1100, eur: '€9.99',  usd: '$9.99',  label: 'Popular',    highlight: true  },
+  { tier: 'pp_3000', pp: 3000, eur: '€24.99', usd: '$24.99', label: 'Best Value', highlight: false },
 ];
 
 const MarketplacePage: React.FC = () => {
@@ -392,6 +392,7 @@ const MarketplacePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [ppCurrency, setPpCurrency] = useState<'eur' | 'usd'>('eur');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -439,6 +440,7 @@ const MarketplacePage: React.FC = () => {
         userId: authUser.id,
         email: authUser.email,
         tier,
+        currency: ppCurrency,
       });
       window.location.href = res.data.url;
     } catch (e: any) {
@@ -642,7 +644,26 @@ const MarketplacePage: React.FC = () => {
               </Card>
 
               {/* Buy Praxis Points */}
-              <Typography variant="h6" sx={{ fontWeight: 700, mt: 3, mb: 2 }}>⚡ Buy Praxis Points</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 3, mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>⚡ Buy Praxis Points</Typography>
+                <Stack direction="row" spacing={0.5}>
+                  {(['eur', 'usd'] as const).map(c => (
+                    <Chip
+                      key={c}
+                      label={c === 'eur' ? '€ EUR' : '$ USD'}
+                      size="small"
+                      onClick={() => setPpCurrency(c)}
+                      sx={{
+                        fontWeight: 800, cursor: 'pointer', fontSize: '0.7rem',
+                        bgcolor: ppCurrency === c ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.04)',
+                        color: ppCurrency === c ? '#A78BFA' : 'text.secondary',
+                        border: '1px solid',
+                        borderColor: ppCurrency === c ? '#A78BFA' : 'rgba(255,255,255,0.1)',
+                      }}
+                    />
+                  ))}
+                </Stack>
+              </Box>
               <Stack direction="row" spacing={2}>
                 {PP_TIERS.map(t => (
                   <Box key={t.tier} sx={{
@@ -654,7 +675,9 @@ const MarketplacePage: React.FC = () => {
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#A78BFA', my: 0.5 }}>
                       ⚡ {t.pp.toLocaleString()}
                     </Typography>
-                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>{t.price}</Typography>
+                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                      {ppCurrency === 'eur' ? t.eur : t.usd}
+                    </Typography>
                     <Button
                       fullWidth
                       variant={t.highlight ? 'contained' : 'outlined'}

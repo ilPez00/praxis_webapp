@@ -35,6 +35,41 @@ function friendlyAiError(err: any, isAdmin: boolean = false): { message: string;
 }
 
 // ---------------------------------------------------------------------------
+// PP cost constants for free-tier Axiom access
+// ---------------------------------------------------------------------------
+
+const AXIOM_CHAT_COST = 50;       // PP per chat message (free tier)
+const AXIOM_TRIGGER_COST = 100;   // PP to trigger an extra brief (free tier)
+
+/**
+ * Deducts PP from a user's profile. Returns false if insufficient balance.
+ */
+async function deductPP(userId: string, amount: number): Promise<boolean> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('praxis_points')
+    .eq('id', userId)
+    .single();
+
+  const current: number = profile?.praxis_points ?? 0;
+  if (current < amount) return false;
+
+  await supabase
+    .from('profiles')
+    .update({ praxis_points: current - amount })
+    .eq('id', userId);
+
+  await supabase.from('marketplace_transactions').insert({
+    user_id: userId,
+    item_type: amount === AXIOM_CHAT_COST ? 'axiom_chat' : 'axiom_brief_trigger',
+    cost: amount,
+    metadata: { label: amount === AXIOM_CHAT_COST ? 'Axiom chat message' : 'Axiom brief trigger' },
+  });
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Rate limiter for background brief generation (in-memory, resets on deploy)
 // ---------------------------------------------------------------------------
 
@@ -360,6 +395,23 @@ export const triggerBriefUpdate = catchAsync(async (req: Request, res: Response,
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated.');
 
+  // Free-tier: charge PP
+  const { data: profile } = await supabase.from('profiles').select('is_premium, is_admin, praxis_points').eq('id', userId).single();
+  const isPro = profile?.is_premium || profile?.is_admin;
+
+  if (!isPro) {
+    const balance: number = profile?.praxis_points ?? 0;
+    if (balance < AXIOM_TRIGGER_COST) {
+      return res.status(402).json({
+        error: 'INSUFFICIENT_POINTS',
+        message: `Triggering an extra Axiom brief costs ${AXIOM_TRIGGER_COST} PP. You have ${balance} PP.`,
+        needed: AXIOM_TRIGGER_COST,
+        have: balance,
+      });
+    }
+    await deductPP(userId, AXIOM_TRIGGER_COST);
+  }
+
   const now = Date.now();
   const last = briefCooldowns.get(userId) ?? 0;
   const remaining = BRIEF_COOLDOWN_MS - (now - last);
@@ -391,9 +443,24 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
     return res.status(400).json({ message: 'userPrompt is required.' });
   }
 
-  // Fetch admin status
-  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
+  // Fetch profile for tier check
+  const { data: profile } = await supabase.from('profiles').select('is_admin, is_premium, praxis_points').eq('id', userId).single();
   const isAdmin = !!profile?.is_admin;
+  const isPro = profile?.is_premium || isAdmin;
+
+  // Free-tier: charge PP per message
+  if (!isPro) {
+    const balance: number = profile?.praxis_points ?? 0;
+    if (balance < AXIOM_CHAT_COST) {
+      return res.status(402).json({
+        error: 'INSUFFICIENT_POINTS',
+        message: `Each Axiom message costs ${AXIOM_CHAT_COST} PP on the free tier. You have ${balance} PP.`,
+        needed: AXIOM_CHAT_COST,
+        have: balance,
+      });
+    }
+    await deductPP(userId, AXIOM_CHAT_COST);
+  }
 
   if (!aiCoachingService.isConfigured) {
     return res.status(503).json({
@@ -404,7 +471,7 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
 
   try {
     const context = await buildContext(userId);
-    
+
     // Log user's question to the database
     await supabase.from('messages').insert({
       sender_id: userId,

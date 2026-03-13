@@ -51,11 +51,11 @@ export const createAchievementFromGoal = async (
       return null;
     }
 
-    // Award +10 Praxis Points for creating an achievement (best-effort)
+    // Award +5 Praxis Points for posting an achievement (best-effort)
     await supabase.from('profiles').select('praxis_points').eq('id', userId).single()
       .then(({ data }) => {
         if (data) supabase.from('profiles')
-          .update({ praxis_points: (data.praxis_points ?? 0) + 10 })
+          .update({ praxis_points: (data.praxis_points ?? 0) + 5 })
           .eq('id', userId);
       });
 

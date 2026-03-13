@@ -186,6 +186,10 @@ const AICoachPage: React.FC = () => {
         body: JSON.stringify({ userPrompt: q }),
       });
       const body = await res.json().catch(() => ({}));
+      if (res.status === 402) {
+        setChat(prev => [...prev, { role: 'coach', text: `⚡ ${body.message}` }]);
+        return;
+      }
       if (!res.ok) {
         throw new Error(body.detailed ? `${body.message} (${body.detailed})` : (body.message || `Error ${res.status}`));
       }
@@ -214,20 +218,8 @@ const AICoachPage: React.FC = () => {
     return new Date(iso).toLocaleDateString();
   };
 
-  if (user !== null && !user.is_premium && !user.is_admin) {
-    return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
-        <GlassCard sx={{ p: 5, borderRadius: '24px' }}>
-          <Avatar sx={{ width: 72, height: 72, mx: 'auto', mb: 2, background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)', border: '3px solid rgba(245,158,11,0.4)', fontSize: '2rem' }}>🥋</Avatar>
-          <LockIcon sx={{ color: 'primary.main', fontSize: 28, mb: 1 }} />
-          <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>Axiom is Pro-only</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Unlock AI-powered coaching with a Pro subscription.</Typography>
-          <Button variant="contained" size="large" onClick={() => setUpgradeOpen(true)} sx={{ borderRadius: '12px', fontWeight: 800, background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', color: '#0A0B14' }}>Upgrade to Pro</Button>
-        </GlassCard>
-        <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} featureName="Axiom AI Coaching" />
-      </Container>
-    );
-  }
+  const isFree = user !== null && !user.is_premium && !user.is_admin;
+  const userPoints: number = (user as any)?.praxis_points ?? 0;
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, pb: 8 }}>
@@ -349,7 +341,17 @@ const AICoachPage: React.FC = () => {
         )}
 
         <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <SectionHeader icon={<Box sx={{ fontSize: '1rem' }}>🥋</Box>} label="Ask Axiom" />
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <SectionHeader icon={<Box sx={{ fontSize: '1rem' }}>🥋</Box>} label="Ask Axiom" />
+            {isFree && (
+              <Chip
+                icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important' }} />}
+                label={`50 PP / message · balance: ${userPoints} PP`}
+                size="small"
+                sx={{ fontSize: '0.7rem', fontWeight: 700, bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}
+              />
+            )}
+          </Box>
           <Stack spacing={1.5} sx={{ mb: 2 }}>
             {chat.map((msg, i) => (
               <Box key={i} sx={{ display: 'flex', gap: 1.5, justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
