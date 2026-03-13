@@ -117,10 +117,11 @@ const DashboardPage: React.FC = () => {
   });
 
   // hasGoals is true if the user has ANY nodes at all in their tree.
-  // This prevents redirecting "complete accounts" to setup if the root calculation is buggy.
   const hasGoals = allNodes.length > 0;
 
-  if (user?.onboarding_completed && !hasGoals && currentUserId) {
+  // ONLY redirect to setup if we've explicitly finished loading and we're SURE there are no goals.
+  // We check for goalTree === null or empty nodes array.
+  if (!loadingContent && user?.onboarding_completed && !hasGoals && currentUserId && (goalTree === null || (goalTree as any).nodes?.length === 0)) {
     return <GettingStartedPage userId={currentUserId} />;
   }
 
