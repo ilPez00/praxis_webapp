@@ -54,9 +54,6 @@ console-export-*.txt
 .claude/
 client/.claude/
 events.txt
-kill_praxis.sh
-run-praxis.sh
-populate_praxis.sh
 docs/*.txt
 docs/*.log
 docs/*.aux
