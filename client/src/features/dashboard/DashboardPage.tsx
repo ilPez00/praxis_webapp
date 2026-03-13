@@ -116,8 +116,20 @@ const DashboardPage: React.FC = () => {
 
   // VISIBLE DEBUG (will show above setup steps if it fails)
   const debugInfo = (
-    <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.8)', color: 'white', position: 'fixed', top: 0, left: 0, zIndex: 9999, fontSize: '10px' }}>
-      DASHBOARD DEBUG: user={currentUserId?.slice(0,8)} onboarded={String(user?.onboarding_completed)} hasGoals={String(hasGoals)} nodeCount={allNodes.length} loading={String(loadingContent)}
+    <Box sx={{ 
+      p: 3, 
+      bgcolor: '#FF0000', 
+      color: 'white', 
+      position: 'fixed', 
+      top: 0, 
+      left: 0, 
+      width: '100vw',
+      zIndex: 99999, 
+      fontWeight: 'bold',
+      borderBottom: '4px solid white',
+      boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+    }}>
+      DEBUG: user={currentUserId?.slice(0,8)} | onboarded={String(user?.onboarding_completed)} | hasGoals={String(hasGoals)} | nodeCount={allNodes.length} | loading={String(loadingContent)}
     </Box>
   );
 
