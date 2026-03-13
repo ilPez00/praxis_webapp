@@ -129,29 +129,25 @@ const getUserProfileDetails = async (userId: string) => {
  * @param res - The Express response object.
  */
 export const getGoalTree = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { userId } = req.params; // Extract user ID from request parameters
+  const { userId } = req.params;
 
-  // Query Supabase for the goal tree associated with the userId
   const { data, error } = await supabase
     .from('goal_trees')
-    .select('*') // Select all columns of the goal tree
+    .select('*')
     .eq('user_id', userId)
-    .single(); // Expect a single goal tree per user
+    .maybeSingle();
 
-  // Handle errors, excluding 'PGRST116' which indicates no rows found (expected for new users)
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
     logger.error('Error fetching goal tree:', error.message);
     throw new InternalServerError('Failed to fetch goal tree data.');
   }
 
-  // Respond with the fetched goal tree or a 404 if not found
   if (data) {
-    // Also return domain_proficiency from profile so the frontend can display it
     const { data: profile } = await supabase
       .from('profiles')
       .select('domain_proficiency')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     res.json({ ...data, domain_proficiency: (profile?.domain_proficiency as Record<string, number>) ?? {} });
   } else {
     throw new NotFoundError('Goal tree not found');
