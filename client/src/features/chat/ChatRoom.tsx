@@ -738,8 +738,8 @@ const ChatRoom: React.FC = () => {
     );
   }
 
-  const receiverRootGoalsSummary = Array.isArray(receiverGoalTree?.rootNodes) && receiverGoalTree!.rootNodes.length > 0
-    ? receiverGoalTree!.rootNodes.map((node: any) => `${node.name} (${node.domain})`).join(' · ')
+  const receiverRootGoalsSummary = Array.isArray(receiverGoalTree?.root_nodes) && receiverGoalTree!.root_nodes.length > 0
+    ? receiverGoalTree!.root_nodes.map((node: any) => `${node.name} (${node.domain})`).join(' · ')
     : undefined;
 
   return (

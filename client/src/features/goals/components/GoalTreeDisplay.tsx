@@ -43,7 +43,7 @@ export const GoalTreeDisplay: React.FC<GoalTreeDisplayProps> = ({ goalTree, onEd
 
   return (
     <Box sx={{ mt: 4 }}>
-      {(goalTree.rootNodes ?? []).map((node) => renderGoalNode(node))}
+      {(goalTree.root_nodes ?? []).map((node) => renderGoalNode(node))}
     </Box>
   );
 };

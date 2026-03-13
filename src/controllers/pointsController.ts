@@ -114,7 +114,7 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
     if (nodeIndex === -1) throw new BadRequestError('Node not found in goal tree');
     nodes[nodeIndex] = { ...nodes[nodeIndex], status: 'suspended' };
 
-    await supabase.from('goal_trees').update({ nodes }).eq('userId', userId);
+    await supabase.from('goal_trees').update({ nodes }).eq('user_id', userId);
   }
 
   // Other items (goal_slot, coaching_session, super_match, etc.) are logged but

@@ -66,32 +66,24 @@ export const submitFeedback = catchAsync(async (req: Request, res: Response, nex
     let receiverGoalTree: GoalTree = receiverGoalTreeData as GoalTree;
 
     // 3. Update the weight of the specific goalNodeId within that tree
-    const updatedNodes = (receiverGoalTree.nodes ?? []).map(node => {
+    const updatedNodes = (receiverGoalTree.nodes ?? []).map((node: GoalNode) => {
       if (node.id === goalNodeId) {
         return updateWeightFromGrade(node, grade);
       }
       return node;
     });
-
-    // Also update rootNodes if the goalNodeId is a root node
-    const updatedRootNodes = (receiverGoalTree.rootNodes ?? []).map(node => {
-      if (node.id === goalNodeId) {
-        return updateWeightFromGrade(node, grade);
-      }
-      return node;
-    });
-
 
     // 4. Save the updated goal tree back to Supabase
     const { data: updatedTree, error: updateTreeError } = await supabase
       .from('goal_trees')
       .update({ 
         nodes: updatedNodes, 
-        root_nodes: updatedRootNodes.map(n => n.id) 
+        root_nodes: receiverGoalTree.root_nodes || []
       })
       .eq('user_id', receiverId)
       .select()
       .single();
+
 
     if (updateTreeError) {
       logger.error('Failed to update receiver goal tree after feedback:', updateTreeError.message);

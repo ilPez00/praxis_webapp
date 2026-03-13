@@ -37,7 +37,7 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
   // 1. Load user context in parallel
   const [userProfileRes, userTreeRes, userBoardsRes] = await Promise.allSettled([
     supabase.from('profiles').select('latitude, longitude').eq('id', userId).single(),
-    supabase.from('goal_trees').select('nodes').eq('userId', userId).maybeSingle(),
+    supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
     supabase.from('chat_room_members').select('room_id').eq('user_id', userId),
   ]);
 
@@ -78,7 +78,7 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
       ? supabase.from('profiles').select('id, honor_score, karma_score, reliability_score, latitude, longitude').in('id', authorIds)
       : Promise.resolve({ data: [] as any[], error: null }),
     authorIds.length > 0
-      ? supabase.from('goal_trees').select('userId, nodes').in('userId', authorIds)
+      ? supabase.from('goal_trees').select('user_id, nodes').in('user_id', authorIds)
       : Promise.resolve({ data: [] as any[], error: null }),
   ]);
 
@@ -91,7 +91,7 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
   const domainMap = new Map<string, Set<string>>();
   for (const tree of authorTrees) {
     const domains = new Set<string>((tree.nodes ?? []).map((n: any) => n.domain).filter(Boolean));
-    domainMap.set(tree.userId, domains);
+    domainMap.set(tree.user_id, domains);
   }
 
   // Combined rep = honor_score + log(1 + max(karma_score, 0))

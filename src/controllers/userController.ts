@@ -355,9 +355,15 @@ export const getPublicStats = catchAsync(async (_req: Request, res: Response, _n
 
   const [profilesRes, treesRes, checkinsRes] = await Promise.allSettled([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    supabase.from('goal_trees').select('user_id', { count: 'exact', head: true }),
+    supabase.from('goal_trees').select('*', { count: 'exact', head: true }),
     supabase.from('checkins').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
   ]);
+
+  if (treesRes.status === 'rejected') {
+    logger.error('Public stats: goal_trees count REJECTED:', treesRes.reason);
+  } else if (treesRes.value.error) {
+    logger.error('Public stats: goal_trees count ERROR:', treesRes.value.error.message);
+  }
 
   res.json({
     userCount: profilesRes.status === 'fulfilled' ? (profilesRes.value.count ?? 0) : 0,

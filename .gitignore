@@ -53,3 +53,14 @@ console-export-*.txt
 .playwright-mcp/
 .claude/
 client/.claude/
+events.txt
+kill_praxis.sh
+run-praxis.sh
+populate_praxis.sh
+docs/*.txt
+docs/*.log
+docs/*.aux
+docs/*.out
+docs/*.toc
+docs/*.lof
+docs/*.lot
