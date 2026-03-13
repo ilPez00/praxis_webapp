@@ -133,8 +133,8 @@ const DashboardPage: React.FC = () => {
     </Box>
   );
 
-  // ONLY redirect to setup if loading is done AND we are SURE there are no goals.
-  if (!loadingContent && !hasGoals && currentUserId) {
+  // ONLY redirect to setup if loading is done AND user has not completed onboarding.
+  if (!loadingContent && !user?.onboarding_completed && currentUserId) {
     return (
       <>
         {debugInfo}
