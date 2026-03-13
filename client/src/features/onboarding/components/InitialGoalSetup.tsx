@@ -45,9 +45,9 @@ const InitialGoalSetup: React.FC<InitialGoalSetupProps> = ({ userId, onGoalsCrea
     setError(null);
     try {
       await axios.post(`${API_URL}/goals`, {
-        userId: userId,
+        user_id: userId,
         nodes: goals,
-        rootNodes: goals, // All initial goals are root goals
+        root_nodes: goals, // All initial goals are root goals
       });
       onGoalsCreated(); // Notify parent component (OnboardingPage)
     } catch (err) {

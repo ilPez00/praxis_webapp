@@ -119,7 +119,7 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
     const { data: treeData } = await supabase
       .from('goal_trees')
       .select('nodes')
-      .eq('userId', userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (treeData?.nodes) {

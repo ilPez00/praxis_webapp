@@ -167,9 +167,9 @@ export const seedDemoUsers = catchAsync(async (req: Request, res: Response, next
     const { error: goalsError } = await supabase
       .from('goal_trees')
       .insert({
-        userId,
+        user_id: userId,
         nodes: demo.goals,
-        rootNodes: demo.goals, // All are root nodes for demo users
+        root_nodes: demo.goals.map((g: any) => g.id), // All are root nodes for demo users
       });
 
     if (goalsError) {
@@ -479,11 +479,12 @@ export const getNetworkData = catchAsync(async (_req: Request, res: Response) =>
 
   const { data: trees } = await supabase
     .from('goal_trees')
-    .select('"userId", nodes');
+    .select('user_id, nodes');
 
-  const domainsByUser: Record<string, string[]> = {};
-  for (const tree of trees ?? []) {
-    const uid = (tree as any).userId;
+    const domainsByUser: Record<string, string[]> = {};
+    for (const tree of goalTrees ?? []) {
+    const uid = (tree as any).user_id;
+
     const nodes: any[] = Array.isArray((tree as any).nodes) ? (tree as any).nodes : [];
     domainsByUser[uid] = [...new Set(nodes.map((n: any) => n.domain).filter(Boolean))];
   }

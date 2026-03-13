@@ -95,19 +95,30 @@ const DashboardPage: React.FC = () => {
   }
 
   const allNodes  = Array.isArray(goalTree?.nodes) ? goalTree!.nodes : [];
-  const root_data = Array.isArray(goalTree?.root_nodes) ? goalTree!.root_nodes : [];
+  // Support both new snake_case and legacy camelCase from the API response
+  const raw_root_data = (goalTree as any)?.root_nodes || (goalTree as any)?.rootNodes || [];
+  const root_data = Array.isArray(raw_root_data) ? raw_root_data : [];
   
-  // Resolve root node objects from allNodes using root_data (could be IDs or full objects)
+  // Resolve root node objects from allNodes using root_data
   const rootGoals = allNodes.filter(n => {
-    // 1. Check if ID exists in root_nodes array (standard)
-    if (root_data.some(r => typeof r === 'string' && r === n.id)) return true;
-    // 2. Check if root_nodes contains the object itself (legacy format)
-    if (root_data.some(r => typeof r === 'object' && r !== null && (r as any).id === n.id)) return true;
-    // 3. Fallback: any node without a valid parentId is a root
-    if (!n.parentId || n.parentId === '' || n.parentId === 'root' || n.parentId === 'null') return true;
+    // 1. Check if ID exists in root_data array (standard IDs or legacy objects)
+    const isInRootList = root_data.some(r => {
+      if (typeof r === 'string') return r === n.id;
+      if (typeof r === 'object' && r !== null) return (r as any).id === n.id;
+      return false;
+    });
+    if (isInRootList) return true;
+
+    // 2. Fallback: any node without a valid parent reference is a root
+    const pid = n.parentId || (n as any).parent_id;
+    if (!pid || pid === '' || pid === 'root' || pid === 'null') return true;
+    
     return false;
   });
-  const hasGoals  = rootGoals.length > 0;
+
+  // hasGoals is true if the user has ANY nodes at all in their tree.
+  // This prevents redirecting "complete accounts" to setup if the root calculation is buggy.
+  const hasGoals = allNodes.length > 0;
 
   if (user?.onboarding_completed && !hasGoals && currentUserId) {
     return <GettingStartedPage userId={currentUserId} />;

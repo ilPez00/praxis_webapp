@@ -128,8 +128,8 @@ const GoalSelectionPage: React.FC = () => {
         setExistingTree(tree);
 
         // Convert existing root nodes into selected goals for editing
-        if (tree.rootNodes && tree.rootNodes.length > 0) {
-          const converted: SelectedGoal[] = tree.rootNodes.map((node: any) => ({
+        if (tree.root_nodes && tree.root_nodes.length > 0) {
+          const converted: SelectedGoal[] = tree.root_nodes.map((node: any) => ({
             id: node.id,
             domain: node.domain,
             category: node.category || node.name,
@@ -217,9 +217,9 @@ const GoalSelectionPage: React.FC = () => {
       const allNodes = [...nodes, ...validSubGoals];
 
       await axios.post(`${API_URL}/goals`, {
-        userId: currentUserId,
+        user_id: currentUserId,
         nodes: allNodes,
-        rootNodes: nodes,
+        root_nodes: nodes,
       });
 
       // Mark onboarding complete if this is the first goal tree setup.

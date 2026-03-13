@@ -2,7 +2,8 @@ import { GoalNode } from './GoalNode';
 
 export interface GoalTree {
   id: string;
-  userId: string;
+  user_id: string;
   nodes: GoalNode[];
-  rootNodes: GoalNode[];
+  root_nodes: any[];
 }
+

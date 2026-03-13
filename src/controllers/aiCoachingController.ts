@@ -178,7 +178,7 @@ async function buildContext(userId: string): Promise<CoachingContext> {
     if (partnerIds.length > 0) {
       const [partnerProfilesRes, partnerTreesRes] = await Promise.allSettled([
         supabase.from('profiles').select('id, name').in('id', partnerIds),
-        supabase.from('goal_trees').select('userId, nodes').in('userId', partnerIds),
+        supabase.from('goal_trees').select('user_id, nodes').in('user_id', partnerIds),
       ]);
 
       const partnerProfiles: any[] =
@@ -193,7 +193,7 @@ async function buildContext(userId: string): Promise<CoachingContext> {
           .filter((n: any) => !n.parentId)
           .map((n: any) => n.domain)
           .filter(Boolean);
-        domainsByUser.set(tree.userId, Array.from(new Set(domains)));
+        domainsByUser.set(tree.user_id, Array.from(new Set(domains)));
       }
 
       network = partnerProfiles.map((p: any) => ({
@@ -318,7 +318,7 @@ export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response,
     supabase.from('profiles').select('name, current_streak, language').eq('id', userId).single(),
     supabase.from('checkins').select('id', { count: 'exact', head: true })
       .eq('user_id', userId).gte('checked_in_at', sevenDaysAgo.toISOString()),
-    supabase.from('goal_trees').select('nodes').eq('userId', userId).maybeSingle(),
+    supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
   ]);
 
   const profile = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
