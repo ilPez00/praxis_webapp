@@ -80,7 +80,7 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
 
 async function enrichMatches(rawMatches: { userId: string; score: number }[]): Promise<any[]> {
   if (rawMatches.length === 0) return [];
-  const userIds = rawMatches.map(m => m.userId);
+  const userIds = rawMatches.map((m: any) => m.userId);
 
   const [{ data: profiles }, { data: trees }] = await Promise.all([
     supabase.from('profiles').select('id, name, avatar_url, bio, current_streak, last_activity_date, latitude, longitude').in('id', userIds),

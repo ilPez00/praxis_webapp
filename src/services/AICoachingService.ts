@@ -18,7 +18,7 @@ export interface CoachingContext {
   praxisPoints: number;
   language: string;
   goals: GoalContext[];
-  recentFeedback: Array<{ grade: string; comment?: string; giverName: string; goalName: string }>;
+  recentFeedback: Array<{ grade: string; comment?: string; giverName?: string; goalName?: string }>;
   achievements: Array<{ goalName: string; date: string }>;
   network: any[];
   boards: any[];

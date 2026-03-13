@@ -29,7 +29,7 @@ export const getLeaderboard = catchAsync(async (req: Request, res: Response, _ne
   if (profileList.length === 0) return res.status(200).json([]);
 
   // 2. Fetch goal_trees for all those users in one query
-  const profileIds = profileList.map((p) => p.id);
+  const profileIds = profileList.map((p: any) => p.id);
   const { data: goalTrees } = await supabase
     .from('goal_trees')
     .select('user_id, nodes')
@@ -62,7 +62,7 @@ export const getLeaderboard = catchAsync(async (req: Request, res: Response, _ne
   }
 
   // 4. Score each profile
-  const scored = profileList.map((profile, index) => {
+  const scored = profileList.map((profile: any, index: number) => {
     const theirDomains = domainsByUser[profile.id] ?? new Set<string>();
     let similarity = 0;
     if (currentUserDomains.size > 0 && theirDomains.size > 0) {
@@ -84,12 +84,12 @@ export const getLeaderboard = catchAsync(async (req: Request, res: Response, _ne
   // 5. Re-sort: 70% praxis_points weight + 30% similarity boost
   const maxPoints = scored[0]?.praxis_points ?? 1;
   const reranked = scored
-    .map((s) => ({
+    .map((s: any) => ({
       ...s,
       score: 0.7 * (s.praxis_points / Math.max(maxPoints, 1)) + 0.3 * (s.similarity / 100),
     }))
-    .sort((a, b) => b.score - a.score)
-    .map((s, i) => ({ ...s, rank: i + 1 }))
+    .sort((a: any, b: any) => b.score - a.score)
+    .map((s: any, i: number) => ({ ...s, rank: i + 1 }))
     .slice(0, 10);
 
   return res.status(200).json(reranked);

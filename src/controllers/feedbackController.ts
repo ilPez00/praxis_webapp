@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express'; // Import NextFunctio
 import { supabase } from '../lib/supabaseClient';
 import { Feedback } from '../models/Feedback';
 import { GoalTree } from '../models/GoalTree';
-import { updateWeightFromGrade } from '../models/GoalNode'; // Import the utility function
+import { GoalNode, updateWeightFromGrade } from '../models/GoalNode'; // Import GoalNode and utility function
 import logger from '../utils/logger'; // Import the logger
 import { catchAsync, BadRequestError, InternalServerError, NotFoundError } from '../utils/appErrors'; // Import custom errors and catchAsync
 

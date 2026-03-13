@@ -482,7 +482,7 @@ export const getNetworkData = catchAsync(async (_req: Request, res: Response) =>
     .select('user_id, nodes');
 
     const domainsByUser: Record<string, string[]> = {};
-    for (const tree of goalTrees ?? []) {
+    for (const tree of trees ?? []) {
     const uid = (tree as any).user_id;
 
     const nodes: any[] = Array.isArray((tree as any).nodes) ? (tree as any).nodes : [];

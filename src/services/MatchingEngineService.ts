@@ -29,8 +29,8 @@ export class MatchingEngineService {
    * Optimized Fallback logic: O(N + M) instead of O(N*M)
    */
   private domainOverlapFallback(nodesA: GoalNode[], nodesB: GoalNode[]): number {
-    const domainsA = new Set(nodesA.map(n => n.domain).filter(Boolean));
-    const domainsB = new Set(nodesB.map(n => n.domain).filter(Boolean));
+    const domainsA = new Set(nodesA.map((n: GoalNode) => n.domain).filter(Boolean));
+    const domainsB = new Set(nodesB.map((n: GoalNode) => n.domain).filter(Boolean));
 
     const intersection = new Set([...domainsA].filter(x => domainsB.has(x)));
     const union = new Set([...domainsA, ...domainsB]);
