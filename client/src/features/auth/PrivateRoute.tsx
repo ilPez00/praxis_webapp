@@ -17,7 +17,7 @@ import { useUser } from '../../hooks/useUser';
  *   4. Otherwise, renders the nested <Outlet /> (the protected page).
  */
 // Routes that a new user is allowed to visit before completing onboarding
-const ONBOARDING_ALLOWED_PATHS = ['/onboarding', '/goal-selection'];
+const ONBOARDING_ALLOWED_PATHS = ['/onboarding', '/goal-selection', '/dashboard'];
 
 const PrivateRoute: React.FC = () => {
   const { user, loading } = useUser();
