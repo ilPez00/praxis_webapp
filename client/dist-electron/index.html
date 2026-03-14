@@ -4,36 +4,97 @@
     <meta charset="utf-8" />
     <link rel="icon" href="./favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#0A0B14" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Praxis — Goal Accountability Network"
     />
     <link rel="apple-touch-icon" href="./logo192.png" />
     <link rel="manifest" href="./manifest.json" />
     <title>Praxis</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="./assets/index-Bt8bd_Cn.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BFgjg4gq.css">
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+
+    <!-- MOBILE DEBUG CONSOLE (STUB) -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+
+    <!-- STABLE CACHE RESET SCRIPT - VERSION 2026.03.12.v4 -->
     <script>
+      (function() {
+        // SILENCE ANNOYING NON-FATAL ERRORS (often triggered by ResizeObserver or transition groups)
+        window.addEventListener('error', function(e) {
+          var msg = e.message || '';
+          if (msg.indexOf('ResizeObserver') !== -1 || msg.indexOf('scrollTop') !== -1) {
+            e.stopImmediatePropagation();
+            return false;
+          }
+        }, true);
+
+        var CURRENT_VERSION = '2026.03.12.v4';
+        var storedVersion = localStorage.getItem('praxis_app_version');
+        
+        // CIRCUIT BREAKER: Don't reload if we already did it in this session
+        var alreadyReloaded = sessionStorage.getItem('praxis_circuit_breaker');
+
+        if (storedVersion !== CURRENT_VERSION && !alreadyReloaded) {
+          console.log('[Stability] Version mismatch (' + (storedVersion || 'none') + ' -> ' + CURRENT_VERSION + '). Updating...');
+          
+          // 1. Set version FIRST to stop the loop
+          localStorage.setItem('praxis_app_version', CURRENT_VERSION);
+          sessionStorage.setItem('praxis_circuit_breaker', 'true');
+
+          // 2. Clear Caches & Service Workers (Async)
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              for (var i = 0; i < regs.length; i++) {
+                try { regs[i].unregister(); } catch(e) {}
+              }
+            });
+          }
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              for (var i = 0; i < names.length; i++) {
+                try { caches.delete(names[i]); } catch(e) {}
+              }
+            });
+          }
+
+          // 3. Surgical Storage Wipe (Keep only vital auth & version!)
+          var keepKeys = ['praxis_app_version', 'supabase.auth.token', 'sb-web-production-646a4-auth-token'];
+          var keys = Object.keys(localStorage);
+          for (var i = 0; i < keys.length; i++) {
+            if (keepKeys.indexOf(keys[i]) === -1 && keys[i].indexOf('supabase.auth') === -1) {
+              localStorage.removeItem(keys[i]);
+            }
+          }
+
+          // 4. Final Reload with a guard to prevent multiple rapid triggers
+          if (!window.praxis_reloading) {
+            window.praxis_reloading = true;
+            setTimeout(function() {
+              window.location.reload(true); // true forces bypass of local cache
+            }, 800);
+          }
+        }
+      })();
+    </script>
+
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
       (function(l) {
-        if (l.search[1] === '/') {
-          var decoded = l.search.slice(1).split('&').map(function(s) {
-            return s.replace(/~and~/g, '&');
-          });
-          var basePath = l.pathname.replace(/\/$/, '');
-          window.history.replaceState(
-            null, null,
-            basePath + decoded[0] + (decoded[1] ? '?' + decoded[1] : '') + l.hash
+        if (l.search[1] === '/' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded + l.hash
           );
         }
       }(window.location));
     </script>
+    <script type="module" crossorigin src="./assets/index-BUoq4mn0.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BFgjg4gq.css">
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
   </body>
 </html>

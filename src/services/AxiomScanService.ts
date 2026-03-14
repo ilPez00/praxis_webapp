@@ -106,7 +106,7 @@ export class AxiomScanService {
 
     const { data: users, error: userError } = await supabase
       .from('profiles')
-      .select('id, name, city, is_premium, is_admin')
+      .select('id, name, city, is_premium, is_admin, minimal_ai_mode, last_activity_date')
       .gte('last_activity_date', sevenDaysAgo.toISOString().slice(0, 10));
 
     if (userError) throw userError;
@@ -150,7 +150,7 @@ export class AxiomScanService {
       const batch = pendingUsers.slice(i, i + CONCURRENCY);
       await Promise.all(batch.map(async user => {
         try {
-          await this.generateDailyBrief(user.id, user.name, user.city || 'Unknown');
+          await this.generateDailyBrief(user.id, user.name, user.city || 'Unknown', !user.minimal_ai_mode);
         } catch (err: any) {
           logger.warn(`[AxiomScan] Failed for ${user.name}: ${err.message}`);
         }
@@ -162,7 +162,11 @@ export class AxiomScanService {
     }
   }
 
-  public static async generateDailyBrief(userId: string, userName: string, userCity: string) {
+  /**
+   * Generate daily brief for a user.
+   * @param useLLM - If true, use real LLM. If false, use template-based response.
+   */
+  public static async generateDailyBrief(userId: string, userName: string, userCity: string, useLLM: boolean = false) {
     const today = new Date().toISOString().slice(0, 10);
 
     // Build today's snapshot (lightweight — no full tracker_entries dump)
@@ -190,7 +194,37 @@ export class AxiomScanService {
       supabase.from('places').select('id, name, city').limit(10),
     ]);
 
-    const prompt = `You are Axiom. Generate a high-performance daily protocol for ${userName} (location: ${userCity}).
+    let recommendations: any;
+
+    if (!useLLM) {
+      // Template-based brief (Minimal AI Mode)
+      recommendations = {
+        message: `Good morning, ${userName}. Today's focus: build momentum in your key goals.`,
+        match: matchRes.data?.[0] ? {
+          id: matchRes.data[0].id,
+          name: matchRes.data[0].name,
+          reason: 'Aligned goals in your active domains',
+        } : null,
+        event: eventsRes.data?.[0] ? {
+          id: eventsRes.data[0].id,
+          title: eventsRes.data[0].title,
+          reason: 'Worth exploring based on your goals',
+        } : null,
+        place: placesRes.data?.[0] ? {
+          id: placesRes.data[0].id,
+          name: placesRes.data[0].name,
+          reason: 'Potential spot for focus or reflection',
+        } : null,
+        challenge: { type: 'bet' as const, target: 'Complete one key action today', terms: 'Log it in your tracker' },
+        resources: [],
+        routine: [
+          { time: 'Morning', task: 'Review your top goal', alignment: 'Sets intention' },
+          { time: 'Evening', task: 'Quick check-in', alignment: 'Tracks progress' },
+        ],
+      };
+    } else {
+      // Premium LLM-generated brief
+      const prompt = `You are Axiom. Generate a high-performance daily protocol for ${userName} (location: ${userCity}).
 
 ### Daily Progress Diff
 ${diffContext}
@@ -213,9 +247,10 @@ Return ONLY valid JSON with these keys:
 Always pick one match, one event, and one place — never return null for these.
 JSON ONLY:`;
 
-    const responseText = await aiCoachingService['runWithFallback'](prompt);
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    const recommendations = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+      const responseText = await aiCoachingService['runWithFallback'](prompt);
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      recommendations = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+    }
 
     // Insert a new row per day (history preserved)
     await supabase.from('axiom_daily_briefs').upsert({

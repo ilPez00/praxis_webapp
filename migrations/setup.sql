@@ -105,7 +105,8 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS social_twitter        TEXT,
   ADD COLUMN IF NOT EXISTS social_linkedin       TEXT,
   ADD COLUMN IF NOT EXISTS social_whatsapp       TEXT,
-  ADD COLUMN IF NOT EXISTS social_telegram       TEXT;
+  ADD COLUMN IF NOT EXISTS social_telegram       TEXT,
+  ADD COLUMN IF NOT EXISTS minimal_ai_mode       BOOLEAN DEFAULT TRUE;
 
 
 -- =============================================================================
@@ -948,6 +949,9 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS city      TEXT;
 -- Spatial index (bounding-box approximate — no PostGIS needed)
 CREATE INDEX IF NOT EXISTS profiles_geo_idx ON public.profiles (latitude, longitude)
   WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+
+-- Index for Minimal AI Mode lookup
+CREATE INDEX IF NOT EXISTS idx_profiles_minimal_ai_mode ON public.profiles(minimal_ai_mode);
 
 -- =============================================================================
 -- 24. COACHING BRIEFS (cached AI coaching reports)

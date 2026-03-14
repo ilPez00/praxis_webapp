@@ -38,6 +38,86 @@ export interface CoachingReport {
 
 const AXIOM_IDENTITY_DEFAULT = `You are Axiom — a wise, warm, and practical life coach. Your tone is friendly and direct. You give practical, concrete guidance. You never cite books by name or author. You just give people what they need to move forward.`;
 
+/**
+ * Template-based coaching responses for Minimal AI Mode.
+ * No LLM calls — just smart, encouraging templates.
+ */
+function generateTemplateMotivation(context: CoachingContext): string {
+  const streakMsg = context.streak > 0 
+    ? `You're on a ${context.streak}-day streak! 🔥 Keep the momentum going.` 
+    : 'Start your streak today — every journey begins with a single step.';
+  
+  const pointsMsg = context.praxisPoints >= 100 
+    ? `With ${context.praxisPoints} Praxis Points, you've built real momentum.` 
+    : `You have ${context.praxisPoints} Praxis Points. Small wins add up!`;
+
+  const goalCount = context.goals.length;
+  const activeGoals = context.goals.filter(g => g.progress < 100).length;
+  
+  return `${streakMsg} ${pointsMsg} You're tracking ${goalCount} goals (${activeGoals} active). Focus on one meaningful action today.`;
+}
+
+function generateTemplateStrategy(context: CoachingContext): CoachingReport['strategy'] {
+  return context.goals.slice(0, 3).map(goal => {
+    const progressBucket = goal.progress < 25 ? 'just starting' 
+      : goal.progress < 50 ? 'building momentum' 
+      : goal.progress < 75 ? 'making great progress' 
+      : 'in the final stretch';
+    
+    const nextStep = goal.progress < 25
+      ? 'Define one small, concrete action you can take today.'
+      : goal.progress < 50
+      ? 'Identify the biggest obstacle right now and tackle it first.'
+      : goal.progress < 75
+      ? 'Review what is working well and double down on it.'
+      : 'Plan your final push — what is the last 10% that completes this?';
+
+    return {
+      goal: goal.name,
+      domain: goal.domain,
+      progress: goal.progress,
+      insight: `You're ${progressBucket} on this goal.`,
+      steps: [nextStep, 'Schedule it in your calendar.', 'Celebrate when done.'],
+    };
+  });
+}
+
+function generateTemplateNetwork(context: CoachingContext): string {
+  const networkSize = context.network?.length || 0;
+  if (networkSize === 0) {
+    return 'Connect with 3 people working on similar goals. Accountability accelerates progress.';
+  }
+  if (networkSize < 5) {
+    return `You have ${networkSize} connections. Consider reaching out to one person this week for a check-in.`;
+  }
+  return `Your network of ${networkSize} people is a strength. Share a win or ask for help when you need it.`;
+}
+
+function generateTemplateReport(context: CoachingContext): CoachingReport {
+  return {
+    motivation: generateTemplateMotivation(context),
+    strategy: generateTemplateStrategy(context),
+    network: generateTemplateNetwork(context),
+  };
+}
+
+function generateTemplateWeeklyNarrative(stats: any): string {
+  const lang = stats.language || 'en';
+  const checkins = stats.checkinsThisWeek || 0;
+  const goalsUpdated = stats.goalsUpdatedThisWeek || 0;
+  
+  if (lang === 'it') {
+    return `Questa settimana hai fatto ${checkins} check-in e aggiornato ${goalsUpdated} obiettivi. Continua così!`;
+  }
+  if (lang === 'es') {
+    return `Esta semana hiciste ${checkins} check-ins y actualizaste ${goalsUpdated} objetivos. ¡Sigue así!`;
+  }
+  if (lang === 'fr') {
+    return `Cette semaine, vous avez fait ${checkins} check-ins et mis à jour ${goalsUpdated} objectifs. Continuez comme ça !`;
+  }
+  return `This week you logged ${checkins} check-ins and updated ${goalsUpdated} goals. Small steps, big progress. Keep going!`;
+}
+
 export class AICoachingService {
   private apiKeys: string[] = [];
   private currentKeyIndex = 0;
@@ -228,7 +308,20 @@ export class AICoachingService {
     throw new Error(`Axiom Offline. Tried ${this.apiKeys.length} keys. Status: ${uniqueErrors}${discovered}`);
   }
 
-  public async generateFullReport(context: CoachingContext): Promise<CoachingReport> {
+  /**
+   * Generate full coaching report.
+   * @param context - User context
+   * @param useLLM - If true, use real LLM (Axiom Boost / premium feature). Default: false (template mode)
+   */
+  public async generateFullReport(context: CoachingContext, useLLM: boolean = false): Promise<CoachingReport> {
+    // Minimal AI Mode: use templates by default
+    if (!useLLM) {
+      logger.info('[AICoachingService] Using template-based report (Minimal AI Mode)');
+      return generateTemplateReport(context);
+    }
+
+    // Premium "Axiom Boost" — real LLM call
+    logger.info('[AICoachingService] Using LLM for premium report (Axiom Boost)');
     const identity = await this.getIdentity();
     const prompt = `${identity}\nStudent: ${context.userName}\nLanguage: ${context.language}\nGoals: ${JSON.stringify(context.goals)}\nActionable JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}. Respond concise in ${context.language}.`;
     try {
@@ -237,22 +330,63 @@ export class AICoachingService {
       return JSON.parse(jsonMatch ? jsonMatch[0] : text);
     } catch (error: any) {
       logger.error('Error generating coaching report:', error.message);
-      throw new Error(error.message);
+      // Fallback to template if LLM fails
+      return generateTemplateReport(context);
     }
   }
 
-  public async generateWeeklyNarrative(stats: any): Promise<string> {
+  /**
+   * Generate weekly narrative recap.
+   * @param stats - Weekly stats
+   * @param useLLM - If true, use real LLM. Default: false (template mode)
+   */
+  public async generateWeeklyNarrative(stats: any, useLLM: boolean = false): Promise<string> {
+    // Minimal AI Mode: use templates by default
+    if (!useLLM) {
+      logger.info('[AICoachingService] Using template-based weekly narrative (Minimal AI Mode)');
+      return generateTemplateWeeklyNarrative(stats);
+    }
+
+    // Premium — real LLM call
+    logger.info('[AICoachingService] Using LLM for premium weekly narrative');
     const identity = await this.getIdentity();
     const lang = stats.language || 'en';
     const prompt = `${identity}\nStats: ${JSON.stringify(stats)}\nWrite 2 concise sentences on progress in ${lang}.`;
-    try { return await this.runWithFallback(prompt); } 
-    catch (error: any) { throw new Error(error.message); }
+    try { 
+      return await this.runWithFallback(prompt); 
+    } catch (error: any) { 
+      logger.error('Error generating weekly narrative:', error.message);
+      // Fallback to template if LLM fails
+      return generateTemplateWeeklyNarrative(stats);
+    }
   }
 
-  public async generateCoachingResponse(userPrompt: string, context: CoachingContext): Promise<string> {
+  /**
+   * Generate coaching response to user prompt.
+   * @param userPrompt - User's question/message
+   * @param context - User context
+   * @param useLLM - If true, use real LLM (premium). Default: false (template mode)
+   */
+  public async generateCoachingResponse(userPrompt: string, context: CoachingContext, useLLM: boolean = false): Promise<string> {
+    // Minimal AI Mode: use template-based response
+    if (!useLLM) {
+      logger.info('[AICoachingService] Using template-based response (Minimal AI Mode)');
+      // Simple template: acknowledge + encourage + suggest action
+      const goalCount = context.goals.length;
+      const streakMsg = context.streak > 0 ? `Your ${context.streak}-day streak shows commitment.` : 'Starting is the hardest part — you have already begun.';
+      return `${streakMsg} With ${goalCount} goals in focus, try this: pick ONE small action today that moves the needle. Progress compounds.`;
+    }
+
+    // Premium — real LLM call
+    logger.info('[AICoachingService] Using LLM for premium coaching response');
     const identity = await this.getIdentity();
     const prompt = `${identity}\nContext: ${JSON.stringify(context)}\nUser: ${userPrompt}\nReply concisely in ${context.language}.`;
-    try { return await this.runWithFallback(prompt); } 
-    catch (error: any) { throw new Error(error.message); }
+    try { 
+      return await this.runWithFallback(prompt); 
+    } catch (error: any) { 
+      logger.error('Error generating coaching response:', error.message);
+      // Fallback to template if LLM fails
+      return "Thanks for sharing. What's one small step you could take today toward your most important goal?";
+    }
   }
 }

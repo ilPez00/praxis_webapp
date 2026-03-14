@@ -690,18 +690,34 @@ Run in Supabase SQL Editor:
 
 Or re-run the full `migrations/setup.sql` (idempotent).
 
-## Backend Integration
+## Backend Integration ✅ DONE
 
-When calling coaching services, read user's preference:
+The backend now reads `minimal_ai_mode` from the user's profile and passes it to all coaching service calls:
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('minimal_ai_mode')
-    .eq('id', userId)
-    .single();
+**Updated files:**
+- `src/controllers/aiCoachingController.ts` — `requestReport`, `getWeeklyNarrative`, `requestCoaching` endpoints
+- `src/services/AxiomScanService.ts` — `runGlobalScan` and `generateDailyBrief` methods
 
-  const useLLM = !profile?.minimal_ai_mode;  // true = premium LLM
-  const report = await aiCoachingService.generateFullReport(context, useLLM);
+**Logic:**
+```typescript
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('minimal_ai_mode')
+  .eq('id', userId)
+  .single();
+
+const useLLM = !profile?.minimal_ai_mode;  // true = premium LLM, false = template mode
+
+// Pass to service calls
+const report = await aiCoachingService.generateFullReport(context, useLLM);
+const narrative = await aiCoachingService.generateWeeklyNarrative(stats, useLLM);
+const response = await aiCoachingService.generateCoachingResponse(userPrompt, context, useLLM);
+```
+
+**AxiomScanService (midnight automated briefs):**
+- Reads `minimal_ai_mode` for each active user
+- Passes `useLLM = !user.minimal_ai_mode` to `generateDailyBrief()`
+- Template briefs for Minimal AI users, LLM briefs for others
 
 ## Premium "Axiom Boost" Button
 
