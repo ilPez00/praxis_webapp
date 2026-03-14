@@ -15,7 +15,67 @@ Social proof → public leaderboard, shareable snippets, embeddable streak widge
 - Share snippet: canvas PNG export of streak + top goal (navigator.share or download)
 - Language selector in Settings (i18n via i18next, persisted to profiles.preferred_language)
 - Monetization: Pro $9.99/mo (unlimited goals, AI summaries, sparring, themes); PP: goal_slot 200PP, premium_coaching 500PP
+- Replace Gemini embeddings in matching with a pure rule-based system (domain overlap + progress similarity percentage). No API calls for normal matching.
+- Make AI coaching completely optional (template-based responses by default). Only call real Gemini/DeepSeek when the user explicitly clicks a premium “Master Roshi Boost” button.
+- Move all grading, weight recalibration, streak calculation, and analytics to local math / simple backend functions (no LLM).
+- Keep betting, streaks, leaderboard, and goal tree visualization 100% AI-free.
+- Add a global “Minimal AI Mode” toggle in settings that disables all LLM features.
+1. Update claude_steps.txt and manual_actions.txt to reflect this “Minimal AI” direction.
+2. Provide exact code changes for:
+   - MatchingEngineService.ts (or equivalent) → rule-based overlap scoring
+   - CoachingService.ts → template system + optional real call
+   - Grading & streak logic → pure math functions
+   - Settings page → add “Minimal AI Mode” toggle
+3. Update the development plan / session log with the new minimal-AI architecture.
+4. Suggest commit messages and the order of commits.
+5. End the session by editing this config file and committing the changes.
 
+Remember to git commit and edit this file at the end of each session.
+Never modify this paragraph.
+---
+
+# Session: March 14, 2026 — Minimal AI Pivot Implemented
+
+## Summary of Changes
+- **Matching Engine → Pure Rule-Based:**
+  - Removed `EmbeddingService` dependency from `MatchingEngineService.ts`
+  - Implemented three scoring functions: `calculateDomainOverlap` (Jaccard), `calculateProgressSimilarity`, `calculateStructureSimilarity`
+  - Weighted combination: 60% domain + 25% progress + 15% structure
+  - Zero API calls, deterministic, fast O(N + M) complexity
+
+- **AI Coaching → Template-First:**
+  - Added `generateTemplateMotivation()`, `generateTemplateStrategy()`, `generateTemplateNetwork()`, `generateTemplateWeeklyNarrative()` to `AICoachingService.ts`
+  - All public methods now accept optional `useLLM: boolean = false` parameter
+  - Default behavior: template-based responses (no LLM, no cost)
+  - Premium "Axiom Boost": pass `useLLM = true` for real Gemini/DeepSeek call
+  - Graceful fallback: if LLM fails, revert to templates
+
+- **Settings Page → Minimal AI Toggle:**
+  - Added "AI Features" section with `PsychologyIcon`
+  - `minimal_ai_mode` toggle (default: TRUE = templates only)
+  - Saved to `profiles.minimal_ai_mode` column
+  - Clear UX: explains difference between template mode and full AI
+
+- **Database Migration:**
+  - Created `migrations/2026-03-14-minimal-ai-mode.sql`
+  - Added `minimal_ai_mode BOOLEAN DEFAULT TRUE` to `setup.sql`
+  - Added index `idx_profiles_minimal_ai_mode` for fast lookup
+
+## Files Modified
+1. `src/services/MatchingEngineService.ts` — removed embeddings, pure rule-based
+2. `src/services/AICoachingService.ts` — template functions + useLLM parameter
+3. `client/src/features/settings/SettingsPage.tsx` — AI Features section
+4. `migrations/setup.sql` — added minimal_ai_mode column
+5. `migrations/2026-03-14-minimal-ai-mode.sql` — new migration file
+
+## Verification Status
+- Type check: ✅ Passed
+- Build: ✅ Passed
+- Migration to run: `2026-03-14-minimal-ai-mode.sql` (or re-run `setup.sql`)
+
+## Next Steps
+1. Run migration in Supabase SQL Editor
+2. Add "Axiom Boost" button UI in coaching features (premium gate)
 ---
 
 # Session: March 11, 2026 - Nuclear Stability & Import Audit
