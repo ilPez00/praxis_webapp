@@ -11,8 +11,8 @@ router.get('/brief', authenticateToken, getBrief);
 // Returns the midnight automated scan result — free users see their weekly brief
 router.get('/daily-brief', authenticateToken, getDailyBrief);
 
-// Short Axiom weekly narrative (Pro only)
-router.get('/weekly-narrative', ...requirePro, getWeeklyNarrative);
+// Short Axiom weekly narrative (open to all authenticated users)
+router.post('/weekly-narrative', authenticateToken, getWeeklyNarrative);
 
 // Trigger extra brief — free users pay PP, Pro users free (rate-limited 30 min)
 router.post('/trigger', authenticateToken, triggerBriefUpdate);

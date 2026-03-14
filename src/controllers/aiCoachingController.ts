@@ -318,73 +318,62 @@ export const getBrief = catchAsync(async (req: Request, res: Response, _next: Ne
 
 
 // ---------------------------------------------------------------------------
-// GET /ai-coaching/weekly-narrative — short Axiom "this week" summary
+// POST /ai-coaching/weekly-narrative — short Axiom "this week" summary
 // ---------------------------------------------------------------------------
-
-// In-memory cache: userId → { narrative, generatedAt }
-const narrativeCache = new Map<string, { narrative: string; generatedAt: number }>();
-const NARRATIVE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated.');
 
-  // Serve from cache if fresh
-  const cached = narrativeCache.get(userId);
-  if (cached && Date.now() - cached.generatedAt < NARRATIVE_COOLDOWN_MS) {
-    return res.json({ narrative: cached.narrative, cached: true });
-  }
-
-  // Fetch admin status
-  const { data: userProfile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
-  const isAdmin = !!userProfile?.is_admin;
-
-  if (!aiCoachingService.isConfigured) {
-    return res.status(503).json({ 
-      message: 'AI service not configured.',
-      detailed: isAdmin ? 'genAI instance is null in AICoachingService' : undefined
-    });
-  }
-
-  // Gather weekly stats
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const since = sevenDaysAgo.toISOString();
 
-  const [profileRes, checkinsRes, goalTreeRes] = await Promise.allSettled([
-    supabase.from('profiles').select('name, current_streak, language').eq('id', userId).single(),
-    supabase.from('checkins').select('id', { count: 'exact', head: true })
-      .eq('user_id', userId).gte('checked_in_at', sevenDaysAgo.toISOString()),
-    supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
+  const [journalRes, checkinRes, goalRes] = await Promise.all([
+    supabase.from('node_journal_entries')
+      .select('node_id, note, mood, logged_at')
+      .eq('user_id', userId)
+      .gte('logged_at', since)
+      .order('logged_at', { ascending: true }),
+    supabase.from('checkins')
+      .select('streak_day, mood, win_of_the_day, checked_in_at')
+      .eq('user_id', userId)
+      .gte('checked_in_at', since),
+    supabase.from('goal_trees')
+      .select('nodes')
+      .eq('user_id', userId)
+      .maybeSingle(),
   ]);
 
-  const profile = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
-  const checkinsCount: number = checkinsRes.status === 'fulfilled' ? (checkinsRes.value.count ?? 0) : 0;
-  const nodes: any[] = goalTreeRes.status === 'fulfilled' ? (goalTreeRes.value.data?.nodes ?? []) : [];
+  const entries = journalRes.data ?? [];
+  const checkins = checkinRes.data ?? [];
+  const nodes: any[] = goalRes.data?.nodes ?? [];
+  const nodeMap: Record<string, string> = {};
+  nodes.forEach((n: any) => { nodeMap[n.id] = n.name || n.title || 'Goal'; });
 
-  // Find top goal (highest progress root node)
-  const rootNodes = nodes.filter(n => !n.parentId);
-  const topNode = rootNodes.sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0))[0];
-  const avgProgress = rootNodes.length > 0
-    ? Math.round(rootNodes.reduce((s, n) => s + (n.progress ?? 0), 0) / rootNodes.length)
-    : undefined;
+  const journalText = entries.length > 0
+    ? entries.map((e: any) => `[${e.logged_at.slice(0, 10)}] ${nodeMap[e.node_id] ?? e.node_id} ${e.mood ?? ''}: ${e.note ?? '(no note)'}`).join('\n')
+    : 'No journal entries this week.';
+
+  const checkinText = checkins.length > 0
+    ? `${checkins.length}/7 days checked in. Wins: ${(checkins as any[]).map((c: any) => c.win_of_the_day).filter(Boolean).join(', ') || 'none logged'}.`
+    : 'No check-ins this week.';
+
+  const prompt = `You are Axiom. Write a short (3-4 sentences), personal, emotionally intelligent weekly narrative recap for the user.
+
+Their week in data:
+Check-ins: ${checkinText}
+Journal entries:
+${journalText}
+
+Voice: direct, warm, like a sparring partner who has been watching. No bullet points. Reference specific goals and moods from their entries. End with one sharp challenge for next week.`;
 
   try {
-    const narrative = await aiCoachingService.generateWeeklyNarrative({
-      userName: profile?.name || 'there',
-      streak: profile?.current_streak ?? 0,
-      checkinsThisWeek: checkinsCount,
-      topGoal: topNode ? (topNode.name || topNode.title) : undefined,
-      topDomain: topNode?.domain,
-      overallProgress: avgProgress,
-      language: profile?.language || 'en',
-    });
-
-    narrativeCache.set(userId, { narrative, generatedAt: Date.now() });
-    return res.json({ narrative, cached: false });
+    const narrative = await aiCoachingService['runWithFallback'](prompt);
+    res.json({ narrative, generatedAt: new Date().toISOString() });
   } catch (err: any) {
-    logger.error('[AI Coach] Weekly narrative failed:', err.message);
-    const { message, code, detailed } = friendlyAiError(err, isAdmin);
-    return res.status(503).json({ message, code, detailed });
+    const { message, code, detailed } = friendlyAiError(err);
+    res.status(503).json({ message, code, detailed });
   }
 });
 
