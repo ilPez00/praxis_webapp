@@ -22,6 +22,7 @@ const SPEND_CATALOGUE: Record<string, { cost: number; label: string }> = {
  * Returns the full list of spendable items.
  */
 export const getCatalogue = (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'public, max-age=3600'); // static — 1 hr
   return res.json(
     Object.entries(SPEND_CATALOGUE).map(([id, item]) => ({ id, ...item }))
   );

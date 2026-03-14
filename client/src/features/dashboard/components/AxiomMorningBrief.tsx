@@ -37,6 +37,9 @@ interface MorningBriefProps {
   hasGoals: boolean;
   userId: string;
   onCheckIn: (newStreak: number, newPoints: number) => void;
+  /** Pre-fetched from /dashboard/summary — skips the internal Supabase query. */
+  initialBriefs?: BriefRecord[];
+  initialCheckedIn?: boolean;
 }
 
 interface DailyProtocol {
@@ -57,19 +60,22 @@ interface BriefRecord {
 
 const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
   userName, streak, points, avgProgress, hasGoals, userId, onCheckIn,
+  initialBriefs, initialCheckedIn,
 }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const [briefs, setBriefs] = useState<BriefRecord[]>([]);
-  const [briefIndex, setBriefIndex] = useState(0); // 0 = today (most recent)
+  const [briefs, setBriefs] = useState<BriefRecord[]>(initialBriefs ?? []);
+  const [briefIndex, setBriefIndex] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [checkedIn, setCheckedIn] = useState(false);
+  const [loading, setLoading] = useState(!initialBriefs);
+  const [checkedIn, setCheckedIn] = useState(initialCheckedIn ?? false);
   const [checkinLoading, setCheckinLoading] = useState(false);
 
   useEffect(() => {
+    // If pre-fetched data was provided, skip the redundant fetch.
+    if (initialBriefs !== undefined) return;
     if (!userId) return;
     const fetchData = async () => {
       setLoading(true);
@@ -99,7 +105,7 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
       }
     };
     fetchData();
-  }, [userId]);
+  }, [userId, initialBriefs]);
 
   const handleCheckIn = async () => {
     if (checkinLoading || checkedIn) return;

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, NotFoundError } from '../utils/appErrors';
+import { cacheDelete } from '../utils/cache';
 
 /**
  * Computes streak update from last_activity_date.
@@ -153,6 +154,7 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   if (streakUpdate.shield_consumed) profileUpdate.streak_shield = false;
 
   await supabase.from('profiles').update(profileUpdate).eq('id', userId);
+  cacheDelete(`dashboard:${userId}`); // invalidate cached summary so fresh checkedIn state is served
 
   return res.json({
     alreadyCheckedIn: false,

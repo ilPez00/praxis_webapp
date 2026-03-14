@@ -70,6 +70,7 @@ export const getEvents = catchAsync(async (req: Request, res: Response, _next: N
       });
   }
 
+  res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min
   res.json(events);
 });
 

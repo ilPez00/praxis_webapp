@@ -105,9 +105,9 @@ export const getAchievementById = catchAsync(async (req: Request, res: Response,
   // Query Supabase for the achievement
   const { data, error } = await supabase
     .from('achievements')
-    .select('*') // Select all columns
-    .eq('id', id) // Filter by ID
-    .single(); // Expect a single result
+    .select('id, user_id, goal_node_id, goal_name, category, description, media_url, created_at, verified_by, verified_at, verification_type, visibility, like_count')
+    .eq('id', id)
+    .single();
 
   if (error) {
     handleSupabaseError(error);
@@ -128,7 +128,7 @@ export const getAchievementById = catchAsync(async (req: Request, res: Response,
  */
 export const getAchievements = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.query;
-  let query = supabase.from('achievements').select('*').order('created_at', { ascending: false });
+  let query = supabase.from('achievements').select('id, user_id, goal_node_id, goal_name, category, description, media_url, created_at, verified_by, verified_at, verification_type, visibility, like_count').order('created_at', { ascending: false });
   if (userId) query = query.eq('user_id', String(userId));
   const { data, error } = await query;
 
@@ -235,9 +235,9 @@ export const getCommentsForAchievement = catchAsync(async (req: Request, res: Re
   // Fetch comments from Supabase, filtered by achievement ID
   const { data, error } = await supabase
     .from('achievement_comments')
-    .select('*')
+    .select('id, achievement_id, user_id, user_name, user_avatar_url, content, created_at')
     .eq('achievement_id', id)
-    .order('created_at', { ascending: true }); // Order by creation date (oldest first)
+    .order('created_at', { ascending: true });
 
   if (error) {
     handleSupabaseError(error);
@@ -319,7 +319,7 @@ export const addVoteToAchievement = catchAsync(async (req: Request, res: Respons
   // Check if the user has already voted on this achievement
   const { data: existingVote, error: fetchError } = await supabase
     .from('achievement_votes')
-    .select('*')
+    .select('id, vote_type')
     .eq('achievement_id', id)
     .eq('user_id', userId)
     .single();

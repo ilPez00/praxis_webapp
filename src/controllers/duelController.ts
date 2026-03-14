@@ -230,7 +230,7 @@ export const acceptDuel = catchAsync(async (req: Request, res: Response, _next: 
   const { id } = req.params;
 
   const { data: duel, error: fetchErr } = await supabase
-    .from('duels').select('*').eq('id', id).single();
+    \.from('duels')\.select('id, creator_id, opponent_id, goal_node_id, title, description, category, stake_pp, deadline_days, deadline, status, creator_claimed, opponent_claimed, winner_id, created_at').eq('id', id).single();
 
   if (fetchErr || !duel) throw new NotFoundError('Duel not found.');
   if (duel.status !== 'open' && duel.status !== 'pending') {
@@ -275,7 +275,7 @@ export const declineDuel = catchAsync(async (req: Request, res: Response, _next:
   if (!userId) throw new ForbiddenError('Authentication required.');
   const { id } = req.params;
 
-  const { data: duel } = await supabase.from('duels').select('*').eq('id', id).single();
+  const { data: duel } = await supabase\.from('duels')\.select('id, creator_id, opponent_id, goal_node_id, title, description, category, stake_pp, deadline_days, deadline, status, creator_claimed, opponent_claimed, winner_id, created_at').eq('id', id).single();
   if (!duel) throw new NotFoundError('Duel not found.');
   if (duel.opponent_id !== userId) throw new ForbiddenError('This challenge is not directed at you.');
   if (duel.status !== 'pending') throw new BadRequestError('Challenge is not pending.');
@@ -304,7 +304,7 @@ export const cancelDuel = catchAsync(async (req: Request, res: Response, _next: 
   if (!userId) throw new ForbiddenError('Authentication required.');
   const { id } = req.params;
 
-  const { data: duel } = await supabase.from('duels').select('*').eq('id', id).single();
+  const { data: duel } = await supabase\.from('duels')\.select('id, creator_id, opponent_id, goal_node_id, title, description, category, stake_pp, deadline_days, deadline, status, creator_claimed, opponent_claimed, winner_id, created_at').eq('id', id).single();
   if (!duel) throw new NotFoundError('Duel not found.');
   if (duel.creator_id !== userId) throw new ForbiddenError('Only the creator can cancel.');
   if (!['open', 'pending'].includes(duel.status)) {
@@ -328,7 +328,7 @@ export const claimDuel = catchAsync(async (req: Request, res: Response, _next: N
   if (!userId) throw new ForbiddenError('Authentication required.');
   const { id } = req.params;
 
-  const { data: duel } = await supabase.from('duels').select('*').eq('id', id).single();
+  const { data: duel } = await supabase\.from('duels')\.select('id, creator_id, opponent_id, goal_node_id, title, description, category, stake_pp, deadline_days, deadline, status, creator_claimed, opponent_claimed, winner_id, created_at').eq('id', id).single();
   if (!duel) throw new NotFoundError('Duel not found.');
   if (duel.status !== 'active') throw new BadRequestError('Duel is not active.');
 
@@ -341,7 +341,7 @@ export const claimDuel = catchAsync(async (req: Request, res: Response, _next: N
   await supabase.from('duels').update(updateField).eq('id', id);
 
   // Re-fetch to check both claims
-  const { data: updated } = await supabase.from('duels').select('*').eq('id', id).single();
+  const { data: updated } = await supabase\.from('duels')\.select('id, creator_id, opponent_id, goal_node_id, title, description, category, stake_pp, deadline_days, deadline, status, creator_claimed, opponent_claimed, winner_id, created_at').eq('id', id).single();
   if (!updated) throw new InternalServerError('Failed to update duel.');
 
   // Resolve if both have claimed
@@ -373,7 +373,7 @@ export const concedeDuel = catchAsync(async (req: Request, res: Response, _next:
   if (!userId) throw new ForbiddenError('Authentication required.');
   const { id } = req.params;
 
-  const { data: duel } = await supabase.from('duels').select('*').eq('id', id).single();
+  const { data: duel } = await supabase\.from('duels')\.select('id, creator_id, opponent_id, goal_node_id, title, description, category, stake_pp, deadline_days, deadline, status, creator_claimed, opponent_claimed, winner_id, created_at').eq('id', id).single();
   if (!duel) throw new NotFoundError('Duel not found.');
   if (duel.status !== 'active') throw new BadRequestError('Duel is not active.');
 

@@ -52,12 +52,12 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
     userBoardsRes.status === 'fulfilled' ? (userBoardsRes.value.data ?? []).map((r: any) => r.room_id) : []
   );
 
-  // 2. Fetch 200 recent posts across all contexts
+  // 2. Fetch recent posts to score — 60 is enough for a meaningful ranked feed
   const { data: posts, error } = await supabase
     .from('posts')
     .select('id, user_id, user_name, user_avatar_url, title, content, media_url, media_type, context, reference, created_at, post_likes(count), post_comments(count)')
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(60);
 
   if (error) {
     if (SCHEMA_MISSING(error.message)) return res.status(200).json([]);
@@ -225,7 +225,7 @@ export const getPosts = catchAsync(async (req: Request, res: Response, _next: Ne
     .select('id, user_id, user_name, user_avatar_url, title, content, media_url, media_type, context, reference, created_at, post_likes(count), post_comments(count)')
     .eq('context', context)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .limit(25);
 
   if (error) {
     if (error.message?.includes('schema cache') || error.message?.includes('not found')) {
@@ -272,7 +272,7 @@ export const getUserPosts = catchAsync(async (req: Request, res: Response, _next
     .select('id, user_id, user_name, user_avatar_url, title, content, media_url, media_type, context, reference, created_at, post_likes(count), post_comments(count)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(30);
 
   if (error) {
     if (SCHEMA_MISSING(error.message)) return res.status(200).json([]);

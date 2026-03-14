@@ -39,6 +39,8 @@ const DashboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeBets, setActiveBets] = useState<any[]>([]);
   const [tourOpen, setTourOpen] = useState(false);
+  const [initialCheckedIn, setInitialCheckedIn] = useState(false);
+  const [initialBriefs, setInitialBriefs] = useState<any[]>([]);
 
   const currentUserId = user?.id;
 
@@ -48,17 +50,14 @@ const DashboardPage: React.FC = () => {
     const fetchData = async () => {
       setLoadingContent(true);
       try {
-        const [betsRes, goalsRes] = await Promise.all([
-          api.get(`/bets/${currentUserId}`),
-          api.get(`/goals/${currentUserId}`)
-        ]);
-
-        const allBets = Array.isArray(betsRes.data) ? betsRes.data : [];
-        setActiveBets(allBets.filter((b: any) => b.status === 'active'));
-        setGoalTree(goalsRes.data);
+        const res = await api.get(`/dashboard/summary`, { params: { userId: currentUserId } });
+        const { goalTree: tree, activeBets: bets, checkedIn, briefs } = res.data;
+        setGoalTree(tree ?? null);
+        setActiveBets(Array.isArray(bets) ? bets : []);
+        setInitialCheckedIn(!!checkedIn);
+        setInitialBriefs(Array.isArray(briefs) ? briefs : []);
       } catch (err: any) {
         if (err.response?.status === 404) {
-          // Goal tree not found is common for new users
           setGoalTree(null);
         } else {
           console.error('Dashboard fetch error:', err);
@@ -166,6 +165,8 @@ const DashboardPage: React.FC = () => {
                 avgProgress={avgProgress}
                 hasGoals={hasGoals}
                 userId={currentUserId}
+                initialBriefs={initialBriefs}
+                initialCheckedIn={initialCheckedIn}
                 onCheckIn={(s, p) => { setLocalStreak(s); setLocalPoints(p); }}
               />
             )}

@@ -14,7 +14,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', '@mui/material', '@emotion/react', '@emotion/styled'],
+          // Separate cacheable chunks — a MUI update won't bust the React chunk
+          'react-core': ['react', 'react-dom', 'react-router-dom'],
+          'mui':        ['@mui/material', '@emotion/react', '@emotion/styled'],
+          'mui-icons':  ['@mui/icons-material'],
+          'charts':     ['recharts'],
+          'supabase':   ['@supabase/supabase-js'],
         },
       },
     },

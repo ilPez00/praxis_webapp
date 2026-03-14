@@ -1,11 +1,12 @@
-import { Request, Response, NextFunction } from 'express'; // Import NextFunction
+import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { GoalNode } from '../models/GoalNode';
 import { GoalTree } from '../models/GoalTree';
 import { Achievement } from '../models/Achievement';
 import { FeedbackGrade } from '../models/FeedbackGrade';
-import logger from '../utils/logger'; // Import the logger
-import { catchAsync, NotFoundError, ForbiddenError, InternalServerError, BadRequestError } from '../utils/appErrors'; // Import custom errors and catchAsync
+import logger from '../utils/logger';
+import { catchAsync, NotFoundError, ForbiddenError, InternalServerError, BadRequestError } from '../utils/appErrors';
+import { cacheGet, cacheSet, TTL } from '../utils/cache';
 
 /**
  * @description Helper to check if a user is premium.
@@ -31,9 +32,11 @@ async function isUserPremium(userId: string): Promise<boolean> {
  */
 export const getProgressOverTime = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const userId = req.params.userId as string;
-  if (!userId) {
-    throw new BadRequestError('User ID is required.');
-  }
+  if (!userId) throw new BadRequestError('User ID is required.');
+
+  const cacheKey = `analytics:progress:${userId}`;
+  const cached = cacheGet<any[]>(cacheKey);
+  if (cached) return res.json(cached);
 
   if (!(await isUserPremium(userId))) {
     throw new ForbiddenError('Advanced Analytics is a premium feature.');
@@ -51,20 +54,16 @@ export const getProgressOverTime = catchAsync(async (req: Request, res: Response
   }
 
   const goals: GoalNode[] = goalTreeData?.nodes || [];
-
-  // For now, we'll return the current progress of each goal.
-  // In a real-world scenario, this would involve querying a time-series of progress data.
   const progressData = goals.map(goal => ({
     goalId: goal.id,
     goalName: goal.name,
     domain: goal.domain,
-    progress: goal.progress, // Current progress
+    progress: goal.progress,
     weight: goal.weight,
-    // Simulate historical data for visualization purposes if needed
-    // For now, assume this is the 'latest' point in time.
     timestamp: new Date().toISOString(),
   }));
 
+  cacheSet(cacheKey, progressData, TTL.LONG);
   res.json(progressData);
 });
 
@@ -74,9 +73,11 @@ export const getProgressOverTime = catchAsync(async (req: Request, res: Response
  */
 export const getDomainPerformance = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const userId = req.params.userId as string;
-  if (!userId) {
-    throw new BadRequestError('User ID is required.');
-  }
+  if (!userId) throw new BadRequestError('User ID is required.');
+
+  const cacheKey = `analytics:domain:${userId}`;
+  const cached = cacheGet<any[]>(cacheKey);
+  if (cached) return res.json(cached);
 
   if (!(await isUserPremium(userId))) {
     throw new ForbiddenError('Advanced Analytics is a premium feature.');
@@ -112,6 +113,7 @@ export const getDomainPerformance = catchAsync(async (req: Request, res: Respons
     goalCount: data.goalCount,
   }));
 
+  cacheSet(cacheKey, result, TTL.LONG);
   res.json(result);
 });
 
@@ -121,9 +123,11 @@ export const getDomainPerformance = catchAsync(async (req: Request, res: Respons
  */
 export const getFeedbackTrends = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const userId = req.params.userId as string;
-  if (!userId) {
-    throw new BadRequestError('User ID is required.');
-  }
+  if (!userId) throw new BadRequestError('User ID is required.');
+
+  const cacheKey = `analytics:feedback:${userId}`;
+  const cached = cacheGet<any[]>(cacheKey);
+  if (cached) return res.json(cached);
 
   if (!(await isUserPremium(userId))) {
     throw new ForbiddenError('Advanced Analytics is a premium feature.');
@@ -156,6 +160,7 @@ export const getFeedbackTrends = catchAsync(async (req: Request, res: Response, 
     count,
   }));
 
+  cacheSet(cacheKey, result, TTL.LONG);
   res.json(result);
 });
 
