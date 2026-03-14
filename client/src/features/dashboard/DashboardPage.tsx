@@ -185,29 +185,20 @@ const DashboardPage: React.FC = () => {
             {currentUserId && (
               <AxiomMorningBrief
                 userName={userName}
-                streak={localStreak ?? (user?.current_streak ?? 0)}
-                points={localPoints ?? (user?.praxis_points ?? 0)}
+                streak={user?.current_streak ?? 0}
+                points={user?.praxis_points ?? 0}
                 avgProgress={avgProgress}
                 hasGoals={hasGoals}
                 userId={currentUserId}
                 initialBriefs={initialBriefs}
                 initialCheckedIn={initialCheckedIn}
-                onCheckIn={(s, p) => { setLocalStreak(s); setLocalPoints(p); }}
+                onCheckIn={() => {}}
               />
             )}
           </Box>
 
-          {/* ── Share progress card ── */}
-          {user && (
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: -1, mb: 2 }}>
-              <ShareSnippetButton
-                name={userName}
-                streak={localStreak ?? (user.current_streak ?? 0)}
-                points={localPoints ?? (user.praxis_points ?? 0)}
-                topGoal={rootGoals[0]?.name}
-              />
-            </Box>
-          )}
+          {/* ── Share progress card (moved to Notes page) ── */}
+          {/* ShareSnippetButton relocated to /notes - personal tracking dashboard */}
 
           {/* ── Balance Intervention (moved to Notes page) ── */}
           {/* BalanceWidget relocated to /notes - personal tracking dashboard */}
