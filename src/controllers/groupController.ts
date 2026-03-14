@@ -110,7 +110,7 @@ export const getRoomMessages = catchAsync(async (req: Request, res: Response, ne
 
   const { data, error } = await supabase
     .from('messages')
-    .select('*')
+    .select('id, sender_id, receiver_id, room_id, content, media_url, media_type, metadata, timestamp, created_at')
     .eq('room_id', roomId)
     .order('timestamp', { ascending: true });
 

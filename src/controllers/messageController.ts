@@ -15,7 +15,7 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
   // Fetch messages where sender is user1 and receiver is user2 OR sender is user2 and receiver is user1
   let query = supabase
     .from('messages')
-    .select('*')
+    .select('id, sender_id, receiver_id, room_id, content, media_url, media_type, metadata, timestamp, created_at')
     .or(`and(sender_id.eq.${user1Id},receiver_id.eq.${user2Id}),and(sender_id.eq.${user2Id},receiver_id.eq.${user1Id})`)
     .order('timestamp', { ascending: true });
 

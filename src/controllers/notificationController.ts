@@ -62,7 +62,7 @@ export const getNotifications = catchAsync(async (req: Request, res: Response) =
 
   const { data, error } = await supabase
     .from('notifications')
-    .select('*')
+    .select('id, user_id, type, title, body, link, read, actor_id, created_at')
     .eq('user_id', userId)
     .order('read', { ascending: true })        // unread first
     .order('created_at', { ascending: false })

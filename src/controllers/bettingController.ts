@@ -97,7 +97,7 @@ export const getUserBets = catchAsync(async (req: Request, res: Response, _next:
 
   const { data, error } = await supabase
     .from('bets')
-    .select('*')
+    .select('id, user_id, goal_node_id, goal_name, deadline, stake_points, status, outcome, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
@@ -124,7 +124,7 @@ export const cancelBet = catchAsync(async (req: Request, res: Response, _next: N
 
   const { data: bet, error: fetchError } = await supabase
     .from('bets')
-    .select('*')
+    .select('id, user_id, goal_node_id, stake_points, status')
     .eq('id', betId)
     .single();
 
@@ -166,7 +166,7 @@ export const resolveExpiredBets = catchAsync(async (req: Request, res: Response,
 
   const { data: expiredBets, error } = await supabase
     .from('bets')
-    .select('*')
+    .select('id, user_id, goal_node_id, stake_points, status, deadline')
     .eq('status', 'active')
     .lt('deadline', now);
 
@@ -209,7 +209,7 @@ export const resolveBetsOnGoalCompletion = async (userId: string, goalNodeId: st
   try {
     const { data: activeBets } = await supabase
       .from('bets')
-      .select('*')
+      .select('id, user_id, goal_node_id, stake_points, status')
       .eq('user_id', userId)
       .eq('goal_node_id', goalNodeId)
       .eq('status', 'active');

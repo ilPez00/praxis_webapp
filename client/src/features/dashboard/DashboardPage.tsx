@@ -113,33 +113,9 @@ const DashboardPage: React.FC = () => {
 
   const hasGoals = allNodes.length > 0;
 
-  // VISIBLE DEBUG (will show above setup steps if it fails)
-  const debugInfo = (
-    <Box sx={{ 
-      p: 3, 
-      bgcolor: '#FF0000', 
-      color: 'white', 
-      position: 'fixed', 
-      top: 0, 
-      left: 0, 
-      width: '100vw',
-      zIndex: 99999, 
-      fontWeight: 'bold',
-      borderBottom: '4px solid white',
-      boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-    }}>
-      DEBUG: user={currentUserId?.slice(0,8)} | onboarded={String(user?.onboarding_completed)} | hasGoals={String(hasGoals)} | nodeCount={allNodes.length} | loading={String(loadingContent)}
-    </Box>
-  );
-
   // ONLY redirect to setup if loading is done AND user has not completed onboarding.
   if (!loadingContent && !user?.onboarding_completed && currentUserId) {
-    return (
-      <>
-        {debugInfo}
-        <GettingStartedPage userId={currentUserId} />
-      </>
-    );
+    return <GettingStartedPage userId={currentUserId} />;
   }
 
   const userName    = user?.name || 'Explorer';

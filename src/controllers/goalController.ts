@@ -133,7 +133,7 @@ export const getGoalTree = catchAsync(async (req: Request, res: Response, next: 
 
   const { data, error } = await supabase
     .from('goal_trees')
-    .select('*')
+    .select('id, user_id, nodes, root_nodes, created_at, updated_at')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -172,7 +172,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   // Fetch user's premium status and edit count
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, is_premium, is_admin, goal_tree_edit_count, praxis_points, current_streak, domain_proficiency')
     .eq('id', userId)
     .single();
 

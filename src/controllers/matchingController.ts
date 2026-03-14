@@ -51,11 +51,11 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
 
   // 2. Fallback: Structural Comparison (Still fast, O(N))
   logger.info(`[Matching] Running fallback path for ${userId}...`);
-  const { data: userGoalTree } = await supabase.from('goal_trees').select('*').eq('user_id', userId).single();
-  
+  const { data: userGoalTree } = await supabase.from('goal_trees').select('id, user_id, nodes, root_nodes').eq('user_id', userId).single();
+
   if (!userGoalTree) return res.json([]);
 
-  const { data: others } = await supabase.from('goal_trees').select('*').neq('user_id', userId).limit(40);
+  const { data: others } = await supabase.from('goal_trees').select('id, user_id, nodes, root_nodes').neq('user_id', userId).limit(40);
   
   const matches = [];
   for (const other of (others || [])) {

@@ -125,7 +125,29 @@ export class AICoachingService {
   ): Promise<string> {
     const errors: string[] = [];
 
-    // ... (DeepSeek logic remains same)
+    // 1. Try DeepSeek first — cheapest per token when key is configured
+    if (this.deepseekApiKey) {
+      try {
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.deepseekApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 1500,
+          }),
+        });
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content?.trim();
+        if (response.ok && text) return text;
+        errors.push(`[DeepSeek] ${response.status}`);
+      } catch (err: any) {
+        errors.push(`[DeepSeek] FetchEx`);
+      }
+    }
 
     // 2. Fallback to Gemini keys pool
     if (this.apiKeys.length === 0) {
@@ -139,11 +161,16 @@ export class AICoachingService {
     if (strategy === 'last') startIndex = this.apiKeys.length - 1;
     if (strategy === 'random') startIndex = Math.floor(Math.random() * this.apiKeys.length);
 
+    // Ordered cheapest-first by token cost and RPM quota.
+    // flash-lite: 30 RPM free, cheapest per token
+    // flash-8b:   8B param model, very low cost
+    // 1.5-flash:  mid-tier fallback
+    // 2.0-flash:  most capable, only used if all cheaper models fail
     const baseModels = [
-      'gemini-2.0-flash-lite',  // 30 RPM free tier (highest)
-      'gemini-2.0-flash',       // 15 RPM free tier
-      'gemini-1.5-flash',       // 15 RPM free tier
-      'gemini-1.5-flash-8b',    // lightweight fallback
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-flash-8b',
+      'gemini-1.5-flash',
+      'gemini-2.0-flash',
     ];
 
     const triedKeys = new Set<number>();

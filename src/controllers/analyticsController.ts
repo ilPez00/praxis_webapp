@@ -236,7 +236,7 @@ export const getComparisonData = catchAsync(async (req: Request, res: Response, 
     supabase
       .from('profiles')
       .select('current_streak, reliability_score, praxis_points, honor_score')
-      .limit(1000),
+      .limit(100),
   ]);
 
   if (userRes.error) throw new InternalServerError('Failed to fetch user stats.');

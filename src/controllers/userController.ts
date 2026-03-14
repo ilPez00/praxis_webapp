@@ -106,9 +106,9 @@ export const getUserProfile = catchAsync(async (req: Request, res: Response, nex
   // Query Supabase for the user's profile
   const { data, error } = await supabase
     .from('profiles')
-    .select('*') // Select all columns from the profiles table
-    .eq('id', id) // Filter by user ID
-    .single(); // Expect a single matching profile
+    .select('id, name, email, avatar_url, bio, username, city, latitude, longitude, is_premium, is_admin, praxis_points, current_streak, honor_score, karma_score, reliability_score, domain_proficiency, onboarding_completed, goal_tree_edit_count, last_activity_date, created_at')
+    .eq('id', id)
+    .single();
 
   // Handle Supabase query errors
   if (error) {

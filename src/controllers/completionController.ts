@@ -93,7 +93,7 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
 
   const { data: request, error: fetchError } = await supabase
     .from('completion_requests')
-    .select('*')
+    .select('id, requester_id, verifier_id, goal_node_id, goal_name, status, created_at, updated_at')
     .eq('id', id)
     .single();
 
@@ -131,7 +131,7 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
       // Resolve any active bets on this goal (non-fatal)
       const { data: activeBets } = await supabase
         .from('bets')
-        .select('*')
+        .select('id, user_id, goal_node_id, stake_points, status')
         .eq('user_id', requesterId)
         .eq('goal_node_id', request.goal_node_id)
         .eq('status', 'active');
@@ -204,7 +204,7 @@ export const getPendingRequests = catchAsync(async (req: Request, res: Response,
 
   const { data, error } = await supabase
     .from('completion_requests')
-    .select('*')
+    .select('id, requester_id, verifier_id, goal_node_id, goal_name, status, created_at, updated_at')
     .eq('verifier_id', userId as string)
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
