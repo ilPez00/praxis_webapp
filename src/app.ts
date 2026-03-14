@@ -37,6 +37,7 @@ import offersRoutes from './routes/offersRoutes';
 import duelRoutes from './routes/duelRoutes';
 import trackerRoutes from './routes/trackerRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
+import journalRoutes from './routes/journalRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -105,6 +106,7 @@ apiRouter.use('/offers', offersRoutes);
 apiRouter.use('/duels', duelRoutes);
 apiRouter.use('/trackers', trackerRoutes);
 apiRouter.use('/dashboard', dashboardRoutes);
+apiRouter.use('/journal', journalRoutes);
 
 app.use('/api', apiRouter);
 
