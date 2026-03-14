@@ -1,0 +1,124 @@
+# Session: March 2026 — Strategic Pivot to Goal Journal + Accountability App
+
+## STRATEGIC REPOSITION
+Praxis is now: best daily goal journal + accountability buddy app.
+Goal tree = emotional living journal (notes, mood, AI recaps, visual evolution).
+Daily loop = as compulsive as Notes/Notion (morning brief, one-tap check-in, evening recap).
+Matching → active sparring partner requests.
+Social proof → public leaderboard, shareable snippets, embeddable streak widget.
+
+## New Features (this session)
+- NodeJournalEntry: per-node daily note + emoji mood (stored in node_journal_entries table)
+- Weekly AI narrative recap: POST /ai-coaching/weekly-narrative (Gemini, journal+checkin context)
+- SparringRequest: per-node toggle "Looking for sparring" + instant Spar? button on matches
+- Embeddable streak widget: GET /public/widget/:userId (plain HTML, iframe-able, no auth)
+- Share snippet: canvas PNG export of streak + top goal (navigator.share or download)
+- Language selector in Settings (i18n via i18next, persisted to profiles.preferred_language)
+- Monetization: Pro $9.99/mo (unlimited goals, AI summaries, sparring, themes); PP: goal_slot 200PP, premium_coaching 500PP
+
+---
+
+# Session: March 11, 2026 - Nuclear Stability & Import Audit
+
+## Summary of Changes
+- **"Ghost" Import Resolution:**
+  - Standardized core component imports across `AppRouter.tsx`, `ChatPage.tsx`, and `DiscoverPage.tsx` using direct paths (e.g., `@mui/material/CircularProgress`). This prevents `ReferenceError` crashes in production where the bundler occasionally fails to resolve destructured MUI imports.
+- **Global Error Hardening:**
+  - Wrapped `enforceFreshContent` (version control) and `useLocationSync` (geolocation) in `try/catch` blocks. If geolocation or cache-clearing fails on specific mobile browsers, the app will now gracefully proceed with loading instead of triggering a global crash.
+  - Moved the `ErrorBoundary` deeper into the tree (inside the `Router`) so that initialization failures in secondary systems don't block the entire app from rendering.
+- **Service Worker "Suicide" Mode:**
+  - Updated `sw.js` to immediately unregister itself and wipe every cache upon activation. This ensures that no browser is stuck with stale, broken assets from previous sessions.
+- **Build Verification:**
+  - Incremented version to **v6-final** and updated the Login screen debug tag.
+
+## Verification Status
+- Type check: Passed.
+- Build Integrity: Direct imports verified for all reported crashing components.
+- Mobile Compatibility: Added defensive safety wrappers for geolocation and service workers.
+- Push to GitHub: Completed.
+Session 29: Mobile Stability & Refresh Loop Fixes
+- Synchronized CURRENT_VERSION (2026.03.12.v1) across index.html, versionControl.ts, and sw.js.
+- Rebuilt index.html boot script with surgical storage wipe (preserves auth tokens, clears everything else).
+- Implemented circuit breaker in sessionStorage to prevent infinite reloads.
+- Updated sw.js to be truly 'suicidal' (unregisters and reloads all clients).
+- Added manual 'Force Hard Refresh' button to LoginForm for troubleshooting.
+- Fixed build label in LoginForm to match version.
+Session 30: Error Silencing & Mobile Debugging
+- Injected Eruda mobile console into index.html for on-device debugging.
+- Implemented global window.onerror silencing for 'scrollTop' and 'ResizeObserver' non-fatal errors.
+- Standardized all versions to 2026.03.12.v2 (fresh start for mobile).
+- Updated ErrorBoundary to auto-expand details on crash.
+- Verified error silencing in both index.html (boot phase) and index.tsx (app phase).
+Session 31: Transition Ref Fixes
+- Wrapped common GlassCard in React.forwardRef to support MUI transitions.
+- Wrapped internal GlassCard in InstallPwaBanner in React.forwardRef to fix Snackbar crash.
+- Standardized all versions to 2026.03.12.v3.
+Session 32: Role-based Debug Console
+- Added 'role' field to User model and useUser hook.
+- Restricted Eruda mobile console to 'admin', 'moderator', and 'staff' roles.
+- Moved Eruda initialization from static index.html to reactive AppRouter.tsx.
+Session 33: Admin 'Grant Pro' Feature
+- Added togglePremium controller function to adminController.ts.
+- Added PUT /admin/users/:id/premium route to adminRoutes.ts.
+- Implemented handleTogglePremium in AdminPage.tsx.
+- Added 'Grant Pro' button (StarsIcon) to User list in Admin panel.
+Session 34: User-centric Map Focusing
+- Modified LocationMap.tsx to prioritize userLocation for initial centering.
+- Updated DiscoverPage.tsx to provide user's profile coordinates as location fallback.
+- Improved MapAutoFit logic with refs to prevent jitter and infinite loops.
+Session 35: Goal vs Sub-goal Distinction
+- Made the trunk origin circle clickable for adding root-level goals.
+- Updated domain nodes to act as shortcuts for adding new goals in that domain.
+- Differentiated between 'New Goal' and 'Sub-goal' in dialogs and backend logic.
+- Added domain selector for goals created from the root trunk.
+Session 36: Goal Tree Fixes & Subgoal Logic
+- Added parentId to Frontend GoalNode type and populated it in buildFrontendTree.
+- Fixed subgoal creation by properly managing parentId context in the Edit/Branch dialog.
+- Ensured domain selection is correctly handled for both root goals and subgoals.
+Session 37: Fix MenuItem ReferenceError
+- Added missing MenuItem import in GoalTreePage.tsx.
+Session 38: Backend Goal Creation Fix
+- Fixed 500 error in createGoalNode by adding missing 'children' array to new nodes.
+- Corrected Domain fallback to a valid enum value (Personal Goals).
+- Switched to null instead of undefined for JSONB compatibility in optional fields.
+Session 39: Error Handler Null-Safety
+- Made error silencing scripts in index.html and index.tsx null-safe for messages.
+- Upgraded all versions to 2026.03.12.v4 to resolve the crash.
+Session 40: Goal Controller Snake Case Fix
+- Fixed Internal Server Error by switching to snake_case column names (user_id, root_nodes).
+- Updated root_nodes logic to store arrays of IDs as expected by the DB.
+- Standardized all CRUD operations in goalController.ts.
+Session 41: Multi-language Support (i18n)
+- Installed i18next and react-i18next for frontend translations.
+- Configured i18n with Italian, Spanish, French, and Russian support.
+- Added language selector to LoginForm and translated core labels.
+- Created SQL migration to store user language in 'profiles' table.
+- Updated Axiom (AI) to respond in the user's preferred language.
+- Implemented language sync between frontend and backend on login.
+Session 42: Token Optimization & Vercel Build Fix
+- Created client/.npmrc with legacy-peer-deps=true to fix Vercel build conflict.
+- Optimized Axiom token usage by limiting feedback, achievements, and network context.
+- Refined goal filtering to send only root or active nodes to AI.
+- Prioritized 'Flash' models (gemini-2.0-flash) for faster, cheaper processing.
+- Shortened AI prompts to be more concise and direct.
+Session 43: DB Column Standardization & 500 Fix
+- Identified camelCase vs snake_case mismatch in goal_trees table.
+- Updated all backend controllers to use user_id and root_nodes.
+- Created migration migrations/2026-03-12-fix-goal-trees-snake-case.sql.
+Session 44: Final Snake Case Sync & Data Robustness
+- Fixed remaining camelCase userId references in backend controllers (admin, ai, goal).
+- Standardized GoalTree backend model to snake_case.
+- Implemented hyper-robust root goal detection in DashboardPage.tsx.
+- Added fallback checks for both root_nodes/rootNodes and parentId/parent_id.
+- Ensured users with any existing nodes are not redirected to Getting Started.
+Session 58: Bug Fixes + Axiom Midnight Scan Optimization
+- Fixed POST /feedback 500: null-guard on nodes/rootNodes before .map() (crash when receiver had old DB row missing rootNodes column).
+- Added authenticateToken to feedbackRoutes.ts (security: prevents unauthenticated giverId spoofing).
+- Added missing UPDATE RLS policy to trackers table in setup.sql (PATCH /trackers/:type/objective upsert uses ON CONFLICT DO UPDATE which requires UPDATE permission).
+- Documented both fixes in docs/manual_actions.txt (Session 58 block) with SQL to run.
+- Optimized AxiomScanService midnight scan:
+  - Reduced activity window from 7 days to 3 days (fewer irrelevant users)
+  - Added skip-if-today check (idempotency via axiom_daily_briefs table)
+  - Trimmed context queries: .limit(5) on events/places/matches/services, trackers fetch id/type/goal only (no tracker_entries), messages trimmed to 5 × 80 chars
+  - Switched from sequential (2s delay each) to 3-concurrent batches with 4s between batches
+- Updated AICoachingService model fallback list: gemini-2.0-flash-lite (30 RPM free) → gemini-2.0-flash → gemini-1.5-flash → gemini-1.5-flash-8b (removed legacy gemini-pro).
