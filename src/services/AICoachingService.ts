@@ -140,9 +140,10 @@ export class AICoachingService {
     if (strategy === 'random') startIndex = Math.floor(Math.random() * this.apiKeys.length);
 
     const baseModels = [
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
-      'gemini-pro',
+      'gemini-2.0-flash-lite',  // 30 RPM free tier (highest)
+      'gemini-2.0-flash',       // 15 RPM free tier
+      'gemini-1.5-flash',       // 15 RPM free tier
+      'gemini-1.5-flash-8b',    // lightweight fallback
     ];
 
     const triedKeys = new Set<number>();

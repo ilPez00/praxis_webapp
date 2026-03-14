@@ -102,6 +102,7 @@ export class AxiomScanService {
   public static async runGlobalScan() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const today = new Date().toISOString().slice(0, 10);
 
     const { data: users, error: userError } = await supabase
       .from('profiles')
@@ -111,30 +112,52 @@ export class AxiomScanService {
     if (userError) throw userError;
     if (!users || users.length === 0) return;
 
+    // Build pending list respecting premium/free frequency limits
+    const pendingUsers: typeof users = [];
     for (const user of users) {
-      try {
-        const isPro = user.is_premium || user.is_admin;
-
+      const isPro = user.is_premium || user.is_admin;
+      if (!isPro) {
         // Free users: only generate once per 7 days
-        if (!isPro) {
-          const sevenDaysAgoDate = new Date();
-          sevenDaysAgoDate.setDate(sevenDaysAgoDate.getDate() - 7);
-          const { count } = await supabase
-            .from('axiom_daily_briefs')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .gte('date', sevenDaysAgoDate.toISOString().slice(0, 10));
-
-          if ((count ?? 0) >= 1) {
-            logger.info(`[AxiomScan] Skipping free user ${user.name} — brief already generated this week.`);
-            continue;
-          }
+        const { count } = await supabase
+          .from('axiom_daily_briefs')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('date', sevenDaysAgo.toISOString().slice(0, 10));
+        if ((count ?? 0) >= 1) {
+          logger.info(`[AxiomScan] Skipping free user ${user.name} — brief already generated this week.`);
+          continue;
         }
+      } else {
+        // Pro users: skip if already generated today
+        const { count } = await supabase
+          .from('axiom_daily_briefs')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('date', today);
+        if ((count ?? 0) >= 1) {
+          logger.info(`[AxiomScan] Skipping pro user ${user.name} — brief already generated today.`);
+          continue;
+        }
+      }
+      pendingUsers.push(user);
+    }
 
-        await this.generateDailyBrief(user.id, user.name, user.city || 'Unknown');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } catch (err: any) {
-        logger.warn(`[AxiomScan] Failed for ${user.name}: ${err.message}`);
+    logger.info(`[AxiomScan] ${pendingUsers.length} users need briefs.`);
+
+    // Process up to 3 concurrently to stay within free-tier RPM
+    const CONCURRENCY = 3;
+    for (let i = 0; i < pendingUsers.length; i += CONCURRENCY) {
+      const batch = pendingUsers.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map(async user => {
+        try {
+          await this.generateDailyBrief(user.id, user.name, user.city || 'Unknown');
+        } catch (err: any) {
+          logger.warn(`[AxiomScan] Failed for ${user.name}: ${err.message}`);
+        }
+      }));
+      // Small pause between batches to respect RPM limits
+      if (i + CONCURRENCY < pendingUsers.length) {
+        await new Promise(resolve => setTimeout(resolve, 4000));
       }
     }
   }
