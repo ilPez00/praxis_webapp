@@ -160,24 +160,37 @@ const NotesPage: React.FC = () => {
         <Grid container spacing={3}>
           {/* Left Column - Goal Widgets */}
           <Grid size={{ xs: 12, md: 8 }}>
-            {currentUserId && goalTree?.nodes && (
-              <GoalWidgets
-                userId={currentUserId}
-                allNodes={goalTree.nodes}
-                activeBets={activeBets}
-                onProgressUpdate={(nodeId, newProgress) => {
-                  setGoalTree(prev => {
-                    if (!prev) return prev;
-                    return {
-                      ...prev,
-                      nodes: (prev.nodes || []).map((n: any) =>
-                        n.id === nodeId ? { ...n, progress: newProgress } : n
-                      ),
-                    };
-                  });
-                }}
-              />
-            )}
+            {currentUserId && goalTree?.nodes ? (
+              goalTree.nodes.length > 0 ? (
+                <GoalWidgets
+                  userId={currentUserId}
+                  allNodes={goalTree.nodes}
+                  activeBets={activeBets}
+                  onProgressUpdate={(nodeId, newProgress) => {
+                    setGoalTree(prev => {
+                      if (!prev) return prev;
+                      return {
+                        ...prev,
+                        nodes: (prev.nodes || []).map((n: any) =>
+                          n.id === nodeId ? { ...n, progress: newProgress } : n
+                        ),
+                      };
+                    });
+                  }}
+                />
+              ) : (
+                <GlassCard sx={{ p: 4, textAlign: 'center' }}>
+                  <TrackChangesIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>No goals yet</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Start your journey by creating your first goal
+                  </Typography>
+                  <Button variant="contained" onClick={() => navigate('/goals')} sx={{ borderRadius: '10px' }}>
+                    Create Goal
+                  </Button>
+                </GlassCard>
+              )
+            ) : null}
           </Grid>
 
           {/* Right Column - Balance & Trackers */}
