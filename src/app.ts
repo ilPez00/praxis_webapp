@@ -38,6 +38,7 @@ import duelRoutes from './routes/duelRoutes';
 import trackerRoutes from './routes/trackerRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import journalRoutes from './routes/journalRoutes';
+import sparringRoutes from './routes/sparringRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -107,6 +108,7 @@ apiRouter.use('/duels', duelRoutes);
 apiRouter.use('/trackers', trackerRoutes);
 apiRouter.use('/dashboard', dashboardRoutes);
 apiRouter.use('/journal', journalRoutes);
+apiRouter.use('/sparring', sparringRoutes);
 
 app.use('/api', apiRouter);
 
