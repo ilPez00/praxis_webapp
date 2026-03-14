@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
-import { GoalTree } from '../../models/GoalTree';
-import { Domain } from '../../models/Domain';
 import GlassCard from '../../components/common/GlassCard';
 import PostFeed from '../posts/PostFeed';
 import SiteTour from '../../components/common/SiteTour';
@@ -34,6 +32,7 @@ const DashboardPage: React.FC = () => {
 
   const [loadingContent, setLoadingContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [goalTree, setGoalTree] = useState<any>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [initialCheckedIn, setInitialCheckedIn] = useState(false);
   const [initialBriefs, setInitialBriefs] = useState<any[]>([]);
@@ -54,7 +53,8 @@ const DashboardPage: React.FC = () => {
       setLoadingContent(true);
       try {
         const res = await api.get(`/dashboard/summary`, { params: { userId: currentUserId } });
-        const { checkedIn, briefs } = res.data;
+        const { goalTree: tree, checkedIn, briefs } = res.data;
+        setGoalTree(tree ?? null);
         setInitialCheckedIn(!!checkedIn);
         setInitialBriefs(Array.isArray(briefs) ? briefs : []);
       } catch (err: any) {
