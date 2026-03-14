@@ -15,6 +15,7 @@ import BalanceWidget from './components/BalanceWidget';
 import TrackerSection from '../trackers/TrackerSection';
 import ReferralWidget from '../referral/ReferralWidget';
 import WeeklyNarrativeWidget from './components/WeeklyNarrativeWidget';
+import ShareSnippetButton from '../../components/common/ShareSnippetButton';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import QuickActionFAB from '../../components/common/QuickActionFAB';
@@ -224,6 +225,18 @@ const DashboardPage: React.FC = () => {
               />
             )}
           </Box>
+
+          {/* ── Share progress card ── */}
+          {user && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: -1, mb: 2 }}>
+              <ShareSnippetButton
+                name={userName}
+                streak={localStreak ?? (user.current_streak ?? 0)}
+                points={localPoints ?? (user.praxis_points ?? 0)}
+                topGoal={rootGoals[0]?.name}
+              />
+            </Box>
+          )}
 
           {/* ── Balance Intervention (conditional) ── */}
           <BalanceWidget
