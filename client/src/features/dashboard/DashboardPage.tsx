@@ -14,6 +14,7 @@ import AxiomMorningBrief from './components/AxiomMorningBrief';
 import BalanceWidget from './components/BalanceWidget';
 import TrackerSection from '../trackers/TrackerSection';
 import ReferralWidget from '../referral/ReferralWidget';
+import WeeklyNarrativeWidget from './components/WeeklyNarrativeWidget';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import QuickActionFAB from '../../components/common/QuickActionFAB';
@@ -466,6 +467,9 @@ const DashboardPage: React.FC = () => {
                     )}
                   </Stack>
                 </GlassCard>
+
+                {/* Weekly AI Narrative */}
+                {currentUserId && <WeeklyNarrativeWidget userId={currentUserId} />}
 
                 {/* Referral Widget */}
                 {currentUserId && <ReferralWidget userId={currentUserId} />}

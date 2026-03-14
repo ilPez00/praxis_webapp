@@ -3,6 +3,7 @@ import { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
+import { supabase } from '../../lib/supabase';
 import GlassCard from '../../components/common/GlassCard';
 import CircularProgress from '@mui/material/CircularProgress';
 import {
@@ -26,7 +27,9 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import toast from 'react-hot-toast';
+import SparringBadge from '../../components/common/SparringBadge';
 import { PRAXIS_DOMAINS, getDomainConfig } from '../../types/Domain';
+import SportsKabaddiIcon from '@mui/icons-material/SportsKabaddi';
 
 interface MatchProfile {
   userId: string;
@@ -41,6 +44,7 @@ interface MatchProfile {
   currentStreak?: number;
   lastCheckinDate?: string | null;
   isDemo?: boolean;
+  sparringOpenNodeIds?: string[];
 }
 
 const INITIAL_PAGE_SIZE = 9;
@@ -116,6 +120,18 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
 
   const handleViewProfile = (match: MatchProfile) => {
     navigate(`/profile/${match.userId}`);
+  };
+
+  const handleSpar = async (match: MatchProfile) => {
+    if (!user) return;
+    try {
+      await axios.post(`${API_URL}/sparring/request`, { targetUserId: match.userId }, {
+        headers: { Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
+      });
+      toast.success(`Sparring request sent to ${match.name}!`);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message ?? 'Failed to send sparring request');
+    }
   };
 
   if (userLoading || loading) {
@@ -199,8 +215,9 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
                       <Avatar src={match.avatarUrl} sx={{ width: 64, height: 64, border: '2px solid rgba(255,255,255,0.1)' }} />
                       <Box sx={{ minWidth: 0 }}>
                         <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.2 }}>{match.name}</Typography>
-                        <Stack direction="row" spacing={1} alignItems="center">
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                           {match.currentStreak !== undefined && match.currentStreak > 0 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><LocalFireDepartmentIcon sx={{ color: '#F97316', fontSize: 16 }} /><Typography variant="caption" sx={{ fontWeight: 800, color: '#F97316' }}>{match.currentStreak}d</Typography></Box>}
+                          <SparringBadge openNodeIds={match.sparringOpenNodeIds} compact />
                           <Typography variant="caption" sx={{ color: 'text.disabled' }}>Student</Typography>
                         </Stack>
                       </Box>
@@ -224,6 +241,13 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
                   </CardContent>
                   <Box sx={{ p: 2, pt: 0, display: 'flex', gap: 1 }}>
                     <Button fullWidth variant="contained" size="small" startIcon={<ChatIcon fontSize="small" />} onClick={() => handleChat(match)} sx={{ borderRadius: '10px', fontWeight: 800 }}>Chat</Button>
+                    <IconButton
+                      onClick={() => handleSpar(match)}
+                      title="Send sparring request"
+                      sx={{ borderRadius: '10px', bgcolor: 'rgba(239,68,68,0.08)', color: '#EF4444', '&:hover': { bgcolor: 'rgba(239,68,68,0.18)' } }}
+                    >
+                      <SportsKabaddiIcon fontSize="small" />
+                    </IconButton>
                     <IconButton onClick={() => handleViewProfile(match)} sx={{ borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.05)' }}><AccountCircleIcon fontSize="small" /></IconButton>
                   </Box>
                 </GlassCard>

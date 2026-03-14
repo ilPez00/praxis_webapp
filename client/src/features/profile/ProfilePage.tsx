@@ -50,6 +50,45 @@ import SecurityIcon from '@mui/icons-material/Security';
 import DuelDialog from '../duels/components/DuelDialog';
 import { DOMAIN_COLORS } from '../../types/goal';
 import toast from 'react-hot-toast';
+import CodeIcon from '@mui/icons-material/Code';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+
+// Inline component — only shown on own profile
+const RAILWAY_BASE = 'https://web-production-646a4.up.railway.app';
+const EmbedWidgetCard: React.FC<{ userId: string }> = ({ userId }) => {
+  const [copied, setCopied] = React.useState(false);
+  const iframeCode = `<iframe src="${RAILWAY_BASE}/public/widget/${userId}" width="320" height="120" frameborder="0" style="border-radius:12px;overflow:hidden;" title="Praxis Progress Widget"></iframe>`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(iframeCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <GlassCard sx={{ p: 3, borderRadius: '16px', border: '1px solid rgba(139,92,246,0.18)', background: 'rgba(139,92,246,0.04)' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+        <CodeIcon sx={{ color: '#8B5CF6' }} />
+        <Box>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Progress Widget</Typography>
+          <Typography variant="caption" color="text.secondary">Embed your streak on any website</Typography>
+        </Box>
+      </Box>
+      <Box sx={{ bgcolor: 'rgba(0,0,0,0.35)', borderRadius: '10px', p: 1.5, mb: 1.5, fontFamily: 'monospace', fontSize: '0.72rem', color: '#A5B4FC', wordBreak: 'break-all', lineHeight: 1.5 }}>
+        {iframeCode}
+      </Box>
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<ContentCopyIcon fontSize="small" />}
+        onClick={handleCopy}
+        sx={{ borderRadius: '8px', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.4)', fontWeight: 700 }}
+      >
+        {copied ? 'Copied!' : 'Copy Embed Code'}
+      </Button>
+    </GlassCard>
+  );
+};
 
 interface Profile {
   name: string;
@@ -976,6 +1015,11 @@ const ProfilePage: React.FC = () => {
           </Button>
         </Box>
       </GlassCard>
+
+      {/* Public Embed Widget — own profile only */}
+      {isOwnProfile && user?.id && (
+        <EmbedWidgetCard userId={user.id} />
+      )}
 
       {/* Achievements (trophies) */}
       {achievements.length > 0 && (

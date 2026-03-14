@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
 import GoalTreeVisualization from './components/GoalTreeVisualization';
 import TrackerSection from '../trackers/TrackerSection';
+import NodeJournalDrawer from './NodeJournalDrawer';
 import toast from 'react-hot-toast';
 import {
   Container,
@@ -39,6 +40,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   const nodeMap = new Map<string, FrontendGoalNode>();
@@ -116,6 +118,9 @@ const GoalTreePage: React.FC = () => {
   // Suspend goal dialog state
   const [suspendNode, setSuspendNode] = useState<FrontendGoalNode | null>(null);
   const [suspending, setSuspending] = useState(false);
+
+  // Journal drawer state
+  const [journalNode, setJournalNode] = useState<FrontendGoalNode | null>(null);
 
   // New goal domain selection
   const [newGoalDomain, setNewGoalDomain] = useState<Domain | ''>('');
@@ -847,7 +852,7 @@ const GoalTreePage: React.FC = () => {
                       >
                          Verify
                       </Button>
-                      <Button size="small" variant="outlined" startIcon={<LocalFireDepartmentIcon />} 
+                      <Button size="small" variant="outlined" startIcon={<LocalFireDepartmentIcon />}
                         onClick={() => { setBetNode(editingNode); setEditingNode(null); }}
                         sx={{ borderRadius: '8px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.4)' }}
                       >
@@ -855,6 +860,12 @@ const GoalTreePage: React.FC = () => {
                       </Button>
                    </>
                 )}
+                <Button size="small" variant="outlined" startIcon={<MenuBookIcon />}
+                  onClick={() => { setJournalNode(editingNode); setEditingNode(null); }}
+                  sx={{ borderRadius: '8px', color: '#10B981', borderColor: 'rgba(16,185,129,0.4)' }}
+                >
+                  Journal
+                </Button>
                 {editingNode.progress >= 100 && (
                    <Button size="small" variant="contained" startIcon={<EmojiEventsIcon />} 
                      onClick={() => { setAchieveNode(editingNode); setEditingNode(null); }}
@@ -919,6 +930,13 @@ const GoalTreePage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Node Journal Drawer */}
+      <NodeJournalDrawer
+        open={!!journalNode}
+        node={journalNode}
+        onClose={() => setJournalNode(null)}
+      />
 
     </Container>
   );

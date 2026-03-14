@@ -29,7 +29,7 @@ export const sendRequest = catchAsync(async (req: Request, res: Response) => {
     title: 'Spar? 🥊',
     body: `Someone wants to spar on "${nodeName ?? 'a goal'}". Check it out.`,
     metadata: { request_id: data.id, node_id: nodeId },
-  }).catch(() => {});
+  }); // fire-and-forget; ignore error
 
   res.status(201).json(data);
 });
@@ -68,7 +68,7 @@ export const respondRequest = catchAsync(async (req: Request, res: Response) => 
       title: 'Sparring accepted! 🥊',
       body: `Your spar request on "${sparReq.node_name ?? 'a goal'}" was accepted.`,
       metadata: { request_id: requestId },
-    }).catch(() => {});
+    }); // fire-and-forget; ignore error
   }
 
   res.json({ status: newStatus });
