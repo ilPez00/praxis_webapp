@@ -18,7 +18,6 @@ export default defineConfig({
           'react-core': ['react', 'react-dom', 'react-router-dom'],
           'mui':        ['@mui/material', '@emotion/react', '@emotion/styled'],
           'mui-icons':  ['@mui/icons-material'],
-          'charts':     ['recharts'],
           'supabase':   ['@supabase/supabase-js'],
         },
       },
