@@ -517,14 +517,17 @@ export const generateAxiomBrief = catchAsync(async (req: Request, res: Response,
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, city')
+    .select('name, city, minimal_ai_mode, is_premium, is_admin')
     .eq('id', userId)
     .single();
+
+  const useLLM = (profile?.is_premium || profile?.is_admin) && !profile?.minimal_ai_mode;
 
   await AxiomScanService.generateDailyBrief(
     userId,
     profile?.name ?? 'User',
     profile?.city ?? 'Unknown',
+    useLLM,
   );
 
   const { data: fresh } = await supabase

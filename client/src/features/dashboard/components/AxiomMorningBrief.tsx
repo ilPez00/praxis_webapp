@@ -28,6 +28,9 @@ import EmojiLightbulbIcon from '@mui/icons-material/EmojiObjects';
 import HistoryIcon from '@mui/icons-material/History';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CasinoIcon from '@mui/icons-material/Casino';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
 interface MorningBriefProps {
   userName: string;
@@ -50,6 +53,23 @@ interface DailyProtocol {
   challenge: { type: 'bet' | 'duel'; target: string; terms: string };
   resources: Array<{ goal: string; suggestion: string; details: string }>;
   routine: Array<{ time: string; task: string; alignment: string }>;
+  suggestedBets?: Array<{
+    goalNodeId: string;
+    goalName: string;
+    currentProgress: number;
+    suggestedStake: number;
+    reason: string;
+  }>;
+  suggestedSubgoals?: {
+    targetGoalId: string;
+    targetGoalName: string;
+    suggestions: Array<{ title: string; description: string }>;
+  } | null;
+  suggestedProgression?: {
+    completedGoalName: string;
+    completedGoalDomain: string;
+    suggestion: string;
+  } | null;
 }
 
 interface BriefRecord {

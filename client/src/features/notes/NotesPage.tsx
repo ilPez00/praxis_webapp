@@ -118,13 +118,13 @@ const NotesPage: React.FC = () => {
               </GlassCard>
             </Grid>
           )}
-          {goalTree && (
+          {goalTree && goalTree.nodes && (
             <Grid size={{ xs: 6, sm: 3 }}>
               <GlassCard sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <TrackChangesIcon sx={{ color: '#60A5FA', fontSize: 24 }} />
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 800, color: '#60A5FA' }}>
-                    {goalTree.nodes?.filter(n => !n.parentId).length || 0}
+                    {goalTree.nodes.filter((n: any) => !n.parentId).length || 0}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">Root Goals</Typography>
                 </Box>
@@ -158,9 +158,13 @@ const NotesPage: React.FC = () => {
           {/* Left Column - Balance & Share */}
           <Grid size={{ xs: 12, md: 4 }}>
             <Stack spacing={3}>
-              <BalanceWidget />
+              <BalanceWidget
+                nodes={goalTree?.nodes || []}
+                streak={streak}
+                onTakeZenDay={() => navigate('/dashboard')}
+              />
               <ShareSnippetButton />
-              <WeeklyNarrativeWidget />
+              <WeeklyNarrativeWidget userId={currentUserId || ''} />
             </Stack>
           </Grid>
 
