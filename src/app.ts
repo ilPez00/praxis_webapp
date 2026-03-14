@@ -39,6 +39,7 @@ import trackerRoutes from './routes/trackerRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import journalRoutes from './routes/journalRoutes';
 import sparringRoutes from './routes/sparringRoutes';
+import publicWidgetRoutes from './routes/publicWidgetRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -116,6 +117,8 @@ app.use('/api', apiRouter);
 app.get('/', (_req, res) => res.json({ message: 'Praxis API Entry Point' }));
 
 // Error Handling Middleware - MUST be last
+app.use('/public/widget', publicWidgetRoutes);
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
