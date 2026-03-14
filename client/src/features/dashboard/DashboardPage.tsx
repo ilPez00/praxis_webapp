@@ -5,34 +5,23 @@ import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { GoalTree } from '../../models/GoalTree';
 import { Domain } from '../../models/Domain';
-import { DOMAIN_COLORS } from '../../types/goal';
 import GlassCard from '../../components/common/GlassCard';
 import PostFeed from '../posts/PostFeed';
 import SiteTour from '../../components/common/SiteTour';
-import GoalWidgets from './components/GoalWidgets';
 import AxiomMorningBrief from './components/AxiomMorningBrief';
-import BalanceWidget from './components/BalanceWidget';
-import TrackerSection from '../trackers/TrackerSection';
-import ReferralWidget from '../referral/ReferralWidget';
-import WeeklyNarrativeWidget from './components/WeeklyNarrativeWidget';
 import ShareSnippetButton from '../../components/common/ShareSnippetButton';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import QuickActionFAB from '../../components/common/QuickActionFAB';
-import toast from 'react-hot-toast';
 
 import CircularProgress from '@mui/material/CircularProgress';
 import {
   Container, Box, Typography, Button, Alert, Stack,
   Grid, Avatar, Chip, LinearProgress,
 } from '@mui/material';
-import InsightsIcon from '@mui/icons-material/Insights';
-import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import PlaceIcon from '@mui/icons-material/Place';
-import GroupsIcon from '@mui/icons-material/Groups';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import ExploreIcon from '@mui/icons-material/Explore';
 
@@ -43,45 +32,34 @@ const DashboardPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
   const navigate = useNavigate();
 
-  const [localStreak, setLocalStreak] = useState<number | null>(null);
-  const [localPoints, setLocalPoints] = useState<number | null>(null);
-  const [goalTree, setGoalTree] = useState<GoalTree | null>(null);
   const [loadingContent, setLoadingContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeBets, setActiveBets] = useState<any[]>([]);
   const [tourOpen, setTourOpen] = useState(false);
   const [initialCheckedIn, setInitialCheckedIn] = useState(false);
   const [initialBriefs, setInitialBriefs] = useState<any[]>([]);
 
-  // Widgets state
+  // Social features state
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [matchProfiles, setMatchProfiles] = useState<Record<string, MatchProfile>>({});
   const [allMatchScores, setAllMatchScores] = useState<Record<string, number>>({});
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [challenges, setChallenges] = useState<any[]>([]);
   const [nearbyUsers, setNearbyUsers] = useState<any[]>([]);
 
   const currentUserId = user?.id;
 
-  // Primary data: summary endpoint (goal tree + bets + briefs + check-in)
+  // Fetch morning brief data
   useEffect(() => {
     if (!currentUserId) return;
     const fetchData = async () => {
       setLoadingContent(true);
       try {
         const res = await api.get(`/dashboard/summary`, { params: { userId: currentUserId } });
-        const { goalTree: tree, activeBets: bets, checkedIn, briefs } = res.data;
-        setGoalTree(tree ?? null);
-        setActiveBets(Array.isArray(bets) ? bets : []);
+        const { checkedIn, briefs } = res.data;
         setInitialCheckedIn(!!checkedIn);
         setInitialBriefs(Array.isArray(briefs) ? briefs : []);
       } catch (err: any) {
-        if (err.response?.status === 404) {
-          setGoalTree(null);
-        } else {
-          console.error('Dashboard fetch error:', err);
-          setError(`Dashboard error: ${err?.message || String(err)}`);
-        }
+        console.error('Dashboard fetch error:', err);
+        setError(`Dashboard error: ${err?.message || String(err)}`);
       } finally {
         setLoadingContent(false);
       }
@@ -117,13 +95,6 @@ const DashboardPage: React.FC = () => {
       .then(res => setLeaderboard(Array.isArray(res.data) ? res.data : []))
       .catch(() => {});
   }, [currentUserId]);
-
-  // Challenges
-  useEffect(() => {
-    api.get(`/challenges`)
-      .then(res => setChallenges(Array.isArray(res.data) ? res.data : []))
-      .catch(() => {});
-  }, []);
 
   // Nearby users (silent fail — only shows if data available)
   useEffect(() => {
@@ -238,254 +209,15 @@ const DashboardPage: React.FC = () => {
             </Box>
           )}
 
-          {/* ── Balance Intervention (conditional) ── */}
-          <BalanceWidget
-            nodes={allNodes}
-            streak={localStreak ?? (user?.current_streak ?? 0)}
-            onTakeZenDay={() => toast('Take a Zen Day: update a goal in a neglected domain today.', { icon: '🧘', duration: 6000 })}
-          />
+          {/* ── Balance Intervention (moved to Notes page) ── */}
+          {/* BalanceWidget relocated to /notes - personal tracking dashboard */}
 
           {/* ── Main Grid ── */}
           <Grid container spacing={4}>
 
-            {/* Left column — performance + goals + challenges */}
-            <Grid size={{ xs: 12, lg: 8 }}>
-              <Stack spacing={5}>
-
-                {/* Daily Performance (trackers) */}
-                <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, px: 1 }}>
-                    <InsightsIcon color="primary" />
-                    <Typography variant="h6" sx={{ fontWeight: 800 }}>Daily Performance</Typography>
-                  </Box>
-                  <GlassCard sx={{ p: 3 }}>
-                    <TrackerSection userId={currentUserId!} />
-                  </GlassCard>
-                </Box>
-
-                {/* Active Goal Focus */}
-                <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, px: 1 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <TrackChangesIcon color="primary" /> Active Goal Focus
-                    </Typography>
-                    <Button variant="text" size="small" onClick={() => navigate('/analytics')} sx={{ fontWeight: 700 }}>
-                      View Analytics
-                    </Button>
-                  </Box>
-                  {currentUserId && hasGoals && (
-                    <GoalWidgets
-                      userId={currentUserId}
-                      allNodes={allNodes}
-                      activeBets={activeBets}
-                      onProgressUpdate={(nodeId, newProgress) => {
-                        setGoalTree(prev => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            nodes: (prev.nodes || []).map((n: any) =>
-                              n.id === nodeId ? { ...n, progress: newProgress } : n
-                            ),
-                          };
-                        });
-                      }}
-                    />
-                  )}
-                </Box>
-
-                {/* Community Challenges */}
-                {challenges.length > 0 && (
-                  <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, px: 1 }}>
-                      <EmojiEventsIcon sx={{ color: 'primary.main' }} />
-                      <Typography variant="h6" sx={{ fontWeight: 800 }}>Community Challenges</Typography>
-                    </Box>
-                    <Grid container spacing={2}>
-                      {challenges.slice(0, 3).map((challenge) => {
-                        const participantCount = challenge.challenge_participants?.[0]?.count ?? 0;
-                        const domainColor = DOMAIN_COLORS[challenge.domain as Domain] ?? '#9CA3AF';
-                        return (
-                          <Grid key={challenge.id} size={{ xs: 12, sm: 4 }}>
-                            <GlassCard sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <Typography variant="h2" sx={{ lineHeight: 1 }}>🏆</Typography>
-                                <Chip
-                                  label={challenge.domain}
-                                  size="small"
-                                  sx={{ fontWeight: 700, fontSize: '0.6rem', bgcolor: `${domainColor}15`, color: domainColor }}
-                                />
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5 }}>{challenge.title}</Typography>
-                                <Typography variant="body2" color="text.secondary">{challenge.description}</Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', gap: 2, mt: 'auto' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <GroupsIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
-                                  <Typography variant="caption" color="text.secondary">{participantCount} joined</Typography>
-                                </Box>
-                                <Typography variant="caption" color="text.secondary">{challenge.duration_days}d</Typography>
-                              </Box>
-                              <Button
-                                variant="outlined"
-                                size="small"
-                                onClick={() => handleJoinChallenge(challenge.id)}
-                                sx={{ borderRadius: '10px', fontWeight: 600 }}
-                              >
-                                Join
-                              </Button>
-                            </GlassCard>
-                          </Grid>
-                        );
-                      })}
-                    </Grid>
-                  </Box>
-                )}
-
-              </Stack>
-            </Grid>
-
-            {/* Right column — alignments + leaderboard + referral + feed */}
-            <Grid size={{ xs: 12, lg: 4 }}>
+            {/* Left column — social feed only */}
+            <Grid size={{ xs: 12 }}>
               <Stack spacing={4}>
-
-                {/* Top Alignments */}
-                <GlassCard sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Top Alignments</Typography>
-                    <Button size="small" variant="text" onClick={() => navigate('/matches')} sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
-                      View All
-                    </Button>
-                  </Box>
-                  <Stack spacing={1.5}>
-                    {matches.length > 0 ? matches.map((match) => {
-                      const compat = Math.round(match.score * 100);
-                      const pillColor = compat > 70 ? '#10B981' : compat > 50 ? '#F59E0B' : '#9CA3AF';
-                      return (
-                        <Box
-                          key={match.userId}
-                          onClick={() => navigate(`/chat/${currentUserId}/${match.userId}`)}
-                          sx={{
-                            p: 1.5, borderRadius: '14px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: 1.5,
-                            bgcolor: 'rgba(255,255,255,0.02)',
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.04)', borderColor: 'primary.main' },
-                          }}
-                        >
-                          <Avatar
-                            src={matchProfiles[match.userId]?.avatar_url || undefined}
-                            sx={{ width: 40, height: 40, bgcolor: 'primary.main', fontWeight: 700, fontSize: '0.9rem' }}
-                          >
-                            {(matchProfiles[match.userId]?.name || 'U').charAt(0).toUpperCase()}
-                          </Avatar>
-                          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
-                              {matchProfiles[match.userId]?.name || 'Praxis User'}
-                            </Typography>
-                            <LinearProgress
-                              variant="determinate"
-                              value={compat}
-                              sx={{
-                                mt: 0.5, height: 3, borderRadius: 2,
-                                bgcolor: 'rgba(255,255,255,0.05)',
-                                '& .MuiLinearProgress-bar': { bgcolor: pillColor },
-                              }}
-                            />
-                          </Box>
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: pillColor, flexShrink: 0 }}>
-                            {compat}%
-                          </Typography>
-                        </Box>
-                      );
-                    }) : (
-                      <Box sx={{ textAlign: 'center', py: 3 }}>
-                        <ExploreIcon sx={{ color: 'text.disabled', mb: 1 }} />
-                        <Typography variant="body2" color="text.secondary">Seeking optimal matches...</Typography>
-                      </Box>
-                    )}
-                  </Stack>
-                </GlassCard>
-
-                {/* Best Examples — curated leaderboard */}
-                <GlassCard sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-                    <Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <LeaderboardIcon sx={{ color: 'primary.main', fontSize: 20 }} />
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Best Examples</Typography>
-                      </Box>
-                      {Object.keys(allMatchScores).length > 0 && (
-                        <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 600 }}>
-                          ⚡ Ranked by compatibility × points
-                        </Typography>
-                      )}
-                    </Box>
-                    <Button size="small" variant="text" onClick={() => navigate('/leaderboard')} sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
-                      Full List
-                    </Button>
-                  </Box>
-                  <Stack spacing={1}>
-                    {curatedLeaderboard.slice(0, 7).map((entry: any, idx: number) => {
-                      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
-                      const isMe = entry.id === currentUserId;
-                      return (
-                        <Box
-                          key={entry.id}
-                          onClick={() => navigate(`/profile/${entry.id}`)}
-                          sx={{
-                            display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '12px',
-                            cursor: 'pointer',
-                            bgcolor: isMe ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.02)',
-                            border: isMe ? '1px solid rgba(245,158,11,0.2)' : '1px solid rgba(255,255,255,0.04)',
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
-                          }}
-                        >
-                          <Typography sx={{ minWidth: 24, fontSize: medal ? '1rem' : '0.75rem', fontWeight: 800, color: 'text.disabled', textAlign: 'center' }}>
-                            {medal ?? `#${idx + 1}`}
-                          </Typography>
-                          <Avatar
-                            src={entry.avatar_url || undefined}
-                            sx={{ width: 32, height: 32, border: isMe ? '2px solid rgba(245,158,11,0.5)' : '1px solid rgba(255,255,255,0.1)' }}
-                          >
-                            {(entry.name ?? 'U').charAt(0).toUpperCase()}
-                          </Avatar>
-                          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <Typography variant="caption" sx={{ fontWeight: 700 }} noWrap>{entry.name ?? 'Praxis User'}</Typography>
-                              {entry.is_verified && <VerifiedIcon sx={{ fontSize: 11, color: '#3B82F6' }} />}
-                              {isMe && <Chip label="you" size="small" sx={{ height: 14, fontSize: '0.55rem', bgcolor: 'rgba(245,158,11,0.12)', color: 'primary.main' }} />}
-                            </Box>
-                          </Box>
-                          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-                            {(entry.current_streak ?? 0) > 0 && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
-                                <LocalFireDepartmentIcon sx={{ color: '#F97316', fontSize: 12 }} />
-                                <Typography variant="caption" sx={{ fontWeight: 700, color: '#F97316', fontSize: '0.65rem' }}>
-                                  {entry.current_streak}
-                                </Typography>
-                              </Box>
-                            )}
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main' }}>
-                              {entry.praxis_points ?? 0}
-                            </Typography>
-                          </Stack>
-                        </Box>
-                      );
-                    })}
-                    {curatedLeaderboard.length === 0 && (
-                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                        Loading best examples...
-                      </Typography>
-                    )}
-                  </Stack>
-                </GlassCard>
-
-                {/* Weekly AI Narrative */}
-                {currentUserId && <WeeklyNarrativeWidget userId={currentUserId} />}
-
-                {/* Referral Widget */}
-                {currentUserId && <ReferralWidget userId={currentUserId} />}
 
                 {/* Recent Activity feed */}
                 <Box>
@@ -497,7 +229,144 @@ const DashboardPage: React.FC = () => {
 
               </Stack>
             </Grid>
+
           </Grid>
+
+          {/* Top Alignments — moved from right column */}
+          <Box sx={{ mt: 4 }}>
+            <GlassCard sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Top Alignments</Typography>
+                <Button size="small" variant="text" onClick={() => navigate('/matches')} sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
+                  View All
+                </Button>
+              </Box>
+              <Stack spacing={1.5}>
+                {matches.length > 0 ? matches.map((match) => {
+                  const compat = Math.round(match.score * 100);
+                  const pillColor = compat > 70 ? '#10B981' : compat > 50 ? '#F59E0B' : '#9CA3AF';
+                  return (
+                    <Box
+                      key={match.userId}
+                      onClick={() => navigate(`/chat/${currentUserId}/${match.userId}`)}
+                      sx={{
+                        p: 1.5, borderRadius: '14px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 1.5,
+                        bgcolor: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.04)', borderColor: 'primary.main' },
+                      }}
+                    >
+                      <Avatar
+                        src={matchProfiles[match.userId]?.avatar_url || undefined}
+                        sx={{ width: 40, height: 40, bgcolor: 'primary.main', fontWeight: 700, fontSize: '0.9rem' }}
+                      >
+                        {(matchProfiles[match.userId]?.name || 'U').charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                          {matchProfiles[match.userId]?.name || 'Praxis User'}
+                        </Typography>
+                        <LinearProgress
+                          variant="determinate"
+                          value={compat}
+                          sx={{
+                            mt: 0.5, height: 3, borderRadius: 2,
+                            bgcolor: 'rgba(255,255,255,0.05)',
+                            '& .MuiLinearProgress-bar': { bgcolor: pillColor },
+                          }}
+                        />
+                      </Box>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: pillColor, flexShrink: 0 }}>
+                        {compat}%
+                      </Typography>
+                    </Box>
+                  );
+                }) : (
+                  <Box sx={{ textAlign: 'center', py: 3 }}>
+                    <ExploreIcon sx={{ color: 'text.disabled', mb: 1 }} />
+                    <Typography variant="body2" color="text.secondary">Seeking optimal matches...</Typography>
+                  </Box>
+                )}
+              </Stack>
+            </GlassCard>
+          </Box>
+
+          {/* Best Examples — curated leaderboard */}
+          <Box sx={{ mt: 4 }}>
+            <GlassCard sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <LeaderboardIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Best Examples</Typography>
+                  </Box>
+                  {Object.keys(allMatchScores).length > 0 && (
+                    <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 600 }}>
+                      ⚡ Ranked by compatibility × points
+                    </Typography>
+                  )}
+                </Box>
+                <Button size="small" variant="text" onClick={() => navigate('/leaderboard')} sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
+                  Full List
+                </Button>
+              </Box>
+              <Stack spacing={1}>
+                {curatedLeaderboard.slice(0, 7).map((entry: any, idx: number) => {
+                  const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+                  const isMe = entry.id === currentUserId;
+                  return (
+                    <Box
+                      key={entry.id}
+                      onClick={() => navigate(`/profile/${entry.id}`)}
+                      sx={{
+                        display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '12px',
+                        cursor: 'pointer',
+                        bgcolor: isMe ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.02)',
+                        border: isMe ? '1px solid rgba(245,158,11,0.2)' : '1px solid rgba(255,255,255,0.04)',
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                      }}
+                    >
+                      <Typography sx={{ minWidth: 24, fontSize: medal ? '1rem' : '0.75rem', fontWeight: 800, color: 'text.disabled', textAlign: 'center' }}>
+                        {medal ?? `#${idx + 1}`}
+                      </Typography>
+                      <Avatar
+                        src={entry.avatar_url || undefined}
+                        sx={{ width: 32, height: 32, border: isMe ? '2px solid rgba(245,158,11,0.5)' : '1px solid rgba(255,255,255,0.1)' }}
+                      >
+                        {(entry.name ?? 'Praxis User').charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700 }} noWrap>{entry.name ?? 'Praxis User'}</Typography>
+                          {entry.is_verified && <VerifiedIcon sx={{ fontSize: 11, color: '#3B82F6' }} />}
+                          {isMe && <Chip label="you" size="small" sx={{ height: 14, fontSize: '0.55rem', bgcolor: 'rgba(245,158,11,0.12)', color: 'primary.main' }} />}
+                        </Box>
+                      </Box>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+                        {(entry.current_streak ?? 0) > 0 && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                            <LocalFireDepartmentIcon sx={{ color: '#F97316', fontSize: 12 }} />
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#F97316', fontSize: '0.65rem' }}>
+                              {entry.current_streak}
+                            </Typography>
+                          </Box>
+                        )}
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                          {entry.praxis_points ?? 0}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  );
+                })}
+                {curatedLeaderboard.length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                    Loading best examples...
+                  </Typography>
+                )}
+              </Stack>
+            </GlassCard>
+          </Box>
 
           {/* Near You — shown only when location data available */}
           {nearbyUsers.length > 0 && (
