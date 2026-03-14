@@ -336,7 +336,7 @@ const GoalTreeRadial: React.FC<Props> = ({
                           pointerEvents: 'none',
                         }}
                       >
-                        {goal.name.length > 18 ? goal.name.slice(0, 17) + '…' : goal.name}
+                        {goal.name ? (goal.name.length > 18 ? goal.name.slice(0, 17) + '…' : goal.name) : 'Untitled Goal'}
                       </text>
                       
                       {/* Complete badge */}
