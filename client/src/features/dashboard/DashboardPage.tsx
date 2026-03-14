@@ -4,29 +4,38 @@ import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { GoalTree } from '../../models/GoalTree';
+import { Domain } from '../../models/Domain';
+import { DOMAIN_COLORS } from '../../types/goal';
 import GlassCard from '../../components/common/GlassCard';
 import PostFeed from '../posts/PostFeed';
 import SiteTour from '../../components/common/SiteTour';
 import GoalWidgets from './components/GoalWidgets';
 import AxiomMorningBrief from './components/AxiomMorningBrief';
+import BalanceWidget from './components/BalanceWidget';
 import TrackerSection from '../trackers/TrackerSection';
+import ReferralWidget from '../referral/ReferralWidget';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import QuickActionFAB from '../../components/common/QuickActionFAB';
-import InsightsIcon from '@mui/icons-material/Insights';
-import HubIcon from '@mui/icons-material/Hub';
-import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import toast from 'react-hot-toast';
 
 import CircularProgress from '@mui/material/CircularProgress';
 import {
-  Container,
-  Box,
-  Typography,
-  Button,
-  Alert,
-  Stack,
-  Grid,
+  Container, Box, Typography, Button, Alert, Stack,
+  Grid, Avatar, Chip, LinearProgress,
 } from '@mui/material';
+import InsightsIcon from '@mui/icons-material/Insights';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import PlaceIcon from '@mui/icons-material/Place';
+import GroupsIcon from '@mui/icons-material/Groups';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import ExploreIcon from '@mui/icons-material/Explore';
+
+interface MatchResult { userId: string; score: number; }
+interface MatchProfile { name: string; avatar_url: string | null; }
 
 const DashboardPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
@@ -42,11 +51,19 @@ const DashboardPage: React.FC = () => {
   const [initialCheckedIn, setInitialCheckedIn] = useState(false);
   const [initialBriefs, setInitialBriefs] = useState<any[]>([]);
 
+  // Widgets state
+  const [matches, setMatches] = useState<MatchResult[]>([]);
+  const [matchProfiles, setMatchProfiles] = useState<Record<string, MatchProfile>>({});
+  const [allMatchScores, setAllMatchScores] = useState<Record<string, number>>({});
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [nearbyUsers, setNearbyUsers] = useState<any[]>([]);
+
   const currentUserId = user?.id;
 
+  // Primary data: summary endpoint (goal tree + bets + briefs + check-in)
   useEffect(() => {
     if (!currentUserId) return;
-
     const fetchData = async () => {
       setLoadingContent(true);
       try {
@@ -67,14 +84,77 @@ const DashboardPage: React.FC = () => {
         setLoadingContent(false);
       }
     };
-
     fetchData();
+  }, [currentUserId]);
+
+  // Matches + match profiles
+  useEffect(() => {
+    if (!currentUserId) return;
+    api.get(`/matches/${currentUserId}`).then(res => {
+      if (!Array.isArray(res.data)) return;
+      const all: MatchResult[] = res.data;
+      const top3 = all.slice(0, 3);
+      setMatches(top3);
+      const scoreMap: Record<string, number> = {};
+      all.forEach(m => { scoreMap[m.userId] = m.score; });
+      setAllMatchScores(scoreMap);
+      const ids = top3.map(m => m.userId);
+      if (ids.length === 0) return;
+      supabase.from('profiles').select('id, name, avatar_url').in('id', ids).then(({ data }) => {
+        const map: Record<string, MatchProfile> = {};
+        for (const p of data ?? []) map[p.id] = { name: p.name, avatar_url: p.avatar_url };
+        setMatchProfiles(map);
+      });
+    }).catch(() => {});
+  }, [currentUserId]);
+
+  // Leaderboard
+  useEffect(() => {
+    if (!currentUserId) return;
+    api.get(`/users/leaderboard`, { params: { userId: currentUserId } })
+      .then(res => setLeaderboard(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {});
+  }, [currentUserId]);
+
+  // Challenges
+  useEffect(() => {
+    api.get(`/challenges`)
+      .then(res => setChallenges(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {});
+  }, []);
+
+  // Nearby users (silent fail — only shows if data available)
+  useEffect(() => {
+    if (!currentUserId) return;
+    api.get(`/users/nearby`, { params: { userId: currentUserId, radiusKm: 200 } })
+      .then(res => setNearbyUsers(Array.isArray(res.data) ? res.data.slice(0, 6) : []))
+      .catch(() => {});
   }, [currentUserId]);
 
   useEffect(() => {
     if (!user?.id) return;
     if (!localStorage.getItem(`praxis_tour_seen_${user.id}`)) setTourOpen(true);
   }, [user?.id]);
+
+  // Curated leaderboard: ranked_score = points × (1 + compatibilityScore)
+  const curatedLeaderboard = useMemo(() => {
+    if (leaderboard.length === 0) return leaderboard;
+    return [...leaderboard].sort((a, b) => {
+      const aRanked = (a.praxis_points ?? 0) * (1 + (allMatchScores[a.id] ?? 0));
+      const bRanked = (b.praxis_points ?? 0) * (1 + (allMatchScores[b.id] ?? 0));
+      return bRanked - aRanked;
+    });
+  }, [leaderboard, allMatchScores]);
+
+  const handleJoinChallenge = async (challengeId: string) => {
+    if (!currentUserId) return;
+    try {
+      await api.post(`/challenges/${challengeId}/join`, { userId: currentUserId });
+      toast.success('Joined challenge!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to join challenge.');
+    }
+  };
 
   if (userLoading || (loadingContent && !goalTree)) {
     return (
@@ -92,33 +172,28 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  const allNodes  = Array.isArray(goalTree?.nodes) ? goalTree!.nodes : [];
+  const allNodes = Array.isArray(goalTree?.nodes) ? goalTree!.nodes : [];
   const raw_root_data = (goalTree as any)?.root_nodes || (goalTree as any)?.rootNodes || [];
   const root_data = Array.isArray(raw_root_data) ? raw_root_data : [];
-  
-  // Resolve root node objects
+
   const rootGoals = allNodes.filter(n => {
-    // 1. Check root_data list
-    const isInRootList = root_data.some(r => {
+    const isInRootList = root_data.some((r: any) => {
       if (typeof r === 'string') return r === n.id;
       if (typeof r === 'object' && r !== null) return (r as any).id === n.id;
       return false;
     });
     if (isInRootList) return true;
-
-    // 2. Fallback: No valid parent
     const pid = n.parentId || (n as any).parent_id;
     return !pid || pid === '' || pid === 'root' || pid === 'null';
   });
 
   const hasGoals = allNodes.length > 0;
 
-  // ONLY redirect to setup if loading is done AND user has not completed onboarding.
   if (!loadingContent && !user?.onboarding_completed && currentUserId) {
     return <GettingStartedPage userId={currentUserId} />;
   }
 
-  const userName    = user?.name || 'Explorer';
+  const userName = user?.name || 'Explorer';
   const avgProgress = hasGoals
     ? Math.round(rootGoals.reduce((s, g) => s + (g.progress || 0) * 100, 0) / (rootGoals.length || 1))
     : 0;
@@ -131,7 +206,8 @@ const DashboardPage: React.FC = () => {
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 12 }}>
       <Container maxWidth="lg">
         <ErrorBoundary>
-          
+
+          {/* ── Axiom Morning Brief (check-in + match/event/place) ── */}
           <Box sx={{ pt: 4 }}>
             {currentUserId && (
               <AxiomMorningBrief
@@ -148,10 +224,21 @@ const DashboardPage: React.FC = () => {
             )}
           </Box>
 
+          {/* ── Balance Intervention (conditional) ── */}
+          <BalanceWidget
+            nodes={allNodes}
+            streak={localStreak ?? (user?.current_streak ?? 0)}
+            onTakeZenDay={() => toast('Take a Zen Day: update a goal in a neglected domain today.', { icon: '🧘', duration: 6000 })}
+          />
+
+          {/* ── Main Grid ── */}
           <Grid container spacing={4}>
+
+            {/* Left column — performance + goals + challenges */}
             <Grid size={{ xs: 12, lg: 8 }}>
               <Stack spacing={5}>
-                
+
+                {/* Daily Performance (trackers) */}
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, px: 1 }}>
                     <InsightsIcon color="primary" />
@@ -162,6 +249,7 @@ const DashboardPage: React.FC = () => {
                   </GlassCard>
                 </Box>
 
+                {/* Active Goal Focus */}
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, px: 1 }}>
                     <Typography variant="h6" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -171,7 +259,6 @@ const DashboardPage: React.FC = () => {
                       View Analytics
                     </Button>
                   </Box>
-                  
                   {currentUserId && hasGoals && (
                     <GoalWidgets
                       userId={currentUserId}
@@ -191,34 +278,247 @@ const DashboardPage: React.FC = () => {
                     />
                   )}
                 </Box>
+
+                {/* Community Challenges */}
+                {challenges.length > 0 && (
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, px: 1 }}>
+                      <EmojiEventsIcon sx={{ color: 'primary.main' }} />
+                      <Typography variant="h6" sx={{ fontWeight: 800 }}>Community Challenges</Typography>
+                    </Box>
+                    <Grid container spacing={2}>
+                      {challenges.slice(0, 3).map((challenge) => {
+                        const participantCount = challenge.challenge_participants?.[0]?.count ?? 0;
+                        const domainColor = DOMAIN_COLORS[challenge.domain as Domain] ?? '#9CA3AF';
+                        return (
+                          <Grid key={challenge.id} size={{ xs: 12, sm: 4 }}>
+                            <GlassCard sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Typography variant="h2" sx={{ lineHeight: 1 }}>🏆</Typography>
+                                <Chip
+                                  label={challenge.domain}
+                                  size="small"
+                                  sx={{ fontWeight: 700, fontSize: '0.6rem', bgcolor: `${domainColor}15`, color: domainColor }}
+                                />
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5 }}>{challenge.title}</Typography>
+                                <Typography variant="body2" color="text.secondary">{challenge.description}</Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', gap: 2, mt: 'auto' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <GroupsIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                                  <Typography variant="caption" color="text.secondary">{participantCount} joined</Typography>
+                                </Box>
+                                <Typography variant="caption" color="text.secondary">{challenge.duration_days}d</Typography>
+                              </Box>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => handleJoinChallenge(challenge.id)}
+                                sx={{ borderRadius: '10px', fontWeight: 600 }}
+                              >
+                                Join
+                              </Button>
+                            </GlassCard>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  </Box>
+                )}
+
               </Stack>
             </Grid>
 
+            {/* Right column — alignments + leaderboard + referral + feed */}
             <Grid size={{ xs: 12, lg: 4 }}>
-              <Stack spacing={5}>
-                <GlassCard sx={{ p: 3, background: 'linear-gradient(135deg, rgba(245,158,11,0.05) 0%, rgba(139,92,246,0.05) 100%)' }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <HubIcon sx={{ fontSize: 18, color: '#8B5CF6' }} /> COMMUNITY HUB
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Connect with matched builders and find nearby study spots or events.
-                  </Typography>
-                  <Button fullWidth variant="outlined" onClick={() => navigate('/discover')} sx={{ borderRadius: '10px', fontWeight: 800 }}>
-                    Open Map
-                  </Button>
+              <Stack spacing={4}>
+
+                {/* Top Alignments */}
+                <GlassCard sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Top Alignments</Typography>
+                    <Button size="small" variant="text" onClick={() => navigate('/matches')} sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
+                      View All
+                    </Button>
+                  </Box>
+                  <Stack spacing={1.5}>
+                    {matches.length > 0 ? matches.map((match) => {
+                      const compat = Math.round(match.score * 100);
+                      const pillColor = compat > 70 ? '#10B981' : compat > 50 ? '#F59E0B' : '#9CA3AF';
+                      return (
+                        <Box
+                          key={match.userId}
+                          onClick={() => navigate(`/chat/${currentUserId}/${match.userId}`)}
+                          sx={{
+                            p: 1.5, borderRadius: '14px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 1.5,
+                            bgcolor: 'rgba(255,255,255,0.02)',
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.04)', borderColor: 'primary.main' },
+                          }}
+                        >
+                          <Avatar
+                            src={matchProfiles[match.userId]?.avatar_url || undefined}
+                            sx={{ width: 40, height: 40, bgcolor: 'primary.main', fontWeight: 700, fontSize: '0.9rem' }}
+                          >
+                            {(matchProfiles[match.userId]?.name || 'U').charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                              {matchProfiles[match.userId]?.name || 'Praxis User'}
+                            </Typography>
+                            <LinearProgress
+                              variant="determinate"
+                              value={compat}
+                              sx={{
+                                mt: 0.5, height: 3, borderRadius: 2,
+                                bgcolor: 'rgba(255,255,255,0.05)',
+                                '& .MuiLinearProgress-bar': { bgcolor: pillColor },
+                              }}
+                            />
+                          </Box>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: pillColor, flexShrink: 0 }}>
+                            {compat}%
+                          </Typography>
+                        </Box>
+                      );
+                    }) : (
+                      <Box sx={{ textAlign: 'center', py: 3 }}>
+                        <ExploreIcon sx={{ color: 'text.disabled', mb: 1 }} />
+                        <Typography variant="body2" color="text.secondary">Seeking optimal matches...</Typography>
+                      </Box>
+                    )}
+                  </Stack>
                 </GlassCard>
 
+                {/* Best Examples — curated leaderboard */}
+                <GlassCard sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+                    <Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <LeaderboardIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Best Examples</Typography>
+                      </Box>
+                      {Object.keys(allMatchScores).length > 0 && (
+                        <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 600 }}>
+                          ⚡ Ranked by compatibility × points
+                        </Typography>
+                      )}
+                    </Box>
+                    <Button size="small" variant="text" onClick={() => navigate('/leaderboard')} sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
+                      Full List
+                    </Button>
+                  </Box>
+                  <Stack spacing={1}>
+                    {curatedLeaderboard.slice(0, 7).map((entry: any, idx: number) => {
+                      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+                      const isMe = entry.id === currentUserId;
+                      return (
+                        <Box
+                          key={entry.id}
+                          onClick={() => navigate(`/profile/${entry.id}`)}
+                          sx={{
+                            display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '12px',
+                            cursor: 'pointer',
+                            bgcolor: isMe ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.02)',
+                            border: isMe ? '1px solid rgba(245,158,11,0.2)' : '1px solid rgba(255,255,255,0.04)',
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                          }}
+                        >
+                          <Typography sx={{ minWidth: 24, fontSize: medal ? '1rem' : '0.75rem', fontWeight: 800, color: 'text.disabled', textAlign: 'center' }}>
+                            {medal ?? `#${idx + 1}`}
+                          </Typography>
+                          <Avatar
+                            src={entry.avatar_url || undefined}
+                            sx={{ width: 32, height: 32, border: isMe ? '2px solid rgba(245,158,11,0.5)' : '1px solid rgba(255,255,255,0.1)' }}
+                          >
+                            {(entry.name ?? 'U').charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 700 }} noWrap>{entry.name ?? 'Praxis User'}</Typography>
+                              {entry.is_verified && <VerifiedIcon sx={{ fontSize: 11, color: '#3B82F6' }} />}
+                              {isMe && <Chip label="you" size="small" sx={{ height: 14, fontSize: '0.55rem', bgcolor: 'rgba(245,158,11,0.12)', color: 'primary.main' }} />}
+                            </Box>
+                          </Box>
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+                            {(entry.current_streak ?? 0) > 0 && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                                <LocalFireDepartmentIcon sx={{ color: '#F97316', fontSize: 12 }} />
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: '#F97316', fontSize: '0.65rem' }}>
+                                  {entry.current_streak}
+                                </Typography>
+                              </Box>
+                            )}
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                              {entry.praxis_points ?? 0}
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      );
+                    })}
+                    {curatedLeaderboard.length === 0 && (
+                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                        Loading best examples...
+                      </Typography>
+                    )}
+                  </Stack>
+                </GlassCard>
+
+                {/* Referral Widget */}
+                {currentUserId && <ReferralWidget userId={currentUserId} />}
+
+                {/* Recent Activity feed */}
                 <Box>
-                  <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>RECENT ACTIVITY</Typography>
-                  <PostFeed 
-                    context="general" 
-                    feedUserId={currentUserId} 
-                    personalized 
-                  />
+                  <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>
+                    RECENT ACTIVITY · ranked by goals · proximity · honor
+                  </Typography>
+                  <PostFeed context="general" feedUserId={currentUserId} personalized />
                 </Box>
+
               </Stack>
             </Grid>
           </Grid>
+
+          {/* Near You — shown only when location data available */}
+          {nearbyUsers.length > 0 && (
+            <Box sx={{ mt: 6 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                <PlaceIcon sx={{ color: '#10B981' }} />
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>Near You</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>People in your area</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {nearbyUsers.map((u: any) => (
+                  <GlassCard
+                    key={u.id}
+                    sx={{
+                      p: 2, display: 'flex', alignItems: 'center', gap: 1.5,
+                      cursor: 'pointer', borderRadius: '16px',
+                      minWidth: 180, flex: '1 1 180px', maxWidth: 260,
+                      '&:hover': { borderColor: '#10B981' },
+                    }}
+                    onClick={() => navigate(`/profile/${u.id}`)}
+                  >
+                    <Avatar src={u.avatar_url || undefined} sx={{ width: 40, height: 40, bgcolor: '#10B981' }}>
+                      {(u.name || 'U').charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>{u.name || 'Praxis User'}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <PlaceIcon sx={{ fontSize: 11, color: '#10B981' }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {u.distanceKm < 1 ? '< 1 km' : `${u.distanceKm} km`}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </GlassCard>
+                ))}
+              </Box>
+            </Box>
+          )}
 
         </ErrorBoundary>
       </Container>

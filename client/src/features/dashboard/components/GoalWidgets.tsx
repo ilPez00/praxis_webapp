@@ -1634,9 +1634,12 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], onPro
     } catch { toast.error('Failed to save objective.'); }
   };
 
-  // One card per root node (no parentId)
+  // One card per root node (no parentId) — handle both camelCase and snake_case from backend
   const nodes = Array.isArray(allNodes) ? allNodes : [];
-  const rootNodes = nodes.filter(n => !n.parentId);
+  const rootNodes = nodes.filter(n => {
+    const pid = n.parentId || (n as any).parent_id;
+    return !pid || pid === '' || pid === 'root' || pid === 'null';
+  });
   const trackerMap = Object.fromEntries(trackers.map(t => [t.type, t]));
   const betByNodeId = Object.fromEntries(activeBets.map(b => [b.goal_node_id, b]));
 
