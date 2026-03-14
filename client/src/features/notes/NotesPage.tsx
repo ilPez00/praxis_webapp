@@ -170,7 +170,7 @@ const NotesPage: React.FC = () => {
 
           {/* Right Column - Trackers */}
           <Grid size={{ xs: 12, md: 8 }}>
-            <TrackerSection />
+            <TrackerSection userId={currentUserId || ''} />
           </Grid>
         </Grid>
 
