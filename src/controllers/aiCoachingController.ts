@@ -250,9 +250,10 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('User ID not found.');
 
-  // Fetch admin status for error reporting
-  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).single();
+  // Fetch profile for admin status and minimal_ai_mode setting
+  const { data: profile } = await supabase.from('profiles').select('is_admin, minimal_ai_mode').eq('id', userId).single();
   const isAdmin = !!profile?.is_admin;
+  const useLLM = !profile?.minimal_ai_mode; // true = premium LLM, false = template mode
 
   if (!aiCoachingService.isConfigured) {
     return res.status(503).json({
@@ -261,11 +262,11 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
     });
   }
 
-  logger.info(`[AI Coach] Generating full report for user ${userId}`);
+  logger.info(`[AI Coach] Generating full report for user ${userId} (useLLM: ${useLLM})`);
 
   try {
     const context = await buildContext(userId);
-    const report = await aiCoachingService.generateFullReport(context);
+    const report = await aiCoachingService.generateFullReport(context, useLLM);
     res.json(report);
   } catch (err: any) {
     logger.error('[AI Coach] Report generation failed:', err.message);
@@ -325,6 +326,10 @@ export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response,
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated.');
 
+  // Fetch minimal_ai_mode setting
+  const { data: profile } = await supabase.from('profiles').select('language, minimal_ai_mode').eq('id', userId).single();
+  const useLLM = !profile?.minimal_ai_mode; // true = premium LLM, false = template mode
+
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const since = sevenDaysAgo.toISOString();
@@ -359,17 +364,15 @@ export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response,
     ? `${checkins.length}/7 days checked in. Wins: ${(checkins as any[]).map((c: any) => c.win_of_the_day).filter(Boolean).join(', ') || 'none logged'}.`
     : 'No check-ins this week.';
 
-  const prompt = `You are Axiom. Write a short (3-4 sentences), personal, emotionally intelligent weekly narrative recap for the user.
-
-Their week in data:
-Check-ins: ${checkinText}
-Journal entries:
-${journalText}
-
-Voice: direct, warm, like a sparring partner who has been watching. No bullet points. Reference specific goals and moods from their entries. End with one sharp challenge for next week.`;
+  const stats = {
+    language: profile?.language || 'en',
+    checkinsThisWeek: checkins.length,
+    goalsUpdatedThisWeek: nodes.filter((n: any) => n.updated_at && new Date(n.updated_at) >= sevenDaysAgo).length,
+    journalEntries: entries.length,
+  };
 
   try {
-    const narrative = await aiCoachingService['runWithFallback'](prompt);
+    const narrative = await aiCoachingService.generateWeeklyNarrative(stats, useLLM);
     res.json({ narrative, generatedAt: new Date().toISOString() });
   } catch (err: any) {
     const { message, code, detailed } = friendlyAiError(err);
@@ -425,7 +428,7 @@ export const triggerBriefUpdate = catchAsync(async (req: Request, res: Response,
 // ---------------------------------------------------------------------------
 
 export const requestCoaching = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userPrompt } = req.body;
+  const { userPrompt, useBoost } = req.body;
   const userId = req.user?.id;
 
   if (!userId) throw new UnauthorizedError('User ID not found.');
@@ -433,10 +436,12 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
     return res.status(400).json({ message: 'userPrompt is required.' });
   }
 
-  // Fetch profile for tier check
-  const { data: profile } = await supabase.from('profiles').select('is_admin, is_premium, praxis_points').eq('id', userId).single();
+  // Fetch profile for tier check and minimal_ai_mode setting
+  const { data: profile } = await supabase.from('profiles').select('is_admin, is_premium, praxis_points, minimal_ai_mode').eq('id', userId).single();
   const isAdmin = !!profile?.is_admin;
   const isPro = profile?.is_premium || isAdmin;
+  // Axiom Boost (useBoost=true) lets premium/admin users force LLM even when minimal_ai_mode is on
+  const useLLM = isPro && (useBoost === true || !profile?.minimal_ai_mode);
 
   // Free-tier: charge PP per message
   if (!isPro) {
@@ -469,7 +474,7 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
       message_type: 'text'
     });
 
-    const response = await aiCoachingService.generateCoachingResponse(userPrompt.trim(), context);
+    const response = await aiCoachingService.generateCoachingResponse(userPrompt.trim(), context, useLLM);
 
     // Log Axiom's answer to the database
     await supabase.from('messages').insert({

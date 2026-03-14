@@ -172,7 +172,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
   // Fetch user's premium status and edit count
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, is_premium, is_admin, goal_tree_edit_count, praxis_points, current_streak, domain_proficiency')
+    .select('id, is_premium, is_admin, goal_tree_edit_count, praxis_points, current_streak, domain_proficiency, last_activity_date, onboarding_completed')
     .eq('id', userId)
     .single();
 

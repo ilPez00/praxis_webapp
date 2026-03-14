@@ -650,3 +650,109 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS preferred_language TEXT DEF
 
 -- Sparring open node IDs
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS sparring_open_node_ids JSONB DEFAULT '[]'::jsonb;
+
+================================================================================
+MINIMAL AI MODE (Session 73 — 2026-03-14)
+================================================================================
+
+Praxis now defaults to MINIMAL AI MODE — template-based responses, zero LLM calls.
+This reduces API costs, improves response speed, and keeps core features AI-free.
+
+## What Changed
+
+1. **Matching Engine** — Pure rule-based scoring (no embeddings)
+   - Domain overlap (Jaccard similarity): 60% weight
+   - Progress similarity: 25% weight
+   - Structure similarity (depth + node count): 15% weight
+   - File: `src/services/MatchingEngineService.ts`
+
+2. **AI Coaching** — Templates first, LLM optional
+   - Default: template-based motivation, strategy, network advice
+   - Premium "Axiom Boost": real Gemini/DeepSeek call
+   - All methods accept `useLLM: boolean = false` parameter
+   - File: `src/services/AICoachingService.ts`
+
+3. **Settings Toggle** — User controls AI level
+   - Settings → AI Features → "Minimal AI Mode" toggle
+   - Default: ON (templates only)
+   - OFF = enables premium LLM features
+   - Stored in: `profiles.minimal_ai_mode` (BOOLEAN, default TRUE)
+
+## SQL Migration
+
+Run in Supabase SQL Editor:
+
+  ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS minimal_ai_mode BOOLEAN DEFAULT TRUE;
+
+  CREATE INDEX IF NOT EXISTS idx_profiles_minimal_ai_mode 
+    ON public.profiles(minimal_ai_mode);
+
+Or re-run the full `migrations/setup.sql` (idempotent).
+
+## Backend Integration
+
+When calling coaching services, read user's preference:
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('minimal_ai_mode')
+    .eq('id', userId)
+    .single();
+
+  const useLLM = !profile?.minimal_ai_mode;  // true = premium LLM
+  const report = await aiCoachingService.generateFullReport(context, useLLM);
+
+## Premium "Axiom Boost" Button
+
+For premium users with minimal_ai_mode = FALSE:
+
+  - Show "🔮 Axiom Boost" button in coaching UI
+  - On click: call coaching service with `useLLM = true`
+  - Gate behind: `user.is_premium === true`
+  - Cost: 1 boost = 100 Praxis Points (or unlimited for Pro subscribers)
+
+## Features That Remain 100% AI-Free
+
+- Goal tree visualization
+- Streak calculation
+- Betting system
+- Leaderboard
+- Grading & weight recalibration
+- Analytics & progress tracking
+- Matching (rule-based)
+
+## Why Minimal AI?
+
+1. **Cost**: LLM calls are expensive at scale
+2. **Speed**: Templates respond instantly vs 2-5s API latency
+3. **Reliability**: No API quota limits or rate limiting
+4. **User Control**: Some users prefer no AI; some want premium AI
+5. **Focus**: Praxis is a goal journal first, AI features are optional spice
+
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SESSION (2026-03-14) — MINIMAL AI MODE MIGRATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHERE: Supabase SQL Editor → https://supabase.com/dashboard/project/_/sql
+
+WHAT: Run migrations/2026-03-14-minimal-ai-mode.sql
+  Adds `minimal_ai_mode BOOLEAN DEFAULT TRUE` to the profiles table.
+  All users start in template mode (no LLM costs). They can opt in to LLM
+  via Settings → AI Features → "Minimal AI Mode" toggle.
+
+SQL TO RUN:
+  ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS minimal_ai_mode BOOLEAN DEFAULT TRUE;
+
+  CREATE INDEX IF NOT EXISTS idx_profiles_minimal_ai_mode
+    ON public.profiles(minimal_ai_mode);
+
+SUCCESS: Query runs without error. Check a profile row has the new column.
+
+NOTE: Sparring tables (sparring_requests, sparring_partners) also need to exist.
+  Run the full setup.sql if those tables are missing.
+
+================================================================================

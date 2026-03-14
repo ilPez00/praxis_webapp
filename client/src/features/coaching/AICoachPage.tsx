@@ -35,6 +35,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import LockIcon from '@mui/icons-material/Lock';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 
 interface StrategyItem {
   goal: string;
@@ -172,18 +173,18 @@ const AICoachPage: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat]);
 
-  const handleAsk = async () => {
+  const handleAsk = async (boost = false) => {
     const q = question.trim();
     if (!q || asking) return;
     setQuestion('');
     setAsking(true);
-    setChat(prev => [...prev, { role: 'user', text: q }]);
+    setChat(prev => [...prev, { role: 'user', text: boost ? `🔮 [Axiom Boost] ${q}` : q }]);
     try {
       const headers = await getAuthHeaders();
       const res = await fetch(`${API_URL}/ai-coaching/request`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ userPrompt: q }),
+        body: JSON.stringify({ userPrompt: q, useBoost: boost }),
       });
       const body = await res.json().catch(() => ({}));
       if (res.status === 402) {
@@ -365,10 +366,31 @@ const AICoachPage: React.FC = () => {
           </Stack>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <TextField fullWidth multiline maxRows={4} placeholder="Ask Axiom…" value={question} onChange={e => setQuestion(e.target.value)} size="small" />
-            <IconButton onClick={handleAsk} disabled={!question.trim() || asking} sx={{ bgcolor: 'primary.main', color: '#0A0B14', borderRadius: '12px' }}>
+            <IconButton onClick={() => handleAsk(false)} disabled={!question.trim() || asking} sx={{ bgcolor: 'primary.main', color: '#0A0B14', borderRadius: '12px' }}>
               {asking ? <CircularProgress size={18} color="inherit" /> : <SendIcon fontSize="small" />}
             </IconButton>
           </Box>
+          {!isFree && (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<PsychologyIcon />}
+              disabled={!question.trim() || asking}
+              onClick={() => handleAsk(true)}
+              sx={{
+                mt: 1,
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                borderColor: 'rgba(167,139,250,0.5)',
+                color: '#A78BFA',
+                background: 'rgba(139,92,246,0.06)',
+                '&:hover': { background: 'rgba(139,92,246,0.14)', borderColor: '#A78BFA' },
+              }}
+            >
+              🔮 Axiom Boost — full LLM response
+            </Button>
+          )}
         </Box>
       </Stack>
     </Container>

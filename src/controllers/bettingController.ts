@@ -209,7 +209,7 @@ export const resolveBetsOnGoalCompletion = async (userId: string, goalNodeId: st
   try {
     const { data: activeBets } = await supabase
       .from('bets')
-      .select('id, user_id, goal_node_id, stake_points, status')
+      .select('id, user_id, goal_node_id, stake_points, status, goal_name')
       .eq('user_id', userId)
       .eq('goal_node_id', goalNodeId)
       .eq('status', 'active');
