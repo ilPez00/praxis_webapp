@@ -41,13 +41,35 @@ const DesktopWidget: React.FC = () => {
         if (axiomRes.status === 'fulfilled') setLastAxiomMessage(axiomRes.value.data?.content || null);
 
         // Sync to native if available
+        const widgetData = {
+          streak: userRes.status === 'fulfilled' ? userRes.value.data.streak : 0,
+          pp: userRes.status === 'fulfilled' ? userRes.value.data.praxisPoints : 0,
+          quote: getAxiomQuote(userRes.status === 'fulfilled' ? userRes.value.data.streak : 0),
+          trackers: trackersRes.status === 'fulfilled' ? trackersRes.value.data?.total_entries : 0,
+          lastAxiom: axiomRes.status === 'fulfilled' ? axiomRes.value.data?.content : null,
+          goalName: currentUser?.goalTree?.[0]?.name || '',
+          goalProgress: currentUser?.goalTree?.[0]?.progress || 0
+        };
+
         if ((window as any).electron?.syncWidgetData) {
-          (window as any).electron.syncWidgetData({
-            streak: userRes.status === 'fulfilled' ? userRes.value.data.streak : 0,
-            pp: userRes.status === 'fulfilled' ? userRes.value.data.praxisPoints : 0,
-            quote: getAxiomQuote(userRes.status === 'fulfilled' ? userRes.value.data.streak : 0),
-            trackers: trackersRes.status === 'fulfilled' ? trackersRes.value.data?.total_entries : 0,
-            lastAxiom: axiomRes.status === 'fulfilled' ? axiomRes.value.data?.content : null
+          (window as any).electron.syncWidgetData(widgetData);
+        }
+
+        // Android WebView interface
+        if ((window as any).AndroidWidget?.syncWidgetData) {
+          (window as any).AndroidWidget.syncWidgetData(JSON.stringify(widgetData));
+        }
+
+        // Linux Electron interface
+        if ((window as any).electronAPI?.saveWidgetData) {
+          (window as any).electronAPI.saveWidgetData({
+            streak: widgetData.streak,
+            praxisPoints: widgetData.pp,
+            axiomQuote: widgetData.quote,
+            trackerCount: widgetData.trackers,
+            lastAxiomMessage: widgetData.lastAxiom,
+            goalName: widgetData.goalName,
+            goalProgress: widgetData.goalProgress
           });
         }
       }

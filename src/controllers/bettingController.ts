@@ -112,6 +112,24 @@ export const getUserBets = catchAsync(async (req: Request, res: Response, _next:
 });
 
 /**
+ * GET /bets/bet/:betId
+ * Returns a single bet by ID.
+ */
+export const getBetById = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { betId } = req.params;
+
+  const { data, error } = await supabase
+    .from('bets')
+    .select('id, user_id, goal_node_id, goal_name, deadline, stake_points, status, outcome, created_at')
+    .eq('id', betId)
+    .single();
+
+  if (error || !data) throw new NotFoundError('Bet not found.');
+
+  res.json(data);
+});
+
+/**
  * DELETE /bets/:betId
  * Cancel a bet (only if still active). Refunds stake_points.
  * Body: { userId }
