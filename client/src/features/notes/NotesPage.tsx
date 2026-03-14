@@ -50,11 +50,18 @@ const NotesPage: React.FC = () => {
           .eq('user_id', currentUserId)
           .single();
 
+        console.log('[NotesPage] Goal tree response:', treeRes);
+        
         if (treeRes.data) {
+          const nodes = treeRes.data.nodes || [];
+          console.log('[NotesPage] Nodes:', nodes);
+          console.log('[NotesPage] Root nodes from API:', treeRes.data.rootNodes);
+          console.log('[NotesPage] First node structure:', nodes[0]);
+          
           setGoalTree({
             id: treeRes.data.id,
             userId: currentUserId,
-            nodes: treeRes.data.nodes || [],
+            nodes: nodes,
             rootNodes: treeRes.data.rootNodes || [],
           });
         }
