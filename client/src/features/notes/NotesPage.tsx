@@ -46,7 +46,7 @@ const NotesPage: React.FC = () => {
         // Fetch goal tree
         const treeRes = await supabase
           .from('goal_trees')
-          .select('nodes, rootNodes')
+          .select('nodes, root_nodes')
           .eq('user_id', currentUserId)
           .single();
 
@@ -54,15 +54,16 @@ const NotesPage: React.FC = () => {
         
         if (treeRes.data) {
           const nodes = treeRes.data.nodes || [];
+          const rootNodes = treeRes.data.root_nodes || [];
           console.log('[NotesPage] Nodes:', nodes);
-          console.log('[NotesPage] Root nodes from API:', treeRes.data.rootNodes);
+          console.log('[NotesPage] Root nodes from API:', rootNodes);
           console.log('[NotesPage] First node structure:', nodes[0]);
           
           setGoalTree({
             id: treeRes.data.id,
             userId: currentUserId,
             nodes: nodes,
-            rootNodes: treeRes.data.rootNodes || [],
+            rootNodes: rootNodes,
           });
         }
 
