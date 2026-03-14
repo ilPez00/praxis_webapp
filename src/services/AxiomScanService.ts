@@ -162,7 +162,7 @@ export class AxiomScanService {
     }
   }
 
-  private static async generateDailyBrief(userId: string, userName: string, userCity: string) {
+  public static async generateDailyBrief(userId: string, userName: string, userCity: string) {
     const today = new Date().toISOString().slice(0, 10);
 
     // Build today's snapshot (lightweight — no full tracker_entries dump)

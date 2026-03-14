@@ -93,8 +93,20 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
           axios.get(`${API_URL}/checkins/today`, { params: { userId }, headers }),
         ]);
 
-        if (briefsRes.data && briefsRes.data.length > 0) {
-          setBriefs(briefsRes.data as BriefRecord[]);
+        let briefData = briefsRes.data as BriefRecord[];
+
+        // No brief yet today — generate one on-demand
+        if (!briefData || briefData.length === 0) {
+          try {
+            const genRes = await axios.post(`${API_URL}/ai-coaching/generate-axiom-brief`, {}, { headers });
+            if (genRes.data) briefData = [genRes.data];
+          } catch (genErr) {
+            console.warn('Axiom brief generation failed:', genErr);
+          }
+        }
+
+        if (briefData && briefData.length > 0) {
+          setBriefs(briefData);
           setBriefIndex(0);
         }
         setCheckedIn(checkinRes.data.checkedIn);
@@ -132,7 +144,8 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
     return (
       <GlassCard sx={{ p: 4, mb: 4, textAlign: 'center', borderRadius: '24px' }}>
         <CircularProgress size={32} sx={{ mb: 2 }} />
-        <Typography variant="h6" fontWeight={700}>Preparing your daily protocol...</Typography>
+        <Typography variant="h6" fontWeight={700}>Axiom is building your daily protocol...</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Scanning goals, matches & events — takes ~10s</Typography>
       </GlassCard>
     );
   }

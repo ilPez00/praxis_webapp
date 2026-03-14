@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AICoachingService, CoachingContext } from '../services/AICoachingService';
+import { AxiomScanService } from '../services/AxiomScanService';
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, UnauthorizedError, InternalServerError } from '../utils/appErrors';
@@ -496,4 +497,48 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
     const { message, code, detailed } = friendlyAiError(err, isAdmin);
     return res.status(503).json({ message, code, detailed });
   }
+});
+
+// ---------------------------------------------------------------------------
+// POST /ai-coaching/generate-axiom-brief
+// On-demand generation of today's Axiom daily brief.
+// Returns the existing brief immediately if one was already generated today.
+// ---------------------------------------------------------------------------
+
+export const generateAxiomBrief = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Return cached brief if already generated today
+  const { data: existing } = await supabase
+    .from('axiom_daily_briefs')
+    .select('date, brief, generated_at')
+    .eq('user_id', userId)
+    .eq('date', today)
+    .maybeSingle();
+
+  if (existing) return res.json(existing);
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('name, city')
+    .eq('id', userId)
+    .single();
+
+  await AxiomScanService.generateDailyBrief(
+    userId,
+    profile?.name ?? 'User',
+    profile?.city ?? 'Unknown',
+  );
+
+  const { data: fresh } = await supabase
+    .from('axiom_daily_briefs')
+    .select('date, brief, generated_at')
+    .eq('user_id', userId)
+    .eq('date', today)
+    .maybeSingle();
+
+  res.json(fresh ?? null);
 });

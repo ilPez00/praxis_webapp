@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requestReport, requestCoaching, getBrief, getDailyBrief, triggerBriefUpdate, getWeeklyNarrative } from '../controllers/aiCoachingController';
+import { requestReport, requestCoaching, getBrief, getDailyBrief, triggerBriefUpdate, getWeeklyNarrative, generateAxiomBrief } from '../controllers/aiCoachingController';
 import { requirePro } from '../middleware/requireTier';
 import { authenticateToken } from '../middleware/authenticateToken';
 
@@ -16,6 +16,9 @@ router.get('/weekly-narrative', ...requirePro, getWeeklyNarrative);
 
 // Trigger extra brief — free users pay PP, Pro users free (rate-limited 30 min)
 router.post('/trigger', authenticateToken, triggerBriefUpdate);
+
+// On-demand Axiom brief — free, generates today's brief if not yet available
+router.post('/generate-axiom-brief', authenticateToken, generateAxiomBrief);
 
 // Full coaching report (Pro only)
 router.post('/report', ...requirePro, requestReport);
