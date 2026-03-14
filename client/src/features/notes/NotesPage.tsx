@@ -163,7 +163,13 @@ const NotesPage: React.FC = () => {
                 streak={streak}
                 onTakeZenDay={() => navigate('/dashboard')}
               />
-              <ShareSnippetButton />
+              <ShareSnippetButton
+                name={user?.name || 'Praxis User'}
+                streak={streak}
+                points={user?.praxis_points || 0}
+                topGoal={goalTree?.nodes?.find(n => !n.parentId)?.name}
+                size="medium"
+              />
               <WeeklyNarrativeWidget userId={currentUserId || ''} />
             </Stack>
           </Grid>
