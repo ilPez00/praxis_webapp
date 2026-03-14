@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { supabase } from '../../lib/supabase';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
-import GoalTreeTimeline from './components/GoalTreeTimeline';
+import GoalTreeRadial from './components/GoalTreeRadial';
 import TrackerSection from '../trackers/TrackerSection';
 import NodeJournalDrawer from './NodeJournalDrawer';
 import toast from 'react-hot-toast';
@@ -530,7 +530,7 @@ const GoalTreePage: React.FC = () => {
         </Box>
       ) : (
         <Box sx={{ width: '100%' }}>
-          <GoalTreeTimeline
+          <GoalTreeRadial
             rootNodes={treeData}
             domainProficiency={domainProficiency}
             memberSince={memberSince}
