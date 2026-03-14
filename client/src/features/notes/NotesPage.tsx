@@ -8,6 +8,7 @@ import TrackerSection from '../trackers/TrackerSection';
 import BalanceWidget from '../dashboard/components/BalanceWidget';
 import WeeklyNarrativeWidget from '../dashboard/components/WeeklyNarrativeWidget';
 import ShareSnippetButton from '../../components/common/ShareSnippetButton';
+import GoalWidgets from '../dashboard/components/GoalWidgets';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 import {
@@ -28,6 +29,8 @@ const NotesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeBets, setActiveBets] = useState<any[]>([]);
   const [streak, setStreak] = useState<number>(0);
+  const [localStreak, setLocalStreak] = useState<number | null>(null);
+  const [localPoints, setLocalPoints] = useState<number | null>(null);
 
   const currentUserId = user?.id;
 
@@ -155,28 +158,46 @@ const NotesPage: React.FC = () => {
 
         {/* Main Content Grid */}
         <Grid container spacing={3}>
-          {/* Left Column - Balance & Share */}
+          {/* Left Column - Goal Widgets */}
+          <Grid size={{ xs: 12, md: 8 }}>
+            {currentUserId && goalTree?.nodes && (
+              <GoalWidgets
+                userId={currentUserId}
+                allNodes={goalTree.nodes}
+                activeBets={activeBets}
+                onProgressUpdate={(nodeId, newProgress) => {
+                  setGoalTree(prev => {
+                    if (!prev) return prev;
+                    return {
+                      ...prev,
+                      nodes: (prev.nodes || []).map((n: any) =>
+                        n.id === nodeId ? { ...n, progress: newProgress } : n
+                      ),
+                    };
+                  });
+                }}
+              />
+            )}
+          </Grid>
+
+          {/* Right Column - Balance & Trackers */}
           <Grid size={{ xs: 12, md: 4 }}>
             <Stack spacing={3}>
               <BalanceWidget
                 nodes={goalTree?.nodes || []}
-                streak={streak}
+                streak={localStreak ?? streak}
                 onTakeZenDay={() => navigate('/dashboard')}
               />
               <ShareSnippetButton
                 name={user?.name || 'Praxis User'}
-                streak={streak}
-                points={user?.praxis_points || 0}
+                streak={localStreak ?? streak}
+                points={localPoints ?? (user?.praxis_points || 0)}
                 topGoal={goalTree?.nodes?.find(n => !n.parentId)?.name}
                 size="medium"
               />
               <WeeklyNarrativeWidget userId={currentUserId || ''} />
+              <TrackerSection userId={currentUserId || ''} />
             </Stack>
-          </Grid>
-
-          {/* Right Column - Trackers */}
-          <Grid size={{ xs: 12, md: 8 }}>
-            <TrackerSection userId={currentUserId || ''} />
           </Grid>
         </Grid>
 
