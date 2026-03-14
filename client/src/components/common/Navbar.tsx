@@ -53,6 +53,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ForumIcon from '@mui/icons-material/Forum';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import NoteIcon from '@mui/icons-material/Note';
 
 interface AppNotification {
   id: string;
@@ -695,6 +696,7 @@ const Navbar: React.FC = () => {
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
+                { label: 'Notes', to: '/notes', icon: <NoteIcon />, primary: true },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
                 { label: 'Settings', to: '/settings', icon: <SettingsIcon />, primary: false },

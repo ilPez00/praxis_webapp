@@ -40,6 +40,7 @@ const FriendsPage = React.lazy(() => import('../features/friends/FriendsPage'));
 const PostThreadPage = React.lazy(() => import('../features/posts/PostThreadPage'));
 const SettingsPage = React.lazy(() => import('../features/settings/SettingsPage'));
 const ChallengesPage = React.lazy(() => import('../features/challenges/ChallengesPage'));
+const NotesPage = React.lazy(() => import('../features/notes/NotesPage'));
 
 interface RouteConfig {
   path: string;
@@ -94,6 +95,7 @@ const routes: RouteConfig[] = [
   { path: '/posts/:postId', element: PostThreadPage, private: true },
   { path: '/settings', element: SettingsPage, private: true },
   { path: '/challenges', element: ChallengesPage, private: true },
+  { path: '/notes', element: NotesPage, private: true },
 ];
 
 export default routes;
