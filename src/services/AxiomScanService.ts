@@ -377,7 +377,6 @@ export class AxiomScanService {
 
 CONTEXT:
 - Streak: ${metrics.checkinStreak} days
-- Archetype: ${metrics.archetype}
 - Motivation style: ${metrics.motivationStyle}
 - Risk factors: ${metrics.riskFactors?.join(', ') || 'None'}
 - Goals: ${JSON.stringify(goalsSlice)}
@@ -393,14 +392,14 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
     {
       "time": "Morning (First 2 Hours)",
       "task": "Highly specific first action tied to their #1 goal or biggest opportunity. Include exact duration, what to prepare, and why this specific timing matters for them.",
-      "alignment": "Connect this task to their archetype, motivation style, and long-term vision. Explain WHY this specific morning routine compounds for their situation.",
+      "alignment": "Connect this task to their motivation style and long-term vision. Explain WHY this specific morning routine compounds for their situation.",
       "duration": "Specific time like '15 min' or '30 min'",
       "preparation": "What to set up the night before or have ready"
     },
     {
       "time": "Afternoon (Deep Work Block)",
       "task": "Specific action on their most neglected or highest-leverage goal. Reference the goal by name and give exact next step (not vague advice).",
-      "alignment": "Explain how this afternoon block addresses their specific risk factors or archetype tendencies. Why THIS action for THIS person today.",
+      "alignment": "Explain how this afternoon block addresses their specific risk factors. Why THIS action for THIS person today.",
       "duration": "Specific time like '25 min' or '50 min'",
       "preparation": "What to close/eliminate to protect this block"
     },
@@ -418,7 +417,7 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
     "target": "One specific, slightly uncomfortable action that directly addresses their primary risk factor",
     "terms": "Motivating framing that acknowledges the discomfort while connecting to their deeper why",
     "deadline": "Today only - specific time like 'by 8pm' or 'before bed'",
-    "reward": "Intrinsic reward they'll feel (not external) - connect to their archetype"
+    "reward": "Intrinsic reward they'll feel (not external) - connect to their personal values"
   },
   
   "resources": [
@@ -438,7 +437,7 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
 }
 
 RULES:
-1. **Radical Personalization**: Every sentence must reference something specific about THIS user - their goals by name, their streak, their archetype, their recent activity. No generic advice.
+1. **Radical Personalization**: Every sentence must reference something specific about THIS user - their goals by name, their streak, their recent activity. No generic advice.
 
 2. **Routine Specificity**: Each routine task must include:
    - Exact duration (15 min, 25 min, etc.)
@@ -450,7 +449,7 @@ RULES:
    - Directly address their #1 risk factor
    - Feel slightly uncomfortable but achievable
    - Have a clear deadline (today only)
-   - Connect to their deeper identity (archetype)
+   - Connect to their deeper values and identity
 
 4. **Resource Insights**: Show you see THEIR data:
    - Reference current progress % on goals
@@ -458,7 +457,9 @@ RULES:
    - Acknowledge patterns (streaks, gaps, themes)
    - Give advice that compounds for their specific situation
 
-5. **TONE**: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out. Speak as a wise mentor who knows them deeply.`;
+5. **TONE**: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out. Speak as a wise mentor who knows them deeply.
+
+6. **NO ARCHETYPE LABELS**: Do not mention archetypes, personality types, or psychological categories. Speak to the person directly without categorizing them.`;
 
       const rawText = await aiCoaching.runWithFallback(prompt);
 
