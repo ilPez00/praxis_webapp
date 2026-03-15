@@ -125,15 +125,145 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
             </GlassCard>
           </Grid>
 
-          {/* Strategic Insight */}
+          {/* Daily Routine - Expanded */}
+          <Grid size={{ xs: 12 }}>
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 2 }}>📅 YOUR PERSONALIZED ROUTINE</Typography>
+              <Stack spacing={2}>
+                {Array.isArray(data?.routine) && data.routine.length > 0 ? data.routine.map((item, i) => (
+                  <Box 
+                    key={i} 
+                    sx={{ 
+                      p: 2.5, 
+                      borderRadius: 3, 
+                      bgcolor: 'rgba(167,139,250,0.06)', 
+                      border: '1px solid rgba(167,139,250,0.2)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Time badge */}
+                    <Box sx={{ 
+                      position: 'absolute', 
+                      top: 0, 
+                      right: 0, 
+                      bgcolor: 'rgba(167,139,250,0.15)', 
+                      px: 1.5, 
+                      py: 0.5,
+                      borderBottomLeftRadius: '12px',
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, fontSize: '0.6rem' }}>
+                        {item.time || `Block ${i + 1}`}
+                      </Typography>
+                    </Box>
+                    
+                    {/* Duration chip */}
+                    {item.duration && (
+                      <Chip 
+                        label={item.duration} 
+                        size="small" 
+                        sx={{ 
+                          mb: 1.5, 
+                          height: 20, 
+                          fontSize: '0.55rem', 
+                          bgcolor: 'rgba(16,185,129,0.15)', 
+                          color: '#10B981',
+                          border: '1px solid rgba(16,185,129,0.3)',
+                        }} 
+                      />
+                    )}
+                    
+                    {/* Task */}
+                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.85rem', mb: 1.5, lineHeight: 1.5 }}>
+                      {item.task || 'Focus on your most important goal'}
+                    </Typography>
+                    
+                    {/* Preparation */}
+                    {item.preparation && (
+                      <Box sx={{ 
+                        mb: 1.5, 
+                        p: 1.5, 
+                        bgcolor: 'rgba(255,255,255,0.03)', 
+                        borderRadius: 2,
+                        border: '1px dashed rgba(255,255,255,0.1)',
+                      }}>
+                        <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                          🎯 PREPARE
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>
+                          {item.preparation}
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    {/* Alignment - Why this matters */}
+                    <Box sx={{ 
+                      p: 1.5, 
+                      bgcolor: 'rgba(139,92,246,0.08)', 
+                      borderRadius: 2,
+                      border: '1px solid rgba(139,92,246,0.15)',
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                        💡 WHY THIS MATTERS FOR YOU
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
+                        {item.alignment || 'This builds momentum toward your most important goals.'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )) : (
+                  <Box sx={{ p: 3, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 3 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No routine generated. Check back after your next daily brief.
+                    </Typography>
+                  </Box>
+                )}
+              </Stack>
+            </Box>
+          </Grid>
+
+          {/* Strategic Insight - Expanded */}
           <Grid size={{ xs: 12, md: 7 }}>
             <Box sx={{ mt: 1 }}>
-              <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 800, display: 'block', mb: 1 }}>GOAL RESOURCES</Typography>
-              <Stack spacing={1}>
-                {Array.isArray(data?.resources) && data.resources.length > 0 ? data.resources.slice(0, 2).map((res, i) => (
-                  <Box key={i} sx={{ bgcolor: 'rgba(255,255,255,0.03)', p: 1.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700, fontSize: '0.65rem' }}>{String(res?.goal || 'General')}</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }}>{String(res?.suggestion || 'Reviewing progress...')}</Typography>
+              <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 800, display: 'block', mb: 2 }}>🎯 GOAL RESOURCES</Typography>
+              <Stack spacing={1.5}>
+                {Array.isArray(data?.resources) && data.resources.length > 0 ? data.resources.map((res, i) => (
+                  <Box 
+                    key={i} 
+                    sx={{ 
+                      p: 2, 
+                      borderRadius: 3, 
+                      bgcolor: 'rgba(16,185,129,0.06)', 
+                      border: '1px solid rgba(16,185,129,0.2)' 
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 800, fontSize: '0.65rem', display: 'block', mb: 0.5 }}>
+                      {String(res?.goal || 'General Goal')}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.85rem', mb: 1, lineHeight: 1.4 }}>
+                      {String(res?.suggestion || 'Review your progress and take the next step')}
+                    </Typography>
+                    {res?.details && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.5, mb: 1 }}>
+                        {res.details}
+                      </Typography>
+                    )}
+                    {res?.estimatedImpact && (
+                      <Box sx={{ 
+                        mt: 1, 
+                        p: 1, 
+                        bgcolor: 'rgba(16,185,129,0.08)', 
+                        borderRadius: 2,
+                        border: '1px solid rgba(16,185,129,0.15)',
+                      }}>
+                        <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700, display: 'block' }}>
+                          ⚡ IMPACT
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {res.estimatedImpact}
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
                 )) : (
                   <Typography variant="caption" color="text.disabled">No specific resources for today.</Typography>
@@ -142,13 +272,89 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
             </Box>
           </Grid>
 
-          {/* Competitive Call */}
+          {/* Competitive Challenge - Expanded */}
           <Grid size={{ xs: 12, md: 5 }}>
             <Box sx={{ mt: 1 }}>
-              <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block', mb: 1 }}>DAILY CHALLENGE</Typography>
-              <Box sx={{ p: 1.5, bgcolor: 'rgba(245,158,11,0.05)', borderRadius: 2, border: '1px dashed #F59E0B' }}>
-                <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block' }}>{String(data?.challenge?.type || 'Protocol')}</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }}>{String(data?.challenge?.target || 'Stay consistent today')}</Typography>
+              <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block', mb: 2 }}>⚡ DAILY CHALLENGE</Typography>
+              <Box sx={{ 
+                p: 2.5, 
+                bgcolor: 'rgba(245,158,11,0.06)', 
+                borderRadius: 3, 
+                border: '2px dashed rgba(245,158,11,0.3)',
+                position: 'relative',
+              }}>
+                {/* Type badge */}
+                <Chip 
+                  label={String(data?.challenge?.type || 'BET').toUpperCase()} 
+                  size="small"
+                  sx={{ 
+                    mb: 1.5, 
+                    fontWeight: 800, 
+                    bgcolor: 'rgba(245,158,11,0.2)', 
+                    color: '#F59E0B',
+                    border: '1px solid rgba(245,158,11,0.4)',
+                  }}
+                />
+                
+                {/* Target */}
+                <Typography variant="body1" sx={{ fontWeight: 800, fontSize: '0.95rem', mb: 1.5, lineHeight: 1.4 }}>
+                  {String(data?.challenge?.target || 'Stay consistent and show up for your goals today')}
+                </Typography>
+                
+                {/* Terms */}
+                {data?.challenge?.terms && (
+                  <Box sx={{ 
+                    mb: 1.5, 
+                    p: 1.5, 
+                    bgcolor: 'rgba(255,255,255,0.05)', 
+                    borderRadius: 2,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}>
+                    <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                      🎯 WHY THIS MATTERS
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
+                      {data.challenge.terms}
+                    </Typography>
+                  </Box>
+                )}
+                
+                {/* Deadline */}
+                {data?.challenge?.deadline && (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1, 
+                    mb: 1,
+                    p: 1, 
+                    bgcolor: 'rgba(239,68,68,0.1)', 
+                    borderRadius: 2,
+                  }}>
+                    <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 800 }}>
+                      ⏰ DEADLINE
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {data.challenge.deadline}
+                    </Typography>
+                  </Box>
+                )}
+                
+                {/* Reward */}
+                {data?.challenge?.reward && (
+                  <Box sx={{ 
+                    p: 1.5, 
+                    bgcolor: 'rgba(245,158,11,0.08)', 
+                    borderRadius: 2,
+                    border: '1px solid rgba(245,158,11,0.2)',
+                  }}>
+                    <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                      🏆 YOUR REWARD
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
+                      {data.challenge.reward}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </Box>
           </Grid>

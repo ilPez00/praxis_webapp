@@ -387,24 +387,78 @@ ${recapText ? `- Yesterday's activity: ${recapText}` : '- Yesterday: No activity
 
 Respond ONLY with valid JSON (no markdown, no backticks) matching this exact shape:
 {
-  "message": "Warm personalized greeting (2-3 sentences) acknowledging their specific journey and goals",
+  "message": "Warm personalized greeting (2-3 sentences) acknowledging their specific journey, recent wins, and current challenges. Reference their streak if > 0, mention a specific goal by name, and acknowledge something from their recent activity.",
+  
   "routine": [
-    {"time": "Morning", "task": "specific action tied to their goals", "alignment": "why it matters for them"},
-    {"time": "Afternoon", "task": "specific action", "alignment": "why"},
-    {"time": "Evening", "task": "specific action", "alignment": "why"}
+    {
+      "time": "Morning (First 2 Hours)",
+      "task": "Highly specific first action tied to their #1 goal or biggest opportunity. Include exact duration, what to prepare, and why this specific timing matters for them.",
+      "alignment": "Connect this task to their archetype, motivation style, and long-term vision. Explain WHY this specific morning routine compounds for their situation.",
+      "duration": "Specific time like '15 min' or '30 min'",
+      "preparation": "What to set up the night before or have ready"
+    },
+    {
+      "time": "Afternoon (Deep Work Block)",
+      "task": "Specific action on their most neglected or highest-leverage goal. Reference the goal by name and give exact next step (not vague advice).",
+      "alignment": "Explain how this afternoon block addresses their specific risk factors or archetype tendencies. Why THIS action for THIS person today.",
+      "duration": "Specific time like '25 min' or '50 min'",
+      "preparation": "What to close/eliminate to protect this block"
+    },
+    {
+      "time": "Evening (Reflection & Reset)",
+      "task": "Specific reflection or preparation ritual. Tie to their check-in streak, journal themes, or goal progress tracking.",
+      "alignment": "Explain how this evening practice reinforces their identity and sets up tomorrow's success. Connect to their motivation style.",
+      "duration": "Specific time like '10 min' or '20 min'",
+      "preparation": "What to have ready or review"
+    }
   ],
-  "challenge": {"type": "bet", "target": "clear specific action", "terms": "motivating framing"},
+  
+  "challenge": {
+    "type": "bet",
+    "target": "One specific, slightly uncomfortable action that directly addresses their primary risk factor",
+    "terms": "Motivating framing that acknowledges the discomfort while connecting to their deeper why",
+    "deadline": "Today only - specific time like 'by 8pm' or 'before bed'",
+    "reward": "Intrinsic reward they'll feel (not external) - connect to their archetype"
+  },
+  
   "resources": [
-    {"goal": "goal name from their list", "suggestion": "actionable advice", "details": "specific insight based on their progress"}
+    {
+      "goal": "Exact goal name from their list",
+      "suggestion": "Concrete next-step advice - what to do in the next 24 hours, not vague direction",
+      "details": "Specific insight based on their current progress %, recent activity, or tracker trends. Show you see THEIR situation.",
+      "estimatedImpact": "What will happen if they do this - connect to their motivation style"
+    },
+    {
+      "goal": "Second goal name (different from first)",
+      "suggestion": "Another concrete action for a different goal domain",
+      "details": "Show awareness of their progress or struggle in this area",
+      "estimatedImpact": "Specific benefit for them"
+    }
   ]
 }
 
 RULES:
-- Reference their ACTUAL goals by name
-- Routine tasks must be specific to their situation, not generic
-- Challenge should push them just outside comfort zone
-- Resources should give concrete next-step advice for 2-3 of their goals
-- TONE: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out.`;
+1. **Radical Personalization**: Every sentence must reference something specific about THIS user - their goals by name, their streak, their archetype, their recent activity. No generic advice.
+
+2. **Routine Specificity**: Each routine task must include:
+   - Exact duration (15 min, 25 min, etc.)
+   - Specific preparation step
+   - Connection to their actual goals (by name)
+   - Why this timing matters for THEIR situation
+
+3. **Challenge Design**: The challenge should:
+   - Directly address their #1 risk factor
+   - Feel slightly uncomfortable but achievable
+   - Have a clear deadline (today only)
+   - Connect to their deeper identity (archetype)
+
+4. **Resource Insights**: Show you see THEIR data:
+   - Reference current progress % on goals
+   - Mention recent tracker activity or lack thereof
+   - Acknowledge patterns (streaks, gaps, themes)
+   - Give advice that compounds for their specific situation
+
+5. **TONE**: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out. Speak as a wise mentor who knows them deeply.`;
 
       const rawText = await aiCoaching.runWithFallback(prompt);
 
