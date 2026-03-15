@@ -11,7 +11,6 @@ import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspac
 import NoteGoalDetail from './NoteGoalDetail';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
-import GlassCard from '../../components/common/GlassCard';
 import Slider from '@mui/material/Slider';
 
 import {
@@ -21,7 +20,6 @@ import {
   List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Avatar,
 } from '@mui/material';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
-import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
@@ -307,6 +305,17 @@ const NotesPage: React.FC = () => {
     setEditProgress(0);
   };
 
+  const handleAddGoalInDomain = (domain: string) => {
+    setEditingNode(null);
+    setNewGoalDomain(domain as Domain);
+    setIsBranching(true);
+    setEditName('');
+    setEditDesc('');
+    setEditMetric('');
+    setEditTargetDate('');
+    setEditProgress(0);
+  };
+
   const handleAddSubgoal = (parentId: string) => {
     const parent = flattenTree(treeData).find(n => n.id === parentId);
     if (parent) handleOpenEdit(parent, true);
@@ -562,25 +571,8 @@ const NotesPage: React.FC = () => {
           </Stack>
         </Box>
         
-        {treeData.length === 0 ? (
-          <GlassCard sx={{ p: 4, textAlign: 'center' }}>
-            <TrackChangesIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>No goals yet</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Start your journey by creating your first goal
-            </Typography>
-            <Button
-              variant="contained"
-              onClick={handleAddNewGoal}
-              startIcon={<AddCircleOutlineIcon />}
-              sx={{ borderRadius: '12px', fontWeight: 700 }}
-            >
-              Add Your First Goal
-            </Button>
-          </GlassCard>
-        ) : (
-          <Box sx={{ display: 'flex', height: { xs: 'auto', md: 'calc(100vh - 200px)' } }}>
-            {/* Tree panel */}
+        <Box sx={{ display: 'flex', height: { xs: 'auto', md: 'calc(100vh - 200px)' } }}>
+            {/* Tree panel — always shows all domains */}
             <Box sx={{
               width: { xs: '100%', md: '40%' },
               overflowY: 'auto',
@@ -592,6 +584,8 @@ const NotesPage: React.FC = () => {
                 onNodeSelect={handleNodeSelect}
                 onLogTracker={handleLogTracker}
                 onAddGoal={handleAddNewGoal}
+                onAddGoalInDomain={handleAddGoalInDomain}
+                onAddSubgoal={handleAddSubgoal}
               />
             </Box>
 
@@ -633,7 +627,6 @@ const NotesPage: React.FC = () => {
               </Box>
             )}
           </Box>
-        )}
 
         {/* Mobile: widget below tree */}
         {isMobile && currentUserId && selectedNode && (
