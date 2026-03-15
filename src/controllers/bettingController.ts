@@ -120,7 +120,7 @@ export const getBetById = catchAsync(async (req: Request, res: Response, _next: 
 
   const { data, error } = await supabase
     .from('bets')
-    .select('id, user_id, goal_node_id, goal_name, deadline, stake_points, status, outcome, created_at')
+    .select('*')
     .eq('id', betId)
     .single();
 
@@ -142,7 +142,7 @@ export const cancelBet = catchAsync(async (req: Request, res: Response, _next: N
 
   const { data: bet, error: fetchError } = await supabase
     .from('bets')
-    .select('id, user_id, goal_node_id, stake_points, status')
+    .select('*')
     .eq('id', betId)
     .single();
 
