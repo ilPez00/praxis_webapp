@@ -242,6 +242,7 @@ const AICoachPage: React.FC = () => {
           <Box sx={{ p: 3, borderRadius: 3, background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(245,158,11,0.06) 100%)', border: '1px solid rgba(139,92,246,0.2)' }}>
             <SectionHeader icon={<AutoAwesomeIcon />} label="Axiom Daily Protocol" color="#A78BFA" />
             <Grid container spacing={3}>
+              {dailyBrief.match && (
               <Grid size={{ xs: 12, md: 4 }}>
                 <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 800 }}>Primary Match</Typography>
                 <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => navigate(`/profile/${dailyBrief.match.id}`)}>
@@ -249,6 +250,8 @@ const AICoachPage: React.FC = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>{String(dailyBrief.match.reason)}</Typography>
                 </GlassCard>
               </Grid>
+              )}
+              {dailyBrief.event && (
               <Grid size={{ xs: 12, md: 4 }}>
                 <Typography variant="overline" sx={{ color: '#EC4899', fontWeight: 800 }}>Featured Event</Typography>
                 <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(String(dailyBrief.event.title))}`, '_blank')}>
@@ -256,6 +259,8 @@ const AICoachPage: React.FC = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>{String(dailyBrief.event.reason)}</Typography>
                 </GlassCard>
               </Grid>
+              )}
+              {dailyBrief.place && (
               <Grid size={{ xs: 12, md: 4 }}>
                 <Typography variant="overline" sx={{ color: '#6366F1', fontWeight: 800 }}>Visit Place</Typography>
                 <GlassCard sx={{ p: 2, mt: 1, cursor: 'pointer' }} onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(String(dailyBrief.place.name))}`, '_blank')}>
@@ -263,6 +268,7 @@ const AICoachPage: React.FC = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>{String(dailyBrief.place.reason)}</Typography>
                 </GlassCard>
               </Grid>
+              )}
               <Grid size={{ xs: 12 }}>
                 <Typography variant="overline" sx={{ color: '#10B981', fontWeight: 800 }}>Strategic Resources</Typography>
                 <Stack spacing={1.5} sx={{ mt: 1 }}>
