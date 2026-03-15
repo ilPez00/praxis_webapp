@@ -823,14 +823,123 @@ export const updateSystemConfig = catchAsync(async (req: Request, res: Response)
 
 /**
  * POST /admin/axiom/trigger-scan
+ * Triggers midnight scan that generates detailed LLM-powered Axiom daily briefs for ALL active users
  */
 export const triggerAxiomScan = catchAsync(async (_req: Request, res: Response) => {
-  // Run in background
-  AxiomScanService.runGlobalScan().catch(err => {
-    logger.error('[Admin] Manual Axiom scan background failure:', err.message);
-  });
+  logger.info('[Admin] Manual Axiom scan triggered by admin');
+  
+  // Run in background and track progress
+  const scanPromise = AxiomScanService.runGlobalScan()
+    .then(() => {
+      logger.info('[Admin] Manual Axiom scan completed successfully');
+    })
+    .catch(err => {
+      logger.error('[Admin] Manual Axiom scan background failure:', err.message);
+    });
 
-  res.json({ message: 'Global Axiom scan triggered in background.' });
+  // Don't wait for completion, but track it
+  scanPromise.catch(() => {});
+
+  res.json({ 
+    message: 'Global Axiom scan triggered in background. LLM-powered briefs will be generated for all active users.',
+    status: 'running',
+    note: 'Check server logs for progress. Briefs will appear in users axiom_daily_briefs table.'
+  });
+});
+
+/**
+ * POST /admin/axiom/generate-all-briefs
+ * Synchronously generates LLM-powered briefs for ALL active users (waits for completion)
+ * Use for testing or immediate deployment
+ */
+export const generateAllBriefs = catchAsync(async (_req: Request, res: Response) => {
+  logger.info('[Admin] Manual Axiom brief generation started (synchronous)');
+  
+  const today = new Date().toISOString().slice(0, 10);
+  const startTime = Date.now();
+  
+  // Get ALL active users
+  const { data: users, error: userError } = await supabase
+    .from('profiles')
+    .select('id, name, city, is_premium, is_admin, minimal_ai_mode, last_activity_date');
+
+  if (userError) throw userError;
+  if (!users || users.length === 0) {
+    return res.json({ message: 'No active users found', generated: 0 });
+  }
+
+  // Filter to active users (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const activeUsers = users.filter(u => 
+    !u.last_activity_date || new Date(u.last_activity_date) >= thirtyDaysAgo
+  );
+
+  logger.info(`[Admin] Generating briefs for ${activeUsers.length} active users`);
+
+  let successCount = 0;
+  let llmCount = 0;
+  let algorithmCount = 0;
+  let failCount = 0;
+
+  // Process users in batches of 3 to avoid rate limiting
+  const BATCH_SIZE = 3;
+  for (let i = 0; i < activeUsers.length; i += BATCH_SIZE) {
+    const batch = activeUsers.slice(i, i + BATCH_SIZE);
+    
+    const results = await Promise.allSettled(batch.map(async user => {
+      try {
+        // Force LLM usage for all users
+        await AxiomScanService.generateDailyBrief(
+          user.id, 
+          user.name || 'Student', 
+          user.city || 'Unknown', 
+          true // force LLM
+        );
+        
+        // Check if LLM was successful
+        const { data: brief } = await supabase
+          .from('axiom_daily_briefs')
+          .select('brief')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .maybeSingle();
+        
+        const source = brief?.brief?.source || 'unknown';
+        if (source === 'llm') {
+          llmCount++;
+        } else {
+          algorithmCount++;
+        }
+        
+        successCount++;
+        logger.info(`[Admin] Brief generated for ${user.name || user.id} (source: ${source})`);
+      } catch (err: any) {
+        failCount++;
+        logger.error(`[Admin] Failed for ${user.name || user.id}: ${err.message}`);
+      }
+    }));
+    
+    // Small pause between batches
+    if (i + BATCH_SIZE < activeUsers.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+  
+  const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+  
+  logger.info(`[Admin] Brief generation complete: ${successCount} succeeded, ${failCount} failed in ${duration}s`);
+  logger.info(`[Admin] LLM briefs: ${llmCount}, Algorithm briefs: ${algorithmCount}`);
+
+  res.json({
+    message: `Generated ${successCount} briefs in ${duration}s`,
+    total_users: activeUsers.length,
+    generated: successCount,
+    failed: failCount,
+    llm_briefs: llmCount,
+    algorithm_briefs: algorithmCount,
+    duration_seconds: duration,
+  });
 });
 
 /**

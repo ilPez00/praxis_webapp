@@ -344,6 +344,8 @@ const AdminPage: React.FC = () => {
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [updatingStrategy, setUpdatingStrategy] = useState(false);
   const [triggeringScan, setTriggeringScan] = useState(false);
+  const [generatingBriefs, setGeneratingBriefs] = useState(false);
+  const [generateResult, setGenerateResult] = useState<any>(null);
   const [forcePushUserId, setForcePushUserId] = useState<string>('');
   const [forcePushing, setForcePushing] = useState(false);
 
@@ -439,11 +441,35 @@ const AdminPage: React.FC = () => {
     try {
       const headers = await authHeaders();
       await fetch(`${API_URL}/admin/axiom/trigger-scan`, { method: 'POST', headers });
-      toast.success('Axiom scan triggered in background.');
+      toast.success('Axiom scan triggered in background. Check logs for progress.');
     } catch {
       toast.error('Failed to trigger scan.');
     } finally {
       setTriggeringScan(false);
+    }
+  };
+
+  const handleGenerateAllBriefs = async () => {
+    if (!window.confirm('Generate LLM-powered Axiom briefs for ALL active users? This will take 1-2 minutes.')) return;
+    setGeneratingBriefs(true);
+    setGenerateResult(null);
+    try {
+      const headers = await authHeaders();
+      const res = await fetch(`${API_URL}/admin/axiom/generate-all-briefs`, { 
+        method: 'POST', 
+        headers,
+      });
+      const data = await res.json();
+      setGenerateResult(data);
+      if (data.llm_briefs > 0) {
+        toast.success(`Generated ${data.generated} briefs (${data.llm_briefs} via LLM)!`);
+      } else {
+        toast.warning(`Generated ${data.generated} briefs (all algorithm fallback)`);
+      }
+    } catch (err: any) {
+      toast.error('Failed to generate briefs: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGeneratingBriefs(false);
     }
   };
 
@@ -1986,9 +2012,10 @@ const AdminPage: React.FC = () => {
             <Grid size={{ xs: 12 }}>
               <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 3 }}>
                 <CardContent sx={{ p: 3 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Manual Scan Trigger</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>🌙 Midnight Scan Trigger</Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Manually initiate the midnight automated scan. This will process all active users, analyze their activity, and generate new daily protocols. Use sparingly.
+                    Manually initiate the midnight automated scan. This will process all active users, analyze their activity, 
+                    and generate new LLM-powered daily protocols with Gemini AI. Runs automatically at midnight UTC.
                   </Typography>
                   <Button
                     variant="outlined"
@@ -1998,8 +2025,51 @@ const AdminPage: React.FC = () => {
                     startIcon={<RefreshIcon />}
                     sx={{ borderRadius: '10px', fontWeight: 800, border: '2px solid' }}
                   >
-                    {triggeringScan ? 'Triggering...' : 'Trigger Global Midnight Scan Now'}
+                    {triggeringScan ? 'Triggering...' : 'Trigger Midnight Scan Now'}
                   </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Generate All Briefs */}
+            <Grid size={{ xs: 12 }}>
+              <Card sx={{ bgcolor: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 3 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AutoAwesomeIcon sx={{ color: '#A78BFA' }} /> Generate All Briefs (Synchronous)
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Immediately generate LLM-powered Axiom briefs for ALL active users. Waits for completion and shows results.
+                    Uses Gemini 2.5 Flash for highest quality. Takes ~1-2 minutes for all users.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    onClick={handleGenerateAllBriefs}
+                    disabled={generatingBriefs}
+                    startIcon={generatingBriefs ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
+                    sx={{
+                      borderRadius: '12px', fontWeight: 800, px: 4,
+                      background: 'linear-gradient(135deg, #A78BFA, #8B5CF6)',
+                      '&:hover': { background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)' },
+                    }}
+                  >
+                    {generatingBriefs ? 'Generating...' : 'Generate All Briefs Now'}
+                  </Button>
+                  {generateResult && (
+                    <Box sx={{ mt: 3, p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 2 }}>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>Result:</strong> {generateResult.message}
+                      </Typography>
+                      <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
+                        <Chip label={`Total: ${generateResult.total_users}`} size="small" />
+                        <Chip label={`Generated: ${generateResult.generated}`} size="small" color="success" />
+                        <Chip label={`LLM: ${generateResult.llm_briefs}`} size="small" sx={{ bgcolor: 'rgba(167,139,250,0.2)', color: '#A78BFA' }} />
+                        <Chip label={`Algorithm: ${generateResult.algorithm_briefs}`} size="small" />
+                        <Chip label={`Failed: ${generateResult.failed}`} size="small" color="error" />
+                        <Chip label={`Duration: ${generateResult.duration_seconds}s`} size="small" />
+                      </Stack>
+                    </Box>
+                  )}
                 </CardContent>
               </Card>
             </Grid>

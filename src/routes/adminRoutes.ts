@@ -12,6 +12,7 @@ import {
 import adminAxiomRoutes from './adminAxiomRoutes';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
+import { generateAllBriefs } from '../controllers/adminController';
 
 const router = Router();
 
@@ -53,6 +54,7 @@ router.put('/users/:id/premium', authenticateToken, requireAdmin, togglePremium)
 router.get('/config', authenticateToken, requireAdmin, getSystemConfig);
 router.put('/config/:key', authenticateToken, requireAdmin, updateSystemConfig);
 router.post('/axiom/trigger-scan', authenticateToken, requireAdmin, triggerAxiomScan);
+router.post('/axiom/generate-all-briefs', authenticateToken, requireAdmin, generateAllBriefs);
 router.use('/axiom', adminAxiomRoutes);
 
 export default router;
