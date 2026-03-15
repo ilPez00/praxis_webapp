@@ -5,6 +5,12 @@ import {
 import { GoalNode, DOMAIN_COLORS, DOMAIN_ICONS } from '../../../types/goal';
 import { DOMAIN_TRACKER_MAP, TRACKER_TYPES } from '../../trackers/trackerTypes';
 
+export interface ActionItem {
+  key: string;
+  icon: string;
+  label: string;
+}
+
 interface GoalWorkspaceSheetProps {
   node: GoalNode | null;
   allNodes: any[];
@@ -14,9 +20,10 @@ interface GoalWorkspaceSheetProps {
   onNodeSelect: (node: GoalNode) => void;
   onAddSubgoal: (parentId: string) => void;
   onLogTracker: (trackerType: string, goalNode: GoalNode) => void;
-  onAction: (action: 'journal' | 'bet' | 'verify' | 'edit' | 'suspend', node: GoalNode) => void;
+  onAction: (action: string, node: GoalNode) => void;
   userId: string;
   readOnly?: boolean;
+  actions?: ActionItem[];
 }
 
 function getNodeDomain(nodeId: string, allNodes: any[]): string {
@@ -29,7 +36,7 @@ function getNodeDomain(nodeId: string, allNodes: any[]): string {
 
 const GoalWorkspaceSheet: React.FC<GoalWorkspaceSheetProps> = ({
   node, allNodes, open, onClose, onProgressChange, onNodeSelect,
-  onAddSubgoal, onLogTracker, onAction, userId, readOnly,
+  onAddSubgoal, onLogTracker, onAction, userId, readOnly, actions,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -187,12 +194,12 @@ const GoalWorkspaceSheet: React.FC<GoalWorkspaceSheetProps> = ({
           display: 'flex', justifyContent: 'space-around',
           pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.05)',
         }}>
-          {([
-            { key: 'journal' as const, icon: '📓', label: 'Journal' },
-            { key: 'bet' as const, icon: '🎰', label: 'Bet' },
-            { key: 'verify' as const, icon: '✅', label: 'Verify' },
-            { key: 'suspend' as const, icon: '⏸', label: 'Suspend' },
-            { key: 'edit' as const, icon: '✏️', label: 'Edit' },
+          {(actions || [
+            { key: 'journal', icon: '📓', label: 'Journal' },
+            { key: 'bet', icon: '🎰', label: 'Bet' },
+            { key: 'verify', icon: '✅', label: 'Verify' },
+            { key: 'suspend', icon: '⏸', label: 'Suspend' },
+            { key: 'edit', icon: '✏️', label: 'Edit' },
           ]).map(action => (
             <Box
               key={action.key}

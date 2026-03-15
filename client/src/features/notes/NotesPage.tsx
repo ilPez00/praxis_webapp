@@ -6,8 +6,8 @@ import { API_URL } from '../../lib/api';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
-import GoalCardTree from '../goals/components/GoalCardTree';
-import GoalWorkspaceSheet from '../goals/components/GoalWorkspaceSheet';
+import NotesCardTree from './NotesCardTree';
+import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspaceSheet';
 import TrackerSection from '../trackers/TrackerSection';
 import WeeklyNarrativeWidget from '../dashboard/components/WeeklyNarrativeWidget';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
@@ -30,6 +30,7 @@ function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
       description: n.customDetails,
       weight: Math.round(n.weight * 100) / 100,
       progress: Math.round(n.progress * 100),
+      status: n.status,
       domain: n.domain as Domain,
       parentId: n.parentId,
       children: [],
@@ -53,6 +54,14 @@ function flattenTree(nodes: FrontendGoalNode[]): FrontendGoalNode[] {
   });
 }
 
+/** Notes-specific actions — no edit/suspend, adds share */
+const NOTES_ACTIONS: ActionItem[] = [
+  { key: 'journal', icon: '📓', label: 'Journal' },
+  { key: 'bet', icon: '🎰', label: 'Bet' },
+  { key: 'verify', icon: '✅', label: 'Verify' },
+  { key: 'share', icon: '📤', label: 'Share' },
+];
+
 const NotesPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
   const navigate = useNavigate();
@@ -64,11 +73,8 @@ const NotesPage: React.FC = () => {
   const [loadingContent, setLoadingContent] = useState(true);
   const [streak, setStreak] = useState<number>(0);
 
-  // Card tree + workspace state
   const [selectedNode, setSelectedNode] = useState<FrontendGoalNode | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-
-  // Journal drawer
   const [journalNode, setJournalNode] = useState<FrontendGoalNode | null>(null);
 
   const currentUserId = user?.id;
@@ -123,7 +129,6 @@ const NotesPage: React.FC = () => {
         { headers: { Authorization: `Bearer ${session?.access_token}` } }
       );
       toast.success(`Progress updated to ${progress}%`);
-      // Refresh tree
       const treeRes = await supabase
         .from('goal_trees')
         .select('nodes, root_nodes')
@@ -146,12 +151,27 @@ const NotesPage: React.FC = () => {
     navigate(`/dashboard?tracker=${trackerType}`);
   };
 
-  const handleAction = (action: 'journal' | 'bet' | 'verify' | 'edit' | 'suspend', node: FrontendGoalNode) => {
-    if (action === 'journal') {
-      setJournalNode(node);
-    } else {
-      // Delegate to full GoalTreePage for bet/verify/edit/suspend
-      navigate('/goals');
+  const handleAction = (action: string, node: FrontendGoalNode) => {
+    switch (action) {
+      case 'journal':
+        setJournalNode(node);
+        break;
+      case 'bet':
+      case 'verify':
+        navigate('/goals');
+        break;
+      case 'share': {
+        const text = `Working on "${node.title}" — ${node.progress}% complete on Praxis! 🎯`;
+        if (navigator.share) {
+          navigator.share({ text }).catch(() => {});
+        } else {
+          window.open(
+            `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+            '_blank'
+          );
+        }
+        break;
+      }
     }
   };
 
@@ -222,18 +242,17 @@ const NotesPage: React.FC = () => {
           </GlassCard>
         ) : (
           <Box sx={{ display: 'flex', height: { xs: 'auto', md: 'calc(100vh - 200px)' } }}>
-            {/* Tree panel */}
+            {/* Tree panel — with tracker pills on active roots */}
             <Box sx={{
               width: { xs: '100%', md: '40%' },
               overflowY: 'auto',
               borderRight: { xs: 'none', md: '1px solid rgba(255,255,255,0.06)' },
             }}>
-              <GoalCardTree
+              <NotesCardTree
                 nodes={treeData}
                 selectedNodeId={selectedNode?.id ?? null}
                 onNodeSelect={handleNodeSelect}
-                onAddGoal={() => navigate('/goals')}
-                readOnly={false}
+                onLogTracker={handleLogTracker}
               />
             </Box>
 
@@ -251,6 +270,7 @@ const NotesPage: React.FC = () => {
                   onLogTracker={handleLogTracker}
                   onAction={handleAction}
                   userId={currentUserId || ''}
+                  actions={NOTES_ACTIONS}
                 />
               </Box>
             )}
@@ -259,9 +279,9 @@ const NotesPage: React.FC = () => {
             {!isMobile && !selectedNode && (
               <Box sx={{
                 width: '60%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'rgba(255,255,255,0.2)', fontSize: '0.9rem',
+                color: 'rgba(255,255,255,0.2)',
               }}>
-                <Typography sx={{ color: 'inherit' }}>Select a goal to view details</Typography>
+                <Typography sx={{ color: 'inherit' }}>Select a goal to track progress</Typography>
               </Box>
             )}
           </Box>
@@ -280,6 +300,7 @@ const NotesPage: React.FC = () => {
             onLogTracker={handleLogTracker}
             onAction={handleAction}
             userId={currentUserId || ''}
+            actions={NOTES_ACTIONS}
           />
         )}
 
