@@ -65,6 +65,15 @@ function formatDateHeader(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+/** Safe query — returns [] on any error (missing table, bad column, etc.) */
+async function safeQuery<T>(fn: () => Promise<{ data: T | null; error: any }>): Promise<T> {
+  try {
+    const { data, error } = await fn();
+    if (error || !data) return [] as unknown as T;
+    return data;
+  } catch { return [] as unknown as T; }
+}
+
 /* ─── Component ─────────────────────────────────── */
 const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -106,27 +115,46 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
           });
         })(),
 
-        // 2. Journal entries
-        supabase
-          .from('node_journal_entries').select('id, node_id, note, mood, logged_at')
-          .eq('user_id', userId).gte('logged_at', since)
-          .order('logged_at', { ascending: false }).limit(50)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `j-${e.id}`, type: 'journal', timestamp: e.logged_at,
+        // 2. Journal entries (try node_journal_entries, fallback to journal_entries)
+        (async () => {
+          const entries = await safeQuery(() =>
+            supabase.from('node_journal_entries').select('id, node_id, note, mood, logged_at')
+              .eq('user_id', userId).gte('logged_at', since)
+              .order('logged_at', { ascending: false }).limit(50)
+          );
+          if (Array.isArray(entries) && entries.length > 0) {
+            return entries.map((e: any) => ({
+              id: `j-${e.id}`, type: 'journal', timestamp: e.logged_at,
+              title: e.mood ? `${e.mood} Journal` : 'Journal entry',
+              detail: e.note?.slice(0, 200) || '', icon: '📓', color: '#8B5CF6', badge: 'Journal',
+            }));
+          }
+          // Fallback: legacy journal_entries table
+          const legacy = await safeQuery(() =>
+            supabase.from('journal_entries').select('id, note, mood, created_at')
+              .eq('user_id', userId).gte('created_at', since)
+              .order('created_at', { ascending: false }).limit(50)
+          );
+          return (Array.isArray(legacy) ? legacy : []).map((e: any) => ({
+            id: `j-${e.id}`, type: 'journal', timestamp: e.created_at,
             title: e.mood ? `${e.mood} Journal` : 'Journal entry',
             detail: e.note?.slice(0, 200) || '', icon: '📓', color: '#8B5CF6', badge: 'Journal',
-          }))),
+          }));
+        })(),
 
         // 3. Check-ins
-        supabase
-          .from('checkins').select('id, mood, win_of_the_day, checked_in_at, streak_day')
-          .eq('user_id', userId).gte('checked_in_at', since)
-          .order('checked_in_at', { ascending: false }).limit(30)
-          .then(({ data }) => (data || []).map(e => ({
+        (async () => {
+          const data = await safeQuery(() =>
+            supabase.from('checkins').select('id, mood, win_of_the_day, checked_in_at, streak_day')
+              .eq('user_id', userId).gte('checked_in_at', since)
+              .order('checked_in_at', { ascending: false }).limit(30)
+          );
+          return (Array.isArray(data) ? data : []).map((e: any) => ({
             id: `c-${e.id}`, type: 'checkin', timestamp: e.checked_in_at,
-            title: `Day ${e.streak_day} check-in${e.mood ? ' · ' + e.mood : ''}`,
+            title: `Day ${e.streak_day || '?'} check-in${e.mood ? ' · ' + e.mood : ''}`,
             detail: e.win_of_the_day || '', icon: '✅', color: '#10B981', badge: 'Check-in',
-          }))),
+          }));
+        })(),
 
         // 4. Bets
         supabase
