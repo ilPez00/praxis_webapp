@@ -1694,3 +1694,5 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], onPro
 };
 
 export default GoalWidgets;
+export { UnifiedGoalCard, MiniChart, ObjectiveRow, findWidget, ALL_WIDGETS };
+export type { WidgetConfig, Tracker, TrackerEntry, GoalNode as WidgetGoalNode, ActiveBet };

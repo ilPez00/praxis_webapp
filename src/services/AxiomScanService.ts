@@ -12,21 +12,34 @@ const engagementMetricService = new EngagementMetricService();
 // ---------------------------------------------------------------------------
 
 /**
- * Generate brief recommendations based on engagement metrics only.
- * No message content is analyzed - only behavioral patterns.
+ * Generate brief recommendations based on engagement metrics.
+ * READS: Trackers, notes, public posts, goal data
+ * DOES NOT READ: Private messages, DMs
  */
 async function generateMetricBasededBrief(metrics: any, userName: string): Promise<any> {
-  const { archetype, motivationStyle, riskFactors, checkinStreak, weeklyActivityScore, socialEngagementScore } = metrics;
+  const { 
+    archetype, 
+    motivationStyle, 
+    riskFactors, 
+    checkinStreak, 
+    weeklyActivityScore, 
+    socialEngagementScore,
+    trackerTrends,
+    topNoteThemes,
+    recommendationContext,
+  } = metrics;
 
-  // Message templates based on archetype
+  const { interestedTopics, recentAchievements, currentFocus } = recommendationContext || {};
+
+  // Message templates based on archetype WITH content context
   const messages: Record<string, string> = {
-    consolidator: `Good morning, ${userName}. You excel at finishing what you start. Today, complete one more meaningful step.`,
-    explorer: `${userName}, you have many interests — that's your strength. Pick ONE goal to advance today.`,
-    achiever: `${userName}, your momentum is strong. Keep it going with focused action today.`,
-    struggler: `${userName}, every expert was once a beginner. Show up for 5 minutes today — that's enough.`,
-    socializer: `${userName}, your connections fuel you. Reach out to someone in your network today.`,
-    lone_wolf: `${userName}, you work best independently. Trust your process and take one step forward.`,
-    burnout_risk: `${userName}, you've been pushing hard. Today, focus on recovery AND one small win.`,
+    consolidator: `Good morning, ${userName}. You excel at finishing what you start. ${currentFocus ? `Keep advancing "${currentFocus}" today.` : 'Complete one more meaningful step.'}`,
+    explorer: `${userName}, you have many interests — that's your strength. ${interestedTopics?.[0] ? `Focus on ${interestedTopics[0]} today.` : 'Pick ONE goal to advance today.'}`,
+    achiever: `${userName}, your momentum is strong. ${recentAchievements?.[0] ? `After "${recentAchievements[0]}", what's next?` : 'Keep building.'}`,
+    struggler: `${userName}, every expert was once a beginner. ${trackerTrends?.[0]?.direction === 'improving' ? `Your "${trackerTrends[0].trackerName}" is improving — apply that same consistency elsewhere.` : 'Show up for 5 minutes today — that's enough.'}`,
+    socializer: `${userName}, your connections fuel you. ${socialEngagementScore > 60 ? 'Share your progress with your network today.' : 'Reach out to someone in your network today.'}`,
+    lone_wolf: `${userName}, you work best independently. ${currentFocus ? `Trust your process on "${currentFocus}".` : 'Take one step forward.'}`,
+    burnout_risk: `${userName}, you've been pushing hard. ${trackerTrends?.some(t => t.direction === 'declining') ? 'Some metrics are down — that's okay. Focus on recovery AND one small win.' : 'Focus on recovery AND one small win.'}`,
   };
 
   // Routine templates based on motivation style
@@ -74,16 +87,49 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
     ? challenges[primaryRisk]
     : { type: 'bet' as const, target: 'Complete one key action today', terms: 'Log it in your tracker' };
 
-  // Resource suggestions based on archetype
+  // Resource suggestions based on archetype AND content
   const resources: any[] = [];
-  if (archetype === 'explorer' || archetype === 'burnout_risk') {
-    resources.push({ goal: 'Focus', suggestion: 'Try time-blocking: 25 min focused, 5 min break', details: 'Pomodoro technique' });
+  
+  // Tracker-based suggestions
+  if (trackerTrends?.some(t => t.direction === 'declining')) {
+    const declining = trackerTrends.find(t => t.direction === 'declining');
+    resources.push({ 
+      goal: declining?.trackerName || 'Consistency', 
+      suggestion: 'Small daily actions beat sporadic intensity', 
+      details: `${declining?.weekOverWeekChange || -10}% from last week — let's stabilize` 
+    });
   }
-  if (archetype === 'struggler' || archetype === 'stagnation_risk') {
-    resources.push({ goal: 'Momentum', suggestion: 'Start with a 2-minute task', details: 'Build confidence with quick wins' });
+  
+  // Note theme-based suggestions
+  if (topNoteThemes?.[0]) {
+    resources.push({ 
+      goal: topNoteThemes[0], 
+      suggestion: 'You\'ve been reflecting on this — what action does it suggest?', 
+      details: 'From your recent notes' 
+    });
+  }
+  
+  // Archetype-based suggestions
+  if (archetype === 'explorer' || archetype === 'burnout_risk') {
+    resources.push({ 
+      goal: 'Focus', 
+      suggestion: 'Try time-blocking: 25 min focused, 5 min break', 
+      details: 'Pomodoro technique' 
+    });
+  }
+  if (archetype === 'struggler') {
+    resources.push({ 
+      goal: 'Momentum', 
+      suggestion: 'Start with a 2-minute task', 
+      details: 'Build confidence with quick wins' 
+    });
   }
   if (socialEngagementScore < 40) {
-    resources.push({ goal: 'Connection', suggestion: 'Join a group session', details: 'Shared accountability works' });
+    resources.push({ 
+      goal: 'Connection', 
+      suggestion: 'Join a group session', 
+      details: 'Shared accountability works' 
+    });
   }
 
   return {

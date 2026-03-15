@@ -2,10 +2,13 @@ import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 
 /**
- * EngagementMetricService - Analyzes user behavior patterns WITHOUT scanning content.
- * Uses only metadata: timestamps, counts, frequencies, and completion states.
+ * EngagementMetricService - Analyzes user behavior patterns for Axiom recommendations.
  * 
- * This mimics "analysis" while being privacy-preserving and cost-free.
+ * Data sources:
+ * ✅ READS: Trackers, notes, public posts, goal names/domains, check-in timestamps
+ * ❌ DOES NOT READ: Private messages, DMs, journal entries with sensitive content
+ * 
+ * This provides personalized recommendations while respecting privacy for sensitive data.
  */
 
 export interface EngagementMetrics {
@@ -22,12 +25,25 @@ export interface EngagementMetrics {
   avgGoalProgress: number;
   goalUpdateFrequency: number;       // updates per week
   stagnationRisk: number;            // 0-100: likelihood of giving up
+  topGoalDomains: string[];          // domains of active goals (for recommendations)
+  
+  // Tracker patterns (READS tracker entries)
+  activeTrackers: number;
+  trackerEntriesThisWeek: number;
+  trackerConsistency: number;        // 0-100: how regularly they log
+  trackerTrends: TrackerTrend[];     // positive/negative trends from data
+  
+  // Notes patterns (READS notes for themes)
+  notesCount: number;
+  notesThisWeek: number;
+  topNoteThemes: string[];           // extracted from note titles/frequency
   
   // Social patterns
   networkSize: number;
   interactionsThisWeek: number;
   responseRate: number;              // 0-100: how often they respond to others
   socialEngagementScore: number;     // 0-100: composite social score
+  publicPostsThisWeek: number;       // READS public posts for interests
   
   // Temporal patterns
   mostActiveDay: string;             // e.g., "Monday"
@@ -38,6 +54,13 @@ export interface EngagementMetrics {
   archetype: EngagementArchetype;
   motivationStyle: MotivationStyle;
   riskFactors: RiskFactor[];
+  
+  // Recommendation context (from content analysis)
+  recommendationContext: {
+    interestedTopics: string[];      // from notes, posts, goal domains
+    recentAchievements: string[];    // from completed goals
+    currentFocus: string | null;     // most-updated goal this week
+  };
 }
 
 export type EngagementArchetype = 
@@ -48,6 +71,13 @@ export type EngagementArchetype =
   | 'socializer'       // High social, moderate goals
   | 'lone_wolf'        // Low social, high goals
   | 'burnout_risk';    // High activity, declining
+
+export type TrackerTrend = {
+  trackerName: string;
+  direction: 'improving' | 'declining' | 'stable';
+  currentValue: number | null;
+  weekOverWeekChange: number;
+};
 
 export type MotivationStyle = 
   | 'streak_driven'    // Responds to streak messaging
@@ -67,8 +97,9 @@ export type RiskFactor =
 export class EngagementMetricService {
   
   /**
-   * Calculate all engagement metrics for a user WITHOUT scanning message content.
-   * Uses only: timestamps, counts, booleans, and state changes.
+   * Calculate all engagement metrics for a user.
+   * READS: Trackers, notes, public posts, goal data
+   * DOES NOT READ: Private messages, DMs, sensitive journal entries
    */
   public async calculateMetrics(userId: string): Promise<EngagementMetrics> {
     const [
@@ -76,11 +107,17 @@ export class EngagementMetricService {
       goalData,
       socialData,
       sessionData,
+      trackerData,
+      notesData,
+      postsData,
     ] = await Promise.all([
       this.fetchCheckinData(userId),
       this.fetchGoalData(userId),
       this.fetchSocialData(userId),
       this.fetchSessionData(userId),
+      this.fetchTrackerData(userId),
+      this.fetchNotesData(userId),
+      this.fetchPostsData(userId),
     ]);
 
     const checkinStreak = checkinData.streak;
@@ -94,15 +131,37 @@ export class EngagementMetricService {
     const avgGoalProgress = goalData.avgProgress;
     const goalUpdateFrequency = goalData.updatesThisWeek / 7;
     const stagnationRisk = this.calculateStagnationRisk(goalData);
+    const topGoalDomains = goalData.topGoalDomains || [];
+
+    const activeTrackers = trackerData.activeTrackers;
+    const trackerEntriesThisWeek = trackerData.trackerEntriesThisWeek;
+    const trackerConsistency = trackerData.trackerConsistency;
+    const trackerTrends = trackerData.trackerTrends;
+
+    const notesCount = notesData.notesCount;
+    const notesThisWeek = notesData.notesThisWeek;
+    const topNoteThemes = notesData.topNoteThemes;
 
     const networkSize = socialData.networkSize;
     const interactionsThisWeek = socialData.interactionsThisWeek;
     const responseRate = socialData.responseRate;
     const socialEngagementScore = this.calculateSocialEngagementScore(socialData);
+    const publicPostsThisWeek = postsData.publicPostsThisWeek;
 
     const mostActiveDay = this.findMostActiveDay(sessionData);
     const mostActiveHour = this.findMostActiveHour(sessionData);
     const typicalSessionDuration = sessionData.avgDurationMinutes;
+
+    // Build recommendation context from content
+    const interestedTopics = [
+      ...topGoalDomains,
+      ...topNoteThemes,
+    ].filter(Boolean).slice(0, 10);
+
+    const recentAchievements = goalData.goals
+      ?.filter((g: any) => g.completed)
+      .slice(0, 3)
+      .map((g: any) => g.name || g.title) || [];
 
     // Calculate archetypes and styles
     const archetype = this.determineArchetype({
@@ -127,6 +186,7 @@ export class EngagementMetricService {
       socialEngagementScore,
       weeklyActivityScore,
       goalData,
+      trackerTrends,
     });
 
     return {
@@ -140,16 +200,30 @@ export class EngagementMetricService {
       avgGoalProgress,
       goalUpdateFrequency,
       stagnationRisk,
+      topGoalDomains,
+      activeTrackers,
+      trackerEntriesThisWeek,
+      trackerConsistency,
+      trackerTrends,
+      notesCount,
+      notesThisWeek,
+      topNoteThemes,
       networkSize,
       interactionsThisWeek,
       responseRate,
       socialEngagementScore,
+      publicPostsThisWeek,
       mostActiveDay,
       mostActiveHour,
       typicalSessionDuration,
       archetype,
       motivationStyle,
       riskFactors,
+      recommendationContext: {
+        interestedTopics,
+        recentAchievements,
+        currentFocus: goalData.currentFocus,
+      },
     };
   }
 
@@ -220,34 +294,54 @@ export class EngagementMetricService {
   }
 
   private async fetchGoalData(userId: string) {
-    // Get goal metadata only (no descriptions, no journal entries)
+    // Get goal metadata (names, domains, progress - not journal entries)
     const { data: goals } = await supabase
-      .from('goal_nodes')
-      .select('id, progress, completed, updated_at')
-      .eq('user_id', userId);
+      .from('goal_trees')
+      .select('nodes')
+      .eq('user_id', userId)
+      .maybeSingle();
 
+    const nodes: any[] = goals?.nodes ?? [];
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const totalGoals = goals?.length || 0;
-    const activeGoals = goals?.filter(g => !g.completed).length || 0;
-    const completedThisWeek = goals?.filter(g => 
-      g.completed && new Date(g.updated_at) > weekAgo
-    ).length || 0;
-    const avgProgress = goals?.length 
-      ? goals.reduce((sum, g) => sum + (g.progress || 0), 0) / goals.length 
+    // Extract root goals
+    const rootGoals = nodes.filter((n: any) => !n.parentId);
+    const totalGoals = rootGoals.length;
+    const activeGoals = rootGoals.filter(g => !g.completed && g.progress < 1).length;
+    const completedThisWeek = rootGoals.filter(g => 
+      g.completed && g.updatedAt && new Date(g.updatedAt) > weekAgo
+    ).length;
+    const avgProgress = rootGoals.length 
+      ? rootGoals.reduce((sum, g) => sum + (g.progress || 0) * 100, 0) / rootGoals.length 
       : 0;
-    const updatesThisWeek = goals?.filter(g => 
-      new Date(g.updated_at) > weekAgo
-    ).length || 0;
+    
+    // Get domains for recommendations
+    const topGoalDomains = rootGoals
+      .filter(g => !g.completed)
+      .map(g => g.domain)
+      .filter(Boolean)
+      .slice(0, 5);
+    
+    // Find most-updated goal this week (current focus)
+    const updatedThisWeek = nodes.filter((n: any) => 
+      n.updatedAt && new Date(n.updatedAt) > weekAgo
+    );
+    const mostUpdated = updatedThisWeek.length > 0 
+      ? updatedThisWeek.reduce((a, b) => 
+          (a.updateCount || 0) > (b.updateCount || 0) ? a : b
+        )
+      : null;
 
     return {
       totalGoals,
       activeGoals,
       completedThisWeek,
       avgProgress,
-      updatesThisWeek,
-      goals: goals || [],
+      updatesThisWeek: updatedThisWeek.length,
+      topGoalDomains,
+      currentFocus: mostUpdated?.name || mostUpdated?.title || null,
+      goals: rootGoals,
     };
   }
 
@@ -282,6 +376,134 @@ export class EngagementMetricService {
       givenHonor: givenHonor || 0,
       receivedHonor: receivedHonor || 0,
       responseRate: 50, // Placeholder - would need more data
+    };
+  }
+
+  private async fetchTrackerData(userId: string) {
+    // READS tracker data for trends and patterns
+    const { data: trackers } = await supabase
+      .from('trackers')
+      .select('id, name, type')
+      .eq('user_id', userId);
+
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const activeTrackers = trackers?.length || 0;
+    const trackerIds = trackers?.map(t => t.id) || [];
+
+    // Get entries this week
+    const { data: entriesThisWeek } = await supabase
+      .from('tracker_entries')
+      .select('tracker_id, value, created_at')
+      .in('tracker_id', trackerIds)
+      .gte('created_at', weekAgo.toISOString());
+
+    const entriesCount = entriesThisWeek?.length || 0;
+
+    // Calculate consistency (entries per active tracker)
+    const consistency = activeTrackers > 0 
+      ? Math.min(100, Math.round((entriesCount / activeTrackers) * 20)) 
+      : 0;
+
+    // Calculate trends per tracker
+    const trends: TrackerTrend[] = [];
+    for (const tracker of trackers || []) {
+      // This week's entries
+      const weekEntries = entriesThisWeek?.filter(e => e.tracker_id === tracker.id) || [];
+      const thisWeekAvg = weekEntries.length > 0
+        ? weekEntries.reduce((sum, e) => sum + (Number(e.value) || 0), 0) / weekEntries.length
+        : null;
+
+      // Last week's entries
+      const { data: lastWeekEntries } = await supabase
+        .from('tracker_entries')
+        .select('value')
+        .eq('tracker_id', tracker.id)
+        .gte('created_at', twoWeeksAgo.toISOString())
+        .lt('created_at', weekAgo.toISOString());
+
+      const lastWeekAvg = lastWeekEntries && lastWeekEntries.length > 0
+        ? lastWeekEntries.reduce((sum, e) => sum + (Number(e.value) || 0), 0) / lastWeekEntries.length
+        : null;
+
+      const change = thisWeekAvg && lastWeekAvg 
+        ? ((thisWeekAvg - lastWeekAvg) / lastWeekAvg) * 100 
+        : 0;
+
+      trends.push({
+        trackerName: tracker.name || 'Unnamed Tracker',
+        direction: change > 5 ? 'improving' : change < -5 ? 'declining' : 'stable',
+        currentValue: thisWeekAvg,
+        weekOverWeekChange: Math.round(change),
+      });
+    }
+
+    return {
+      activeTrackers,
+      trackerEntriesThisWeek: entriesCount,
+      trackerConsistency: consistency,
+      trackerTrends: trends,
+    };
+  }
+
+  private async fetchNotesData(userId: string) {
+    // READS notes titles for themes (not sensitive content)
+    const { data: notes } = await supabase
+      .from('notes')
+      .select('title, content, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const notesCount = notes?.length || 0;
+    const notesThisWeek = notes?.filter(n => 
+      n.created_at && new Date(n.created_at) > weekAgo
+    ).length || 0;
+
+    // Extract themes from note titles (simple keyword extraction)
+    const titleKeywords = new Map<string, number>();
+    const commonWords = ['the', 'a', 'an', 'my', 'to', 'for', 'of', 'in', 'on', 'and', 'or'];
+    
+    for (const note of notes || []) {
+      const words = (note.title || '').toLowerCase().split(/\s+/);
+      for (const word of words) {
+        if (word.length > 3 && !commonWords.includes(word)) {
+          titleKeywords.set(word, (titleKeywords.get(word) || 0) + 1);
+        }
+      }
+    }
+
+    const topNoteThemes = Array.from(titleKeywords.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([word]) => word);
+
+    return {
+      notesCount,
+      notesThisWeek,
+      topNoteThemes,
+    };
+  }
+
+  private async fetchPostsData(userId: string) {
+    // READS public posts for interests
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const { count } = await supabase
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_public', true)
+      .gte('created_at', weekAgo.toISOString());
+
+    return {
+      publicPostsThisWeek: count || 0,
     };
   }
 
