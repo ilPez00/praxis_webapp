@@ -6,12 +6,9 @@ import { API_URL } from '../../lib/api';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
-import { DOMAIN_TRACKER_MAP } from '../trackers/trackerTypes';
 import NotesCardTree from './NotesCardTree';
 import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspaceSheet';
-import TrackerSection from '../trackers/TrackerSection';
-import GoalWidgets from '../dashboard/components/GoalWidgets';
-import WeeklyNarrativeWidget from '../dashboard/components/WeeklyNarrativeWidget';
+import NoteGoalDetail from './NoteGoalDetail';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import GlassCard from '../../components/common/GlassCard';
@@ -54,15 +51,6 @@ function flattenTree(nodes: FrontendGoalNode[]): FrontendGoalNode[] {
   return nodes.flatMap(function flatten(n: FrontendGoalNode): FrontendGoalNode[] {
     return [n, ...n.children.flatMap(flatten)];
   });
-}
-
-/** Walk up parentId chain to find the root domain */
-function getNodeDomain(nodeId: string, allNodes: any[]): string {
-  const node = allNodes.find((n: any) => n.id === nodeId);
-  if (!node) return 'Personal Goals';
-  if (node.domain) return node.domain;
-  if (!node.parentId) return 'Personal Goals';
-  return getNodeDomain(node.parentId, allNodes);
 }
 
 /** Notes-specific actions — no edit/suspend, adds share */
@@ -278,23 +266,34 @@ const NotesPage: React.FC = () => {
               />
             </Box>
 
-            {/* Desktop: right panel — workspace + trackers + insights */}
+            {/* Desktop: right panel — workspace + widget + history */}
             {!isMobile && (
               <Box sx={{ width: '60%', overflowY: 'auto' }}>
                 {selectedNode ? (
-                  <GoalWorkspaceSheet
-                    node={selectedNode}
-                    allNodes={backendNodes}
-                    open={true}
-                    onClose={() => setSelectedNode(null)}
-                    onProgressChange={handleProgressUpdate}
-                    onNodeSelect={handleNodeSelect}
-                    onAddSubgoal={handleAddSubgoal}
-                    onLogTracker={handleLogTracker}
-                    onAction={handleAction}
-                    userId={currentUserId || ''}
-                    actions={NOTES_ACTIONS}
-                  />
+                  <>
+                    <GoalWorkspaceSheet
+                      node={selectedNode}
+                      allNodes={backendNodes}
+                      open={true}
+                      onClose={() => setSelectedNode(null)}
+                      onProgressChange={handleProgressUpdate}
+                      onNodeSelect={handleNodeSelect}
+                      onAddSubgoal={handleAddSubgoal}
+                      onLogTracker={handleLogTracker}
+                      onAction={handleAction}
+                      userId={currentUserId || ''}
+                      actions={NOTES_ACTIONS}
+                    />
+                    {currentUserId && (
+                      <NoteGoalDetail
+                        node={selectedNode}
+                        allNodes={backendNodes}
+                        userId={currentUserId}
+                        activeBets={activeBets}
+                        onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
+                      />
+                    )}
+                  </>
                 ) : (
                   <Box sx={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -303,31 +302,6 @@ const NotesPage: React.FC = () => {
                     <Typography sx={{ color: 'inherit' }}>Select a goal to track progress</Typography>
                   </Box>
                 )}
-
-                {/* Goal widget (bars, mini chart, quick log) + Trackers — filtered to domain */}
-                {currentUserId && selectedNode && (() => {
-                  const domain = getNodeDomain(selectedNode.id, backendNodes);
-                  const domainTrackers = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
-                  const selectedBackendNode = backendNodes.filter(n => n.id === selectedNode.id);
-                  return (
-                    <Box sx={{ px: 2.5, pb: 3 }}>
-                      <Stack spacing={3}>
-                        <GoalWidgets
-                          userId={currentUserId}
-                          allNodes={selectedBackendNode}
-                          activeBets={activeBets}
-                          onProgressUpdate={(nodeId, newProgress) => {
-                            handleProgressUpdate(nodeId, newProgress);
-                          }}
-                        />
-                        {domainTrackers.length > 0 && (
-                          <TrackerSection userId={currentUserId} filterTypes={domainTrackers} initialLogType={activeLogType} />
-                        )}
-                        <WeeklyNarrativeWidget userId={currentUserId} />
-                      </Stack>
-                    </Box>
-                  );
-                })()}
               </Box>
             )}
           </Box>
@@ -350,30 +324,18 @@ const NotesPage: React.FC = () => {
           />
         )}
 
-        {/* Mobile: widget + trackers below tree — filtered to selected goal's domain */}
-        {isMobile && currentUserId && selectedNode && (() => {
-          const domain = getNodeDomain(selectedNode.id, backendNodes);
-          const domainTrackers = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
-          const selectedBackendNode = backendNodes.filter(n => n.id === selectedNode.id);
-          return (
-            <Box sx={{ mt: 4, px: 2 }}>
-              <Stack spacing={3}>
-                <GoalWidgets
-                  userId={currentUserId}
-                  allNodes={selectedBackendNode}
-                  activeBets={activeBets}
-                  onProgressUpdate={(nodeId, newProgress) => {
-                    handleProgressUpdate(nodeId, newProgress);
-                  }}
-                />
-                {domainTrackers.length > 0 && (
-                  <TrackerSection userId={currentUserId} filterTypes={domainTrackers} initialLogType={activeLogType} />
-                )}
-                <WeeklyNarrativeWidget userId={currentUserId} />
-              </Stack>
-            </Box>
-          );
-        })()}
+        {/* Mobile: widget + history below tree */}
+        {isMobile && currentUserId && selectedNode && (
+          <Box sx={{ mt: 4, px: 2 }}>
+            <NoteGoalDetail
+              node={selectedNode}
+              allNodes={backendNodes}
+              userId={currentUserId}
+              activeBets={activeBets}
+              onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
+            />
+          </Box>
+        )}
 
         {/* Node Journal Drawer */}
         <NodeJournalDrawer
