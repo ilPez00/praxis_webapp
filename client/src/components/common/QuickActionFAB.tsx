@@ -21,7 +21,7 @@ const QuickActionFAB: React.FC<Props> = ({ onPostClick }) => {
 
   const actions = [
     { icon: <EditIcon />, name: 'New Post', onClick: onPostClick },
-    { icon: <AddCircleOutlineIcon />, name: 'Add Goal', onClick: () => navigate('/goals') },
+    { icon: <AddCircleOutlineIcon />, name: 'Add Goal', onClick: () => navigate('/notes') },
     { icon: <AutoAwesomeIcon />, name: 'Ask Axiom', onClick: () => navigate('/coaching') },
   ];
 

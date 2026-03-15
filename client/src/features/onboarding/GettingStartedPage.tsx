@@ -117,7 +117,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
       title: 'Build your goal tree',
       description: "Map out what you're working toward. Break big ambitions into trackable sub-goals — the more specific, the better Praxis works for you.",
       cta: 'Set up goals →',
-      to: '/goal-selection',
+      to: '/notes',
       color: '#F59E0B',
     },
     {
@@ -126,7 +126,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
       title: 'Log your progress every day',
       description: "Each goal gets a daily tracker widget. Take 30 seconds after each session to log what you did. The streak is real — so is the momentum.",
       cta: 'See how it works →',
-      to: '/goal-selection',
+      to: '/notes',
       color: '#10B981',
     },
     {

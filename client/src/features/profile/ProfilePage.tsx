@@ -1009,9 +1009,9 @@ const ProfilePage: React.FC = () => {
             variant="outlined"
             size="small"
             color="secondary"
-            onClick={() => navigate(`/goals/${paramId || user?.id}`)}
+            onClick={() => navigate('/notes')}
           >
-            View Tree
+            View Notes
           </Button>
         </Box>
       </GlassCard>
