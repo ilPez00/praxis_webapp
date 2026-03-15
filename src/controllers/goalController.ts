@@ -329,19 +329,21 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     }
 
     // If a tree exists, update it with the new nodes and root nodes
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('goal_trees')
-      .update({ 
-        nodes, 
-        root_nodes: safeRootNodes.map((n: any) => n.id) 
-      })
+      .update({ nodes, root_nodes: safeRootNodes.map((n: any) => n.id) })
       .eq('user_id', userId)
       .select()
       .single();
 
     if (error) {
-      logger.error('Error updating goal tree:', error.message);
-      throw new InternalServerError('Failed to update goal tree.');
+      // Retry without root_nodes in case column doesn't exist
+      const fb = await supabase.from('goal_trees').update({ nodes }).eq('user_id', userId).select().single();
+      if (fb.error) {
+        logger.error('Error updating goal tree:', fb.error.message);
+        throw new InternalServerError('Failed to update goal tree.');
+      }
+      data = fb.data;
     }
 
     // Increment edit count + update streak (best-effort — non-fatal if columns missing)
@@ -368,19 +370,20 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     res.json(data); // Respond with the updated goal tree
   } else {
     // If no tree exists, create a new one
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('goal_trees')
-      .insert([{ 
-        user_id: userId, 
-        nodes, 
-        root_nodes: safeRootNodes.map((n: any) => n.id) 
-      }])
+      .insert([{ user_id: userId, nodes, root_nodes: safeRootNodes.map((n: any) => n.id) }])
       .select()
       .single();
 
     if (error) {
-      logger.error('Error creating goal tree:', error.message);
-      throw new InternalServerError('Failed to create goal tree.');
+      // Retry without root_nodes in case column doesn't exist
+      const fb = await supabase.from('goal_trees').insert([{ user_id: userId, nodes }]).select().single();
+      if (fb.error) {
+        logger.error('Error creating goal tree:', fb.error.message);
+        throw new InternalServerError('Failed to create goal tree.');
+      }
+      data = fb.data;
     }
 
     // Update streak on initial save too (best-effort)
@@ -569,12 +572,16 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
 
   // Auto-create goal_tree if user doesn't have one yet
   if (!tree) {
-    const { data: newTree, error: createErr } = await supabase
+    let { data: newTree, error: createErr } = await supabase
       .from('goal_trees')
       .insert([{ user_id: userId, nodes: [], root_nodes: [] }])
       .select()
       .single();
-    if (createErr) throw new InternalServerError(`Failed to create goal tree: ${createErr.message}`);
+    if (createErr) {
+      const fb = await supabase.from('goal_trees').insert([{ user_id: userId, nodes: [] }]).select().single();
+      if (fb.error) throw new InternalServerError(`Failed to create goal tree: ${fb.error.message}`);
+      newTree = fb.data;
+    }
     tree = newTree;
   }
 

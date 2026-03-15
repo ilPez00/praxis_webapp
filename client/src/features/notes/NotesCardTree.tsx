@@ -41,7 +41,7 @@ const AddPill: React.FC<{
   <Box
     onClick={(e) => { e.stopPropagation(); onClick(); }}
     sx={{
-      p: size === 'domain' ? '7px 16px' : '5px 12px',
+      p: size === 'domain' ? '9px 18px' : '7px 14px',
       borderRadius: '18px',
       mb: '4px',
       cursor: 'pointer',
@@ -62,7 +62,7 @@ const AddPill: React.FC<{
     }}
   >
     <Typography sx={{
-      fontSize: size === 'domain' ? '0.875rem' : '0.8rem',
+      fontSize: size === 'domain' ? '1rem' : '0.9rem',
       fontWeight: 700,
       color: `${color}cc`,
       lineHeight: 1.2,
@@ -131,7 +131,7 @@ const GoalPill: React.FC<{
         ref={ref}
         onClick={() => onNodeSelect(node)}
         sx={{
-          p: depth === 0 ? '8px 14px' : '6px 12px',
+          p: depth === 0 ? '10px 16px' : '8px 14px',
           borderRadius: '18px',
           mb: '4px',
           cursor: 'pointer',
@@ -149,8 +149,8 @@ const GoalPill: React.FC<{
           borderColor: isSelected
             ? `${domainColor}60`
             : isActive
-              ? 'rgba(255,255,255,0.08)'
-              : 'rgba(255,255,255,0.03)',
+              ? 'rgba(255,255,255,0.12)'
+              : 'rgba(255,255,255,0.05)',
           boxShadow: isSelected ? `0 0 12px ${domainColor}28` : 'none',
           opacity: isSuspended ? 0.3 : isCompleted ? 0.45 : 1,
           filter: isSuspended ? 'grayscale(0.8)' : 'none',
@@ -163,8 +163,8 @@ const GoalPill: React.FC<{
       >
         {/* Progress ring */}
         <Box sx={{
-          width: depth === 0 ? 26 : 18,
-          height: depth === 0 ? 26 : 18,
+          width: depth === 0 ? 30 : 22,
+          height: depth === 0 ? 30 : 22,
           flexShrink: 0,
         }}>
           <svg width="100%" height="100%" viewBox="0 0 20 20">
@@ -182,19 +182,19 @@ const GoalPill: React.FC<{
 
         <Typography sx={{
           fontWeight: depth === 0 ? 700 : 600,
-          fontSize: depth === 0 ? '0.95rem' : '0.85rem',
+          fontSize: depth === 0 ? '1.05rem' : '0.95rem',
           lineHeight: 1.25,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          color: isActive ? '#E5E7EB' : 'rgba(255,255,255,0.35)',
+          color: isActive ? '#F3F4F6' : 'rgba(255,255,255,0.4)',
         }}>
           {isSuspended ? '⏸ ' : isCompleted ? '✓ ' : ''}{node.title}
         </Typography>
 
         <Typography sx={{
-          fontSize: '0.72rem', fontWeight: 800,
-          color: isCompleted ? '#10B981' : `${domainColor}dd`,
+          fontSize: '0.8rem', fontWeight: 800,
+          color: isCompleted ? '#10B981' : domainColor,
           ml: 'auto', flexShrink: 0,
         }}>
           {node.progress}%
@@ -209,7 +209,7 @@ const GoalPill: React.FC<{
               key={t.id}
               onClick={(e) => { e.stopPropagation(); onLogTracker(t.id, node); }}
               sx={{
-                fontSize: '0.65rem', px: '7px', py: '2px', borderRadius: '10px',
+                fontSize: '0.75rem', px: '9px', py: '3px', borderRadius: '12px',
                 bgcolor: t.bg, border: `1px solid ${t.border}`,
                 color: t.color, cursor: 'pointer', display: 'inline-flex',
                 alignItems: 'center', gap: '3px', fontWeight: 700,
@@ -304,9 +304,9 @@ const NotesCardTree: React.FC<NotesCardTreeProps> = ({
               transition: 'opacity 0.2s',
               '&:hover': { opacity: hasGoals ? 1 : 0.7 },
             }}>
-              <Typography sx={{ fontSize: '1rem' }}>{icon}</Typography>
+              <Typography sx={{ fontSize: '1.15rem' }}>{icon}</Typography>
               <Typography sx={{
-                fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.04em',
+                fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.04em',
                 color, textTransform: 'uppercase',
               }}>
                 {domain}
@@ -321,7 +321,7 @@ const NotesCardTree: React.FC<NotesCardTreeProps> = ({
                       transition: 'width 0.3s ease',
                     }} />
                   </Box>
-                  <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>{progress}%</Typography>
+                  <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', fontWeight: 700 }}>{progress}%</Typography>
                 </>
               )}
             </Box>

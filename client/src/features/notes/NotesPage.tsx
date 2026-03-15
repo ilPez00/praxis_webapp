@@ -209,9 +209,18 @@ const NotesPage: React.FC = () => {
   };
 
   // ── Handlers ───────────────────────────────────────────────────
+  const mobileDetailRef = React.useRef<HTMLDivElement>(null);
+
   const handleNodeSelect = (node: FrontendGoalNode) => {
     setSelectedNode(node);
-    setSheetOpen(true);
+    if (!isMobile) {
+      setSheetOpen(true);
+    } else {
+      // On mobile: show inline detail and scroll to it
+      setTimeout(() => {
+        mobileDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
   };
 
   const handleProgressUpdate = async (nodeId: string, progress: number) => {
@@ -240,8 +249,14 @@ const NotesPage: React.FC = () => {
 
   const handleLogTracker = (trackerType: string, goalNode: FrontendGoalNode) => {
     setSelectedNode(goalNode);
-    setSheetOpen(true);
     setActiveLogType(trackerType);
+    if (!isMobile) {
+      setSheetOpen(true);
+    } else {
+      setTimeout(() => {
+        mobileDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
   };
 
   const handleOpenEdit = (node: FrontendGoalNode, branch = false) => {
@@ -547,20 +562,6 @@ const NotesPage: React.FC = () => {
         <Box sx={{
           display: 'flex',
           flexDirection: 'column',
-          // Mobile: larger fonts and spacing for better readability
-          '@media (max-width: 600px)': {
-            '& .MuiTypography-root': {
-              fontSize: '1.1rem',
-            },
-            '& .MuiButton-root': {
-              fontSize: '1rem',
-              minHeight: '48px',
-            },
-            '& .MuiChip-root': {
-              fontSize: '0.9rem',
-              minHeight: '40px',
-            },
-          },
         }}>
           {/* Goal Tree Panel */}
           <Box sx={{
@@ -578,13 +579,33 @@ const NotesPage: React.FC = () => {
             />
           </Box>
 
-          {/* Mobile: NoteGoalDetail below tree (always visible) */}
+          {/* Mobile: NoteGoalDetail + actions inline below tree */}
           {isMobile && currentUserId && selectedNode && (
-            <Box sx={{
-              width: '100%',
-              mb: 3,
-              px: 1,
-            }}>
+            <Box ref={mobileDetailRef} sx={{ width: '100%', mb: 3, px: 1 }}>
+              {/* Inline action bar */}
+              <Box sx={{
+                display: 'flex', justifyContent: 'space-around',
+                py: 1.5, mb: 2,
+                borderRadius: '14px',
+                bgcolor: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                {NOTES_ACTIONS.map(action => (
+                  <Box
+                    key={action.key}
+                    onClick={() => handleAction(action.key, selectedNode)}
+                    sx={{
+                      textAlign: 'center', cursor: 'pointer',
+                      color: 'rgba(255,255,255,0.6)',
+                      '&:hover': { color: 'rgba(255,255,255,0.9)' },
+                    }}
+                  >
+                    <Typography sx={{ fontSize: '1.3rem', mb: 0.25 }}>{action.icon}</Typography>
+                    <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>{action.label}</Typography>
+                  </Box>
+                ))}
+              </Box>
+
               <NoteGoalDetail
                 node={selectedNode}
                 allNodes={backendNodes}
@@ -593,8 +614,7 @@ const NotesPage: React.FC = () => {
                 onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
                 focusedTrackerType={activeLogType}
               />
-              
-              {/* Mobile: Goal Notes Panel below widget */}
+
               <Box sx={{ mt: 2 }}>
                 <GoalNotesPanel
                   nodeId={selectedNode.id}
@@ -674,34 +694,7 @@ const NotesPage: React.FC = () => {
           </Box>
         )}
 
-        {/* Mobile: full bottom sheet with widgets + actions */}
-        {isMobile && (
-          <GoalWorkspaceSheet
-            node={selectedNode}
-            allNodes={backendNodes}
-            open={sheetOpen}
-            onClose={() => { setSheetOpen(false); setActiveLogType(null); }}
-            onProgressChange={handleProgressUpdate}
-            onNodeSelect={handleNodeSelect}
-            onAddSubgoal={handleAddSubgoal}
-            onLogTracker={handleLogTracker}
-            onAction={handleAction}
-            userId={currentUserId || ''}
-            actions={NOTES_ACTIONS}
-          >
-            {/* Embed full tracker widgets inside the mobile sheet */}
-            {currentUserId && selectedNode && (
-              <NoteGoalDetail
-                node={selectedNode}
-                allNodes={backendNodes}
-                userId={currentUserId}
-                activeBets={activeBets}
-                onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
-                focusedTrackerType={activeLogType}
-              />
-            )}
-          </GoalWorkspaceSheet>
-        )}
+        {/* Mobile bottom sheet removed — widgets + actions now inline above */}
 
         {/* ── Edit/Branch dialog ──────────────────────────────────── */}
         <Dialog open={isBranching || !!editingNode} onClose={() => { setEditingNode(null); setIsBranching(false); }} maxWidth="sm" fullWidth
