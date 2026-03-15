@@ -55,11 +55,13 @@ interface TrackerEntry {
 
 interface TrackerSectionProps {
   userId: string;
+  /** When set, only show trackers whose type is in this list */
+  filterTypes?: string[];
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
+const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes }) => {
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [entries, setEntries] = useState<Record<string, TrackerEntry[]>>({});
   const [loading, setLoading] = useState(true);
@@ -235,7 +237,13 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
   // ── already-active type ids ─────────────────────────────────────────────────
 
   const activeTypeIds = new Set(trackers.map(t => t.type));
-  const available = TRACKER_TYPES.filter(t => !activeTypeIds.has(t.id));
+  const filterSet = filterTypes ? new Set(filterTypes) : null;
+  const visibleTrackers = filterSet
+    ? trackers.filter(t => filterSet.has(t.type))
+    : trackers;
+  const available = TRACKER_TYPES.filter(t =>
+    !activeTypeIds.has(t.id) && (!filterSet || filterSet.has(t.id))
+  );
 
   // ── render ──────────────────────────────────────────────────────────────────
 
@@ -251,8 +259,8 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>Trackers</Typography>
-          {trackers.filter(t => t.type !== 'progress').length > 0 && (
-            <Chip label={trackers.filter(t => t.type !== 'progress').length} size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'rgba(255,255,255,0.08)' }} />
+          {visibleTrackers.filter(t => t.type !== 'progress').length > 0 && (
+            <Chip label={visibleTrackers.filter(t => t.type !== 'progress').length} size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'rgba(255,255,255,0.08)' }} />
           )}
         </Box>
         {available.length > 0 && (
@@ -267,7 +275,7 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
         )}
       </Box>
 
-      {trackers.length === 0 ? (
+      {visibleTrackers.length === 0 ? (
         <Box
           sx={{
             border: '2px dashed rgba(255,255,255,0.1)',
@@ -287,7 +295,7 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId }) => {
         </Box>
       ) : (
         <Stack spacing={2}>
-          {trackers.filter(t => t.type !== 'progress').map(tracker => {
+          {visibleTrackers.filter(t => t.type !== 'progress').map(tracker => {
             const def = TRACKER_MAP[tracker.type];
             if (!def) return null;
             const trackerEntries = entries[tracker.id] ?? [];

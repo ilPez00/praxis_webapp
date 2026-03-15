@@ -6,6 +6,7 @@ import { API_URL } from '../../lib/api';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
+import { DOMAIN_TRACKER_MAP } from '../trackers/trackerTypes';
 import NotesCardTree from './NotesCardTree';
 import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspaceSheet';
 import TrackerSection from '../trackers/TrackerSection';
@@ -52,6 +53,15 @@ function flattenTree(nodes: FrontendGoalNode[]): FrontendGoalNode[] {
   return nodes.flatMap(function flatten(n: FrontendGoalNode): FrontendGoalNode[] {
     return [n, ...n.children.flatMap(flatten)];
   });
+}
+
+/** Walk up parentId chain to find the root domain */
+function getNodeDomain(nodeId: string, allNodes: any[]): string {
+  const node = allNodes.find((n: any) => n.id === nodeId);
+  if (!node) return 'Personal Goals';
+  if (node.domain) return node.domain;
+  if (!node.parentId) return 'Personal Goals';
+  return getNodeDomain(node.parentId, allNodes);
 }
 
 /** Notes-specific actions — no edit/suspend, adds share */
@@ -282,15 +292,21 @@ const NotesPage: React.FC = () => {
                   </Box>
                 )}
 
-                {/* Trackers + Insights inside the right panel */}
-                {currentUserId && (
-                  <Box sx={{ px: 2.5, pb: 3 }}>
-                    <Stack spacing={3}>
-                      <TrackerSection userId={currentUserId} />
-                      <WeeklyNarrativeWidget userId={currentUserId} />
-                    </Stack>
-                  </Box>
-                )}
+                {/* Trackers + Insights — only when a goal is selected, filtered to its domain */}
+                {currentUserId && selectedNode && (() => {
+                  const domain = getNodeDomain(selectedNode.id, backendNodes);
+                  const domainTrackers = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
+                  return (
+                    <Box sx={{ px: 2.5, pb: 3 }}>
+                      <Stack spacing={3}>
+                        {domainTrackers.length > 0 && (
+                          <TrackerSection userId={currentUserId} filterTypes={domainTrackers} />
+                        )}
+                        <WeeklyNarrativeWidget userId={currentUserId} />
+                      </Stack>
+                    </Box>
+                  );
+                })()}
               </Box>
             )}
           </Box>
@@ -313,15 +329,21 @@ const NotesPage: React.FC = () => {
           />
         )}
 
-        {/* Mobile: trackers below tree */}
-        {isMobile && currentUserId && (
-          <Box sx={{ mt: 4, px: 2 }}>
-            <Stack spacing={3}>
-              <TrackerSection userId={currentUserId} />
-              <WeeklyNarrativeWidget userId={currentUserId} />
-            </Stack>
-          </Box>
-        )}
+        {/* Mobile: trackers below tree — filtered to selected goal's domain */}
+        {isMobile && currentUserId && selectedNode && (() => {
+          const domain = getNodeDomain(selectedNode.id, backendNodes);
+          const domainTrackers = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
+          return (
+            <Box sx={{ mt: 4, px: 2 }}>
+              <Stack spacing={3}>
+                {domainTrackers.length > 0 && (
+                  <TrackerSection userId={currentUserId} filterTypes={domainTrackers} />
+                )}
+                <WeeklyNarrativeWidget userId={currentUserId} />
+              </Stack>
+            </Box>
+          );
+        })()}
 
         {/* Node Journal Drawer */}
         <NodeJournalDrawer
