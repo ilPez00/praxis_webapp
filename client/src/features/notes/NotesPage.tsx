@@ -10,6 +10,7 @@ import { DOMAIN_TRACKER_MAP } from '../trackers/trackerTypes';
 import NotesCardTree from './NotesCardTree';
 import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspaceSheet';
 import TrackerSection from '../trackers/TrackerSection';
+import GoalWidgets from '../dashboard/components/GoalWidgets';
 import WeeklyNarrativeWidget from '../dashboard/components/WeeklyNarrativeWidget';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
@@ -87,6 +88,7 @@ const NotesPage: React.FC = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [journalNode, setJournalNode] = useState<FrontendGoalNode | null>(null);
   const [activeLogType, setActiveLogType] = useState<string | null>(null);
+  const [activeBets, setActiveBets] = useState<any[]>([]);
 
   const currentUserId = user?.id;
 
@@ -115,6 +117,13 @@ const NotesPage: React.FC = () => {
           .single();
 
         if (profile?.current_streak) setStreak(profile.current_streak);
+
+        const betsRes = await supabase
+          .from('bets')
+          .select('*')
+          .eq('user_id', currentUserId)
+          .eq('status', 'active');
+        setActiveBets(betsRes.data || []);
       } catch (err: any) {
         console.error('Notes fetch error:', err);
       } finally {
@@ -295,13 +304,22 @@ const NotesPage: React.FC = () => {
                   </Box>
                 )}
 
-                {/* Trackers + Insights — only when a goal is selected, filtered to its domain */}
+                {/* Goal widget (bars, mini chart, quick log) + Trackers — filtered to domain */}
                 {currentUserId && selectedNode && (() => {
                   const domain = getNodeDomain(selectedNode.id, backendNodes);
                   const domainTrackers = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
+                  const selectedBackendNode = backendNodes.filter(n => n.id === selectedNode.id);
                   return (
                     <Box sx={{ px: 2.5, pb: 3 }}>
                       <Stack spacing={3}>
+                        <GoalWidgets
+                          userId={currentUserId}
+                          allNodes={selectedBackendNode}
+                          activeBets={activeBets}
+                          onProgressUpdate={(nodeId, newProgress) => {
+                            handleProgressUpdate(nodeId, newProgress);
+                          }}
+                        />
                         {domainTrackers.length > 0 && (
                           <TrackerSection userId={currentUserId} filterTypes={domainTrackers} initialLogType={activeLogType} />
                         )}
@@ -332,13 +350,22 @@ const NotesPage: React.FC = () => {
           />
         )}
 
-        {/* Mobile: trackers below tree — filtered to selected goal's domain */}
+        {/* Mobile: widget + trackers below tree — filtered to selected goal's domain */}
         {isMobile && currentUserId && selectedNode && (() => {
           const domain = getNodeDomain(selectedNode.id, backendNodes);
           const domainTrackers = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
+          const selectedBackendNode = backendNodes.filter(n => n.id === selectedNode.id);
           return (
             <Box sx={{ mt: 4, px: 2 }}>
               <Stack spacing={3}>
+                <GoalWidgets
+                  userId={currentUserId}
+                  allNodes={selectedBackendNode}
+                  activeBets={activeBets}
+                  onProgressUpdate={(nodeId, newProgress) => {
+                    handleProgressUpdate(nodeId, newProgress);
+                  }}
+                />
                 {domainTrackers.length > 0 && (
                   <TrackerSection userId={currentUserId} filterTypes={domainTrackers} initialLogType={activeLogType} />
                 )}
