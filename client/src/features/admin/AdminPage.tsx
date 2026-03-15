@@ -34,6 +34,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
