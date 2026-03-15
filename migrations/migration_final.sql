@@ -31,7 +31,8 @@
 -- =============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgvector";
+-- pgvector is optional - only needed if you use goal embeddings
+-- CREATE EXTENSION IF NOT EXISTS "pgvector";
 
 
 -- =============================================================================
