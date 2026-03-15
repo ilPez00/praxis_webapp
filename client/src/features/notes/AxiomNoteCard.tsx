@@ -11,6 +11,10 @@ interface AxiomBrief {
   recap?: string;
   routine?: { time: string; task: string; alignment: string }[];
   challenge?: { target: string; terms: string };
+  match?: { name: string; reason: string } | null;
+  event?: { title: string; reason: string } | null;
+  place?: { name: string; reason: string } | null;
+  resources?: { goal: string; suggestion: string; details: string }[];
 }
 
 const AxiomNoteCard: React.FC<AxiomNoteCardProps> = ({ userId }) => {
@@ -114,6 +118,79 @@ const AxiomNoteCard: React.FC<AxiomNoteCardProps> = ({ userId }) => {
                   </Typography>
                   <Typography sx={{ fontSize: '0.75rem', color: '#D1D5DB', flex: 1 }}>
                     {r.task}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+
+          {/* Match / Event / Place recommendations */}
+          {(brief.match || brief.event || brief.place) && (
+            <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+              {brief.match && (
+                <Box sx={{
+                  flex: 1, minWidth: 100, p: 1, borderRadius: '10px',
+                  bgcolor: 'rgba(236,72,153,0.08)', border: '1px solid rgba(236,72,153,0.15)',
+                }}>
+                  <Typography sx={{ fontSize: '0.55rem', fontWeight: 800, color: '#EC4899', letterSpacing: '0.04em', mb: 0.25 }}>
+                    SPARRING MATCH
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#F3F4F6' }}>
+                    {brief.match.name}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.45)' }}>
+                    {brief.match.reason}
+                  </Typography>
+                </Box>
+              )}
+              {brief.event && (
+                <Box sx={{
+                  flex: 1, minWidth: 100, p: 1, borderRadius: '10px',
+                  bgcolor: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.15)',
+                }}>
+                  <Typography sx={{ fontSize: '0.55rem', fontWeight: 800, color: '#06B6D4', letterSpacing: '0.04em', mb: 0.25 }}>
+                    EVENT
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#F3F4F6' }}>
+                    {brief.event.title}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.45)' }}>
+                    {brief.event.reason}
+                  </Typography>
+                </Box>
+              )}
+              {brief.place && (
+                <Box sx={{
+                  flex: 1, minWidth: 100, p: 1, borderRadius: '10px',
+                  bgcolor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)',
+                }}>
+                  <Typography sx={{ fontSize: '0.55rem', fontWeight: 800, color: '#10B981', letterSpacing: '0.04em', mb: 0.25 }}>
+                    PLACE
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#F3F4F6' }}>
+                    {brief.place.name}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.45)' }}>
+                    {brief.place.reason}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Resources / Goal Suggestions */}
+          {Array.isArray(brief.resources) && brief.resources.length > 0 && (
+            <Box sx={{ mb: 1.5 }}>
+              <Typography sx={{
+                fontSize: '0.6rem', fontWeight: 800, color: '#3B82F6',
+                letterSpacing: '0.06em', textTransform: 'uppercase', mb: 0.5,
+              }}>
+                Goal Insights
+              </Typography>
+              {brief.resources.map((r, i) => (
+                <Box key={i} sx={{ py: 0.4 }}>
+                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#D1D5DB' }}>
+                    {r.goal}: <Box component="span" sx={{ fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>{r.suggestion}</Box>
                   </Typography>
                 </Box>
               ))}

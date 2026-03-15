@@ -34,6 +34,7 @@ const TYPE_META: Record<string, { badge: string; color: string }> = {
   match:        { badge: 'Match', color: '#EC4899' },
   chat:         { badge: 'Conversation', color: '#F97316' },
   event:        { badge: 'Event', color: '#06B6D4' },
+  axiom:        { badge: 'Axiom', color: '#A78BFA' },
 };
 
 function relativeTime(ts: string): string {
@@ -305,6 +306,39 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
             });
           }
           return chatItems;
+        })(),
+
+        // 11. Axiom daily briefs
+        (async () => {
+          const { data: briefs } = await supabase
+            .from('axiom_daily_briefs')
+            .select('date, brief, generated_at')
+            .eq('user_id', userId)
+            .gte('date', since.slice(0, 10))
+            .order('date', { ascending: false })
+            .limit(30);
+          if (!briefs?.length) return [];
+          return briefs.map((b: any) => {
+            const brief = typeof b.brief === 'string' ? JSON.parse(b.brief) : b.brief;
+            const detail = [
+              brief.message,
+              brief.recap ? `Recap: ${brief.recap}` : '',
+              Array.isArray(brief.routine) && brief.routine.length > 0
+                ? `Routine: ${brief.routine.map((r: any) => `${r.time}: ${r.task}`).join(' · ')}`
+                : '',
+              brief.challenge?.target ? `Challenge: ${brief.challenge.target}` : '',
+            ].filter(Boolean).join('\n');
+            return {
+              id: `axiom-${b.date}`,
+              type: 'axiom',
+              timestamp: b.generated_at || `${b.date}T06:00:00`,
+              title: `Axiom Daily Brief`,
+              detail: detail.slice(0, 500),
+              icon: '🧠',
+              color: '#A78BFA',
+              badge: 'Axiom',
+            };
+          });
         })(),
       ]);
 
