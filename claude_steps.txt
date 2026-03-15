@@ -209,3 +209,18 @@ Session 60: Notes as Full Goal Tree Replacement
 - Verification: TypeScript check passes (0 source errors), committed 902f553, pushed to both remotes
 - Next: Test on Vercel deployment, verify all dialogs work end-to-end
 - Sign: Claude
+
+Session 61: Mobile Widgets Fix + Axiom in Notes + Interactive Calendar
+- Fixed mobile widgets: removed 92vh bottom sheet on node tap, NoteGoalDetail + action bar now render inline below tree with auto-scroll on selection
+- Scaled up NotesCardTree 25-30%: pills 10px/16px (root), fonts 1.05rem/0.95rem, rings 30px/22px, tracker pills 0.75rem
+- Improved contrast: text #F3F4F6 (was #E5E7EB), full domainColor for %, brighter borders 0.12 opacity
+- Fixed goal creation 500: all goal_trees save operations now fallback to saving without root_nodes column if DB doesn't have it
+- AxiomNoteCard (NEW): shows today's Axiom daily brief below header in Notes, expandable for recap + routine + challenge
+- ActivityCalendar upgrade: cells 15→28px, shows up to 3 emojis per day, clickable days with selected highlight
+- DayDetailView (NEW): timeline view when calendar day clicked — shows all activities chronologically, colored by goal domain, includes Axiom brief
+- AxiomScanService: added daily recap generation from yesterday's tracker entries, journal notes, and check-ins; recap included in stored brief JSON and LLM prompt context
+- Removed aggressive generic CSS overrides (MuiTypography/Button/Chip) that broke layout
+- Files: NotesPage.tsx, NotesCardTree.tsx, GoalWorkspaceSheet.tsx, ActivityCalendar.tsx, DayDetailView.tsx (new), AxiomNoteCard.tsx (new), goalController.ts, AxiomScanService.ts
+- Verification: TypeScript check 0 source errors (frontend + backend), committed db4a4ec + 2cfe954, pushed to webapp
+- Next: Test calendar interaction, verify Axiom brief renders, check mobile layout
+- Sign: Claude
