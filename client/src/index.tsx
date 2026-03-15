@@ -313,13 +313,17 @@ root.render(
   </React.StrictMode>
 );
 
-/* 
-// Service Worker Management & Force Reset
+// Service Worker Management
 const registerServiceWorker = () => {
-  if ('serviceWorker' in navigator) {
-    // ... logic disabled for stability ...
+  if ('serviceWorker' in navigator && import.meta.env.MODE === 'production') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        console.log('[SW] Registered successfully:', reg.scope);
+      }).catch((err) => {
+        console.error('[SW] Registration failed:', err);
+      });
+    });
   }
 };
 registerServiceWorker();
-*/
 
