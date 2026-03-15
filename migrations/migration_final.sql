@@ -100,8 +100,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   occupation TEXT,
   education TEXT,
   stated_location TEXT,
-  latitude DECIMAL(10, 8),
-  longitude DECIMAL(11, 8),
   language TEXT DEFAULT 'en',
   social_instagram TEXT,
   social_twitter TEXT,
@@ -113,6 +111,34 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add missing columns to existing profiles table (if table already exists)
+DO $$ BEGIN
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8);
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username TEXT UNIQUE;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_demo BOOLEAN DEFAULT false;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS minimal_ai_mode BOOLEAN DEFAULT false;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user';
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS honor_score NUMERIC DEFAULT 1000;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS reliability_score NUMERIC DEFAULT 100;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS goal_tree_edit_count INTEGER DEFAULT 0;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_activity_date DATE DEFAULT CURRENT_DATE;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS best_streak INTEGER DEFAULT 0;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_checkin_date DATE;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS premium_expires_at TIMESTAMPTZ;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS occupation TEXT;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS education TEXT;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stated_location TEXT;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS social_instagram TEXT;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS social_twitter TEXT;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS social_linkedin TEXT;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS social_whatsapp TEXT;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS social_telegram TEXT;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT false;
+END $$;
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
