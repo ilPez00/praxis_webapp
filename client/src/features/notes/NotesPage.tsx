@@ -10,6 +10,7 @@ import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspac
 import NoteGoalDetail from './NoteGoalDetail';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import DiaryTimeline from './DiaryTimeline';
+import DiaryFeed from './DiaryFeed';
 import ActivityCalendar from './ActivityCalendar';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import Slider from '@mui/material/Slider';
@@ -589,15 +590,22 @@ const NotesPage: React.FC = () => {
               transition: 'width 0.2s ease',
             }}>
               {viewMode === 'tree' ? (
-                <NotesCardTree
-                  nodes={treeData}
-                  selectedNodeId={selectedNode?.id ?? null}
-                  onNodeSelect={handleNodeSelect}
-                  onLogTracker={handleLogTracker}
-                  onAddGoal={handleAddNewGoal}
-                  onAddGoalInDomain={handleAddGoalInDomain}
-                  onAddSubgoal={handleAddSubgoal}
-                />
+                <>
+                  <NotesCardTree
+                    nodes={treeData}
+                    selectedNodeId={selectedNode?.id ?? null}
+                    onNodeSelect={handleNodeSelect}
+                    onLogTracker={handleLogTracker}
+                    onAddGoal={handleAddNewGoal}
+                    onAddGoalInDomain={handleAddGoalInDomain}
+                    onAddSubgoal={handleAddSubgoal}
+                  />
+                  {currentUserId && (
+                    <Box sx={{ px: 1.5 }}>
+                      <DiaryFeed userId={currentUserId} />
+                    </Box>
+                  )}
+                </>
               ) : (
                 currentUserId ? <DiaryTimeline userId={currentUserId} /> : null
               )}
