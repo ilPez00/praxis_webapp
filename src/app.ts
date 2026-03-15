@@ -40,6 +40,7 @@ import dashboardRoutes from './routes/dashboardRoutes';
 import journalRoutes from './routes/journalRoutes';
 import axiomRoutes from './routes/axiomRoutes';
 import notebookRoutes from './routes/notebookRoutes';
+import diaryRoutes from './routes/diaryRoutes';
 import sparringRoutes from './routes/sparringRoutes';
 import publicWidgetRoutes from './routes/publicWidgetRoutes';
 
@@ -113,6 +114,7 @@ apiRouter.use('/dashboard', dashboardRoutes);
 apiRouter.use('/journal', journalRoutes);
 apiRouter.use('/axiom', axiomRoutes);
 apiRouter.use('/notebook', notebookRoutes);
+apiRouter.use('/diary', diaryRoutes);
 apiRouter.use('/sparring', sparringRoutes);
 
 app.use('/api', apiRouter);
