@@ -1,0 +1,398 @@
+# Hierarchical Notebook — Visual Mockups
+
+**Date:** 2026-03-15  
+**Status:** Concept
+
+---
+
+## 1. Onboarding Flow
+
+### Screen 1: Welcome
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│           🥋 Welcome to Praxis                              │
+│                                                             │
+│   Your goals, notes, and tracking — all in one place.      │
+│                                                             │
+│   Let's set up your notebook.                               │
+│                                                             │
+│                                                             │
+│         [Get Started →]                                     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Screen 2: Choose Topics
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  What areas of life do you want to focus on?                │
+│                                                             │
+│  Select all that apply:                                     │
+│                                                             │
+│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐  │
+│  │  📈            │ │  💪            │ │  ❤️            │  │
+│  │  Career        │ │  Fitness       │ │  Relationships │  │
+│  │                │ │                │ │                │  │
+│  │  [✓]           │ │  [✓]           │ │  [ ]           │  │
+│  └────────────────┘ └────────────────┘ └────────────────┘  │
+│                                                             │
+│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐  │
+│  │  🧠            │ │  🎨            │ │  ✨            │  │
+│  │  Learning      │ │  Creative      │ │  Personal      │  │
+│  │                │ │                │ │                │  │
+│  │  [✓]           │ │  [ ]           │ │  [✓]           │  │
+│  └────────────────┘ └────────────────┘ └────────────────┘  │
+│                                                             │
+│                                                             │
+│         [Skip for now]              [Continue →]            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Screen 3: First Chapter
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Great! Let's add your first goal.                          │
+│                                                             │
+│  Under "Career", what would you like to work on?            │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  e.g., "Learn Rust", "Get Promoted", "Start Side Biz"│  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+│                                                             │
+│         [Maybe Later]        [Create Chapter →]             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Main Notebook Interface
+
+### Desktop View
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  🥋 Praxis                              🔍 Search...       [👤] [⚙️]   │
+├───────────────┬─────────────────────────────────────────────────────────┤
+│               │                                                          │
+│  YOUR NOTEBOOK│  Career / Software Engineering / Learn Rust             │
+│               │  ─────────────────────────────────────────────────────  │
+│  ┌─────────┐  │                                                          │
+│  │📈 CAREER│  │  Progress: [━━━━━━━━━━━━━━━━━━━━━━·········] 65% 🔥    │
+│  │   ▼     │  │                                                          │
+│  │ ┌─────┐ │  │  ┌────────────────────────────────────────────────────┐ │
+│  │ │📘   │ │  │  │ 📝 NOTES  │  📊 TRACKERS  │  🎯 BETS  │  ⚡ TODO  │ │
+│  │ │Learn│ │  │  ───────────────────────────────────────────────────── │
+│  │ │Rust │ │  │                                                       │ │
+│  │ │ 65% │ │  │  Mar 15, 2026                                         │ │
+│  │ └─────┘ │  │  ──────────────────────────────────────────────────── │ │
+│  │ ┌─────┐ │  │                                                       │ │
+│  │ │📘   │ │  │  Started Chapter 3 on ownership and borrowing. The    │ │
+│  │ │System│ │  │  borrow checker is tricky but I'm starting to see    │ │
+│  │ │Design│ │  │  the pattern.                                        │ │
+│  │ │ 50% │ │  │                                                       │ │
+│  │ └─────┘ │  │  Key insights:                                        │ │
+│  └─────────┘  │  • Ownership rules are strict but logical             │ │
+│               │  • Borrowing vs cloning depends on use case           │ │
+│  ┌─────────┐  │  • Lifetimes are scary but necessary                  │ │
+│  │💪FITNESS│  │                                                       │ │
+│  │   ▼     │  │  Tomorrow:                                            │ │
+│  │ ┌─────┐ │  │  • Complete exercises 3.1-3.5                        │ │
+│  │ │📘   │ │  │  • Read about trait objects                          │ │
+│  │ │Run 5K│ │  │                                                       │ │
+│  │ │ 90% │ │  │  ───────────────────────────────────────────────────  │ │
+│  │ └─────┘ │  │                                                       │ │
+│  └─────────┘  │  [+ Add Entry]                                        │ │
+│               │                                                       │ │
+│  ┌─────────┐  │  ──────────────────────────────────────────────────── │ │
+│  │🧠LEARN  │  │                                                       │ │
+│  │   ▼     │  │  SUBCHAPTERS (3):                                     │ │
+│  │ ┌─────┐ │  │  ┌────────────────────────────────────────────────┐  │ │
+│  │ │📘   │ │  │  │ ✓ Complete Rust Book (Ch 1-6)            [✓]  │  │ │
+│  │ │Spanish│ │  │  │ ▶ Build CLI Tool                       [65%] │  │ │
+│  │ │ 40% │ │  │  │ ⬜ Contribute to Open Source             [0%]  │  │ │
+│  │ └─────┘ │  │  └────────────────────────────────────────────────┘  │ │
+│  └─────────┘  │                                                       │ │
+│               │  [+ Add Subchapter]                                   │ │
+│  [+ Topic]    │                                                       │ │
+│               │  ──────────────────────────────────────────────────── │ │
+│               │                                                       │ │
+│               │  TRACKING TODAY:                                      │ │
+│               │  ┌────────────────────────────────────────────────┐   │ │
+│               │  │ 📊 Code Time: 45/60 min  [Log]                │   │ │
+│               │  │ 📚 Pages Read: 12/20     [Log]                │   │ │
+│               │  └────────────────────────────────────────────────┘   │ │
+│               │                                                       │ │
+│               │  ──────────────────────────────────────────────────── │ │
+│               │                                                       │ │
+│               │  Axiom says:                                          │ │
+│               │  "Your code time is up 15% this week! 🎉 How's the    │ │
+│               │  borrow checker treating you?"                        │ │
+│               │                                                       │ │
+└───────────────┴───────────────────────────────────────────────────────┘
+```
+
+### Mobile View
+
+```
+┌─────────────────────────────────────┐
+│  🥋 Praxis              🔍 [👤]     │
+├─────────────────────────────────────┤
+│                                     │
+│  📈 CAREER                    ▼     │
+│  ┌───────────────────────────────┐ │
+│  │ 📘 Learn Rust          65%   │ │
+│  │ ━━━━━━━━━━━━━━━━━━━━━━━      │ │
+│  └───────────────────────────────┘ │
+│  ┌───────────────────────────────┐ │
+│  │ 📘 System Design       50%   │ │
+│  │ ━━━━━━━━━━━━━━━━━━━          │ │
+│  └───────────────────────────────┘ │
+│                                     │
+│  💪 FITNESS                   ▼     │
+│  ┌───────────────────────────────┐ │
+│  │ 📘 Run 5K              90%   │ │
+│  │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━  │ │
+│  └───────────────────────────────┘ │
+│                                     │
+│  [+ Add Topic]                      │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+---
+
+## 3. Node Detail (Mobile)
+
+### Note View
+
+```
+┌─────────────────────────────────────┐
+│  ← Career / Learn Rust       [⋮]   │
+├─────────────────────────────────────┤
+│                                     │
+│  Progress: [━━━━━━·······] 65%     │
+│                                     │
+│  ┌────────────────────────────────┐ │
+│  │ 📝 Notes                       │ │
+│  └────────────────────────────────┘ │
+│                                     │
+│  Mar 15, 2026                       │
+│  ─────────────────────────────────  │
+│  Started Chapter 3 on ownership...  │
+│                                     │
+│  Key insights:                      │
+│  • Ownership rules are strict...   │
+│  • Borrowing vs cloning...         │
+│                                     │
+│  [+ Add Entry]                      │
+│                                     │
+│  ─────────────────────────────────  │
+│                                     │
+│  SUBCHAPTERS (3)                    │
+│  ┌────────────────────────────────┐ │
+│  │ ✓ Complete Book          [✓]  │ │
+│  │ ▶ Build CLI Tool         [65%]│ │
+│  │ ⬜ Contribute to OSS      [0%] │ │
+│  └────────────────────────────────┘ │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+### Tracker View (Swipe)
+
+```
+┌─────────────────────────────────────┐
+│  ← Career / Learn Rust       [⋮]   │
+├─────────────────────────────────────┤
+│                                     │
+│  Progress: [━━━━━━·······] 65%     │
+│                                     │
+│  Notes | 📊 Trackers | Bets | Todo │
+│  ─────────────────────────────────  │
+│                                     │
+│  TODAY'S TRACKERS                   │
+│                                     │
+│  ┌────────────────────────────────┐ │
+│  │ 📊 Code Time                   │ │
+│  │ ━━━━━━━━━━━········ 45/60 min  │ │
+│  │                        [+ Log] │ │
+│  └────────────────────────────────┘ │
+│                                     │
+│  ┌────────────────────────────────┐ │
+│  │ 📚 Pages Read                  │ │
+│  │ ━━━━━━━━━━········· 12/20 pgs  │ │
+│  │                        [+ Log] │ │
+│  └────────────────────────────────┘ │
+│                                     │
+│  ─────────────────────────────────  │
+│                                     │
+│  THIS WEEK                          │
+│  ┌────────────────────────────────┐ │
+│  │ Mon: 45 min  ✓                 │ │
+│  │ Tue: 30 min  ✓                 │ │
+│  │ Wed: 60 min  ✓                 │ │
+│  │ Thu: 20 min  ✗                 │ │
+│  │ Fri: --                        │ │
+│  └────────────────────────────────┘ │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+---
+
+## 4. Interactions
+
+### Create New Topic
+
+```
+1. Click [+ Topic] in sidebar
+2. Modal appears:
+
+┌─────────────────────────────────────┐
+│  New Topic                          │
+│                                     │
+│  Name: [_________________]          │
+│                                     │
+│  Icon: [📈] [💪] [🧠] [🎨] [✨]    │
+│                                     │
+│  Color: [●] [●] [●] [●] [●]        │
+│                                     │
+│     [Cancel]        [Create Topic]  │
+└─────────────────────────────────────┘
+```
+
+### Add Subchapter
+
+```
+1. Click [+ Add Subchapter]
+2. Inline input appears:
+
+┌─────────────────────────────────────┐
+│  New Subchapter:                    │
+│  [____________________________]     │
+│                                     │
+│  Type: [Chapter ▼] [Task ▼]        │
+│                                     │
+│     [Cancel]        [Add Chapter]   │
+└─────────────────────────────────────┘
+```
+
+### Quick Log Tracker
+
+```
+1. Click tracker pill (e.g., "Code: 45/60 min")
+2. Bottom sheet slides up:
+
+┌─────────────────────────────────────┐
+│  Log Code Time                      │
+│                                     │
+│  Today: 45 minutes                  │
+│                                     │
+│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐  │
+│  │ +15 │ │ +30 │ │ +45 │ │ +60 │  │
+│  └─────┘ └─────┘ └─────┘ └─────┘  │
+│                                     │
+│  Or custom: [____] minutes          │
+│                                     │
+│  Note (optional):                   │
+│  [____________________________]     │
+│                                     │
+│           [Save Log]                │
+└─────────────────────────────────────┘
+```
+
+---
+
+## 5. Search & Discovery
+
+### Search Results
+
+```
+┌─────────────────────────────────────┐
+│  🔍 "borrow checker"                │
+├─────────────────────────────────────┤
+│                                     │
+│  NOTES (2):                         │
+│  ┌────────────────────────────────┐ │
+│  │ 📘 Learn Rust                  │ │
+│  │ "Started Chapter 3 on          │ │
+│  │  ownership and borrowing..."   │ │
+│  │ Mar 15, 2026                   │ │
+│  └────────────────────────────────┘ │
+│                                     │
+│  CHAPTERS (1):                      │
+│  ┌────────────────────────────────┐ │
+│  │ 📘 Borrow Checker Deep Dive    │ │
+│  │ Career / Learning              │ │
+│  │ 0% complete                    │ │
+│  └────────────────────────────────┘ │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+---
+
+## 6. Axiom Integration
+
+### Morning Brief (Notebook Context)
+
+```
+┌─────────────────────────────────────┐
+│  🥋 Good morning, Marco!            │
+│                                     │
+│  ┌────────────────────────────────┐ │
+│  │ 🥋 AXIOM PROTOCOL              │ │
+│  │                                │ │
+│  │ Your curiosity is your         │ │
+│  │ superpower. I notice "Career"  │ │
+│  │ has been on your mind — what's │ │
+│  │ one small step today?          │ │
+│  │                                │ │
+│  │ TODAY'S FOCUS:                 │ │
+│  │ ▶ Learn Rust (65%)             │ │
+│  │                                │ │
+│  │ How's the borrow checker       │ │
+│  │ treating you?                  │ │
+│  └────────────────────────────────┘ │
+│                                     │
+│  [Check In] [View Notebook]        │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+---
+
+## Color Palette
+
+| Element | Color | Usage |
+|---------|-------|-------|
+| Career | `#8B5CF6` (Purple) | Topics, progress bars |
+| Fitness | `#F59E0B` (Amber) | Topics, progress bars |
+| Learning | `#3B82F6` (Blue) | Topics, progress bars |
+| Creative | `#EC4899` (Pink) | Topics, progress bars |
+| Personal | `#10B981` (Emerald) | Topics, progress bars |
+| Active | Full opacity | Active nodes |
+| Completed | 50% opacity | Completed nodes |
+| Suspended | 35% opacity + grayscale | Suspended nodes |
+
+---
+
+## Typography
+
+| Element | Font | Size | Weight |
+|---------|------|------|--------|
+| Topic headers | Inter | 14px | 800 |
+| Chapter titles | Inter | 13px | 700 |
+| Body text | Inter | 14px | 400 |
+| Progress % | Inter | 12px | 800 |
+| Timestamps | Inter | 11px | 400 |
+
+---
+
+**Next:** Implement these mockups in Figma for interactive prototyping.
