@@ -266,11 +266,20 @@ const NotesPage: React.FC = () => {
               />
             </Box>
 
-            {/* Desktop: right panel — workspace + widget + history */}
+            {/* Desktop: right panel — widget first, then workspace actions */}
             {!isMobile && (
               <Box sx={{ width: '60%', overflowY: 'auto' }}>
-                {selectedNode ? (
+                {selectedNode && currentUserId ? (
                   <>
+                    {/* Rich widget: glowing progress, chart, log form, history */}
+                    <NoteGoalDetail
+                      node={selectedNode}
+                      allNodes={backendNodes}
+                      userId={currentUserId}
+                      activeBets={activeBets}
+                      onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
+                    />
+                    {/* Compact workspace: sub-goals, actions */}
                     <GoalWorkspaceSheet
                       node={selectedNode}
                       allNodes={backendNodes}
@@ -281,18 +290,9 @@ const NotesPage: React.FC = () => {
                       onAddSubgoal={handleAddSubgoal}
                       onLogTracker={handleLogTracker}
                       onAction={handleAction}
-                      userId={currentUserId || ''}
+                      userId={currentUserId}
                       actions={NOTES_ACTIONS}
                     />
-                    {currentUserId && (
-                      <NoteGoalDetail
-                        node={selectedNode}
-                        allNodes={backendNodes}
-                        userId={currentUserId}
-                        activeBets={activeBets}
-                        onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
-                      />
-                    )}
                   </>
                 ) : (
                   <Box sx={{
@@ -307,7 +307,20 @@ const NotesPage: React.FC = () => {
           </Box>
         )}
 
-        {/* Mobile: bottom sheet */}
+        {/* Mobile: widget below tree when a goal is selected */}
+        {isMobile && currentUserId && selectedNode && (
+          <Box sx={{ mt: 2, px: 1 }}>
+            <NoteGoalDetail
+              node={selectedNode}
+              allNodes={backendNodes}
+              userId={currentUserId}
+              activeBets={activeBets}
+              onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
+            />
+          </Box>
+        )}
+
+        {/* Mobile: bottom sheet for actions */}
         {isMobile && (
           <GoalWorkspaceSheet
             node={selectedNode}
@@ -322,19 +335,6 @@ const NotesPage: React.FC = () => {
             userId={currentUserId || ''}
             actions={NOTES_ACTIONS}
           />
-        )}
-
-        {/* Mobile: widget + history below tree */}
-        {isMobile && currentUserId && selectedNode && (
-          <Box sx={{ mt: 4, px: 2 }}>
-            <NoteGoalDetail
-              node={selectedNode}
-              allNodes={backendNodes}
-              userId={currentUserId}
-              activeBets={activeBets}
-              onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
-            />
-          </Box>
         )}
 
         {/* Node Journal Drawer */}
