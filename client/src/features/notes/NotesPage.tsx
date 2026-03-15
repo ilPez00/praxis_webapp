@@ -11,6 +11,7 @@ import NoteGoalDetail from './NoteGoalDetail';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import DiaryFeed from './DiaryFeed';
 import ActivityCalendar from './ActivityCalendar';
+import GoalNotesPanel from './GoalNotesPanel';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import Slider from '@mui/material/Slider';
 import AccountTreeIcon2 from '@mui/icons-material/Park';
@@ -596,13 +597,13 @@ const NotesPage: React.FC = () => {
           )}
         </Box>
 
-        {/* Desktop: Right panel for goal details */}
+        {/* Desktop: Right panel for goal details and notes */}
         {!isMobile && (
-          <Box sx={{ 
-            position: 'fixed', 
-            right: 0, 
-            top: '80px', 
-            width: '40%', 
+          <Box sx={{
+            position: 'fixed',
+            right: 0,
+            top: '80px',
+            width: '40%',
             maxWidth: '500px',
             height: 'calc(100vh - 100px)',
             overflowY: 'auto',
@@ -613,6 +614,7 @@ const NotesPage: React.FC = () => {
           }}>
             {selectedNode && currentUserId ? (
               <>
+                {/* Goal Details & Trackers */}
                 <NoteGoalDetail
                   node={selectedNode}
                   allNodes={backendNodes}
@@ -621,6 +623,15 @@ const NotesPage: React.FC = () => {
                   onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
                   focusedTrackerType={activeLogType}
                 />
+                
+                {/* Goal Notes Panel */}
+                <GoalNotesPanel
+                  nodeId={selectedNode.id}
+                  nodeTitle={selectedNode.title}
+                  userId={currentUserId}
+                />
+                
+                {/* Workspace Sheet (actions) */}
                 <GoalWorkspaceSheet
                   node={selectedNode}
                   allNodes={backendNodes}

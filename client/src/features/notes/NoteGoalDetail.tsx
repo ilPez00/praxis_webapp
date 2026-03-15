@@ -895,13 +895,6 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
           focused={focusedTrackerType === dt.config.id}
         />
       ))}
-
-      {/* ── Entry history timeline ── */}
-      {config && (
-        <GlassCard sx={{ p: 2, borderRadius: '16px', mt: 2 }}>
-          <EntryTimeline entries={allEntries} config={config} color={accentColor} />
-        </GlassCard>
-      )}
     </Box>
   );
 };
