@@ -15,6 +15,11 @@ const engagementMetricService = new EngagementMetricService();
  * Generate brief recommendations based on engagement metrics.
  * READS: Trackers, notes, public posts, goal data
  * DOES NOT READ: Private messages, DMs
+ * 
+ * TONE: Encouraging, suggestive, curious — NOT critical
+ * - Focus on what's working
+ * - Ask about struggles instead of pointing them out
+ * - Suggest small actions, don't demand
  */
 async function generateMetricBasededBrief(metrics: any, userName: string): Promise<any> {
   const { 
@@ -32,14 +37,15 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
   const { interestedTopics, recentAchievements, currentFocus } = recommendationContext || {};
 
   // Message templates based on archetype WITH content context
+  // TONE: Warm, encouraging, curious — never critical
   const messages: Record<string, string> = {
-    consolidator: `Good morning, ${userName}. You excel at finishing what you start. ${currentFocus ? `Keep advancing "${currentFocus}" today.` : 'Complete one more meaningful step.'}`,
-    explorer: `${userName}, you have many interests — that's your strength. ${interestedTopics?.[0] ? `Focus on ${interestedTopics[0]} today.` : 'Pick ONE goal to advance today.'}`,
-    achiever: `${userName}, your momentum is strong. ${recentAchievements?.[0] ? `After "${recentAchievements[0]}", what's next?` : 'Keep building.'}`,
-    struggler: `${userName}, every expert was once a beginner. ${trackerTrends?.[0]?.direction === 'improving' ? `Your "${trackerTrends[0].trackerName}" is improving — apply that same consistency elsewhere.` : 'Show up for 5 minutes today — that's enough.'}`,
-    socializer: `${userName}, your connections fuel you. ${socialEngagementScore > 60 ? 'Share your progress with your network today.' : 'Reach out to someone in your network today.'}`,
-    lone_wolf: `${userName}, you work best independently. ${currentFocus ? `Trust your process on "${currentFocus}".` : 'Take one step forward.'}`,
-    burnout_risk: `${userName}, you've been pushing hard. ${trackerTrends?.some(t => t.direction === 'declining') ? 'Some metrics are down — that's okay. Focus on recovery AND one small win.' : 'Focus on recovery AND one small win.'}`,
+    consolidator: `Good morning, ${userName}. You have a gift for finishing what you start. ${currentFocus ? `How's "${currentFocus}" coming along?` : 'What feels meaningful to complete today?'}`,
+    explorer: `${userName}, your curiosity is your superpower. ${interestedTopics?.[0] ? `I notice ${interestedTopics[0]} has been on your mind — what's one small step?` : 'What's calling to you today?'}`,
+    achiever: `${userName}, your momentum is inspiring. ${recentAchievements?.[0] ? `After "${recentAchievements[0]}", what's next on your list?` : 'Keep building — you're on a roll.'}`,
+    struggler: `${userName}, every expert was once a beginner. ${trackerTrends?.[0] ? `How's "${trackerTrends[0].trackerName}" going?` : 'What feels doable today, even if small?'}`,
+    socializer: `${userName}, your connections make you stronger. ${socialEngagementScore > 60 ? 'Who could you share a win with today?' : 'Consider reaching out to someone — they'd love to hear from you.'}`,
+    lone_wolf: `${userName}, you do your best work when you trust yourself. ${currentFocus ? `What does your intuition say about "${currentFocus}"?` : 'What feels like the right next step?'}`,
+    burnout_risk: `${userName}, you've been giving a lot. ${trackerTrends?.some(t => t.direction === 'declining') ? `Some things feel harder lately — what would support look like?` : 'What would feel restorative today?'}`,
   };
 
   // Routine templates based on motivation style
@@ -72,13 +78,14 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
   };
 
   // Challenge suggestions based on risk factors
+  // TONE: Inviting, not demanding — frame as opportunities
   const challenges: Record<string, { type: 'bet' | 'duel'; target: string; terms: string }> = {
-    streak_about_to_break: { type: 'bet', target: 'Check in today', terms: 'Keep your streak alive' },
-    goal_stagnation: { type: 'bet', target: 'Update any goal', terms: 'Break the stagnation' },
-    social_isolation: { type: 'bet', target: 'Give honor to someone', terms: 'Reconnect with your network' },
-    overwhelm: { type: 'bet', target: 'Complete one tiny task', terms: 'Small wins beat paralysis' },
-    declining_activity: { type: 'bet', target: 'Show up for 5 minutes', terms: 'Just start — momentum will follow' },
-    perfectionism_trap: { type: 'bet', target: 'Mark something as done', terms: 'Done is better than perfect' },
+    streak_about_to_break: { type: 'bet', target: 'Check in today', terms: 'Your streak is worth protecting — want to keep it going?' },
+    goal_stagnation: { type: 'bet', target: 'Update any goal', terms: 'What would feel like progress, even tiny?' },
+    social_isolation: { type: 'bet', target: 'Give honor to someone', terms: 'Who could use encouragement today?' },
+    overwhelm: { type: 'bet', target: 'Complete one tiny task', terms: 'What's the smallest thing that would feel good?' },
+    declining_activity: { type: 'bet', target: 'Show up for 5 minutes', terms: 'Just start — see how it feels' },
+    perfectionism_trap: { type: 'bet', target: 'Mark something as done', terms: 'What's "good enough" today?' },
   };
 
   // Pick challenge based on primary risk factor
@@ -88,47 +95,57 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
     : { type: 'bet' as const, target: 'Complete one key action today', terms: 'Log it in your tracker' };
 
   // Resource suggestions based on archetype AND content
+  // TONE: Supportive suggestions, not prescriptions
   const resources: any[] = [];
   
-  // Tracker-based suggestions
+  // Tracker-based suggestions — ASK about declining, don't criticize
   if (trackerTrends?.some(t => t.direction === 'declining')) {
     const declining = trackerTrends.find(t => t.direction === 'declining');
     resources.push({ 
       goal: declining?.trackerName || 'Consistency', 
-      suggestion: 'Small daily actions beat sporadic intensity', 
-      details: `${declining?.weekOverWeekChange || -10}% from last week — let's stabilize` 
+      suggestion: `How's ${declining?.trackerName || 'this'} going? Want to talk about what's been hard?`, 
+      details: `You're ${Math.abs(declining?.weekOverWeekChange || 10)}% from last week — no judgment, just curious` 
     });
   }
   
-  // Note theme-based suggestions
+  // Note theme-based suggestions — encourage reflection
   if (topNoteThemes?.[0]) {
     resources.push({ 
       goal: topNoteThemes[0], 
-      suggestion: 'You\'ve been reflecting on this — what action does it suggest?', 
-      details: 'From your recent notes' 
+      suggestion: `You've been writing about "${topNoteThemes[0]}" — what's it teaching you?`, 
+      details: 'Your reflections matter' 
     });
   }
   
-  // Archetype-based suggestions
+  // Archetype-based suggestions — supportive, not prescriptive
   if (archetype === 'explorer' || archetype === 'burnout_risk') {
     resources.push({ 
       goal: 'Focus', 
-      suggestion: 'Try time-blocking: 25 min focused, 5 min break', 
-      details: 'Pomodoro technique' 
+      suggestion: 'Want to try 25 min focused, 5 min break? Or find your own rhythm.', 
+      details: 'Pomodoro is one option' 
     });
   }
   if (archetype === 'struggler') {
     resources.push({ 
       goal: 'Momentum', 
-      suggestion: 'Start with a 2-minute task', 
-      details: 'Build confidence with quick wins' 
+      suggestion: 'What's one thing you could do in 2 minutes?', 
+      details: 'Small starts count' 
     });
   }
   if (socialEngagementScore < 40) {
     resources.push({ 
       goal: 'Connection', 
-      suggestion: 'Join a group session', 
-      details: 'Shared accountability works' 
+      suggestion: 'Have you thought about joining a group session?', 
+      details: 'Some folks find it helpful' 
+    });
+  }
+  
+  // Event follow-up — ASK about failed events, don't criticize
+  if (riskFactors.includes('declining_activity')) {
+    resources.push({ 
+      goal: 'Check-in', 
+      suggestion: 'I noticed things have been quieter lately — how are you doing?', 
+      details: 'No pressure, just checking in' 
     });
   }
 
