@@ -304,16 +304,20 @@ export class AICoachingService {
     if (strategy === 'last') startIndex = this.apiKeys.length - 1;
     if (strategy === 'random') startIndex = Math.floor(Math.random() * this.apiKeys.length);
 
-    // Ordered cheapest-first by token cost and RPM quota.
-    // flash-lite: 30 RPM free, cheapest per token
-    // flash-8b:   8B param model, very low cost
-    // 1.5-flash:  mid-tier fallback
-    // 2.0-flash:  most capable, only used if all cheaper models fail
+    // Ordered by rate limit (highest first) and cost
+    // gemini-2.5-flash: Newest, highest free tier limits (recommended)
+    // gemini-2.0-flash: Standard flash model, good limits
+    // gemini-2.5-pro: Pro tier, highest limits but more expensive
+    // gemini-1.5-flash: Older, lower limits
+    // gemini-1.5-flash-8b: 8B model, cheapest but lowest limits
+    // gemini-2.0-flash-lite: Lowest limits (avoid for bulk operations)
     const baseModels = [
-      'gemini-2.0-flash-lite',
-      'gemini-1.5-flash-8b',
-      'gemini-1.5-flash',
-      'gemini-2.0-flash',
+      'gemini-2.5-flash',      // ← Try newest first (highest limits)
+      'gemini-2.0-flash',      // ← Standard flash
+      'gemini-2.5-pro',        // ← Pro tier
+      'gemini-1.5-flash',      // ← Older flash
+      'gemini-1.5-flash-8b',   // ← 8B cheap model
+      'gemini-2.0-flash-lite', // ← Last resort (lowest limits)
     ];
 
     const triedKeys = new Set<number>();
@@ -329,6 +333,9 @@ export class AICoachingService {
       for (const modelName of baseModels) {
         for (const apiVersion of ['v1beta', 'v1'] as const) {
           try {
+            // Small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 150));
+            
             const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
             const response = await fetch(url, {
               method: 'POST',
