@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
@@ -10,8 +9,11 @@ import NotesCardTree from './NotesCardTree';
 import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspaceSheet';
 import NoteGoalDetail from './NoteGoalDetail';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
+import DiaryTimeline from './DiaryTimeline';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import Slider from '@mui/material/Slider';
+import HistoryIcon from '@mui/icons-material/History';
+import AccountTreeIcon2 from '@mui/icons-material/Park';
 
 import {
   Container, Box, Typography, Stack, CircularProgress,
@@ -75,7 +77,6 @@ const NOTES_ACTIONS: ActionItem[] = [
 
 const NotesPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
-  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -84,8 +85,7 @@ const NotesPage: React.FC = () => {
   const [loadingContent, setLoadingContent] = useState(true);
   const [streak, setStreak] = useState<number>(0);
   const [praxisPoints, setPraxisPoints] = useState<number | null>(null);
-  
-  // Calendar state
+  const [viewMode, setViewMode] = useState<'tree' | 'diary'>('tree');
 
   const [selectedNode, setSelectedNode] = useState<FrontendGoalNode | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -178,39 +178,8 @@ const NotesPage: React.FC = () => {
           .eq('user_id', currentUserId)
           .eq('status', 'active');
         setActiveBets(betsRes.data || []);
-        
-        // Fetch calendar data
-        const { data: { session } } = await supabase.auth.getSession();
-        const authH = { headers: { Authorization: `Bearer ${session?.access_token}` } };
-        const calendarRes = await axios.get(`${API_URL}/trackers/calendar?days=112`, authH);
-        if (calendarRes.data?.calendar) {
-          setCalendarDays(calendarRes.data.calendar);
-        }
-        
-        // Extract goal target dates
-        if (treeRes.data?.nodes) {
-          const nodes = treeRes.data.nodes as any[];
-          const DOMAIN_EMOJI: Record<string, string> = {
-            'Fitness': '🏋️', 'Career': '💼', 'Investing / Financial Growth': '📈',
-            'Academics': '📚', 'Mental Health': '🧘', 'Philosophical Development': '🔭',
-            'Culture / Hobbies': '🎨', 'Intimacy / Romantic': '💞',
-            'Friendship / Social Engagement': '👥', 'Personal Goals': '🌟',
-          };
-          const dates = nodes
-            .filter((n: any) => n.targetDate)
-            .map((n: any) => ({
-              date: n.targetDate,
-              label: n.name,
-              emoji: DOMAIN_EMOJI[n.domain] || '🎯',
-              color: DOMAIN_COLORS[n.domain as Domain] || '#F59E0B',
-            }));
-          setGoalDates(dates);
-        }
-        
-        setCalendarLoading(false);
       } catch (err: any) {
         console.error('Notes fetch error:', err);
-        setCalendarLoading(false);
       } finally {
         setLoadingContent(false);
       }
@@ -570,27 +539,68 @@ const NotesPage: React.FC = () => {
             )}
           </Stack>
         </Box>
-        
-        <Box sx={{ display: 'flex', height: { xs: 'auto', md: 'calc(100vh - 200px)' } }}>
-            {/* Tree panel — always shows all domains */}
+
+        {/* View toggle */}
+        <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5, px: { xs: 2, sm: 0 } }}>
+          <Box
+            onClick={() => setViewMode('tree')}
+            sx={{
+              px: 1.5, py: 0.5, borderRadius: '12px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 0.5,
+              fontSize: '0.7rem', fontWeight: 700,
+              background: viewMode === 'tree' ? 'rgba(139,92,246,0.12)' : 'transparent',
+              color: viewMode === 'tree' ? '#A78BFA' : 'text.disabled',
+              border: '1px solid',
+              borderColor: viewMode === 'tree' ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.06)',
+              transition: 'all 0.15s ease',
+              '&:hover': { borderColor: 'rgba(139,92,246,0.3)' },
+            }}
+          >
+            <AccountTreeIcon2 sx={{ fontSize: 14 }} /> Goal Tree
+          </Box>
+          <Box
+            onClick={() => setViewMode('diary')}
+            sx={{
+              px: 1.5, py: 0.5, borderRadius: '12px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 0.5,
+              fontSize: '0.7rem', fontWeight: 700,
+              background: viewMode === 'diary' ? 'rgba(139,92,246,0.12)' : 'transparent',
+              color: viewMode === 'diary' ? '#A78BFA' : 'text.disabled',
+              border: '1px solid',
+              borderColor: viewMode === 'diary' ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.06)',
+              transition: 'all 0.15s ease',
+              '&:hover': { borderColor: 'rgba(139,92,246,0.3)' },
+            }}
+          >
+            <HistoryIcon sx={{ fontSize: 14 }} /> Diary
+          </Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', height: { xs: 'auto', md: 'calc(100vh - 240px)' } }}>
+            {/* Left panel — tree or diary */}
             <Box sx={{
-              width: { xs: '100%', md: '40%' },
+              width: { xs: '100%', md: viewMode === 'diary' ? '100%' : '40%' },
               overflowY: 'auto',
-              borderRight: { xs: 'none', md: '1px solid rgba(255,255,255,0.06)' },
+              borderRight: { xs: 'none', md: viewMode === 'diary' ? 'none' : '1px solid rgba(255,255,255,0.06)' },
+              transition: 'width 0.2s ease',
             }}>
-              <NotesCardTree
-                nodes={treeData}
-                selectedNodeId={selectedNode?.id ?? null}
-                onNodeSelect={handleNodeSelect}
-                onLogTracker={handleLogTracker}
-                onAddGoal={handleAddNewGoal}
-                onAddGoalInDomain={handleAddGoalInDomain}
-                onAddSubgoal={handleAddSubgoal}
-              />
+              {viewMode === 'tree' ? (
+                <NotesCardTree
+                  nodes={treeData}
+                  selectedNodeId={selectedNode?.id ?? null}
+                  onNodeSelect={handleNodeSelect}
+                  onLogTracker={handleLogTracker}
+                  onAddGoal={handleAddNewGoal}
+                  onAddGoalInDomain={handleAddGoalInDomain}
+                  onAddSubgoal={handleAddSubgoal}
+                />
+              ) : (
+                currentUserId ? <DiaryTimeline userId={currentUserId} /> : null
+              )}
             </Box>
 
-            {/* Desktop: right panel */}
-            {!isMobile && (
+            {/* Desktop: right panel (hidden in diary mode) */}
+            {!isMobile && viewMode === 'tree' && (
               <Box sx={{ width: '60%', overflowY: 'auto' }}>
                 {selectedNode && currentUserId ? (
                   <>
