@@ -128,7 +128,7 @@ export const getAchievementById = catchAsync(async (req: Request, res: Response,
  */
 export const getAchievements = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.query;
-  let query = supabase.from('achievements').select('id, user_id, goal_node_id, goal_name, category, description, media_url, created_at, verified_by, verified_at, verification_type, visibility, like_count').order('created_at', { ascending: false });
+  let query = supabase.from('achievements').select('*').order('created_at', { ascending: false });
   if (userId) query = query.eq('user_id', String(userId));
   const { data, error } = await query;
 
