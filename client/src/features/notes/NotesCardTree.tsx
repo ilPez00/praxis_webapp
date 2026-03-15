@@ -8,6 +8,7 @@ interface NotesCardTreeProps {
   selectedNodeId: string | null;
   onNodeSelect: (node: GoalNode) => void;
   onLogTracker: (trackerType: string, goalNode: GoalNode) => void;
+  onAddGoal?: () => void;
   readOnly?: boolean;
 }
 
@@ -170,7 +171,7 @@ const GoalCard: React.FC<{
 };
 
 const NotesCardTree: React.FC<NotesCardTreeProps> = ({
-  nodes, selectedNodeId, onNodeSelect, onLogTracker, readOnly,
+  nodes, selectedNodeId, onNodeSelect, onLogTracker, onAddGoal, readOnly,
 }) => {
   const rootsByDomain = groupByDomain(nodes);
   const domainKeys = Object.keys(rootsByDomain);
@@ -182,6 +183,24 @@ const NotesCardTree: React.FC<NotesCardTreeProps> = ({
 
   return (
     <Box sx={{ p: 2 }}>
+      {onAddGoal && !readOnly && (
+        <Box
+          onClick={onAddGoal}
+          sx={{
+            p: '10px 14px', mb: 2, borderRadius: '12px', cursor: 'pointer',
+            border: '1px dashed rgba(139,92,246,0.3)',
+            background: 'rgba(139,92,246,0.04)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+            transition: 'all 0.2s ease',
+            '&:hover': { background: 'rgba(139,92,246,0.08)', borderColor: 'rgba(139,92,246,0.5)' },
+          }}
+        >
+          <Typography sx={{ fontSize: '1rem' }}>+</Typography>
+          <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#A78BFA' }}>
+            Add New Goal
+          </Typography>
+        </Box>
+      )}
       {domainKeys.map(domain => {
         const goals = rootsByDomain[domain];
         const progress = domainProgress(goals);
