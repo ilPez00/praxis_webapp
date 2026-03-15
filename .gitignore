@@ -39,9 +39,11 @@ yarn-error.log*
 *.lof
 *.lot
 
+# SQL migrations (except migrations folder)
+!migrations/*.sql
+
 # Project-specific temporary/dev files
 Auth_Data/
-*.sql
 praxis_description.txt
 run_old_praxis.sh
 claude.sh
