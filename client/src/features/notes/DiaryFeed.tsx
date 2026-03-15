@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, CircularProgress, Avatar, Chip } from '@mui/material';
+import { Box, Typography, CircularProgress, Avatar, Chip, IconButton } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
 import { supabase } from '../../lib/supabase';
 import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
+import NoteEditDialog from './NoteEditDialog';
 
 /* ─── Types ─────────────────────────────────────── */
 interface FeedItem {
@@ -78,6 +80,21 @@ async function safeQuery<T>(fn: () => Promise<{ data: T | null; error: any }>): 
 const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingItem, setEditingItem] = useState<FeedItem | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const handleEditClick = (item: FeedItem, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setEditingItem(item);
+    setEditDialogOpen(true);
+  };
+
+  const handleItemUpdated = (updatedItem: FeedItem) => {
+    // Update the item in the list
+    setItems(prev => prev.map(item => 
+      item.id === updatedItem.id ? updatedItem : item
+    ));
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -353,7 +370,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
                   borderColor: `${item.color}30`,
                 },
               }}>
-                {/* Top row: icon + title + badge + time */}
+                {/* Top row: icon + title + badge + time + edit */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{
                     width: 28, height: 28, borderRadius: '8px',
@@ -383,6 +400,24 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
                   <Typography sx={{ fontSize: '0.5rem', color: 'text.disabled', fontWeight: 600, flexShrink: 0 }}>
                     {relativeTime(item.timestamp)}
                   </Typography>
+                  {/* Edit button - show on hover for journal entries */}
+                  {(item.type === 'journal' || item.type === 'post' || item.type === 'goal') && (
+                    <IconButton
+                      size="small"
+                      onClick={(e) => handleEditClick(item, e)}
+                      sx={{
+                        ml: 0.5,
+                        width: 24,
+                        height: 24,
+                        color: 'text.secondary',
+                        opacity: 0,
+                        transition: 'opacity 0.15s ease',
+                        '.MuiBox-root:hover &': { opacity: 1 },
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
                 </Box>
 
                 {/* Detail text */}
@@ -401,6 +436,19 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
           })}
         </Box>
       ))}
+      
+      {/* Edit Dialog */}
+      {editingItem && (
+        <NoteEditDialog
+          item={editingItem}
+          open={editDialogOpen}
+          onClose={() => {
+            setEditDialogOpen(false);
+            setEditingItem(null);
+          }}
+          onUpdated={handleItemUpdated}
+        />
+      )}
     </Box>
   );
 };

@@ -80,6 +80,9 @@ const AICoachPage: React.FC = () => {
 
   const [dailyBrief, setDailyBrief] = useState<DailyRecommendation | null>(null);
   const [loadingDaily, setLoadingDaily] = useState(true);
+  
+  // Last Axiom message from daily brief
+  const [lastAxiomMessage, setLastAxiomMessage] = useState<string | null>(null);
 
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState('');
@@ -106,15 +109,37 @@ const AICoachPage: React.FC = () => {
     setLoadingDaily(true);
     try {
       const headers = await getAuthHeaders();
+      // Fetch latest axiom daily brief
+      const { data: briefData } = await supabase
+        .from('axiom_daily_briefs')
+        .select('brief, generated_at')
+        .eq('user_id', user?.id)
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (briefData?.brief) {
+        setDailyBrief(briefData.brief);
+        if (briefData.brief.message) {
+          setLastAxiomMessage(briefData.brief.message);
+        }
+      }
+      
+      // Also try API endpoint
       const res = await fetch(`${API_URL}/ai-coaching/daily-brief`, { headers });
       if (res.ok) {
         const data = await res.json();
-        if (data?.brief) setDailyBrief(data.brief);
+        if (data?.brief) {
+          setDailyBrief(data.brief);
+          if (data.brief.message && !lastAxiomMessage) {
+            setLastAxiomMessage(data.brief.message);
+          }
+        }
       }
     } catch { /* ignore */ } finally {
       setLoadingDaily(false);
     }
-  }, []);
+  }, [user?.id, lastAxiomMessage]);
 
   const generateBrief = useCallback(async () => {
     setLoadingReport(true);
@@ -236,6 +261,42 @@ const AICoachPage: React.FC = () => {
           {report ? 'Refresh' : 'Initialize'}
         </Button>
       </Box>
+      
+      {/* Last Axiom Message Display */}
+      {lastAxiomMessage && (
+        <Box sx={{
+          mb: 4,
+          p: 2.5,
+          borderRadius: 3,
+          bgcolor: 'rgba(139,92,246,0.08)',
+          border: '1px solid rgba(139,92,246,0.2)',
+          position: 'relative',
+        }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+            <Avatar sx={{
+              width: 40,
+              height: 40,
+              background: 'linear-gradient(135deg, #78350F, #92400E)',
+              border: '1px solid rgba(245,158,11,0.4)',
+              fontSize: '1.2rem',
+              flexShrink: 0,
+            }}>🥋</Avatar>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 0.5, letterSpacing: '0.08em' }}>
+                LAST FROM AXIOM
+              </Typography>
+              <Typography variant="body1" sx={{
+                color: 'text.primary',
+                lineHeight: 1.6,
+                fontStyle: 'italic',
+                fontSize: '0.95rem',
+              }}>
+                "{lastAxiomMessage}"
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+      )}
 
       <Stack spacing={3}>
         {loadingDaily ? <LinearProgress /> : dailyBrief && (
