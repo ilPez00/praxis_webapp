@@ -7,9 +7,10 @@ import {
   Box,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import QuickLogDialog from './QuickLogDialog';
 
 interface Props {
   onPostClick?: () => void;
@@ -21,13 +22,14 @@ const QuickActionFAB: React.FC<Props> = ({ onPostClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
 
   // Hide on auth/onboarding/widget pages
   if (HIDDEN_PATHS.some(p => location.pathname.startsWith(p))) return null;
 
   const actions = [
     { icon: <EditIcon />, name: 'New Post', onClick: () => onPostClick ? onPostClick() : navigate('/dashboard') },
-    { icon: <AddCircleOutlineIcon />, name: 'Add Goal', onClick: () => navigate('/notes') },
+    { icon: <NoteAddIcon />, name: 'Quick Log', onClick: () => setQuickLogOpen(true) },
     { icon: <CheckCircleIcon />, name: 'Check In', onClick: () => navigate('/dashboard') },
     { icon: <AutoAwesomeIcon />, name: 'Ask Axiom', onClick: () => navigate('/coaching') },
   ];
@@ -68,6 +70,7 @@ const QuickActionFAB: React.FC<Props> = ({ onPostClick }) => {
           />
         ))}
       </SpeedDial>
+      <QuickLogDialog open={quickLogOpen} onClose={() => setQuickLogOpen(false)} />
     </Box>
   );
 };

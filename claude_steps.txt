@@ -243,3 +243,26 @@ Session 63: Admin Force Push Axiom Briefs
 - Verification: TypeScript check 0 source errors (frontend + backend), committed 42fcec9, pushed to webapp
 - Next: Test force-push on deployed app, verify generated briefs appear in Dashboard/Notes/Axiom Chat
 - Sign: Claude
+
+Session 64: LLM Fix + Source Tags + Force Refresh + Global FAB + Quick Log
+- Critical fix: AxiomScanService.generateDailyBrief() was building a detailed prompt but calling generateFullReport() which used its own generic prompt — the Axiom prompt was never sent to LLM. Fixed by calling runWithFallback(prompt) directly.
+- Made AICoachingService.runWithFallback() public for direct LLM calls with custom prompts
+- Added source tagging ('llm' | 'algorithm') + llm_error tracking to briefs — stored in JSON, shown to admins
+- generateAxiomBrief endpoint: added `force` param that bypasses cache and minimal_ai_mode gate
+- AICoachPage.tsx: refresh button now calls POST /ai-coaching/generate-axiom-brief?force=1 for live LLM generation
+- Source badges shown in Dashboard (AxiomMorningBrief), Axiom Chat (AICoachPage), Admin panel
+- Admin panel: recent briefs show 🧠 Axiom / ⚙️ Algorithm chips + LLM error display
+- Fixed missing LocalFireDepartmentIcon import that crashed AdminPage in production
+- Fixed user_id=eq.undefined Supabase 400 error in AICoachPage loadDailyBrief
+- QuickActionFAB.tsx: moved from Dashboard-only to global (rendered in AppRouter.tsx alongside Navbar)
+- Removed duplicate QuickActionFAB from DashboardPage.tsx
+- QuickActionFAB: auto-hides on /login, /register, /onboarding, /widget paths
+- NEW QuickLogDialog.tsx: slide-up bottom sheet for quick goal logging from any page
+  - Step 1: goal selector (fetches active goals from goal_trees, shows domain icon + progress ring)
+  - Step 2: log form (progress slider, mood picker, note text field)
+  - Saves to node_journal_entries + updates goal_trees JSONB progress
+- Wired QuickLogDialog into QuickActionFAB as "Quick Log" action (replaces "Add Goal" nav)
+- Files: AxiomScanService.ts, AICoachingService.ts, aiCoachingController.ts, adminAxiomRoutes.ts, AdminPage.tsx, AICoachPage.tsx, AxiomMorningBrief.tsx, AxiomNoteCard.tsx, DiaryFeed.tsx, QuickActionFAB.tsx, QuickLogDialog.tsx (NEW), AppRouter.tsx, DashboardPage.tsx
+- Verification: TypeScript check 0 source errors
+- Next: Commit + push, test Quick Log flow on deployed app, verify LLM briefs generate with force refresh
+- Sign: Claude
