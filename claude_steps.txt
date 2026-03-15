@@ -234,3 +234,12 @@ Session 62: Axiom Briefs Visible in All Three Surfaces
 - Verification: TypeScript check 0 source errors, committed 74653c2, pushed to webapp
 - Next: Verify Axiom briefs render on deployed Vercel, test match/event/place cards in AxiomNoteCard
 - Sign: Claude
+
+Session 63: Admin Force Push Axiom Briefs
+- Backend: added POST /admin/axiom/force-push endpoint in adminAxiomRoutes.ts — single user (synchronous) or all users (background)
+- Frontend: new "Force Push Axiom Brief" card in Admin > Axiom tab with user dropdown and gradient push button
+- User list auto-fetches when Axiom tab is opened so dropdown is populated
+- Files: src/routes/adminAxiomRoutes.ts, client/src/features/admin/AdminPage.tsx
+- Verification: TypeScript check 0 source errors (frontend + backend), committed 42fcec9, pushed to webapp
+- Next: Test force-push on deployed app, verify generated briefs appear in Dashboard/Notes/Axiom Chat
+- Sign: Claude
