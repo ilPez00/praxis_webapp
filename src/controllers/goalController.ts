@@ -441,15 +441,14 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
     throw new NotFoundError('Goal node not found in tree.');
   }
 
-  const { error: updateErr } = await supabase
+  let { error: updateErr } = await supabase
     .from('goal_trees')
-    .update({ 
-      nodes: updatedNodes, 
-      root_nodes: rootNodeIds // Progress update doesn't change which nodes are root
-    })
+    .update({ nodes: updatedNodes, root_nodes: rootNodeIds })
     .eq('user_id', userId);
-
-  if (updateErr) throw new InternalServerError(`Failed to update node: ${updateErr.message}`);
+  if (updateErr) {
+    const { error: fb } = await supabase.from('goal_trees').update({ nodes: updatedNodes }).eq('user_id', userId);
+    if (fb) throw new InternalServerError(`Failed to update node: ${fb.message}`);
+  }
 
   // ── Log to Tracker (for Calendar/Analytics) ──
   // Ensures that updating goal progress counts as an activity dot on the calendar.
@@ -606,15 +605,22 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
   // Root nodes = nodes with no parentId; append if this is a root node
   const updatedRootNodeIds = parentId ? rootNodeIds : [...rootNodeIds, newNode.id];
 
-  // 4. Save updated nodes + rootNodes
-  const { error: saveErr } = await supabase
+  // 4. Save updated nodes + rootNodes (fallback if root_nodes column missing)
+  let { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ 
-      nodes: updatedNodes, 
-      root_nodes: updatedRootNodeIds 
+    .update({
+      nodes: updatedNodes,
+      root_nodes: updatedRootNodeIds
     })
     .eq('user_id', userId);
-  if (saveErr) throw new InternalServerError(`Failed to save new node: ${saveErr.message}`);
+  if (saveErr) {
+    // Retry without root_nodes in case column doesn't exist in production
+    const { error: fallbackErr } = await supabase
+      .from('goal_trees')
+      .update({ nodes: updatedNodes })
+      .eq('user_id', userId);
+    if (fallbackErr) throw new InternalServerError(`Failed to save new node: ${fallbackErr.message}`);
+  }
 
   // 5. Increment edit count + deduct PP (best-effort)
   const newBalance = currentPoints - NODE_CREATE_COST;
@@ -686,15 +692,15 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const updatedNodes = [...nodes];
   updatedNodes[idx] = updatedNode;
 
-  // 4. Save
-  const { error: saveErr } = await supabase
+  // 4. Save (fallback if root_nodes column missing)
+  let { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ 
-      nodes: updatedNodes, 
-      root_nodes: rootNodeIds 
-    })
+    .update({ nodes: updatedNodes, root_nodes: rootNodeIds })
     .eq('user_id', userId);
-  if (saveErr) throw new InternalServerError(`Failed to save node update: ${saveErr.message}`);
+  if (saveErr) {
+    const { error: fb } = await supabase.from('goal_trees').update({ nodes: updatedNodes }).eq('user_id', userId);
+    if (fb) throw new InternalServerError(`Failed to save node update: ${fb.message}`);
+  }
 
   // 5. Increment edit count + deduct PP (best-effort)
   const newBalance = currentPoints - NODE_EDIT_COST;
@@ -751,15 +757,15 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const updatedNodes = nodes.filter((n: GoalNode) => !toDelete.has(n.id));
   const updatedRootNodeIds = rootNodeIds.filter((id: string) => !toDelete.has(id));
 
-  // 3. Save
-  const { error: saveErr } = await supabase
+  // 3. Save (fallback if root_nodes column missing)
+  let { error: saveErr } = await supabase
     .from('goal_trees')
-    .update({ 
-      nodes: updatedNodes, 
-      root_nodes: updatedRootNodeIds 
-    })
+    .update({ nodes: updatedNodes, root_nodes: updatedRootNodeIds })
     .eq('user_id', userId);
-  if (saveErr) throw new InternalServerError(`Failed to delete node: ${saveErr.message}`);
+  if (saveErr) {
+    const { error: fb } = await supabase.from('goal_trees').update({ nodes: updatedNodes }).eq('user_id', userId);
+    if (fb) throw new InternalServerError(`Failed to delete node: ${fb.message}`);
+  }
 
   res.json({ message: 'Node deleted.', deletedCount: toDelete.size });
 });

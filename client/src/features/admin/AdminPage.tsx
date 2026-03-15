@@ -6,7 +6,7 @@ import {
   IconButton, Chip, Avatar, TextField, InputAdornment,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip,
   Divider, Tabs, Tab, Select, MenuItem, FormControl, InputLabel,
-  Grid, Stack,
+  Grid, Stack, List, ListItem, ListItemText,
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import BlockIcon from '@mui/icons-material/Block';
@@ -343,6 +343,10 @@ const AdminPage: React.FC = () => {
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [updatingStrategy, setUpdatingStrategy] = useState(false);
   const [triggeringScan, setTriggeringScan] = useState(false);
+  
+  // Axiom stats
+  const [axiomStats, setAxiomStats] = useState<any>(null);
+  const [loadingAxiomStats, setLoadingAxiomStats] = useState(false);
 
   // ── Users state ─────────────────────────────────────────────────────────────
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -364,7 +368,7 @@ const AdminPage: React.FC = () => {
       const headers = await authHeaders();
       const res = await fetch(`${API_URL}/admin/config`, { headers });
       const configs: SystemConfig[] = await res.json();
-      
+
       const prompt = configs.find(c => c.key === 'axiom_prompt');
       if (prompt) setAxiomPrompt(prompt.value);
 
@@ -372,6 +376,22 @@ const AdminPage: React.FC = () => {
       if (strategy) setAxiomStrategy(strategy.value as any);
     } catch {
       toast.error('Failed to fetch Axiom settings.');
+    }
+  }, []);
+
+  const fetchAxiomStats = useCallback(async () => {
+    setLoadingAxiomStats(true);
+    try {
+      const headers = await authHeaders();
+      const res = await fetch(`${API_URL}/admin/axiom/stats`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setAxiomStats(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch Axiom stats:', err);
+    } finally {
+      setLoadingAxiomStats(false);
     }
   }, []);
 
@@ -536,8 +556,11 @@ const AdminPage: React.FC = () => {
     if (tab === 4 && challenges.length === 0) fetchChallenges();
     if (tab === 5 && services.length === 0) fetchServices();
     if (tab === 6 && coaches.length === 0) fetchCoaches();
-    if (tab === 7) fetchAxiomPrompt();
-  }, [tab, user, fetchAxiomPrompt]);
+    if (tab === 7) {
+      fetchAxiomPrompt();
+      fetchAxiomStats();
+    }
+  }, [tab, user, fetchAxiomPrompt, fetchAxiomStats]);
 
   // ── User actions ─────────────────────────────────────────────────────────────
 
@@ -1647,10 +1670,187 @@ const AdminPage: React.FC = () => {
       </Dialog>
       {/* ── Tab 7: Axiom ──────────────────────────────────────────────────────── */}
       <TabPanel value={tab} index={7}>
-        <Box sx={{ maxWidth: 800, mx: 'auto', py: 2 }}>
+        <Box sx={{ maxWidth: 1200, mx: 'auto', py: 2 }}>
           <Typography variant="h5" sx={{ fontWeight: 800, mb: 3, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <AutoAwesomeIcon /> Axiom Engine Management
           </Typography>
+
+          {/* Axiom Usage Statistics */}
+          {loadingAxiomStats ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress />
+            </Box>
+          ) : axiomStats ? (
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              {/* Summary Cards */}
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card sx={{ bgcolor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 3 }}>
+                  <CardContent sx={{ p: 2.5 }}>
+                    <Typography variant="caption" sx={{ color: 'rgba(245,158,11,0.8)', fontWeight: 700, display: 'block', mb: 1 }}>
+                      TOTAL BRIEFS
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 900, color: '#F59E0B' }}>
+                      {axiomStats.summary.total_briefs.toLocaleString()}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>All time</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card sx={{ bgcolor: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 3 }}>
+                  <CardContent sx={{ p: 2.5 }}>
+                    <Typography variant="caption" sx={{ color: 'rgba(139,92,246,0.8)', fontWeight: 700, display: 'block', mb: 1 }}>
+                      THIS WEEK
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 900, color: '#A78BFA' }}>
+                      {axiomStats.summary.week_briefs.toLocaleString()}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>Last 7 days</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card sx={{ bgcolor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 3 }}>
+                  <CardContent sx={{ p: 2.5 }}>
+                    <Typography variant="caption" sx={{ color: 'rgba(16,185,129,0.8)', fontWeight: 700, display: 'block', mb: 1 }}>
+                      THIS MONTH
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 900, color: '#10B981' }}>
+                      {axiomStats.summary.month_briefs.toLocaleString()}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>Last 30 days</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card sx={{ bgcolor: 'rgba(236,72,153,0.08)', border: '1px solid rgba(236,72,153,0.3)', borderRadius: 3 }}>
+                  <CardContent sx={{ p: 2.5 }}>
+                    <Typography variant="caption" sx={{ color: 'rgba(236,72,153,0.8)', fontWeight: 700, display: 'block', mb: 1 }}>
+                      TODAY
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 900, color: '#EC4899' }}>
+                      {axiomStats.summary.today_briefs.toLocaleString()}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>Generated today</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Top Users Table */}
+              <Grid size={{ xs: 12 }}>
+                <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 3 }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <EmojiEventsIcon sx={{ color: '#F59E0B' }} /> Top Axiom Users
+                    </Typography>
+                    <TableContainer>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Rank</TableCell>
+                            <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>User</TableCell>
+                            <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Status</TableCell>
+                            <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Streak</TableCell>
+                            <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Points</TableCell>
+                            <TableCell sx={{ color: 'text.secondary', fontWeight: 700, align: 'right' }}>Briefs Generated</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {axiomStats.top_users.map((user: any, index: number) => (
+                            <TableRow key={user.id} sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  {index === 0 && '🥇'}
+                                  {index === 1 && '🥈'}
+                                  {index === 2 && '🥉'}
+                                  {index > 2 && `#${index + 1}`}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                                    {user.name?.charAt(0) || 'U'}
+                                  </Avatar>
+                                  <Box>
+                                    <Typography sx={{ fontWeight: 600 }}>{user.name || 'Unknown'}</Typography>
+                                    <Typography variant="caption" color="text.secondary">{user.email || ''}</Typography>
+                                  </Box>
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                {user.is_premium && (
+                                  <Chip label="Premium" size="small" sx={{ bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B', height: 24 }} />
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <LocalFireDepartmentIcon sx={{ fontSize: 16, color: '#F59E0B' }} />
+                                  {user.current_streak || 0}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Typography sx={{ fontWeight: 600, color: '#A78BFA' }}>
+                                  {user.praxis_points?.toLocaleString() || 0}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Chip 
+                                  label={user.brief_count.toLocaleString()} 
+                                  size="small" 
+                                  sx={{ bgcolor: 'rgba(139,92,246,0.2)', color: '#A78BFA', fontWeight: 700 }} 
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Recent Briefs */}
+              <Grid size={{ xs: 12 }}>
+                <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 3 }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                      Recent Brief Generation (Last 24h)
+                    </Typography>
+                    <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+                      {axiomStats.recent_briefs.length > 0 ? (
+                        <List dense>
+                          {axiomStats.recent_briefs.map((brief: any) => (
+                            <ListItem key={brief.id} sx={{ py: 1, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                              <ListItemText
+                                primary={
+                                  <Typography sx={{ fontWeight: 600 }}>
+                                    {brief.profiles?.name || 'Unknown User'}
+                                  </Typography>
+                                }
+                                secondary={
+                                  <Typography variant="caption" color="text.secondary">
+                                    Date: {brief.date} • Generated: {new Date(brief.generated_at).toLocaleString()}
+                                  </Typography>
+                                }
+                              />
+                              <Chip label="Generated" size="small" sx={{ bgcolor: 'rgba(16,185,129,0.2)', color: '#10B981' }} />
+                            </ListItem>
+                          ))}
+                        </List>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                          No briefs generated in the last 24 hours
+                        </Typography>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          ) : null}
 
           <Grid container spacing={4}>
             {/* System Prompt */}

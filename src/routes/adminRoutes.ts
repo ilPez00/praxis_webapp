@@ -9,6 +9,7 @@ import {
   streakAlerts,
   getSystemConfig, updateSystemConfig, triggerAxiomScan, togglePremium
 } from '../controllers/adminController';
+import adminAxiomRoutes from './adminAxiomRoutes';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
 
@@ -52,5 +53,6 @@ router.put('/users/:id/premium', authenticateToken, requireAdmin, togglePremium)
 router.get('/config', authenticateToken, requireAdmin, getSystemConfig);
 router.put('/config/:key', authenticateToken, requireAdmin, updateSystemConfig);
 router.post('/axiom/trigger-scan', authenticateToken, requireAdmin, triggerAxiomScan);
+router.use('/axiom', adminAxiomRoutes);
 
 export default router;
