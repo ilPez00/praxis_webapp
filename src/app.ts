@@ -38,6 +38,7 @@ import duelRoutes from './routes/duelRoutes';
 import trackerRoutes from './routes/trackerRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import journalRoutes from './routes/journalRoutes';
+import axiomRoutes from './routes/axiomRoutes';
 import sparringRoutes from './routes/sparringRoutes';
 import publicWidgetRoutes from './routes/publicWidgetRoutes';
 
@@ -109,6 +110,7 @@ apiRouter.use('/duels', duelRoutes);
 apiRouter.use('/trackers', trackerRoutes);
 apiRouter.use('/dashboard', dashboardRoutes);
 apiRouter.use('/journal', journalRoutes);
+apiRouter.use('/axiom', axiomRoutes);
 apiRouter.use('/sparring', sparringRoutes);
 
 app.use('/api', apiRouter);

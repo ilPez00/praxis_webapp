@@ -231,10 +231,25 @@ const DesktopWidget: React.FC = () => {
         {/* Last Axiom Message */}
         {lastAxiomMessage && (
           <Box sx={{ pt: 1, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <Stack direction="row" alignItems="center" gap={0.5} sx={{ mb: 0.5 }}>
-              <ChatIcon sx={{ color: '#A78BFA', fontSize: 12 }} />
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', fontWeight: 800, fontSize: '0.55rem' }}>
-                LAST FROM AXIOM
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={0.5} sx={{ mb: 0.5 }}>
+              <Stack direction="row" alignItems="center" gap={0.5}>
+                <ChatIcon sx={{ color: '#A78BFA', fontSize: 12 }} />
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', fontWeight: 800, fontSize: '0.55rem' }}>
+                  AXIOM
+                </Typography>
+              </Stack>
+              <Typography
+                variant="caption"
+                onClick={fetchData}
+                sx={{
+                  color: '#F59E0B',
+                  fontWeight: 700,
+                  fontSize: '0.55rem',
+                  cursor: 'pointer',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                🔄 Refresh
               </Typography>
             </Stack>
             <Typography variant="body2" sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
