@@ -12,7 +12,6 @@ import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import DiaryFeed from './DiaryFeed';
 import ActivityCalendar from './ActivityCalendar';
 import DayDetailView from './DayDetailView';
-import AxiomNoteCard from './AxiomNoteCard';
 import GoalNotesPanel from './GoalNotesPanel';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import Slider from '@mui/material/Slider';
@@ -559,9 +558,6 @@ const NotesPage: React.FC = () => {
             )}
           </Stack>
         </Box>
-
-        {/* Axiom Daily Brief */}
-        {currentUserId && <AxiomNoteCard userId={currentUserId} />}
 
         {/* Activity calendar — clickable days */}
         {currentUserId && (
