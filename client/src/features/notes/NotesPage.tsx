@@ -155,10 +155,10 @@ const NotesPage: React.FC = () => {
     }
   };
 
-  const handleLogTracker = (trackerType: string, _goalNode: FrontendGoalNode) => {
+  const handleLogTracker = (trackerType: string, goalNode: FrontendGoalNode) => {
+    setSelectedNode(goalNode);
+    setSheetOpen(true);
     setActiveLogType(trackerType);
-    // Clear after a tick so the prop change triggers the effect in TrackerSection
-    setTimeout(() => setActiveLogType(null), 100);
   };
 
   const handleAction = (action: string, node: FrontendGoalNode) => {
@@ -278,6 +278,7 @@ const NotesPage: React.FC = () => {
                       userId={currentUserId}
                       activeBets={activeBets}
                       onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
+                      focusedTrackerType={activeLogType}
                     />
                     {/* Compact workspace: sub-goals, actions */}
                     <GoalWorkspaceSheet

@@ -58,6 +58,7 @@ interface NoteGoalDetailProps {
   userId: string;
   activeBets: any[];
   onProgressUpdate: (nodeId: string, progress: number) => void;
+  focusedTrackerType?: string | null;
 }
 
 // ── Widget config lookup (same as GoalWidgets but imported inline) ──────────
@@ -344,10 +345,205 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
   );
 }
 
+// ── Full tracker widget (log form + chart + history for ANY tracker) ─────
+
+function FullTrackerWidget({ trackerConfig, tracker, onLog, focused }: {
+  trackerConfig: typeof TRACKER_TYPES[0];
+  tracker: Tracker;
+  onLog: () => void;
+  focused?: boolean;
+}) {
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [logOpen, setLogOpen] = useState(focused ?? false);
+
+  const color = trackerConfig.color;
+  const allEntries = tracker.entries ?? [];
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayEntries = allEntries.filter(e => e.logged_at.slice(0, 10) === todayKey);
+  const loggedToday = todayEntries.length > 0;
+  const latestEntry = todayEntries[0];
+  const showForm = logOpen || !loggedToday;
+
+  // Build fields from TRACKER_TYPES config
+  const fields: FieldConfig[] = (trackerConfig.fields || []).map((f: any) => ({
+    key: f.key, label: f.label, type: f.type || 'number',
+    placeholder: f.placeholder, min: f.min, max: f.max, step: f.step, unit: f.unit,
+  }));
+
+  // Streak
+  const streak = (() => {
+    let count = 0;
+    const today = new Date();
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      if (allEntries.some(e => e.logged_at.slice(0, 10) === key)) count++;
+      else break;
+    }
+    return count;
+  })();
+
+  const handleLog = async () => {
+    const data: Record<string, any> = {};
+    for (const f of fields) {
+      const val = form[f.key];
+      if (val !== undefined && val !== '') data[f.key] = f.type === 'number' ? Number(val) : val;
+    }
+    if (Object.keys(data).length === 0) { toast.error('Enter at least one value.'); return; }
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await axios.post(`${API_URL}/trackers/log`, { type: trackerConfig.id, data }, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      toast.success(`${trackerConfig.icon} Logged! +5⚡`);
+      setForm({});
+      setLogOpen(false);
+      onLog();
+    } catch { toast.error('Failed to log. Try again.'); }
+    finally { setSaving(false); }
+  };
+
+  // Auto-open log form when focused
+  useEffect(() => {
+    if (focused) setLogOpen(true);
+  }, [focused]);
+
+  return (
+    <GlassCard sx={{
+      p: 0, borderRadius: '18px', overflow: 'hidden', mb: 2,
+      border: `1px solid ${loggedToday ? color + '50' : color + '20'}`,
+      background: loggedToday
+        ? `linear-gradient(160deg, ${color}12 0%, rgba(13,14,26,0.92) 100%)`
+        : `linear-gradient(160deg, ${color}06 0%, rgba(13,14,26,0.95) 100%)`,
+      boxShadow: focused ? `0 0 20px ${color}30` : loggedToday ? `0 4px 20px ${color}15` : 'none',
+      transition: 'box-shadow 0.3s ease',
+    }}>
+      {/* Accent strip */}
+      <Box sx={{
+        height: 3,
+        background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
+        opacity: loggedToday ? 1 : 0.3,
+      }} />
+
+      <Box sx={{ px: 2, pt: 1.5, pb: 1 }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Box sx={{
+            width: 30, height: 30, borderRadius: '8px', flexShrink: 0,
+            bgcolor: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: `1px solid ${color}30`,
+            boxShadow: loggedToday ? `0 0 10px ${color}30` : 'none',
+          }}>
+            <Typography sx={{ fontSize: '1rem', lineHeight: 1 }}>{trackerConfig.icon}</Typography>
+          </Box>
+          <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', flex: 1 }}>{trackerConfig.label}</Typography>
+          {loggedToday && (
+            <Chip icon={<CheckIcon sx={{ fontSize: '10px !important', color: '#10B981 !important' }} />}
+              label="Logged" size="small"
+              sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: '#10B98118', color: '#10B981', border: '1px solid #10B98133' }}
+            />
+          )}
+          {streak > 1 && (
+            <Chip icon={<LocalFireDepartmentIcon sx={{ fontSize: '10px !important', color: '#F59E0B !important' }} />}
+              label={`${streak}d`} size="small"
+              sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }}
+            />
+          )}
+        </Box>
+
+        {/* Today's stat boxes */}
+        {loggedToday && latestEntry && fields.length > 0 && (
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${Math.min(fields.filter(f => latestEntry.data[f.key] !== undefined && latestEntry.data[f.key] !== '').length || 1, 4)}, 1fr)`,
+            gap: 0.75, mb: 1.5,
+          }}>
+            {fields.map(f => {
+              const val = latestEntry.data[f.key];
+              if (val === undefined || val === null || val === '') return null;
+              return (
+                <Box key={f.key} sx={{
+                  textAlign: 'center', px: 0.75, py: 1,
+                  background: `linear-gradient(135deg, ${color}15, ${color}08)`,
+                  borderRadius: '10px', border: `1px solid ${color}22`,
+                }}>
+                  <Typography sx={{ fontSize: '1.3rem', fontWeight: 900, color, lineHeight: 1, mb: 0.25 }}>
+                    {String(val)}
+                  </Typography>
+                  <Typography sx={{ color: 'text.disabled', fontSize: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {f.unit || f.label}
+                  </Typography>
+                </Box>
+              );
+            }).filter(Boolean)}
+          </Box>
+        )}
+
+        {/* 7-day chart */}
+        {fields.length > 0 && (
+          <MiniChart
+            entries={allEntries}
+            chartKey={fields[0].key}
+            color={color}
+            unit={fields[0].unit || ''}
+          />
+        )}
+
+        {/* Log form */}
+        <Collapse in={showForm}>
+          <Box sx={{ mt: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography sx={{ color: 'text.disabled', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+                {loggedToday ? 'Log another' : "Log today's session"}
+              </Typography>
+              {loggedToday && (
+                <IconButton size="small" onClick={() => setLogOpen(v => !v)} sx={{ color: 'text.disabled', width: 20, height: 20, borderRadius: '6px' }}>
+                  {logOpen ? <CloseIcon sx={{ fontSize: 11 }} /> : <AddIcon sx={{ fontSize: 11 }} />}
+                </IconButton>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 1.25 }}>
+              {fields.map(f => (
+                <TextField key={f.key} size="small"
+                  label={f.unit ? `${f.label} (${f.unit})` : f.label}
+                  type={f.type} placeholder={f.placeholder}
+                  value={form[f.key] ?? ''}
+                  onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  inputProps={{ min: f.min, max: f.max, step: f.step ?? (f.type === 'number' ? 1 : undefined) }}
+                  sx={{
+                    flex: f.type === 'text' ? '1 1 120px' : '0 1 80px',
+                    '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.8rem', '&.Mui-focused fieldset': { borderColor: color } },
+                    '& .MuiInputLabel-root.Mui-focused': { color },
+                    '& .MuiInputLabel-root': { fontSize: '0.72rem' },
+                  }}
+                />
+              ))}
+            </Box>
+            <Button variant="contained" fullWidth onClick={handleLog} disabled={saving}
+              endIcon={saving ? <CircularProgress size={12} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: '13px !important' }} />}
+              sx={{
+                borderRadius: '10px', fontWeight: 800, fontSize: '0.78rem', py: 1,
+                background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                color: '#0A0B14', boxShadow: `0 3px 16px ${color}44`,
+                '&:hover': { boxShadow: `0 5px 24px ${color}55`, transform: 'translateY(-1px)' },
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {loggedToday ? 'Log again +5⚡' : 'Log +5⚡'}
+            </Button>
+          </Box>
+        </Collapse>
+      </Box>
+    </GlassCard>
+  );
+}
+
 // ── Main component ──────────────────────────────────────────────────────────
 
 const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
-  node, allNodes, userId, activeBets, onProgressUpdate,
+  node, allNodes, userId, activeBets, onProgressUpdate, focusedTrackerType,
 }) => {
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -444,13 +640,14 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
     } catch { toast.error('Failed to save objective.'); }
   };
 
-  // Also show all domain trackers for this goal
+  // Show ALL domain trackers — even ones not yet activated (empty entries)
   const domainTrackerIds = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
   const domainTrackers = domainTrackerIds
     .map(id => {
       const tt = TRACKER_TYPES.find(t => t.id === id);
-      const tr = trackers.find(t => t.type === id);
-      return tt && tr ? { config: tt, tracker: tr } : null;
+      if (!tt) return null;
+      const tr = trackers.find(t => t.type === id) ?? { id: '', type: id, goal: {}, entries: [] };
+      return { config: tt, tracker: tr };
     })
     .filter(Boolean) as { config: typeof TRACKER_TYPES[0]; tracker: Tracker }[];
 
@@ -683,44 +880,16 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
         )}
       </GlassCard>
 
-      {/* ── Additional domain trackers (if different from main config) ── */}
-      {domainTrackers.filter(dt => dt.config.id !== config?.type).map(dt => {
-        const dtEntries = dt.tracker.entries ?? [];
-        const dtToday = dtEntries.filter(e => e.logged_at.slice(0, 10) === todayKey);
-        const dtColor = dt.config.color;
-        return (
-          <GlassCard key={dt.config.id} sx={{
-            p: '12px 16px', borderRadius: '16px', mb: 1.5,
-            border: `1px solid ${dtToday.length > 0 ? dtColor + '40' : 'rgba(255,255,255,0.06)'}`,
-            background: dtToday.length > 0
-              ? `linear-gradient(135deg, ${dtColor}10, transparent)`
-              : undefined,
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <Typography sx={{ fontSize: '1rem' }}>{dt.config.icon}</Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: '0.85rem', flex: 1 }}>{dt.config.label}</Typography>
-              {dtToday.length > 0 && (
-                <Chip label="Logged" size="small"
-                  sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: '#10B98118', color: '#10B981', border: '1px solid #10B98133' }}
-                />
-              )}
-              <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)' }}>
-                {dtEntries.length} entries
-              </Typography>
-            </Box>
-            {dtEntries.length > 0 && (
-              <Box sx={{ display: 'flex', gap: '3px', height: 24, alignItems: 'flex-end' }}>
-                {Array.from({ length: 7 }, (_, i) => {
-                  const d = new Date(); d.setDate(d.getDate() - (6 - i));
-                  const key = d.toISOString().slice(0, 10);
-                  const has = dtEntries.some(e => e.logged_at.slice(0, 10) === key);
-                  return <Box key={i} sx={{ flex: 1, height: has ? 20 : 4, borderRadius: '3px', bgcolor: has ? `${dtColor}66` : 'rgba(255,255,255,0.05)', transition: 'height 0.3s ease' }} />;
-                })}
-              </Box>
-            )}
-          </GlassCard>
-        );
-      })}
+      {/* ── All domain trackers as full widgets ── */}
+      {domainTrackers.filter(dt => dt.config.id !== config?.type).map(dt => (
+        <FullTrackerWidget
+          key={dt.config.id}
+          trackerConfig={dt.config}
+          tracker={dt.tracker}
+          onLog={fetchTrackers}
+          focused={focusedTrackerType === dt.config.id}
+        />
+      ))}
 
       {/* ── Entry history timeline ── */}
       {config && (
