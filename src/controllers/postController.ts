@@ -5,7 +5,18 @@ import { catchAsync, NotFoundError, BadRequestError, ForbiddenError, InternalSer
 import { classifyPostDomain, bumpDomainProficiency } from '../utils/proficiency';
 
 const handleSupabaseError = (error: any) => {
-  logger.error('Supabase error (posts):', error);
+  logger.error('Supabase error (posts):', {
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    code: error.code,
+  });
+  
+  // Check for specific errors
+  if (error.message?.includes('reference')) {
+    logger.error('Posts table missing "reference" column - run migrations/fix_posts_table.sql');
+  }
+  
   throw new InternalServerError(error.message || 'Internal server error during Supabase operation.');
 };
 
@@ -296,9 +307,20 @@ export const getUserPosts = catchAsync(async (req: Request, res: Response, _next
 export const createPost = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId, userName, userAvatarUrl, title, content, mediaUrl, mediaType, context, reference } = req.body;
 
+  logger.info('[createPost] Received request:', {
+    userId,
+    userName,
+    contentLength: content?.length,
+    context,
+    hasReference: !!reference,
+    referenceType: reference?.type,
+  });
+
   if (!userId) throw new BadRequestError('userId is required.');
   if (!userName) throw new BadRequestError('userName is required.');
   if (!content || !content.trim()) throw new BadRequestError('content is required.');
+
+  logger.info('[createPost] Validation passed, attempting insert...');
 
   const { data, error } = await supabase
     .from('posts')
@@ -316,9 +338,22 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
     .select()
     .single();
 
-  if (error) handleSupabaseError(error);
-  if (!data) throw new InternalServerError('Insert returned no data.');
+  if (error) {
+    logger.error('[createPost] Supabase insert failed:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+    handleSupabaseError(error);
+  }
+  
+  if (!data) {
+    logger.error('[createPost] Insert returned no data');
+    throw new InternalServerError('Insert returned no data.');
+  }
 
+  logger.info('[createPost] Post created successfully:', { postId: data.id });
   res.status(201).json({ ...data, like_count: 0, comment_count: 0, user_liked: false });
 });
 
