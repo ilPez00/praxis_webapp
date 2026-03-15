@@ -370,6 +370,8 @@ export class AxiomScanService {
     let source: 'llm' | 'algorithm' = 'algorithm';
     let llmError: string | null = null;
 
+    logger.info(`[AxiomScan] Starting LLM generation for ${userName} (streak: ${metrics.checkinStreak}, archetype: ${metrics.archetype})`);
+
     try {
       const prompt = `You are Axiom, a wise warm and practical life coach inside the Praxis app. Generate a COMPLETE daily protocol for ${userName}.
 
@@ -406,6 +408,8 @@ RULES:
 
       const rawText = await aiCoaching.runWithFallback(prompt);
 
+      logger.info(`[AxiomScan] LLM response received for ${userName} (${rawText.length} chars)`);
+
       // Extract JSON from response (strip markdown fences if present)
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -415,14 +419,17 @@ RULES:
         challenge = llmData.challenge || null;
         resources = Array.isArray(llmData.resources) ? llmData.resources : [];
         source = 'llm';
+        logger.info(`[AxiomScan] LLM SUCCESS for ${userName} - message: ${axiomMessage.slice(0, 50)}...`);
       } else {
         // LLM returned plain text — use as message, rest will be algorithmic
         axiomMessage = rawText.slice(0, 500);
         source = 'llm'; // message is still from LLM even if not JSON
+        logger.info(`[AxiomScan] LLM returned non-JSON for ${userName} - using as message`);
       }
     } catch (err: any) {
       llmError = err.message || 'Unknown LLM failure';
       logger.error(`[AxiomScan] LLM FAILED for ${userName}: ${llmError}`);
+      logger.error(`[AxiomScan] Stack trace: ${err.stack || 'No stack'}`);
       // Fall back to the fully algorithmic brief
       const metricBrief = await generateMetricBasededBrief(metrics, userName);
       axiomMessage = metricBrief.message;
@@ -430,6 +437,7 @@ RULES:
       challenge = metricBrief.challenge || null;
       resources = metricBrief.resources || [];
       source = 'algorithm';
+      logger.warn(`[AxiomScan] Using ALGORITHM fallback for ${userName}`);
     }
 
     // --- Phase 4: Algorithmic picks for match/event/place ---
