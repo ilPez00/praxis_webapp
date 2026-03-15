@@ -158,8 +158,8 @@ function EntryTimeline({ entries, config, color }: {
   if (sorted.length === 0) {
     return (
       <Box sx={{ py: 2, textAlign: 'center' }}>
-        <HistoryIcon sx={{ fontSize: 32, color: 'rgba(255,255,255,0.1)', mb: 1 }} />
-        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>
+        <HistoryIcon sx={{ fontSize: 32, color: 'rgba(255,255,255,0.6)', mb: 1 }} />
+        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}>
           No entries yet — log your first session above
         </Typography>
       </Box>
@@ -179,10 +179,10 @@ function EntryTimeline({ entries, config, color }: {
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
         <HistoryIcon sx={{ fontSize: 14, color }} />
-        <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.75)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           Entry History
         </Typography>
-        <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.25)', ml: 'auto' }}>
+        <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.5)', ml: 'auto' }}>
           {sorted.length} total
         </Typography>
       </Box>
@@ -221,7 +221,7 @@ function EntryTimeline({ entries, config, color }: {
               <Box key={ei} sx={{
                 display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 0.5,
                 p: '6px 10px', borderRadius: '8px',
-                bgcolor: 'rgba(255,255,255,0.02)',
+                bgcolor: 'rgba(255,255,255,0.1)',
                 border: '1px solid rgba(255,255,255,0.05)',
               }}>
                 {config.fields.map(f => {
@@ -229,14 +229,14 @@ function EntryTimeline({ entries, config, color }: {
                   if (val === undefined || val === null || val === '') return null;
                   return (
                     <Box key={f.key} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)' }}>{f.label}:</Typography>
+                      <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)' }}>{f.label}:</Typography>
                       <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color }}>
                         {String(val)}{f.unit ? ` ${f.unit}` : ''}
                       </Typography>
                     </Box>
                   );
                 }).filter(Boolean)}
-                <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.2)', ml: 'auto' }}>
+                <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.75)', ml: 'auto' }}>
                   {new Date(entry.logged_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                 </Typography>
               </Box>
@@ -250,7 +250,7 @@ function EntryTimeline({ entries, config, color }: {
           onClick={() => setShowAll(true)}
           sx={{
             textAlign: 'center', py: 1, cursor: 'pointer',
-            color: 'rgba(255,255,255,0.3)', fontSize: '0.7rem', fontWeight: 700,
+            color: 'rgba(255,255,255,0.6)', fontSize: '0.7rem', fontWeight: 700,
             '&:hover': { color },
           }}
         >
@@ -309,7 +309,7 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
           ))}
         </Box>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-          <IconButton size="small" onClick={() => setEditing(false)} sx={{ color: 'text.disabled' }}>
+          <IconButton size="small" onClick={() => setEditing(false)} sx={{ color: 'rgba(255,255,255,0.6)' }}>
             <CloseIcon sx={{ fontSize: 14 }} />
           </IconButton>
           <IconButton size="small" onClick={handleSave} disabled={saving} sx={{ color: config.color }}>
@@ -332,12 +332,12 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
           />
         ))
       ) : (
-        <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem', fontStyle: 'italic' }}>
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem', fontStyle: 'italic' }}>
           No objectives set
         </Typography>
       )}
       <Tooltip title="Edit objectives">
-        <IconButton size="small" onClick={startEdit} sx={{ color: 'text.disabled', '&:hover': { color: config.color }, ml: 'auto', width: 20, height: 20 }}>
+        <IconButton size="small" onClick={startEdit} sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: config.color }, ml: 'auto', width: 20, height: 20 }}>
           <EditIcon sx={{ fontSize: 12 }} />
         </IconButton>
       </Tooltip>
@@ -413,12 +413,17 @@ function FullTrackerWidget({ trackerConfig, tracker, onLog, focused }: {
   return (
     <GlassCard sx={{
       p: 0, borderRadius: '18px', overflow: 'hidden', mb: 2,
-      border: `1px solid ${loggedToday ? color + '50' : color + '20'}`,
+      border: `1px solid ${loggedToday ? color + '60' : color + '30'}`,
       background: loggedToday
-        ? `linear-gradient(160deg, ${color}12 0%, rgba(13,14,26,0.92) 100%)`
-        : `linear-gradient(160deg, ${color}06 0%, rgba(13,14,26,0.95) 100%)`,
-      boxShadow: focused ? `0 0 20px ${color}30` : loggedToday ? `0 4px 20px ${color}15` : 'none',
+        ? `linear-gradient(160deg, ${color}18 0%, rgba(13,14,26,0.98) 100%)`
+        : `linear-gradient(160deg, ${color}10 0%, rgba(13,14,26,0.98) 100%)`,
+      boxShadow: focused ? `0 0 20px ${color}40` : loggedToday ? `0 4px 20px ${color}25` : '0 2px 8px rgba(0,0,0,0.3)',
       transition: 'box-shadow 0.3s ease',
+      // Mobile: larger padding
+      '@media (max-width: 600px)': {
+        p: 0,
+        mb: 3,
+      },
     }}>
       {/* Accent strip */}
       <Box sx={{
@@ -472,7 +477,7 @@ function FullTrackerWidget({ trackerConfig, tracker, onLog, focused }: {
                   <Typography sx={{ fontSize: '1.3rem', fontWeight: 900, color, lineHeight: 1, mb: 0.25 }}>
                     {String(val)}
                   </Typography>
-                  <Typography sx={{ color: 'text.disabled', fontSize: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {f.unit || f.label}
                   </Typography>
                 </Box>
@@ -495,11 +500,11 @@ function FullTrackerWidget({ trackerConfig, tracker, onLog, focused }: {
         <Collapse in={showForm}>
           <Box sx={{ mt: 1.5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography sx={{ color: 'text.disabled', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+              <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
                 {loggedToday ? 'Log another' : "Log today's session"}
               </Typography>
               {loggedToday && (
-                <IconButton size="small" onClick={() => setLogOpen(v => !v)} sx={{ color: 'text.disabled', width: 20, height: 20, borderRadius: '6px' }}>
+                <IconButton size="small" onClick={() => setLogOpen(v => !v)} sx={{ color: 'rgba(255,255,255,0.6)', width: 20, height: 20, borderRadius: '6px' }}>
                   {logOpen ? <CloseIcon sx={{ fontSize: 11 }} /> : <AddIcon sx={{ fontSize: 11 }} />}
                 </IconButton>
               )}
@@ -724,7 +729,7 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
             <Box sx={{ flex: 1, position: 'relative' }}>
               <LinearProgress variant="determinate" value={pct}
                 sx={{
-                  height: 10, borderRadius: 5, bgcolor: 'rgba(255,255,255,0.06)',
+                  height: 10, borderRadius: 5, bgcolor: 'rgba(255,255,255,0.1)',
                   '& .MuiLinearProgress-bar': {
                     borderRadius: 5,
                     background: `linear-gradient(90deg, ${domainColor}bb, ${accentColor})`,
@@ -758,7 +763,7 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
               <Typography variant="caption" sx={{ color: '#8B5CF6', fontWeight: 800, fontSize: '0.64rem' }}>
                 🎰 {bet.stake_points} PP staked
               </Typography>
-              <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', ml: 0.5 }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.6rem', ml: 0.5 }}>
                 · {betDaysLeft !== null && betDaysLeft > 0 ? `${betDaysLeft}d left` : betDaysLeft === 0 ? 'Due today' : 'Deadline passed'}
               </Typography>
             </Box>
@@ -802,7 +807,7 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
                           {String(val)}
                         </Typography>
                         <Typography variant="caption" sx={{
-                          color: 'text.disabled', fontSize: '0.56rem', display: 'block',
+                          color: 'rgba(255,255,255,0.6)', fontSize: '0.56rem', display: 'block',
                           lineHeight: 1, textTransform: 'uppercase', letterSpacing: '0.06em',
                         }}>
                           {f.unit || f.label}
@@ -812,7 +817,7 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
                   }).filter(Boolean)}
                 </Box>
                 {todayEntries.length > 1 && (
-                  <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', mt: 0.75, display: 'block' }}>
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.6rem', mt: 0.75, display: 'block' }}>
                     +{todayEntries.length - 1} more entr{todayEntries.length === 2 ? 'y' : 'ies'} today
                   </Typography>
                 )}
@@ -830,13 +835,13 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
               <Box sx={{ mt: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
                   <Typography variant="caption" sx={{
-                    color: 'text.disabled', fontSize: '0.58rem', letterSpacing: '0.08em',
+                    color: 'rgba(255,255,255,0.6)', fontSize: '0.58rem', letterSpacing: '0.08em',
                     textTransform: 'uppercase', fontWeight: 700,
                   }}>
                     {loggedToday ? 'Log another session' : "Log today's session"}
                   </Typography>
                   {loggedToday && (
-                    <IconButton size="small" onClick={() => setLogOpen(v => !v)} sx={{ color: 'text.disabled', width: 22, height: 22, borderRadius: '6px' }}>
+                    <IconButton size="small" onClick={() => setLogOpen(v => !v)} sx={{ color: 'rgba(255,255,255,0.6)', width: 22, height: 22, borderRadius: '6px' }}>
                       {logOpen ? <CloseIcon sx={{ fontSize: 12 }} /> : <AddIcon sx={{ fontSize: 12 }} />}
                     </IconButton>
                   )}

@@ -548,9 +548,14 @@ const NotesPage: React.FC = () => {
           flexDirection: 'column',
           height: 'auto',
           minHeight: 'calc(100vh - 240px)',
+          // Mobile: 125% scale for better readability
+          '@media (max-width: 600px)': {
+            zoom: 1.25,
+            transformOrigin: 'top left',
+          },
         }}>
           {/* Goal Tree Panel */}
-          <Box sx={{ 
+          <Box sx={{
             width: '100%',
             mb: 4,
           }}>
@@ -564,6 +569,24 @@ const NotesPage: React.FC = () => {
               onAddSubgoal={handleAddSubgoal}
             />
           </Box>
+
+          {/* Mobile: NoteGoalDetail below tree (always visible) */}
+          {isMobile && currentUserId && selectedNode && (
+            <Box sx={{
+              width: '100%',
+              mb: 3,
+              px: 1,
+            }}>
+              <NoteGoalDetail
+                node={selectedNode}
+                allNodes={backendNodes}
+                userId={currentUserId}
+                activeBets={activeBets}
+                onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
+                focusedTrackerType={activeLogType}
+              />
+            </Box>
+          )}
 
           {/* Diary Feed - Infinite Scroll */}
           {currentUserId && (

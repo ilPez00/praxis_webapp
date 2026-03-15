@@ -345,11 +345,11 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
                 mb: 1,
                 p: '10px 12px',
                 borderRadius: '14px',
-                bgcolor: 'rgba(255,255,255,0.025)',
+                bgcolor: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.06)',
                 transition: 'all 0.15s ease',
                 '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.04)',
+                  bgcolor: 'rgba(255,255,255,0.08)',
                   borderColor: `${item.color}30`,
                 },
               }}>
