@@ -1,14 +1,23 @@
 import { useEffect } from 'react';
 import { db } from '../lib/db';
 import api from '../lib/api';
+import toast from 'react-hot-toast';
 
 /**
  * Hook to periodically sync pending offline data with the server.
+ * Syncs both journal entries and tracker entries.
  */
 export const useOfflineSync = () => {
   useEffect(() => {
     const syncPending = async () => {
-      // Find all pending entries
+      // Sync journal entries
+      await syncJournalEntries();
+      
+      // Sync tracker entries
+      await syncTrackerEntries();
+    };
+
+    const syncJournalEntries = async () => {
       const pending = await db.journalEntries
         .where('sync_status')
         .equals('pending')
@@ -16,7 +25,7 @@ export const useOfflineSync = () => {
 
       if (pending.length === 0) return;
 
-      console.log(`[OfflineSync] Attempting to sync ${pending.length} entries...`);
+      console.log(`[OfflineSync] Syncing ${pending.length} journal entries...`);
 
       for (const entry of pending) {
         try {
@@ -24,22 +33,59 @@ export const useOfflineSync = () => {
             nodeId: entry.node_id,
             note: entry.note,
             mood: entry.mood,
-            // In a real production app, we'd want the server to accept a custom 'logged_at' 
-            // but for now we sync as current. 
-            // Ideal: add 'created_at' to backend to preserve offline timestamp.
           });
 
-          // Mark as synced
           await db.journalEntries.update(entry.id!, { sync_status: 'synced' });
+          console.log(`[OfflineSync] Journal entry ${entry.id} synced`);
         } catch (err: any) {
-          // If it's a 401/403, we probably need to wait for login, stop sync for now
           if (err.response?.status === 401 || err.response?.status === 403) {
-            console.warn('[OfflineSync] Unauthorized, skipping sync.');
+            console.warn('[OfflineSync] Unauthorized, skipping journal sync.');
             break;
           }
-          // Other errors (500, network still down) - we'll retry next time
-          console.error(`[OfflineSync] Failed to sync entry ${entry.id}:`, err.message);
+          await db.journalEntries.update(entry.id!, { 
+            sync_status: 'failed',
+            error: err.message 
+          });
+          console.error(`[OfflineSync] Failed to sync journal entry ${entry.id}:`, err.message);
         }
+      }
+    };
+
+    const syncTrackerEntries = async () => {
+      const pending = await db.trackerEntries
+        .where('sync_status')
+        .equals('pending')
+        .toArray();
+
+      if (pending.length === 0) return;
+
+      console.log(`[OfflineSync] Syncing ${pending.length} tracker entries...`);
+
+      for (const entry of pending) {
+        try {
+          await api.post('/trackers/log', {
+            type: entry.tracker_type,
+            data: entry.data,
+            logged_at: entry.logged_at,
+          });
+
+          await db.trackerEntries.update(entry.id!, { sync_status: 'synced' });
+          console.log(`[OfflineSync] Tracker entry ${entry.id} synced`);
+        } catch (err: any) {
+          if (err.response?.status === 401 || err.response?.status === 403) {
+            console.warn('[OfflineSync] Unauthorized, skipping tracker sync.');
+            break;
+          }
+          await db.trackerEntries.update(entry.id!, { 
+            sync_status: 'failed',
+            error: err.message 
+          });
+          console.error(`[OfflineSync] Failed to sync tracker entry ${entry.id}:`, err.message);
+        }
+      }
+      
+      if (pending.length > 0) {
+        toast.success(`Synced ${pending.length} tracker entries`);
       }
     };
 

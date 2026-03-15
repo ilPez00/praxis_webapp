@@ -1,10 +1,12 @@
 /**
  * TrackerWidget — compact tracker panel for the Dashboard.
  * Shows active trackers with today's entry count and a quick-log button.
+ * Supports offline logging with auto-sync.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { TRACKER_MAP, DOMAIN_TRACKER_MAP, TrackerType } from './trackerTypes';
 import { searchExercises } from './exerciseLibrary';
 import { searchFoods, fetchCaloriesFromOFF } from './foodLibrary';
@@ -34,6 +36,8 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { API_URL } from '../../lib/api';
 
 interface Tracker { id: string; type: string; }
 
@@ -52,130 +56,184 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
   const [logFields, setLogFields] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  // Exercise autocomplete — computed at component level (not inside map)
-  const exerciseSuggestions = logTracker?.type === 'lift' ? searchExercises(logFields['exercise'] ?? '') : [];
+  // Autocomplete suggestions
+  const [exerciseSuggestions, setExerciseSuggestions] = useState<string[]>([]);
+  const [foodSuggestions, setFoodSuggestions] = useState<string[]>([]);
+  const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
+  const [merchantSuggestions, setMerchantSuggestions] = useState<string[]>([]);
+  const [assetSuggestions, setAssetSuggestions] = useState<string[]>([]);
+  const [companySuggestions, setCompanySuggestions] = useState<string[]>([]);
+  const [subjectSuggestions, setSubjectSuggestions] = useState<string[]>([]);
+  const [instrumentSuggestions, setInstrumentSuggestions] = useState<string[]>([]);
+  const [bookSuggestions, setBookSuggestions] = useState<{ title: string; author: string }[]>([]);
 
-  // Expenses autocomplete — computed at component level
-  const expenseCategorySuggestions = logTracker?.type === 'expenses'
-    ? searchCategories(logFields['category'] ?? '')
-    : [];
-  const merchantSuggestions = logTracker?.type === 'expenses'
-    ? searchMerchants(logFields['merchant'] ?? '')
-    : [];
-
-  // Investments autocomplete — computed at component level
-  const assetSuggestions = logTracker?.type === 'investments'
-    ? searchAssets(logFields['asset'] ?? '')
-    : [];
-
-  // Job applications autocomplete — computed at component level
-  const companySuggestions = logTracker?.type === 'job-apps'
-    ? searchCompanies(logFields['company'] ?? '')
-    : [];
-
-  // Study subject autocomplete — computed at component level
-  const subjectSuggestions = logTracker?.type === 'study'
-    ? searchSubjects(logFields['subject'] ?? '')
-    : [];
-
-  // Music instrument autocomplete — computed at component level
-  const instrumentSuggestions = logTracker?.type === 'music'
-    ? searchInstruments(logFields['instrument'] ?? '')
-    : [];
-
-  // Food autocomplete state — declared at component level (hook rules)
-  const [foodSuggestions, setFoodSuggestions] = useState<{ name: string; kcalPer100g: number }[]>([]);
-  const [foodSearching, setFoodSearching] = useState(false);
+  // Update suggestions based on input
+  useEffect(() => {
+    const exerciseQuery = logTracker?.type === 'lift' ? (logFields['exercise'] ?? '') : '';
+    setExerciseSuggestions(exerciseQuery ? searchExercises(exerciseQuery) : []);
+  }, [logTracker?.type, logFields['exercise']]);
 
   useEffect(() => {
     const foodQuery = logTracker?.type === 'meal' ? (logFields['food'] ?? '') : '';
-    if (!foodQuery.trim()) { setFoodSuggestions([]); return; }
-    const local = searchFoods(foodQuery).map(f => ({ name: f.name, kcalPer100g: f.kcalPer100g }));
-    if (local.length > 0) { setFoodSuggestions(local); return; }
-    // Fallback to Open Food Facts
-    setFoodSearching(true);
-    let active = true;
-    fetchCaloriesFromOFF(foodQuery).then(r => { if (active) { setFoodSuggestions(r); setFoodSearching(false); } });
-    return () => { active = false; };
+    if (foodQuery.length >= 2) {
+      const results = searchFoods(foodQuery);
+      setFoodSuggestions(results);
+      // If exactly one match, auto-fetch calories
+      if (results.length === 1 && !logFields['calories']) {
+        fetchCaloriesFromOFF(results[0]).then(cal => {
+          if (cal) setLogFields(f => ({ ...f, calories: String(cal) }));
+        });
+      }
+    } else {
+      setFoodSuggestions([]);
+    }
   }, [logTracker?.type, logFields['food']]);
-
-  // Book autocomplete state — declared at component level (hook rules)
-  const [bookResults, setBookResults] = useState<{ title: string; author: string; totalPages: number | null }[]>([]);
-  const [bookSearching, setBookSearching] = useState(false);
 
   useEffect(() => {
     const bookQuery = logTracker?.type === 'books' ? (logFields['title'] ?? '') : '';
-    if (!bookQuery.trim()) { setBookResults([]); return; }
-    let active = true;
-    setBookSearching(true);
-    searchBooks(bookQuery).then(r => { if (active) { setBookResults(r); setBookSearching(false); } });
-    return () => { active = false; };
+    if (bookQuery.length >= 2) {
+      searchBooks(bookQuery).then(setBookSuggestions);
+    } else {
+      setBookSuggestions([]);
+    }
   }, [logTracker?.type, logFields['title']]);
+
+  useEffect(() => {
+    if (logTracker?.type === 'expenses') {
+      setCategorySuggestions(searchCategories());
+      const merchantQuery = logFields['merchant'] ?? '';
+      if (merchantQuery.length >= 2) {
+        setMerchantSuggestions(searchMerchants(merchantQuery));
+      } else {
+        setMerchantSuggestions([]);
+      }
+    }
+  }, [logTracker?.type, logFields['merchant']]);
+
+  useEffect(() => {
+    if (logTracker?.type === 'investments') {
+      const assetQuery = logFields['asset'] ?? '';
+      if (assetQuery.length >= 2) {
+        setAssetSuggestions(searchAssets(assetQuery));
+      } else {
+        setAssetSuggestions([]);
+      }
+    }
+  }, [logTracker?.type, logFields['asset']]);
+
+  useEffect(() => {
+    if (logTracker?.type === 'job-apps') {
+      const companyQuery = logFields['company'] ?? '';
+      if (companyQuery.length >= 2) {
+        setCompanySuggestions(searchCompanies(companyQuery));
+      } else {
+        setCompanySuggestions([]);
+      }
+    }
+  }, [logTracker?.type, logFields['company']]);
+
+  useEffect(() => {
+    if (logTracker?.type === 'study') {
+      const subjectQuery = logFields['subject'] ?? '';
+      if (subjectQuery.length >= 2) {
+        setSubjectSuggestions(searchSubjects(subjectQuery));
+      } else {
+        setSubjectSuggestions([]);
+      }
+    }
+  }, [logTracker?.type, logFields['subject']]);
+
+  useEffect(() => {
+    if (logTracker?.type === 'music') {
+      const instrumentQuery = logFields['instrument'] ?? '';
+      if (instrumentQuery.length >= 2) {
+        setInstrumentSuggestions(searchInstruments(instrumentQuery));
+      } else {
+        setInstrumentSuggestions([]);
+      }
+    }
+  }, [logTracker?.type, logFields['instrument']]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    try {
+      // 1. Fetch user's goal domains to determine which trackers to auto-activate
+      const { data: treeData } = await supabase
+        .from('goal_trees')
+        .select('nodes')
+        .eq('user_id', userId)
+        .single();
 
-    // 1. Fetch user's goal domains to determine which trackers to auto-activate
-    const { data: treeData } = await supabase
-      .from('goal_trees')
-      .select('nodes')
-      .eq('user_id', userId)
-      .maybeSingle();
+      if (treeData?.nodes) {
+        const nodes = treeData.nodes as any[];
+        const domains = [...new Set(nodes.map(n => n.domain).filter(Boolean))];
+        const trackerIdsToActivate = new Set<string>();
+        domains.forEach(d => {
+          const trackerIds = DOMAIN_TRACKER_MAP[d] ?? [];
+          trackerIds.forEach(id => trackerIdsToActivate.add(id));
+        });
 
-    if (treeData?.nodes) {
-      const nodes: { domain?: string }[] = Array.isArray(treeData.nodes) ? treeData.nodes : [];
-      const userDomains = Array.from(new Set(nodes.map(n => n.domain).filter(Boolean))) as string[];
-
-      // Determine which tracker IDs to auto-activate based on domains
-      const suggestedIds = Array.from(new Set(
-        userDomains.flatMap(d => DOMAIN_TRACKER_MAP[d] ?? [])
-      ));
-
-      if (suggestedIds.length > 0) {
         // Fetch already-active trackers for this user
-        const { data: existing } = await supabase
+        const { data: activeTrackers } = await supabase
           .from('trackers')
-          .select('type')
+          .select('id, type')
           .eq('user_id', userId);
-        const activeTypes = new Set((existing ?? []).map(t => t.type));
-        const toInsert = suggestedIds.filter(id => !activeTypes.has(id));
-        if (toInsert.length > 0) {
-          await supabase.from('trackers').insert(
-            toInsert.map(type => ({ user_id: userId, type }))
-          );
+
+        const existingTypes = new Set(activeTrackers?.map(t => t.type) ?? []);
+        const toCreate = [...trackerIdsToActivate].filter(id => !existingTypes.has(id));
+
+        if (toCreate.length > 0) {
+          const inserts = toCreate.map(type => ({ user_id: userId, type }));
+          await supabase.from('trackers').insert(inserts);
         }
       }
-    }
 
-    // 2. Fetch the (now possibly updated) active trackers
-    const { data: tData } = await supabase
-      .from('trackers')
-      .select('id, type')
-      .eq('user_id', userId)
-      .order('created_at');
+      // 2. Fetch the (now possibly updated) active trackers
+      const { data: tData } = await supabase
+        .from('trackers')
+        .select('id, type')
+        .eq('user_id', userId);
+      const activeTrackers: Tracker[] = tData ?? [];
+      setTrackers(activeTrackers);
 
-    const activeTrackers: Tracker[] = tData ?? [];
-    setTrackers(activeTrackers);
+      // 3. Count today's entries per tracker (including offline entries)
+      if (activeTrackers.length > 0) {
+        const ids = activeTrackers.map(t => t.id);
+        const today = new Date().toISOString().slice(0, 10);
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().slice(0, 10);
 
-    // 3. Count today's entries per tracker
-    if (activeTrackers.length > 0) {
-      const ids = activeTrackers.map(t => t.id);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+        // Fetch online entries
+        const { data: entries } = await supabase
+          .from('tracker_entries')
+          .select('tracker_id')
+          .in('tracker_id', ids)
+          .gte('logged_at', today)
+          .lt('logged_at', tomorrowStr);
 
-      const { data: eData } = await supabase
-        .from('tracker_entries')
-        .select('tracker_id')
-        .in('tracker_id', ids)
-        .gte('logged_at', today.toISOString());
+        const counts: Record<string, number> = {};
+        entries?.forEach(e => {
+          counts[e.tracker_id] = (counts[e.tracker_id] ?? 0) + 1;
+        });
 
-      const counts: Record<string, number> = {};
-      for (const e of (eData ?? [])) {
-        counts[e.tracker_id] = (counts[e.tracker_id] ?? 0) + 1;
+        // Add offline entries
+        const offlineEntries = await db.trackerEntries
+          .where('logged_at')
+          .between(today, tomorrowStr)
+          .toArray();
+        
+        offlineEntries.forEach(e => {
+          counts[e.tracker_id] = (counts[e.tracker_id] ?? 0) + 1;
+        });
+
+        setTodayCounts(counts);
       }
-      setTodayCounts(counts);
+    } catch (err) {
+      console.error('TrackerWidget: error loading data:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [userId]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -193,15 +251,45 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
       .filter(f => !f.optional && !logFields[f.key]?.trim())
       .map(f => f.label);
     if (missing.length > 0) { toast.error(`Fill in: ${missing.join(', ')}`); return; }
+    
     setSaving(true);
-    const { error } = await supabase.from('tracker_entries').insert({
+    
+    const entryData = {
       tracker_id: logTracker.id,
-      user_id: userId,
+      tracker_type: logTracker.type,
       data: logFields,
-    });
+      logged_at: new Date().toISOString(),
+    };
+
+    try {
+      // Try online first
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+      
+      await axios.post(`${API_URL}/trackers/log`, {
+        type: logTracker.type,
+        data: logFields,
+      }, { headers });
+      
+      toast.success('Logged!');
+    } catch (err: any) {
+      // If network error, save offline
+      if (err.message === 'Network Error' || !navigator.onLine) {
+        await db.trackerEntries.add({
+          tracker_id: logTracker.id,
+          tracker_type: logTracker.type,
+          data: logFields,
+          logged_at: new Date().toISOString(),
+          sync_status: 'pending'
+        });
+        toast.success('Saved offline (will sync when online) 📡');
+      } else {
+        toast.error('Failed to log');
+        console.error('Tracker error:', err);
+      }
+    }
+    
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Logged!');
     setLogTracker(null);
     loadData();
   };
@@ -278,9 +366,9 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
                     px: 1.5,
                     fontSize: '0.72rem',
                     fontWeight: 700,
-                    color: def.color,
-                    border: `1px solid ${def.border}`,
-                    '&:hover': { bgcolor: def.bg, borderColor: def.color },
+                    bgcolor: def.color,
+                    color: '#0D0E1A',
+                    '&:hover': { bgcolor: def.color, opacity: 0.9 },
                   }}
                 >
                   + Log
@@ -291,11 +379,11 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
         </Stack>
       )}
 
-      {/* Log Entry Dialog */}
+      {/* Log Dialog */}
       <Dialog open={!!logTracker} onClose={() => setLogTracker(null)} maxWidth="xs" fullWidth>
         {logTracker && (
           <>
-            <DialogTitle>
+            <DialogTitle sx={{ pb: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography sx={{ fontSize: '1.2rem' }}>{logTracker.def.icon}</Typography>
@@ -304,181 +392,115 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
                 <IconButton size="small" onClick={() => setLogTracker(null)}><CloseIcon /></IconButton>
               </Box>
             </DialogTitle>
-            <DialogContent>
-              <Stack spacing={2} sx={{ pt: 0.5 }}>
+            <DialogContent sx={{ pt: 2 }}>
+              <Stack spacing={2}>
                 {logTracker.def.fields.map(field => (
                   field.key === 'category' && logTracker?.type === 'expenses' ? (
-                    <Autocomplete
+                    <TextField
                       key={field.key}
-                      freeSolo
-                      options={expenseCategorySuggestions}
-                      getOptionLabel={o => typeof o === 'string' ? o : `${o.emoji} ${o.name}`}
-                      inputValue={logFields['category'] ?? ''}
-                      onInputChange={(_, v) => setLogFields(p => ({ ...p, category: v }))}
-                      onChange={(_, v) => {
-                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, category: v.name }));
-                      }}
-                      renderInput={params => <TextField {...params} label="Category *" size="small" fullWidth />}
-                    />
+                      select
+                      label={field.label}
+                      value={logFields[field.key] ?? ''}
+                      onChange={(e) => setLogFields({ ...logFields, [field.key]: e.target.value })}
+                      fullWidth
+                    >
+                      {categorySuggestions.map(cat => (
+                        <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                      ))}
+                    </TextField>
                   ) : field.key === 'merchant' && logTracker?.type === 'expenses' ? (
                     <Autocomplete
                       key={field.key}
-                      freeSolo
                       options={merchantSuggestions}
-                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
-                      inputValue={logFields['merchant'] ?? ''}
-                      onInputChange={(_, v) => setLogFields(p => ({ ...p, merchant: v }))}
-                      onChange={(_, v) => {
-                        if (v && typeof v !== 'string') {
-                          setLogFields(p => ({ ...p, merchant: v.name, category: p['category'] || v.category }));
-                        }
-                      }}
-                      renderInput={params => <TextField {...params} label="Merchant / Description (optional)" size="small" fullWidth />}
+                      inputValue={logFields[field.key] ?? ''}
+                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
+                      renderInput={(params) => <TextField {...params} label={field.label} />}
                     />
                   ) : field.key === 'asset' && logTracker?.type === 'investments' ? (
                     <Autocomplete
                       key={field.key}
-                      freeSolo
                       options={assetSuggestions}
-                      getOptionLabel={o => typeof o === 'string' ? o : `${o.ticker} — ${o.name}`}
-                      inputValue={logFields['asset'] ?? ''}
-                      onInputChange={(_, v) => setLogFields(p => ({ ...p, asset: v }))}
-                      onChange={(_, v) => {
-                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, asset: `${v.ticker} — ${v.name}` }));
-                      }}
-                      renderInput={params => <TextField {...params} label="Asset *" size="small" fullWidth />}
+                      inputValue={logFields[field.key] ?? ''}
+                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
+                      renderInput={(params) => <TextField {...params} label={field.label} />}
                     />
                   ) : field.key === 'company' && logTracker?.type === 'job-apps' ? (
                     <Autocomplete
                       key={field.key}
-                      freeSolo
                       options={companySuggestions}
-                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
-                      inputValue={logFields['company'] ?? ''}
-                      onInputChange={(_, v) => setLogFields(p => ({ ...p, company: v }))}
-                      onChange={(_, v) => {
-                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, company: v.name }));
-                      }}
-                      renderInput={params => <TextField {...params} label="Company *" size="small" fullWidth />}
+                      inputValue={logFields[field.key] ?? ''}
+                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
+                      renderInput={(params) => <TextField {...params} label={field.label} />}
                     />
                   ) : field.key === 'title' && logTracker?.type === 'books' ? (
                     <Autocomplete
                       key={field.key}
-                      freeSolo
-                      loading={bookSearching}
-                      options={bookResults}
-                      getOptionLabel={o => typeof o === 'string' ? o : `${o.title} — ${o.author}`}
-                      inputValue={logFields['title'] ?? ''}
-                      onInputChange={(_, v) => setLogFields(p => ({ ...p, title: v }))}
-                      onChange={(_, v) => {
-                        if (v && typeof v !== 'string') {
-                          setLogFields(p => ({
-                            ...p,
-                            title: v.title,
-                            author: v.author,
-                            total_pages: v.totalPages ? String(v.totalPages) : p['total_pages'],
-                          }));
+                      options={bookSuggestions.map(b => b.title)}
+                      inputValue={logFields[field.key] ?? ''}
+                      onInputChange={(_, val) => {
+                        setLogFields({ ...logFields, [field.key]: val });
+                        const book = bookSuggestions.find(b => b.title === val);
+                        if (book) {
+                          setLogFields({ ...logFields, author: book.author });
                         }
                       }}
-                      renderInput={params => <TextField {...params} label="Book title *" size="small" fullWidth />}
+                      renderInput={(params) => <TextField {...params} label={field.label} />}
                     />
                   ) : field.key === 'subject' && logTracker?.type === 'study' ? (
                     <Autocomplete
                       key={field.key}
-                      freeSolo
                       options={subjectSuggestions}
-                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
-                      inputValue={logFields['subject'] ?? ''}
-                      onInputChange={(_, v) => setLogFields(p => ({ ...p, subject: v }))}
-                      onChange={(_, v) => {
-                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, subject: v.name }));
-                      }}
-                      renderInput={params => <TextField {...params} label="Subject *" size="small" fullWidth />}
+                      inputValue={logFields[field.key] ?? ''}
+                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
+                      renderInput={(params) => <TextField {...params} label={field.label} />}
                     />
                   ) : field.key === 'instrument' && logTracker?.type === 'music' ? (
                     <Autocomplete
                       key={field.key}
-                      freeSolo
                       options={instrumentSuggestions}
-                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
-                      inputValue={logFields['instrument'] ?? ''}
-                      onInputChange={(_, v) => setLogFields(p => ({ ...p, instrument: v }))}
-                      onChange={(_, v) => {
-                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, instrument: v.name }));
-                      }}
-                      renderInput={params => <TextField {...params} label="Instrument *" size="small" fullWidth />}
+                      inputValue={logFields[field.key] ?? ''}
+                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
+                      renderInput={(params) => <TextField {...params} label={field.label} />}
                     />
-                  ) : field.key === 'food' ? (
+                  ) : field.key === 'exercise' && logTracker?.type === 'lift' ? (
                     <Autocomplete
                       key={field.key}
-                      freeSolo
-                      loading={foodSearching}
-                      options={foodSuggestions}
-                      getOptionLabel={o => typeof o === 'string' ? o : `${o.name} (${o.kcalPer100g} kcal/100g)`}
-                      inputValue={logFields['food'] ?? ''}
-                      onInputChange={(_, v) => setLogFields(p => ({ ...p, food: v }))}
-                      onChange={(_, v) => {
-                        if (v && typeof v !== 'string') {
-                          setLogFields(p => ({ ...p, food: v.name, calories: String(v.kcalPer100g) }));
-                        }
-                      }}
-                      renderInput={params => (
-                        <TextField {...params} label="What did you eat? *" size="small" fullWidth />
-                      )}
-                    />
-                  ) : field.key === 'exercise' ? (
-                    <Autocomplete
-                      key={field.key}
-                      freeSolo
                       options={exerciseSuggestions}
-                      getOptionLabel={o => typeof o === 'string' ? o : o.name}
-                      groupBy={o => typeof o === 'string' ? '' : o.muscle}
-                      inputValue={logFields['exercise'] ?? ''}
-                      onInputChange={(_, v) => setLogFields(p => ({ ...p, exercise: v }))}
-                      onChange={(_, v) => {
-                        if (v && typeof v !== 'string') setLogFields(p => ({ ...p, exercise: v.name }));
-                      }}
-                      renderInput={params => (
-                        <TextField {...params} label="Exercise *" size="small" placeholder="e.g. Bench Press" fullWidth />
-                      )}
+                      inputValue={logFields[field.key] ?? ''}
+                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
+                      renderInput={(params) => <TextField {...params} label={field.label} />}
                     />
-                  ) : field.type === 'select' ? (
-                    <TextField
+                  ) : field.key === 'food' && logTracker?.type === 'meal' ? (
+                    <Autocomplete
                       key={field.key}
-                      select
-                      label={`${field.label}${field.optional ? ' (optional)' : ' *'}`}
-                      value={logFields[field.key] ?? ''}
-                      onChange={e => setLogFields(p => ({ ...p, [field.key]: e.target.value }))}
-                      fullWidth
-                      size="small"
-                    >
-                      {field.options!.map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
-                    </TextField>
+                      options={foodSuggestions}
+                      inputValue={logFields[field.key] ?? ''}
+                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
+                      renderInput={(params) => <TextField {...params} label={field.label} />}
+                    />
                   ) : (
                     <TextField
                       key={field.key}
-                      label={`${field.label}${field.optional ? ' (optional)' : ' *'}`}
-                      type={field.type}
+                      label={field.label}
+                      type={field.type === 'number' ? 'number' : 'text'}
                       value={logFields[field.key] ?? ''}
-                      onChange={e => setLogFields(p => ({ ...p, [field.key]: e.target.value }))}
-                      placeholder={field.placeholder}
+                      onChange={(e) => setLogFields({ ...logFields, [field.key]: e.target.value })}
                       fullWidth
-                      size="small"
-                      inputProps={field.type === 'number' ? { min: 0, step: 'any' } : undefined}
+                      required={!field.optional}
                     />
                   )
                 ))}
               </Stack>
             </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2.5 }}>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
               <Button onClick={() => setLogTracker(null)}>Cancel</Button>
               <Button
-                variant="contained"
                 onClick={saveEntry}
+                variant="contained"
                 disabled={saving}
-                sx={{ borderRadius: '10px', fontWeight: 700, minWidth: 80 }}
+                sx={{ bgcolor: '#F59E0B', color: '#0D0E1A', fontWeight: 700 }}
               >
-                {saving ? <CircularProgress size={18} color="inherit" /> : 'Log'}
+                {saving ? <CircularProgress size={20} /> : 'Save'}
               </Button>
             </DialogActions>
           </>

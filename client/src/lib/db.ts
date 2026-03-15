@@ -10,13 +10,25 @@ export interface LocalJournalEntry {
   error?: string;
 }
 
+export interface LocalTrackerEntry {
+  id?: number;
+  tracker_id: string;
+  tracker_type: string;
+  data: Record<string, any>;
+  logged_at: string;
+  sync_status: 'synced' | 'pending' | 'failed';
+  error?: string;
+}
+
 export class PraxisDatabase extends Dexie {
   journalEntries!: Table<LocalJournalEntry>;
+  trackerEntries!: Table<LocalTrackerEntry>;
 
   constructor() {
     super('PraxisOfflineDB');
-    this.version(1).stores({
-      journalEntries: '++id, node_id, sync_status, logged_at'
+    this.version(2).stores({
+      journalEntries: '++id, node_id, sync_status, logged_at',
+      trackerEntries: '++id, tracker_id, sync_status, logged_at'
     });
   }
 }

@@ -8,6 +8,146 @@ const SCHEMA_MISSING = (msg: string) =>
 const PP_PER_LOG = 10; // Praxis Points awarded per tracker log
 
 /**
+ * GET /trackers/calendar
+ * Returns combined activity data for calendar view (trackers + notes + goal updates)
+ * Query param: ?days=N (default 112, max 365)
+ */
+export const getCalendarData = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const days = Math.min(Math.max(Number(req.query.days ?? 112), 1), 365);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  // 1. Fetch tracker entries
+  const { data: trackers } = await supabase
+    .from('trackers')
+    .select('id, type')
+    .eq('user_id', userId);
+
+  const trackerEntries: any[] = [];
+  if (trackers && trackers.length > 0) {
+    const trackerIds = trackers.map(t => t.id);
+    const { data: entries } = await supabase
+      .from('tracker_entries')
+      .select('tracker_id, data, logged_at')
+      .in('tracker_id', trackerIds)
+      .gte('logged_at', since);
+    
+    if (entries) {
+      const trackerTypeMap = Object.fromEntries(trackers.map(t => [t.id, t.type]));
+      trackerEntries.push(...entries.map(e => ({
+        ...e,
+        tracker_type: trackerTypeMap[e.tracker_id],
+        activity_type: 'tracker'
+      })));
+    }
+  }
+
+  // 2. Fetch journal/note entries
+  const { data: notes } = await supabase
+    .from('journal_entries')
+    .select('node_id, note, mood, created_at')
+    .eq('user_id', userId)
+    .gte('created_at', since);
+
+  // 3. Fetch goal progress updates (from goal_trees updates - approximate via updated_at)
+  const { data: goalTree } = await supabase
+    .from('goal_trees')
+    .select('nodes')
+    .eq('user_id', userId)
+    .single();
+
+  const goalUpdates: any[] = [];
+  if (goalTree?.nodes) {
+    // Note: This is a simplified approach - ideally you'd have a goal_progress_history table
+    const nodes = goalTree.nodes as any[];
+    nodes.forEach(node => {
+      if (node.updated_at && new Date(node.updated_at) >= new Date(since)) {
+        goalUpdates.push({
+          node_id: node.id,
+          node_name: node.name,
+          progress: node.progress,
+          timestamp: node.updated_at,
+          activity_type: 'goal'
+        });
+      }
+    });
+  }
+
+  // 4. Build day-by-day map
+  const dayMap: Record<string, {
+    date: string;
+    count: number;
+    trackers: string[];
+    notes: number;
+    goalUpdates: number;
+    activities: Array<{ type: string; description: string; timestamp: string }>;
+  }> = {};
+
+  // Process tracker entries
+  trackerEntries.forEach(entry => {
+    const date = entry.logged_at.slice(0, 10);
+    if (!dayMap[date]) {
+      dayMap[date] = { date, count: 0, trackers: [], notes: 0, goalUpdates: 0, activities: [] };
+    }
+    dayMap[date].count++;
+    if (!dayMap[date].trackers.includes(entry.tracker_type)) {
+      dayMap[date].trackers.push(entry.tracker_type);
+    }
+    dayMap[date].activities.push({
+      type: 'tracker',
+      description: `${entry.tracker_type} entry`,
+      timestamp: entry.logged_at
+    });
+  });
+
+  // Process notes
+  notes?.forEach(note => {
+    const date = note.created_at.slice(0, 10);
+    if (!dayMap[date]) {
+      dayMap[date] = { date, count: 0, trackers: [], notes: 0, goalUpdates: 0, activities: [] };
+    }
+    dayMap[date].count++;
+    dayMap[date].notes++;
+    dayMap[date].activities.push({
+      type: 'note',
+      description: note.mood ? `Journal: ${note.mood}` : 'Journal entry',
+      timestamp: note.created_at
+    });
+  });
+
+  // Process goal updates
+  goalUpdates.forEach(goal => {
+    const date = goal.timestamp.slice(0, 10);
+    if (!dayMap[date]) {
+      dayMap[date] = { date, count: 0, trackers: [], notes: 0, goalUpdates: 0, activities: [] };
+    }
+    dayMap[date].count++;
+    dayMap[date].goalUpdates++;
+    dayMap[date].activities.push({
+      type: 'goal',
+      description: `${goal.node_name}: ${goal.progress}%`,
+      timestamp: goal.timestamp
+    });
+  });
+
+  // Convert to array and sort by date
+  const calendarDays = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
+
+  res.json({
+    days: days,
+    calendar: calendarDays,
+    summary: {
+      totalActiveDays: calendarDays.filter(d => d.count > 0).length,
+      totalTrackerLogs: trackerEntries.length,
+      totalNotes: notes?.length ?? 0,
+      totalGoalUpdates: goalUpdates.length
+    }
+  });
+});
+
+/**
  * GET /trackers/my
  * Returns the authenticated user's trackers, each with the last N days of entries.
  * Query param: ?days=N (default 14, max 365)

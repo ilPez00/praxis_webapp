@@ -38,6 +38,13 @@ interface DayData {
   date: string;        // YYYY-MM-DD
   count: number;       // number of tracker logs that day
   trackers: string[];  // tracker types logged
+  notes?: number;      // number of journal entries (NEW)
+  goalUpdates?: number; // number of goal progress updates (NEW)
+  activities?: Array<{ // detailed activity list (NEW)
+    type: 'tracker' | 'note' | 'goal';
+    description: string;
+    timestamp: string;
+  }>;
 }
 
 interface GoalDate {
@@ -154,13 +161,25 @@ function HabitCalendar({ dayData, goalDates }: { dayData: DayData[]; goalDates: 
                     ? `rgba(245,158,11,${opacity})`
                     : 'rgba(255,255,255,0.06)';
 
-                const tooltipTitle = isFuture ? '' : (
-                  [
-                    count > 0 ? `${count} log${count !== 1 ? 's' : ''}` : 'No logs',
-                    ...goalsOnDay.map(g => `🎯 ${g.label} deadline`),
-                    date.toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-                  ].join(' · ')
-                );
+                const tooltipLines: string[] = [];
+                
+                if (count > 0) {
+                  // Show breakdown by type
+                  const trackerCount = data?.trackers?.length ?? 0;
+                  const noteCount = data?.notes ?? 0;
+                  const goalCount = data?.goalUpdates ?? 0;
+                  
+                  if (filters.trackers && trackerCount > 0) tooltipLines.push(`📊 ${trackerCount} tracker${trackerCount !== 1 ? 's' : ''}`);
+                  if (filters.notes && noteCount > 0) tooltipLines.push(`📓 ${noteCount} note${noteCount !== 1 ? 's' : ''}`);
+                  if (filters.goals && goalCount > 0) tooltipLines.push(`🎯 ${goalCount} goal update${goalCount !== 1 ? 's' : ''}`);
+                } else {
+                  tooltipLines.push('No activity');
+                }
+                
+                goalsOnDay.forEach(g => tooltipLines.push(`🎯 ${g.label} deadline`));
+                tooltipLines.push(date.toLocaleDateString('en', { month: 'short', day: 'numeric' }));
+                
+                const tooltipTitle = isFuture ? '' : tooltipLines.join(' · ');
 
                 return (
                   <Tooltip key={key} title={tooltipTitle} placement="top" arrow>
@@ -318,6 +337,13 @@ const AnalyticsPage: React.FC = () => {
   const [calendarDays, setCalendarDays] = useState<DayData[]>([]);
   const [goalDates, setGoalDates] = useState<GoalDate[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(true);
+  
+  // Filter toggles
+  const [filters, setFilters] = useState({
+    trackers: true,
+    notes: true,
+    goals: true
+  });
 
   // Fetch calendar data independently (available to everyone)
   useEffect(() => {
@@ -328,27 +354,35 @@ const AnalyticsPage: React.FC = () => {
         const { data: { session } } = await supabase.auth.getSession();
         const authH = { headers: { Authorization: `Bearer ${session?.access_token}` } };
 
-        // Fetch 112 days of tracker entries
-        const [trackersRes, goalRes] = await Promise.allSettled([
-          axios.get(`${API_URL}/trackers/my?days=112`, authH),
+        // Fetch combined calendar data from new endpoint
+        const [calendarRes, goalRes] = await Promise.allSettled([
+          axios.get(`${API_URL}/trackers/calendar?days=112`, authH),
           axios.get(`${API_URL}/goals/tree/${user.id}`, authH),
         ]);
 
-        // Build day map from trackers
-        if (trackersRes.status === 'fulfilled') {
-          const trackers: any[] = Array.isArray(trackersRes.value.data) ? trackersRes.value.data : [];
-          const dayMap: Record<string, { count: number; trackers: string[] }> = {};
-          for (const tracker of trackers) {
-            for (const entry of (tracker.entries ?? [])) {
-              const day = entry.logged_at.slice(0, 10);
-              if (!dayMap[day]) dayMap[day] = { count: 0, trackers: [] };
-              dayMap[day].count++;
-              if (!dayMap[day].trackers.includes(tracker.type)) {
-                dayMap[day].trackers.push(tracker.type);
+        // Build day map from combined data
+        if (calendarRes.status === 'fulfilled') {
+          const data = calendarRes.value.data;
+          let days: DayData[] = data.calendar ?? [];
+          
+          // Apply filters
+          if (!filters.trackers || !filters.notes || !filters.goals) {
+            days = days.map(day => {
+              let count = 0;
+              let trackers: string[] = [];
+              
+              if (filters.trackers) {
+                count += day.trackers.length;
+                trackers = day.trackers;
               }
-            }
+              if (filters.notes) count += day.notes;
+              if (filters.goals) count += day.goalUpdates;
+              
+              return { ...day, count, trackers };
+            }).filter(d => d.count > 0);
           }
-          setCalendarDays(Object.entries(dayMap).map(([date, v]) => ({ date, ...v })));
+          
+          setCalendarDays(days);
         }
 
         // Extract goal target dates from goal tree nodes
@@ -463,6 +497,28 @@ const AnalyticsPage: React.FC = () => {
         </Box>
       ) : (
         <Box sx={{ mb: 3 }}>
+          {/* Filter toggles */}
+          <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Chip
+              label="📊 Trackers"
+              color={filters.trackers ? 'primary' : 'default'}
+              onClick={() => setFilters(f => ({ ...f, trackers: !f.trackers }))}
+              sx={{ fontWeight: 600 }}
+            />
+            <Chip
+              label="📓 Notes"
+              color={filters.notes ? 'primary' : 'default'}
+              onClick={() => setFilters(f => ({ ...f, notes: !f.notes }))}
+              sx={{ fontWeight: 600 }}
+            />
+            <Chip
+              label="🎯 Goals"
+              color={filters.goals ? 'primary' : 'default'}
+              onClick={() => setFilters(f => ({ ...f, goals: !f.goals }))}
+              sx={{ fontWeight: 600 }}
+            />
+          </Box>
+          
           <HabitCalendar dayData={calendarDays} goalDates={goalDates} />
         </Box>
       )}

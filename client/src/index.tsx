@@ -7,6 +7,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { enforceFreshContent } from './utils/versionControl';
+import { registerServiceWorker } from './utils/serviceWorker';
+
+// Force refresh if version mismatch
+enforceFreshContent();
+
+// Register service worker for offline support
+registerServiceWorker();
 
 // Force refresh if version mismatch
 enforceFreshContent();
@@ -312,18 +319,4 @@ root.render(
     </ThemeProvider>
   </React.StrictMode>
 );
-
-// Service Worker Management
-const registerServiceWorker = () => {
-  if ('serviceWorker' in navigator && import.meta.env.MODE === 'production') {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then((reg) => {
-        console.log('[SW] Registered successfully:', reg.scope);
-      }).catch((err) => {
-        console.error('[SW] Registration failed:', err);
-      });
-    });
-  }
-};
-registerServiceWorker();
 
