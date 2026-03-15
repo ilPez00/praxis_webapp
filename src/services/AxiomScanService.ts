@@ -2,7 +2,10 @@ import cron from 'node-cron';
 import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from './AICoachingService';
 import { EngagementMetricService } from './EngagementMetricService';
+import { AxiomScheduleService } from './AxiomScheduleService';
 import logger from '../utils/logger';
+
+const axiomScheduleService = new AxiomScheduleService();
 
 const aiCoachingService = new AICoachingService();
 const engagementMetricService = new EngagementMetricService();
@@ -358,8 +361,10 @@ export class AxiomScanService {
     const aiCoaching = new AICoachingService();
 
     const goalsSlice = nodes.slice(0, 5).map((n: any) => ({
-      name: n.name, domain: n.domain,
-      progress: Math.round((n.progress || 0) * 100) + '%', weight: n.weight,
+      name: n.name, 
+      domain: n.domain,
+      progress: Math.round((n.progress || 0) * 100), // Keep as number
+      weight: n.weight,
     }));
 
     // Generate LLM-powered full protocol
@@ -543,7 +548,44 @@ RULES:
       resources = generateResourcesFromGoals(nodes, metrics);
     }
 
-    // --- Phase 5: Store brief ---
+    // --- Phase 5: Generate daily schedule ---
+    let schedule = null;
+    try {
+      logger.info(`[AxiomScan] Generating schedule for ${userName}...`);
+      
+      const scheduleContext = {
+        userName,
+        archetype: metrics.archetype,
+        motivationStyle: metrics.motivationStyle,
+        riskFactors: metrics.riskFactors || [],
+        checkinStreak: metrics.checkinStreak,
+        goals: goalsSlice,
+        trackerTrends: metrics.trackerTrends || [],
+        topNoteThemes: metrics.topNoteThemes || [],
+        recentAchievements: (metrics as any).recommendationContext?.recentAchievements || [],
+        currentFocus: (metrics as any).recommendationContext?.currentFocus || undefined,
+        interestedTopics: (metrics as any).recommendationContext?.interestedTopics || [],
+        socialEngagementScore: metrics.socialEngagementScore,
+        city: userCity,
+      };
+      
+      // Generate and store schedule
+      const generatedSchedule = await axiomScheduleService.generateSchedule(userId, scheduleContext);
+      await axiomScheduleService.storeSchedule(userId, generatedSchedule);
+      
+      schedule = {
+        focusTheme: generatedSchedule.focusTheme,
+        energyCurve: generatedSchedule.energyCurve,
+        timeSlotCount: generatedSchedule.timeSlots.length,
+        highPrioritySlots: generatedSchedule.timeSlots.filter(s => s.priority === 'high').length,
+      };
+      
+      logger.info(`[AxiomScan] Schedule generated for ${userName}`);
+    } catch (err: any) {
+      logger.warn(`[AxiomScan] Schedule generation failed (non-fatal): ${err.message}`);
+    }
+
+    // --- Phase 6: Store brief ---
     const recommendations = {
       message: axiomMessage,
       recap: recapText || null,
@@ -553,6 +595,7 @@ RULES:
       challenge: challenge,
       resources: resources,
       routine: routine,
+      schedule: schedule,
       source: source,
       llm_error: llmError,
     };

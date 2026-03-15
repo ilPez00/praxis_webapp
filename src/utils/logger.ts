@@ -1,36 +1,156 @@
 import { createLogger, format, transports } from 'winston';
-const { combine, timestamp, printf, colorize } = format;
+import { v4 as uuidv4 } from 'uuid';
+const { combine, timestamp, printf, colorize, json } = format;
 
-// Custom format for logs
-const logFormat = printf(({ level, message, timestamp, stack }) => {
-  return `${timestamp} ${level}: ${stack || message}`;
+// Custom format for human-readable logs (development)
+const devFormat = printf(({ level, message, timestamp, stack, traceId, userId, method, path, durationMs }) => {
+  const meta = [
+    traceId && `[${traceId}]`,
+    userId && `(user:${userId})`,
+    method && path && `${method} ${path}`,
+    durationMs && `${durationMs}ms`,
+  ].filter(Boolean).join(' ');
+  
+  return `${timestamp} ${level}: ${stack || message} ${meta ? '- ' + meta : ''}`;
 });
 
+// JSON format for production (structured logging)
+const prodFormat = json();
+
 const logger = createLogger({
-  level: 'info', // Minimum level to log (error, warn, info, verbose, debug, silly)
+  level: process.env.LOG_LEVEL || 'info', // Minimum level to log
   format: combine(
-    colorize(), // Add colors to log levels
-    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), // Add timestamp
-    logFormat // Use the custom format
+    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    process.env.NODE_ENV === 'production' ? prodFormat : combine(colorize(), devFormat)
   ),
+  defaultMeta: {
+    service: 'praxis-backend',
+    environment: process.env.NODE_ENV || 'development',
+  },
   transports: [
     new transports.Console(), // Log to console
-    // new transports.File({ filename: 'error.log', level: 'error' }), // Log errors to a file
-    // new transports.File({ filename: 'combined.log' }), // Log all levels to a file
+    // Uncomment for file logging:
+    // new transports.File({ filename: 'logs/error.log', level: 'error' }),
+    // new transports.File({ filename: 'logs/combined.log' }),
   ],
   exceptionHandlers: [
     new transports.Console(),
-    // new transports.File({ filename: 'exceptions.log' })
+    // new transports.File({ filename: 'logs/exceptions.log' })
   ],
   rejectionHandlers: [
     new transports.Console(),
-    // new transports.File({ filename: 'rejections.log' })
+    // new transports.File({ filename: 'logs/rejections.log' })
   ]
 });
 
-// If not in production, set level to debug to see more verbose logs
-if (process.env.NODE_ENV !== 'production') {
-  logger.level = 'debug';
-}
+// ============================================================================
+// Request Tracing Middleware
+// ============================================================================
+
+/**
+ * Express middleware to add request tracing
+ * Adds traceId to every request and logs request/response details
+ */
+export const requestTracer = (req: any, res: any, next: () => void) => {
+  // Generate or extract trace ID
+  const traceId = req.headers['x-trace-id'] as string || uuidv4();
+  req.traceId = traceId;
+  
+  // Add trace ID to response headers
+  res.setHeader('X-Trace-ID', traceId);
+  
+  // Record start time
+  const startTime = Date.now();
+  
+  // Log incoming request
+  logger.info('Incoming request', {
+    traceId,
+    userId: req.user?.id,
+    method: req.method,
+    path: req.path,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+  });
+  
+  // Log response on finish
+  res.on('finish', () => {
+    const durationMs = Date.now() - startTime;
+    
+    const logLevel = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+    
+    logger[logLevel]('Request completed', {
+      traceId,
+      userId: req.user?.id,
+      method: req.method,
+      path: req.path,
+      statusCode: res.statusCode,
+      durationMs,
+    });
+  });
+  
+  // Log errors
+  res.on('error', (err: Error) => {
+    logger.error('Request error', {
+      traceId,
+      userId: req.user?.id,
+      method: req.method,
+      path: req.path,
+      error: err.message,
+      stack: err.stack,
+    });
+  });
+  
+  next();
+};
+
+// ============================================================================
+// Security Audit Helper
+// ============================================================================
+
+/**
+ * Check for service-role key exposure in client code
+ * Run this on startup to warn about potential security issues
+ */
+export const auditSecurity = () => {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY || '';
+  
+  // Check if service key looks valid
+  if (serviceKey && !serviceKey.startsWith('eyJ')) {
+    logger.warn('SECURITY: Supabase service role key may be invalid or missing');
+  }
+  
+  // Check if anon key is being used as service key (common mistake)
+  if (serviceKey && serviceKey.startsWith('sb_')) {
+    logger.error('SECURITY CRITICAL: Service role key appears to be anon/publishable key!');
+    logger.error('This is a major security risk. Check your .env file immediately.');
+  }
+  
+  // Log key types (not the keys themselves!)
+  logger.info('Security audit', {
+    serviceKeyConfigured: !!serviceKey,
+    serviceKeyType: serviceKey.startsWith('eyJ') ? 'JWT (correct)' : serviceKey.startsWith('sb_') ? 'ANON (WRONG!)' : 'unknown',
+    anonKeyConfigured: !!anonKey,
+    nodeEnv: process.env.NODE_ENV,
+  });
+};
+
+// ============================================================================
+// Rate Limit Logging
+// ============================================================================
+
+/**
+ * Log rate limit hits for monitoring
+ */
+export const logRateLimit = (req: any, retryAfter: number) => {
+  logger.warn('Rate limit exceeded', {
+    traceId: req.traceId,
+    userId: req.user?.id,
+    ip: req.ip,
+    path: req.path,
+    method: req.method,
+    retryAfterSeconds: retryAfter,
+  });
+};
 
 export default logger;

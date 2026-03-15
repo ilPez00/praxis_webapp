@@ -7,5 +7,14 @@
     "esModuleInterop": true,
     "strict": true
   },
-  "exclude": ["client", "node_modules", "api"]
+  "exclude": [
+    "client",
+    "node_modules",
+    "api",
+    "tests",
+    "playwright.config.ts",
+    "jest.config.js",
+    "**/*.test.ts",
+    "**/__tests__/**"
+  ]
 }
