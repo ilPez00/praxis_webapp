@@ -13,7 +13,6 @@ import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import GlassCard from '../../components/common/GlassCard';
 import Slider from '@mui/material/Slider';
-import HabitCalendar from '../analytics/HabitCalendar';
 
 import {
   Container, Box, Typography, Stack, CircularProgress,
@@ -30,7 +29,6 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ShareIcon from '@mui/icons-material/Share';
-import InsightsIcon from '@mui/icons-material/Insights';
 
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   const nodeMap = new Map<string, FrontendGoalNode>();
@@ -90,9 +88,6 @@ const NotesPage: React.FC = () => {
   const [praxisPoints, setPraxisPoints] = useState<number | null>(null);
   
   // Calendar state
-  const [calendarDays, setCalendarDays] = useState<any[]>([]);
-  const [goalDates, setGoalDates] = useState<any[]>([]);
-  const [calendarLoading, setCalendarLoading] = useState(true);
 
   const [selectedNode, setSelectedNode] = useState<FrontendGoalNode | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -567,23 +562,6 @@ const NotesPage: React.FC = () => {
           </Stack>
         </Box>
         
-        {/* Habit Calendar at top of Notes page */}
-        {calendarLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress size={24} />
-          </Box>
-        ) : (
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <InsightsIcon sx={{ color: 'primary.main', fontSize: 20 }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem' }}>
-                Activity Overview
-              </Typography>
-            </Box>
-            <HabitCalendar dayData={calendarDays} goalDates={goalDates} />
-          </Box>
-        )}
-
         {treeData.length === 0 ? (
           <GlassCard sx={{ p: 4, textAlign: 'center' }}>
             <TrackChangesIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
