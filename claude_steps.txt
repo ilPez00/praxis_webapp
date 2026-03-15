@@ -224,3 +224,13 @@ Session 61: Mobile Widgets Fix + Axiom in Notes + Interactive Calendar
 - Verification: TypeScript check 0 source errors (frontend + backend), committed db4a4ec + 2cfe954, pushed to webapp
 - Next: Test calendar interaction, verify Axiom brief renders, check mobile layout
 - Sign: Claude
+
+Session 62: Axiom Briefs Visible in All Three Surfaces
+- DiaryFeed.tsx: added 11th data source (axiom_daily_briefs) — Axiom briefs now appear as diary entries with message, recap, routine summary, and challenge
+- AxiomNoteCard.tsx: expanded from showing just message+recap+routine+challenge to full protocol including match, event, place, and resources (goal insights) sections
+- Added 'axiom' type to TYPE_META in DiaryFeed for proper badge/color rendering
+- Pipeline verification: midnight cron → AxiomScanService.runGlobalScan() → generates complete brief (message, recap, routine, challenge, resources, match, event, place) → stored in axiom_daily_briefs → consumed by Dashboard (AxiomMorningBrief), Axiom Chat (AICoachPage), Notes (AxiomNoteCard + DayDetailView + DiaryFeed)
+- Files: DiaryFeed.tsx, AxiomNoteCard.tsx
+- Verification: TypeScript check 0 source errors, committed 74653c2, pushed to webapp
+- Next: Verify Axiom briefs render on deployed Vercel, test match/event/place cards in AxiomNoteCard
+- Sign: Claude
