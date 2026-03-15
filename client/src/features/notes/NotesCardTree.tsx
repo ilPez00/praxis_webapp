@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Box, Typography, Collapse } from '@mui/material';
+import React, { useRef, useEffect } from 'react';
+import { Box, Typography } from '@mui/material';
 import { GoalNode, DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 import { DOMAIN_TRACKER_MAP, TRACKER_TYPES } from '../trackers/trackerTypes';
 
@@ -25,26 +25,26 @@ function domainProgress(goals: GoalNode[]): number {
   return Math.round(goals.reduce((sum, g) => sum + g.progress, 0) / goals.length);
 }
 
-/** A domain is "active" if it has at least one non-suspended, non-completed goal */
-function isDomainActive(goals: GoalNode[]): boolean {
-  return goals.some(g => g.status !== 'suspended' && g.progress < 100);
-}
+/* ─── Branch colors ──────────────────────────────── */
+const BRANCH_COLOR = 'rgba(139,92,246,0.18)';
+const BRANCH_COLOR_ACTIVE = 'rgba(139,92,246,0.35)';
 
-const GoalCard: React.FC<{
+/* ─── Compact pill node ──────────────────────────── */
+const GoalPill: React.FC<{
   node: GoalNode;
   depth: number;
   selectedNodeId: string | null;
   onNodeSelect: (node: GoalNode) => void;
   onLogTracker: (trackerType: string, goalNode: GoalNode) => void;
-  domainActive: boolean;
-}> = ({ node, depth, selectedNodeId, onNodeSelect, onLogTracker, domainActive }) => {
+  domainColor: string;
+  isLast: boolean;
+}> = ({ node, depth, selectedNodeId, onNodeSelect, onLogTracker, domainColor, isLast }) => {
   const isSelected = node.id === selectedNodeId;
   const isSuspended = node.status === 'suspended';
   const isCompleted = node.progress >= 100;
   const isActive = !isSuspended && !isCompleted;
   const ref = useRef<HTMLDivElement>(null);
 
-  // Get tracker types for this root goal's domain
   const trackerIds = depth === 0 && isActive
     ? (DOMAIN_TRACKER_MAP as Record<string, string[]>)[node.domain || ''] || []
     : [];
@@ -58,203 +58,268 @@ const GoalCard: React.FC<{
     }
   }, [isSelected]);
 
+  const hasChildren = node.children.length > 0;
+
   return (
-    <Box sx={{ ml: depth > 0 ? 2 : 0 }}>
+    <Box sx={{ position: 'relative', pl: depth > 0 ? '22px' : 0 }}>
+      {/* Horizontal branch connector (from left trunk to this pill) */}
+      {depth > 0 && (
+        <Box sx={{
+          position: 'absolute',
+          left: 0,
+          top: '16px',
+          width: '18px',
+          height: '2px',
+          background: isActive ? BRANCH_COLOR_ACTIVE : BRANCH_COLOR,
+          borderRadius: '1px',
+        }} />
+      )}
+      {/* Vertical trunk line connecting siblings */}
+      {depth > 0 && (
+        <Box sx={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: '2px',
+          height: isLast ? '17px' : '100%',
+          background: isActive ? BRANCH_COLOR_ACTIVE : BRANCH_COLOR,
+          borderRadius: '1px',
+        }} />
+      )}
+
+      {/* The pill itself */}
       <Box
         ref={ref}
         onClick={() => onNodeSelect(node)}
         sx={{
-          p: '10px 14px',
-          borderRadius: '12px',
-          mb: 0.75,
+          p: depth === 0 ? '7px 14px' : '5px 12px',
+          borderRadius: '20px',
+          mb: '4px',
           cursor: 'pointer',
-          transition: 'all 0.2s ease',
+          transition: 'all 0.15s ease',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 1,
+          maxWidth: '100%',
           background: isSelected
-            ? 'rgba(139,92,246,0.06)'
-            : isActive && domainActive
-              ? 'rgba(255,255,255,0.03)'
-              : 'rgba(255,255,255,0.01)',
+            ? `${domainColor}14`
+            : isActive
+              ? 'rgba(255,255,255,0.025)'
+              : 'transparent',
           border: '1px solid',
           borderColor: isSelected
-            ? 'rgba(139,92,246,0.3)'
-            : isActive && domainActive
-              ? 'rgba(255,255,255,0.08)'
-              : 'rgba(255,255,255,0.04)',
-          boxShadow: isSelected ? '0 0 12px rgba(139,92,246,0.15)' : 'none',
-          opacity: isSuspended ? 0.35 : isCompleted ? 0.5 : 1,
+            ? `${domainColor}55`
+            : isActive
+              ? 'rgba(255,255,255,0.07)'
+              : 'rgba(255,255,255,0.03)',
+          boxShadow: isSelected ? `0 0 10px ${domainColor}22` : 'none',
+          opacity: isSuspended ? 0.3 : isCompleted ? 0.45 : isActive ? 1 : 0.55,
           filter: isSuspended ? 'grayscale(0.8)' : 'none',
           '&:hover': {
-            background: isSelected ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.04)',
-            borderColor: isSelected ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.1)',
+            background: isSelected ? `${domainColor}1a` : 'rgba(255,255,255,0.04)',
+            borderColor: isSelected ? `${domainColor}70` : 'rgba(255,255,255,0.12)',
+            transform: 'translateX(2px)',
           },
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: depth > 0 ? '0.85rem' : '0.9rem' }}>
-            {isSuspended ? '⏸ ' : isCompleted ? '✓ ' : ''}{node.title}
-          </Typography>
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: isCompleted ? '#10B981' : '#A78BFA' }}>
-            {node.progress}%
-          </Typography>
-        </Box>
-        <Box sx={{ height: 4, bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
-          <Box sx={{
-            height: '100%',
-            width: `${node.progress}%`,
-            background: isCompleted
-              ? '#10B981'
-              : 'linear-gradient(90deg, #F59E0B, #8B5CF6)',
-            borderRadius: 2,
-          }} />
+        {/* Mini progress ring */}
+        <Box sx={{
+          position: 'relative',
+          width: depth === 0 ? 22 : 16,
+          height: depth === 0 ? 22 : 16,
+          flexShrink: 0,
+        }}>
+          <svg width="100%" height="100%" viewBox="0 0 22 22">
+            <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2.5" />
+            <circle cx="11" cy="11" r="9" fill="none"
+              stroke={isCompleted ? '#10B981' : domainColor}
+              strokeWidth="2.5"
+              strokeDasharray={`${(node.progress / 100) * 56.5} 56.5`}
+              strokeLinecap="round"
+              transform="rotate(-90 11 11)"
+              style={{ transition: 'stroke-dasharray 0.3s ease' }}
+            />
+          </svg>
         </Box>
 
-        {/* Tracker pills — only on active root goals */}
-        {trackers.length > 0 && (
-          <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-            {trackers.map(t => (
-              <Box
-                key={t.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onLogTracker(t.id, node);
-                }}
-                sx={{
-                  fontSize: '0.625rem', px: 1, py: 0.25, borderRadius: '6px',
-                  bgcolor: t.bg, border: `1px solid ${t.border}`,
-                  color: t.color, cursor: 'pointer', display: 'flex',
-                  alignItems: 'center', gap: 0.5, fontWeight: 700,
-                  '&:hover': { borderColor: t.color, bgcolor: `${t.bg}` },
-                }}
-              >
-                <span style={{ fontSize: '0.75rem' }}>{t.icon}</span>
-                {t.label.replace(' Tracker', '').replace(' Counter', '')}
-              </Box>
-            ))}
-          </Box>
-        )}
+        {/* Title */}
+        <Typography sx={{
+          fontWeight: depth === 0 ? 700 : 600,
+          fontSize: depth === 0 ? '0.8rem' : '0.72rem',
+          lineHeight: 1.2,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          color: isActive ? 'text.primary' : 'text.disabled',
+        }}>
+          {isSuspended ? '⏸ ' : isCompleted ? '✓ ' : ''}{node.title}
+        </Typography>
 
-        {/* Sub-goal pills for non-active root goals */}
-        {depth === 0 && trackers.length === 0 && node.children.length > 0 && (
-          <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-            {node.children.slice(0, 3).map(child => (
-              <Box key={child.id} sx={{
-                fontSize: '0.625rem', px: 1, py: 0.25, borderRadius: '6px',
-                bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap', overflow: 'hidden',
-                textOverflow: 'ellipsis', maxWidth: 120,
-              }}>
-                {child.title}
-              </Box>
-            ))}
-            {node.children.length > 3 && (
-              <Box sx={{ fontSize: '0.625rem', px: 1, py: 0.25, color: 'rgba(255,255,255,0.3)' }}>
-                +{node.children.length - 3}
-              </Box>
-            )}
-          </Box>
-        )}
+        {/* Progress % */}
+        <Typography sx={{
+          fontSize: '0.6rem',
+          fontWeight: 800,
+          color: isCompleted ? '#10B981' : `${domainColor}cc`,
+          ml: 'auto',
+          flexShrink: 0,
+        }}>
+          {node.progress}%
+        </Typography>
       </Box>
 
-      {node.children.map(child => (
-        <GoalCard
-          key={child.id}
-          node={child}
-          depth={depth + 1}
-          selectedNodeId={selectedNodeId}
-          onNodeSelect={onNodeSelect}
-          onLogTracker={onLogTracker}
-          domainActive={domainActive}
-        />
-      ))}
+      {/* Tracker pills — compact, inline below root goals */}
+      {trackers.length > 0 && (
+        <Box sx={{ display: 'flex', gap: '3px', flexWrap: 'wrap', ml: '34px', mb: '3px' }}>
+          {trackers.map(t => (
+            <Box
+              key={t.id}
+              onClick={(e) => { e.stopPropagation(); onLogTracker(t.id, node); }}
+              sx={{
+                fontSize: '0.55rem', px: '6px', py: '1px', borderRadius: '10px',
+                bgcolor: t.bg, border: `1px solid ${t.border}`,
+                color: t.color, cursor: 'pointer', display: 'inline-flex',
+                alignItems: 'center', gap: '3px', fontWeight: 700,
+                lineHeight: 1.3,
+                '&:hover': { borderColor: t.color },
+              }}
+            >
+              <span style={{ fontSize: '0.65rem' }}>{t.icon}</span>
+              {t.label.replace(' Tracker', '').replace(' Counter', '')}
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      {/* Children — rendered inside the branch structure */}
+      {hasChildren && (
+        <Box sx={{ position: 'relative', mt: '1px' }}>
+          {node.children.map((child, idx) => (
+            <GoalPill
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              selectedNodeId={selectedNodeId}
+              onNodeSelect={onNodeSelect}
+              onLogTracker={onLogTracker}
+              domainColor={domainColor}
+              isLast={idx === node.children.length - 1}
+            />
+          ))}
+        </Box>
+      )}
     </Box>
   );
 };
 
+/* ─── Main tree ──────────────────────────────────── */
 const NotesCardTree: React.FC<NotesCardTreeProps> = ({
   nodes, selectedNodeId, onNodeSelect, onLogTracker, onAddGoal, readOnly,
 }) => {
   const rootsByDomain = groupByDomain(nodes);
   const domainKeys = Object.keys(rootsByDomain);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-
-  const toggleDomain = (domain: string) => {
-    setCollapsed(prev => ({ ...prev, [domain]: !prev[domain] }));
-  };
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: 1.5, pb: 4 }}>
+      {/* Add goal button */}
       {onAddGoal && !readOnly && (
         <Box
           onClick={onAddGoal}
           sx={{
-            p: '10px 14px', mb: 2, borderRadius: '12px', cursor: 'pointer',
-            border: '1px dashed rgba(139,92,246,0.3)',
-            background: 'rgba(139,92,246,0.04)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
-            transition: 'all 0.2s ease',
-            '&:hover': { background: 'rgba(139,92,246,0.08)', borderColor: 'rgba(139,92,246,0.5)' },
+            p: '6px 16px', mb: 2, borderRadius: '20px', cursor: 'pointer',
+            border: '1px dashed rgba(139,92,246,0.25)',
+            background: 'rgba(139,92,246,0.03)',
+            display: 'inline-flex', alignItems: 'center', gap: 0.75,
+            transition: 'all 0.15s ease',
+            '&:hover': { background: 'rgba(139,92,246,0.07)', borderColor: 'rgba(139,92,246,0.45)', transform: 'translateX(2px)' },
           }}
         >
-          <Typography sx={{ fontSize: '1rem' }}>+</Typography>
-          <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#A78BFA' }}>
-            Add New Goal
+          <Typography sx={{ fontSize: '0.85rem', color: '#A78BFA', fontWeight: 800, lineHeight: 1 }}>+</Typography>
+          <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#A78BFA' }}>
+            New Goal
           </Typography>
         </Box>
       )}
+
       {domainKeys.map(domain => {
         const goals = rootsByDomain[domain];
         const progress = domainProgress(goals);
-        const active = isDomainActive(goals);
         const icon = DOMAIN_ICONS[domain] || '🎯';
         const color = DOMAIN_COLORS[domain] || DOMAIN_COLORS['defaultDomain'];
-        const isCollapsed = collapsed[domain] ?? false;
 
         return (
-          <Box key={domain} sx={{ mb: 2 }}>
-            <Box
-              onClick={() => toggleDomain(domain)}
-              sx={{
-                display: 'flex', alignItems: 'center', gap: 1, mb: 1, cursor: 'pointer',
-                userSelect: 'none',
-                opacity: active ? 1 : 0.45,
-              }}
-            >
+          <Box key={domain} sx={{ mb: 2, position: 'relative' }}>
+            {/* Domain header — acts as the trunk root */}
+            <Box sx={{
+              display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5,
+              userSelect: 'none',
+            }}>
+              <Typography sx={{ fontSize: '0.85rem' }}>{icon}</Typography>
               <Typography sx={{
-                fontSize: '0.75rem', color,
-                transition: 'transform 0.2s',
-                transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0)',
+                fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.05em',
+                color, textTransform: 'uppercase',
               }}>
-                ▼
+                {domain}
               </Typography>
-              <Typography sx={{ fontSize: '1rem' }}>{icon}</Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.03em' }}>
-                {domain.toUpperCase()}
-              </Typography>
-              <Box sx={{ flex: 1, height: 3, bgcolor: 'rgba(255,255,255,0.04)', borderRadius: 2, ml: 1 }}>
+              {/* Thin progress bar */}
+              <Box sx={{ flex: 1, height: 2, bgcolor: 'rgba(255,255,255,0.04)', borderRadius: 1, ml: 0.5 }}>
                 <Box sx={{
                   height: '100%', width: `${progress}%`,
-                  bgcolor: active ? `${color}88` : `${color}33`,
-                  borderRadius: 2,
-                  boxShadow: active ? `0 0 6px ${color}44` : 'none',
+                  bgcolor: `${color}66`,
+                  borderRadius: 1,
+                  transition: 'width 0.3s ease',
                 }} />
               </Box>
-              <Typography sx={{ fontSize: '0.7rem', opacity: 0.4 }}>{progress}%</Typography>
+              <Typography sx={{ fontSize: '0.55rem', opacity: 0.35, fontWeight: 700 }}>{progress}%</Typography>
             </Box>
-            <Collapse in={!isCollapsed}>
-              <Box sx={{ ml: 1.5 }}>
-                {goals.map(goal => (
-                  <GoalCard
-                    key={goal.id}
+
+            {/* Main trunk line + goals */}
+            <Box sx={{ position: 'relative', pl: '10px' }}>
+              {/* Vertical trunk from domain header down through all goals */}
+              <Box sx={{
+                position: 'absolute',
+                left: '4px',
+                top: 0,
+                width: '2px',
+                height: 'calc(100% - 16px)',
+                background: `linear-gradient(to bottom, ${color}40, ${color}10)`,
+                borderRadius: '1px',
+              }} />
+              {goals.map((goal, idx) => (
+                <Box key={goal.id} sx={{ position: 'relative', pl: '14px', mb: '2px' }}>
+                  {/* Horizontal branch from trunk to this root goal */}
+                  <Box sx={{
+                    position: 'absolute',
+                    left: '-6px',
+                    top: '14px',
+                    width: '16px',
+                    height: '2px',
+                    background: `${color}35`,
+                    borderRadius: '1px',
+                  }} />
+                  {/* Branch dot at junction */}
+                  <Box sx={{
+                    position: 'absolute',
+                    left: '-9px',
+                    top: '11px',
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    bgcolor: `${color}55`,
+                    border: `1.5px solid ${color}`,
+                    zIndex: 1,
+                  }} />
+                  <GoalPill
                     node={goal}
                     depth={0}
                     selectedNodeId={selectedNodeId}
                     onNodeSelect={onNodeSelect}
                     onLogTracker={onLogTracker}
-                    domainActive={active}
+                    domainColor={color}
+                    isLast={idx === goals.length - 1}
                   />
-                ))}
-              </Box>
-            </Collapse>
+                </Box>
+              ))}
+            </Box>
           </Box>
         );
       })}
