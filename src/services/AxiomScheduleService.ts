@@ -137,99 +137,49 @@ export class AxiomScheduleService {
       progress: Math.round(g.progress * 100) + '%',
     }));
 
-    return `You are Axiom, a wise warm and practical life coach. Generate a COMPLETE daily schedule for ${context.userName}.
+    return `Generate a daily schedule for ${context.userName} from 6:00 AM to 10:00 PM (16 hours).
 
-CONTEXT:
-- Archetype: ${context.archetype}
-- Motivation style: ${context.motivationStyle}
-- Check-in streak: ${context.checkinStreak} days
-- Risk factors: ${context.riskFactors.join(', ') || 'None'}
+USER DATA:
 - Goals: ${JSON.stringify(goalsSlice)}
+- Streak: ${context.checkinStreak} days
+- Archetype: ${context.archetype}
 - Tracker trends: ${context.trackerTrends.map(t => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
-- Top note themes: ${context.topNoteThemes.join(', ') || 'None'}
-- Recent achievements: ${context.recentAchievements.join(', ') || 'None'}
-- Current focus: ${context.currentFocus || 'Not specified'}
-- Social engagement score: ${context.socialEngagementScore}/100
-${bestMatch ? `- Suggested accountability partner: ${bestMatch.name} (${bestMatch.reason})` : ''}
-${bestEvents.length > 0 ? `- Upcoming events: ${bestEvents.map(e => e.title).join(', ')}` : ''}
-${bestPlaces.length > 0 ? `- Suggested places: ${bestPlaces.map(p => p.name).join(', ')}` : ''}
+${bestMatch ? `- Accountability partner: ${bestMatch.name}` : ''}
+${bestEvents.length > 0 ? `- Events: ${bestEvents.map(e => e.title).join(', ')}` : ''}
+${bestPlaces.length > 0 ? `- Places: ${bestPlaces.map(p => p.name).join(', ')}` : ''}
 
-Generate a detailed hourly schedule from 6:00 AM to 10:00 PM (16 time slots, 1 hour each).
-
-Respond ONLY with valid JSON (no markdown, no backticks) matching this exact structure:
-
+Return ONLY valid JSON with this structure:
 {
   "date": "${new Date().toISOString().slice(0, 10)}",
   "wakeTime": "06:00",
   "sleepTime": "22:00",
   "totalWorkHours": 6,
   "totalRestHours": 4,
-  "focusTheme": "One sentence theme for today's focus",
+  "focusTheme": "Brief theme sentence",
   "energyCurve": "morning_peak" | "evening_peak" | "balanced",
   "timeSlots": [
     {
       "hour": 6,
       "timeLabel": "06:00 - 07:00",
-      "task": "Specific actionable task for this hour",
-      "alignment": "Why this task matters for THIS user's goals and situation",
-      "duration": "45 min" or "full hour",
-      "preparation": "What to prepare beforehand",
+      "task": "Specific task",
+      "alignment": "Why it matters",
+      "duration": "45 min",
+      "preparation": "What to prepare",
       "isFlexible": true/false,
       "priority": "high" | "medium" | "low",
       "category": "deep_work" | "admin" | "rest" | "exercise" | "social" | "learning" | "planning" | "reflection"
     }
-    // ... 16 time slots total (hours 6-22)
   ]
 }
 
-CRITICAL RULES:
-
-1. **Hour Coverage**: Generate exactly 16 time slots covering hours 6 through 22 (6am to 10pm).
-
-2. **Task Specificity**: Each task must be:
-   - Concrete and actionable (not vague like "work on goals")
-   - Tied to a specific goal by name
-   - Include exact duration within the hour
-   - Reference their archetype and motivation style
-
-3. **Energy Alignment**: 
-   - morning_peak: Put deep work in 6-10am block
-   - evening_peak: Put creative work in 6-10pm block
-   - balanced: Distribute evenly
-
-4. **Category Distribution** (suggested):
-   - 4-6 slots: deep_work (highest priority hours)
-   - 2-3 slots: rest (including post-lunch dip ~14:00)
-   - 1-2 slots: exercise (morning or early evening)
-   - 1-2 slots: admin (email, messages, logistics)
-   - 1 slot: planning (evening review or morning intention)
-   - 1 slot: reflection (evening)
-   - 1-2 slots: social (lunch or early evening)
-   - 1-2 slots: learning (afternoon)
-
-5. **Accountability Integration**:
-   - Suggest 1-2 slots where they could check in with ${bestMatch?.name || 'their accountability partner'}
-   - Mark these as "social" category with suggestedMatchId
-
-6. **Place Suggestions**:
-   - For exercise slots, suggest a place if available
-   - For deep work, suggest a focused workspace
-   - Mark with suggestedPlaceId
-
-7. **Event Integration**:
-   - If events exist, schedule them at appropriate times
-   - Mark with suggestedEventId
-
-8. **Flexibility**:
-   - Mark 4-6 slots as isFlexible: true (can be moved)
-   - Mark deep work and scheduled events as isFlexible: false
-
-9. **Priority Assignment**:
-   - high: 3-5 slots (most important work)
-   - medium: 6-8 slots (important but movable)
-   - low: 3-5 slots (nice to have, rest, admin)
-
-10. **TONE in alignment field**: Warm, encouraging, specific to their situation. Reference their streak, goals by name, recent achievements.`;
+RULES:
+1. Generate exactly 16 time slots (hours 6-22)
+2. Each task should connect to their actual goals by name
+3. Include 4-6 deep work blocks, 2-3 rest blocks, 1-2 exercise
+4. Mark 4-6 slots as flexible
+5. Assign priorities: 3-5 high, 6-8 medium, rest low
+6. Keep task and alignment concise (1-2 sentences max)
+7. No archetype labels or psychological categories in output`;
   }
 
   /**
