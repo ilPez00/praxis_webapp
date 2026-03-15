@@ -15,6 +15,7 @@ interface AxiomBrief {
   event?: { title: string; reason: string } | null;
   place?: { name: string; reason: string } | null;
   resources?: { goal: string; suggestion: string; details: string }[];
+  source?: 'llm' | 'algorithm';
 }
 
 const AxiomNoteCard: React.FC<AxiomNoteCardProps> = ({ userId }) => {
@@ -65,7 +66,15 @@ const AxiomNoteCard: React.FC<AxiomNoteCardProps> = ({ userId }) => {
           }}>
             Axiom Daily Brief
           </Typography>
-          <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', ml: 'auto' }}>
+          <Typography sx={{
+            fontSize: '0.5rem', fontWeight: 700, ml: 'auto', mr: 0.5,
+            color: brief.source === 'llm' ? '#A78BFA' : '#F59E0B',
+            bgcolor: brief.source === 'llm' ? 'rgba(167,139,250,0.12)' : 'rgba(245,158,11,0.12)',
+            px: 0.75, py: 0.15, borderRadius: '4px',
+          }}>
+            {brief.source === 'llm' ? '🧠 AI' : '⚙️ Auto'}
+          </Typography>
+          <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>
             {expanded ? 'tap to collapse' : 'tap to expand'}
           </Typography>
         </Box>

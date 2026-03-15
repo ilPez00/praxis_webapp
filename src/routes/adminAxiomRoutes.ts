@@ -50,7 +50,7 @@ router.get('/stats', authenticateToken, requireAdmin, catchAsync(async (req: Req
     }
   }
 
-  // Get recent briefs (last 24 hours)
+  // Get recent briefs (last 24 hours) — include brief JSON for source tag
   const recentBriefsRes = await supabase
     .from('axiom_daily_briefs')
     .select(`
@@ -58,6 +58,7 @@ router.get('/stats', authenticateToken, requireAdmin, catchAsync(async (req: Req
       user_id,
       date,
       generated_at,
+      brief,
       profiles!inner(name)
     `)
     .gte('generated_at', new Date(Date.now() - 86400000).toISOString())
@@ -118,8 +119,35 @@ router.post('/force-push', authenticateToken, requireAdmin, catchAsync(async (re
       true,
     );
 
-    logger.info(`[Admin] Force-pushed Axiom brief for ${profile.name || userId}`);
-    return res.json({ success: true, message: `Brief generated for ${profile.name || userId}` });
+    // Read back the stored brief to report source
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: briefRow } = await supabase
+      .from('axiom_daily_briefs')
+      .select('brief')
+      .eq('user_id', userId)
+      .eq('date', today)
+      .maybeSingle();
+
+    const brief = briefRow?.brief || {};
+    const source = brief.source || 'unknown';
+    const llmError = brief.llm_error || null;
+
+    logger.info(`[Admin] Force-pushed Axiom brief for ${profile.name || userId} (source: ${source})`);
+
+    if (source === 'algorithm' && llmError) {
+      return res.json({
+        success: true,
+        source,
+        message: `Brief generated for ${profile.name || userId} (ALGORITHM FALLBACK — LLM failed)`,
+        llm_error: llmError,
+      });
+    }
+
+    return res.json({
+      success: true,
+      source,
+      message: `Brief generated for ${profile.name || userId} (source: ${source})`,
+    });
   }
 
   // All active users — run in background

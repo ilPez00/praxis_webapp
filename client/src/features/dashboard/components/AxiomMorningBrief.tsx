@@ -50,6 +50,7 @@ interface DailyProtocol {
   challenge: { type: 'bet' | 'duel'; target: string; terms: string };
   resources: Array<{ goal: string; suggestion: string; details: string }>;
   routine: Array<{ time: string; task: string; alignment: string }>;
+  source?: 'llm' | 'algorithm';
 }
 
 interface BriefRecord {
@@ -303,6 +304,16 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
                   label={isToday ? 'Daily Brief' : formatDate(currentDate)}
                   size="small"
                   sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}
+                />
+                <Chip
+                  label={data?.source === 'llm' ? '🧠 AI' : '⚙️ Auto'}
+                  size="small"
+                  sx={{
+                    height: 18, fontSize: '0.55rem', fontWeight: 700,
+                    bgcolor: data?.source === 'llm' ? 'rgba(167,139,250,0.15)' : 'rgba(245,158,11,0.1)',
+                    color: data?.source === 'llm' ? '#A78BFA' : '#F59E0B',
+                    border: `1px solid ${data?.source === 'llm' ? 'rgba(167,139,250,0.25)' : 'rgba(245,158,11,0.2)'}`,
+                  }}
                 />
               </Box>
               <Typography variant="h6" sx={{ color: 'text.primary', lineHeight: 1.5, fontWeight: 500, fontSize: { xs: '1rem', sm: '1.1rem' }, letterSpacing: '-0.01em' }}>

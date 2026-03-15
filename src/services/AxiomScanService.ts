@@ -367,6 +367,8 @@ export class AxiomScanService {
     let routine: any[] = [];
     let challenge: any = null;
     let resources: any[] = [];
+    let source: 'llm' | 'algorithm' = 'algorithm';
+    let llmError: string | null = null;
 
     try {
       const prompt = `You are Axiom, a wise warm and practical life coach inside the Praxis app. Generate a COMPLETE daily protocol for ${userName}.
@@ -412,18 +414,22 @@ RULES:
         routine = Array.isArray(llmData.routine) ? llmData.routine : [];
         challenge = llmData.challenge || null;
         resources = Array.isArray(llmData.resources) ? llmData.resources : [];
+        source = 'llm';
       } else {
-        // LLM returned plain text — use as message
+        // LLM returned plain text — use as message, rest will be algorithmic
         axiomMessage = rawText.slice(0, 500);
+        source = 'llm'; // message is still from LLM even if not JSON
       }
     } catch (err: any) {
-      logger.warn('[AxiomScan] LLM generation failed, using metric-based brief:', err.message);
+      llmError = err.message || 'Unknown LLM failure';
+      logger.error(`[AxiomScan] LLM FAILED for ${userName}: ${llmError}`);
       // Fall back to the fully algorithmic brief
       const metricBrief = await generateMetricBasededBrief(metrics, userName);
       axiomMessage = metricBrief.message;
       routine = metricBrief.routine || [];
       challenge = metricBrief.challenge || null;
       resources = metricBrief.resources || [];
+      source = 'algorithm';
     }
 
     // --- Phase 4: Algorithmic picks for match/event/place ---
@@ -484,6 +490,8 @@ RULES:
       challenge: challenge,
       resources: resources,
       routine: routine,
+      source: source,
+      llm_error: llmError,
     };
 
     await supabase.from('axiom_daily_briefs').upsert({

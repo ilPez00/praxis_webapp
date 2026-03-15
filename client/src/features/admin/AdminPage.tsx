@@ -460,7 +460,13 @@ const AdminPage: React.FC = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || 'Brief generated!');
+        if (data.source === 'algorithm' && data.llm_error) {
+          toast.error(`LLM FAILED: ${data.llm_error}\nBrief was generated using algorithm fallback.`, { duration: 8000 });
+        } else if (data.source === 'llm') {
+          toast.success(`${data.message} ✨`, { duration: 5000 });
+        } else {
+          toast.success(data.message || 'Brief generated!');
+        }
         fetchAxiomStats();
       } else {
         toast.error(data.error || 'Failed to force-push.');
@@ -1853,23 +1859,45 @@ const AdminPage: React.FC = () => {
                     <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
                       {axiomStats.recent_briefs.length > 0 ? (
                         <List dense>
-                          {axiomStats.recent_briefs.map((brief: any) => (
-                            <ListItem key={brief.id} sx={{ py: 1, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                              <ListItemText
-                                primary={
-                                  <Typography sx={{ fontWeight: 600 }}>
-                                    {brief.profiles?.name || 'Unknown User'}
-                                  </Typography>
-                                }
-                                secondary={
-                                  <Typography variant="caption" color="text.secondary">
-                                    Date: {brief.date} • Generated: {new Date(brief.generated_at).toLocaleString()}
-                                  </Typography>
-                                }
-                              />
-                              <Chip label="Generated" size="small" sx={{ bgcolor: 'rgba(16,185,129,0.2)', color: '#10B981' }} />
-                            </ListItem>
-                          ))}
+                          {axiomStats.recent_briefs.map((brief: any) => {
+                            const briefData = typeof brief.brief === 'string' ? JSON.parse(brief.brief) : (brief.brief || {});
+                            const src = briefData.source || 'unknown';
+                            const isLLM = src === 'llm';
+                            const hasError = !!briefData.llm_error;
+                            return (
+                              <ListItem key={brief.id} sx={{ py: 1, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <ListItemText
+                                  primary={
+                                    <Typography sx={{ fontWeight: 600 }}>
+                                      {brief.profiles?.name || 'Unknown User'}
+                                    </Typography>
+                                  }
+                                  secondary={
+                                    <Box>
+                                      <Typography variant="caption" color="text.secondary">
+                                        Date: {brief.date} • Generated: {new Date(brief.generated_at).toLocaleString()}
+                                      </Typography>
+                                      {hasError && (
+                                        <Typography variant="caption" sx={{ display: 'block', color: '#EF4444', mt: 0.25 }}>
+                                          LLM Error: {briefData.llm_error}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  }
+                                />
+                                <Chip
+                                  label={isLLM ? '🧠 Axiom' : '⚙️ Algorithm'}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: isLLM ? 'rgba(167,139,250,0.2)' : 'rgba(245,158,11,0.2)',
+                                    color: isLLM ? '#A78BFA' : '#F59E0B',
+                                    fontWeight: 700,
+                                    border: `1px solid ${isLLM ? 'rgba(167,139,250,0.3)' : 'rgba(245,158,11,0.3)'}`,
+                                  }}
+                                />
+                              </ListItem>
+                            );
+                          })}
                         </List>
                       ) : (
                         <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
