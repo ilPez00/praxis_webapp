@@ -39,6 +39,14 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
   ];
 
   const fetchNotes = async () => {
+    // Validate nodeId is a proper UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!nodeId || !uuidRegex.test(nodeId)) {
+      console.warn('Invalid node ID for notes:', nodeId);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('journal_entries')
