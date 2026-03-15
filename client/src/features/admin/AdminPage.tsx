@@ -343,7 +343,9 @@ const AdminPage: React.FC = () => {
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [updatingStrategy, setUpdatingStrategy] = useState(false);
   const [triggeringScan, setTriggeringScan] = useState(false);
-  
+  const [forcePushUserId, setForcePushUserId] = useState<string>('');
+  const [forcePushing, setForcePushing] = useState(false);
+
   // Axiom stats
   const [axiomStats, setAxiomStats] = useState<any>(null);
   const [loadingAxiomStats, setLoadingAxiomStats] = useState(false);
@@ -443,6 +445,33 @@ const AdminPage: React.FC = () => {
       setTriggeringScan(false);
     }
   };
+
+  const handleForcePush = async (targetUserId?: string) => {
+    const isAll = !targetUserId;
+    if (isAll && !window.confirm('Force-push Axiom briefs to ALL active users? This will overwrite today\'s briefs.')) return;
+    setForcePushing(true);
+    try {
+      const headers = await authHeaders();
+      const res = await fetch(`${API_URL}/admin/axiom/force-push`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(targetUserId ? { userId: targetUserId } : {}),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Brief generated!');
+        fetchAxiomStats();
+      } else {
+        toast.error(data.error || 'Failed to force-push.');
+      }
+    } catch {
+      toast.error('Failed to force-push brief.');
+    } finally {
+      setForcePushing(false);
+      setForcePushUserId('');
+    }
+  };
+
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
@@ -559,6 +588,7 @@ const AdminPage: React.FC = () => {
     if (tab === 7) {
       fetchAxiomPrompt();
       fetchAxiomStats();
+      if (users.length === 0) fetchUsers();
     }
   }, [tab, user, fetchAxiomPrompt, fetchAxiomStats]);
 
@@ -1931,8 +1961,8 @@ const AdminPage: React.FC = () => {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     Manually initiate the midnight automated scan. This will process all active users, analyze their activity, and generate new daily protocols. Use sparingly.
                   </Typography>
-                  <Button 
-                    variant="outlined" 
+                  <Button
+                    variant="outlined"
                     color="primary"
                     onClick={handleTriggerScan}
                     disabled={triggeringScan}
@@ -1941,6 +1971,61 @@ const AdminPage: React.FC = () => {
                   >
                     {triggeringScan ? 'Triggering...' : 'Trigger Global Midnight Scan Now'}
                   </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Force Push Brief */}
+            <Grid size={{ xs: 12 }}>
+              <Card sx={{ bgcolor: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.15)', borderRadius: 3 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AutoAwesomeIcon sx={{ color: '#A78BFA' }} /> Force Push Axiom Brief
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Generate and push a fresh Axiom daily brief immediately. Pick a specific user or push to everyone.
+                    The brief includes message, routine, challenge, resources, match, event, and place — the full protocol.
+                  </Typography>
+
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-end' }}>
+                    {/* User selector — pick from loaded users list */}
+                    <FormControl sx={{ minWidth: 280 }} size="small">
+                      <InputLabel>Target User (leave empty for all)</InputLabel>
+                      <Select
+                        value={forcePushUserId}
+                        onChange={(e) => setForcePushUserId(e.target.value)}
+                        label="Target User (leave empty for all)"
+                        disabled={forcePushing}
+                      >
+                        <MenuItem value="">
+                          <em>All active users</em>
+                        </MenuItem>
+                        {users.map(u => (
+                          <MenuItem key={u.id} value={u.id}>
+                            {u.name || u.email || u.id.slice(0, 8)}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <Button
+                      variant="contained"
+                      onClick={() => handleForcePush(forcePushUserId || undefined)}
+                      disabled={forcePushing}
+                      startIcon={forcePushing ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon />}
+                      sx={{
+                        borderRadius: '10px', fontWeight: 800, px: 4,
+                        background: 'linear-gradient(135deg, #A78BFA, #F59E0B)',
+                        '&:hover': { background: 'linear-gradient(135deg, #8B5CF6, #D97706)' },
+                      }}
+                    >
+                      {forcePushing
+                        ? 'Generating...'
+                        : forcePushUserId
+                          ? 'Push Brief to User'
+                          : 'Push Briefs to All Users'}
+                    </Button>
+                  </Stack>
                 </CardContent>
               </Card>
             </Grid>

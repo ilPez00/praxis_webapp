@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
+import { AxiomScanService } from '../services/AxiomScanService';
+import logger from '../utils/logger';
 
 const router = Router();
 
@@ -87,6 +89,45 @@ router.get('/stats', authenticateToken, requireAdmin, catchAsync(async (req: Req
     recent_briefs: recentBriefsRes.data || [],
     daily_counts: dailyCounts,
   });
+}));
+
+/**
+ * POST /admin/axiom/force-push
+ * Force-generate a brief for a single user or all users.
+ * Body: { userId?: string }  — omit userId to push to ALL active users.
+ */
+router.post('/force-push', authenticateToken, requireAdmin, catchAsync(async (req: Request, res: Response) => {
+  const { userId } = req.body;
+
+  if (userId) {
+    // Single user
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, name, city')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!profile) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await AxiomScanService.generateDailyBrief(
+      profile.id,
+      profile.name || 'Student',
+      profile.city || 'Unknown',
+      true,
+    );
+
+    logger.info(`[Admin] Force-pushed Axiom brief for ${profile.name || userId}`);
+    return res.json({ success: true, message: `Brief generated for ${profile.name || userId}` });
+  }
+
+  // All active users — run in background
+  AxiomScanService.runGlobalScan().catch(err => {
+    logger.error('[Admin] Force-push all background failure:', err.message);
+  });
+
+  return res.json({ success: true, message: 'Global scan triggered in background for all active users' });
 }));
 
 export default router;
