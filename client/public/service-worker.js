@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-globals */
+
 // Praxis Service Worker for offline support
 // Basic implementation - network first, fallback to cache
 
@@ -12,10 +14,10 @@ const STATIC_ASSETS = [
 ];
 
 // Install event - cache static assets
-self.addEventListener('install', (event) => {
+self.addEventListener('install', function(event) {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(STATIC_ASSETS).catch(function(err) {
         console.warn('Failed to cache some assets:', err);
       });
     })
@@ -24,13 +26,13 @@ self.addEventListener('install', (event) => {
 });
 
 // Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', function(event) {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then(function(cacheNames) {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+          .filter(function(name) { return name !== CACHE_NAME; })
+          .map(function(name) { return caches.delete(name); })
       );
     })
   );
@@ -38,7 +40,7 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch event - network first, fallback to cache
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', function(event) {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
@@ -47,22 +49,22 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     fetch(event.request)
-      .then((response) => {
+      .then(function(response) {
         // Clone the response for caching
-        const responseClone = response.clone();
+        var responseClone = response.clone();
 
         // Cache successful responses
-        if (response.ok && event.request.url.startsWith(self.location.origin)) {
-          caches.open(CACHE_NAME).then((cache) => {
+        if (response.ok && event.request.url.indexOf(self.location.origin) === 0) {
+          caches.open(CACHE_NAME).then(function(cache) {
             cache.put(event.request, responseClone);
           });
         }
 
         return response;
       })
-      .catch(() => {
+      .catch(function() {
         // Network failed, try cache
-        return caches.match(event.request).then((cachedResponse) => {
+        return caches.match(event.request).then(function(cachedResponse) {
           if (cachedResponse) {
             return cachedResponse;
           }
@@ -80,7 +82,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 // Handle messages from main thread
-self.addEventListener('message', (event) => {
+self.addEventListener('message', function(event) {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
