@@ -24,6 +24,7 @@ interface GoalWorkspaceSheetProps {
   userId: string;
   readOnly?: boolean;
   actions?: ActionItem[];
+  children?: React.ReactNode;
 }
 
 function getNodeDomain(nodeId: string, allNodes: any[]): string {
@@ -36,7 +37,7 @@ function getNodeDomain(nodeId: string, allNodes: any[]): string {
 
 const GoalWorkspaceSheet: React.FC<GoalWorkspaceSheetProps> = ({
   node, allNodes, open, onClose, onProgressChange, onNodeSelect,
-  onAddSubgoal, onLogTracker, onAction, userId, readOnly, actions,
+  onAddSubgoal, onLogTracker, onAction, userId, readOnly, actions, children,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -215,6 +216,13 @@ const GoalWorkspaceSheet: React.FC<GoalWorkspaceSheetProps> = ({
           ))}
         </Box>
       )}
+
+      {/* Embedded children (e.g. NoteGoalDetail with tracker widgets) */}
+      {children && (
+        <Box sx={{ mt: 2 }}>
+          {children}
+        </Box>
+      )}
     </Box>
   );
 
@@ -228,11 +236,12 @@ const GoalWorkspaceSheet: React.FC<GoalWorkspaceSheetProps> = ({
         disableSwipeToOpen
         PaperProps={{
           sx: {
-            height: '70vh',
+            height: '92vh',
             borderRadius: '16px 16px 0 0',
             background: 'rgba(15,15,25,0.98)',
             border: '1px solid rgba(139,92,246,0.15)',
             borderBottom: 'none',
+            overflowY: 'auto',
           },
         }}
       >

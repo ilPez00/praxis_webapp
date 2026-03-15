@@ -350,7 +350,7 @@ const NotesPage: React.FC = () => {
           },
           { headers }
         );
-        toast.success(parentId ? 'Sub-goal added! -500 PP' : 'New goal added! -500 PP');
+        toast.success(parentId ? 'Sub-goal added!' : 'New goal added!');
         if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
       } else if (editingNode) {
         const bNode = backendNodes.find(n => n.id === editingNode.id);
@@ -371,7 +371,7 @@ const NotesPage: React.FC = () => {
             },
             { headers }
           );
-          toast.success('Goal details updated! -100 PP');
+          toast.success('Goal details updated!');
           if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
         }
 
@@ -623,27 +623,13 @@ const NotesPage: React.FC = () => {
           </Box>
         )}
 
-        {/* Mobile: widget below tree */}
-        {isMobile && currentUserId && selectedNode && (
-          <Box sx={{ mt: 2, px: 1 }}>
-            <NoteGoalDetail
-              node={selectedNode}
-              allNodes={backendNodes}
-              userId={currentUserId}
-              activeBets={activeBets}
-              onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
-              focusedTrackerType={activeLogType}
-            />
-          </Box>
-        )}
-
-        {/* Mobile: bottom sheet for actions */}
+        {/* Mobile: full bottom sheet with widgets + actions */}
         {isMobile && (
           <GoalWorkspaceSheet
             node={selectedNode}
             allNodes={backendNodes}
             open={sheetOpen}
-            onClose={() => setSheetOpen(false)}
+            onClose={() => { setSheetOpen(false); setActiveLogType(null); }}
             onProgressChange={handleProgressUpdate}
             onNodeSelect={handleNodeSelect}
             onAddSubgoal={handleAddSubgoal}
@@ -651,7 +637,19 @@ const NotesPage: React.FC = () => {
             onAction={handleAction}
             userId={currentUserId || ''}
             actions={NOTES_ACTIONS}
-          />
+          >
+            {/* Embed full tracker widgets inside the mobile sheet */}
+            {currentUserId && selectedNode && (
+              <NoteGoalDetail
+                node={selectedNode}
+                allNodes={backendNodes}
+                userId={currentUserId}
+                activeBets={activeBets}
+                onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
+                focusedTrackerType={activeLogType}
+              />
+            )}
+          </GoalWorkspaceSheet>
         )}
 
         {/* ── Edit/Branch dialog ──────────────────────────────────── */}
@@ -747,13 +745,7 @@ const NotesPage: React.FC = () => {
             <Button onClick={() => { setEditingNode(null); setIsBranching(false); }} sx={{ color: 'text.secondary' }}>Cancel</Button>
             <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim() || (isBranching && !editingNode && !newGoalDomain)}
               sx={{ borderRadius: '10px' }}>
-              {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Sub-goal (500 PP)' : 'Add New Goal (500 PP)') : (
-                (editingNode && (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') ||
-                 editDesc.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.customDetails || '') ||
-                 editMetric.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.completionMetric || '') ||
-                 editTargetDate !== (backendNodes.find(n => n.id === editingNode?.id)?.targetDate || '')
-                )) ? 'Save Details (100 PP)' : 'Save Progress'
-              ))}
+              {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Sub-goal' : 'Add New Goal') : 'Save')}
             </Button>
           </DialogActions>
         </Dialog>

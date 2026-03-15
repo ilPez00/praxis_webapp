@@ -61,6 +61,7 @@ const routes: RouteConfig[] = [
 
   // Private Routes
 
+  { path: '/notes', element: NotesPage, private: true },
   { path: '/dashboard', element: DashboardPage, private: true },
   { path: '/discover', element: DiscoverPage, private: true },
   { path: '/profile', element: ProfilePage, private: true },
@@ -70,8 +71,8 @@ const routes: RouteConfig[] = [
   { path: '/chat', element: ChatPage, private: true },
   { path: '/chat/:user1Id/:user2Id', element: ChatRoom, private: true, param: 'user1Id' },
   { path: '/onboarding', element: OnboardingPage, private: true },
-  { path: '/goals', element: GoalTreePage, private: true },
-  { path: '/goals/:id', element: GoalTreePage, private: true, param: 'id' },
+  { path: '/goals', element: NotesPage, private: true },
+  { path: '/goals/:id', element: NotesPage, private: true, param: 'id' },
   { path: '/goal-selection', element: GoalSelectionPage, private: true },
   { path: '/upgrade', element: UpgradePage, private: true },
   { path: '/verify-identity', element: IdentityVerificationPage, private: true },
@@ -95,7 +96,6 @@ const routes: RouteConfig[] = [
   { path: '/posts/:postId', element: PostThreadPage, private: true },
   { path: '/settings', element: SettingsPage, private: true },
   { path: '/challenges', element: ChallengesPage, private: true },
-  { path: '/notes', element: NotesPage, private: true },
 ];
 
 export default routes;

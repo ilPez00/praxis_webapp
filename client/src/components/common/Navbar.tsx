@@ -51,7 +51,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ForumIcon from '@mui/icons-material/Forum';
-import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import NoteIcon from '@mui/icons-material/Note';
 
@@ -259,10 +258,10 @@ const Navbar: React.FC = () => {
               {user && (
                 <>
                   {[
+                    { label: 'Notes', to: '/notes' },
                     { label: 'Today', to: '/dashboard' },
                     { label: 'Discover', to: '/discover' },
                     { label: 'Chat', to: '/communication' },
-                    { label: 'Notes', to: '/notes' },
                   ].map(({ label, to }) => {
                     const active = location.pathname.startsWith(to);
                     const isDiscover = to === '/discover';
@@ -551,9 +550,9 @@ const Navbar: React.FC = () => {
                       <AccountCircleIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">My Profile</Typography>
                     </MenuItem>
-                    <MenuItem onClick={() => handleNav('/goals')} sx={{ gap: 1.5, py: 1.25 }}>
-                      <TrackChangesIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Goal Tree</Typography>
+                    <MenuItem onClick={() => handleNav('/notes')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <NoteIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Notes</Typography>
                     </MenuItem>
                     <MenuItem onClick={() => handleNav('/marketplace')} sx={{ gap: 1.5, py: 1.25 }}>
                       <StorefrontOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
@@ -692,12 +691,11 @@ const Navbar: React.FC = () => {
 
             <List disablePadding>
               {[
+                { label: 'Notes', to: '/notes', icon: <NoteIcon />, primary: true },
                 { label: 'Today', to: '/dashboard', icon: <DashboardIcon />, primary: true },
                 { label: 'Discover', to: '/discover', icon: <ExploreIcon />, primary: true },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
-                { label: 'Goal Tree', to: '/goals', icon: <TrackChangesIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
-                { label: 'Notes', to: '/notes', icon: <NoteIcon />, primary: true },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
                 { label: 'Settings', to: '/settings', icon: <SettingsIcon />, primary: false },

@@ -531,29 +531,56 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
     throw new BadRequestError('name is required.');
   }
 
-  // 1. Check balance
-  const { data: profile, error: profileErr } = await supabase
-    .from('profiles')
-    .select('praxis_points, goal_tree_edit_count')
-    .eq('id', userId)
-    .single();
-  if (profileErr || !profile) throw new InternalServerError('Failed to fetch user profile.');
+  // 1. Fetch profile (resilient to missing columns)
+  let currentPoints = 0;
+  let editCount = 0;
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('praxis_points, goal_tree_edit_count')
+      .eq('id', userId)
+      .single();
+    currentPoints = profile?.praxis_points ?? 0;
+    editCount = profile?.goal_tree_edit_count ?? 0;
+  } catch {
+    // Columns may not exist yet — proceed with defaults
+    logger.warn('Could not fetch profile columns for goal creation (non-fatal)');
+  }
 
-  const currentPoints: number = profile.praxis_points ?? 0;
-  if (currentPoints < NODE_CREATE_COST) {
+  if (NODE_CREATE_COST > 0 && currentPoints < NODE_CREATE_COST) {
     throw new AppError(`Insufficient Praxis Points. Creating a node costs ${NODE_CREATE_COST} PP (you have ${currentPoints}).`, 402);
   }
 
-  // 2. Load existing tree
-  const { data: tree, error: treeErr } = await supabase
+  // 2. Load existing tree — auto-create if missing
+  let { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
     .select('nodes, root_nodes')
     .eq('user_id', userId)
-    .single();
-  if (treeErr || !tree) throw new NotFoundError('Goal tree not found. Create your initial tree first.');
+    .maybeSingle();
 
-  const nodes: GoalNode[] = Array.isArray(tree.nodes) ? tree.nodes : [];
-  const rootNodeIds: string[] = Array.isArray((tree as any).root_nodes) ? (tree as any).root_nodes : [];
+  if (treeErr) {
+    // Retry without root_nodes in case column doesn't exist
+    const fallback = await supabase
+      .from('goal_trees')
+      .select('nodes')
+      .eq('user_id', userId)
+      .maybeSingle();
+    tree = fallback.data ? { ...fallback.data, root_nodes: null } as any : null;
+  }
+
+  // Auto-create goal_tree if user doesn't have one yet
+  if (!tree) {
+    const { data: newTree, error: createErr } = await supabase
+      .from('goal_trees')
+      .insert([{ user_id: userId, nodes: [], root_nodes: [] }])
+      .select()
+      .single();
+    if (createErr) throw new InternalServerError(`Failed to create goal tree: ${createErr.message}`);
+    tree = newTree;
+  }
+
+  const nodes: GoalNode[] = Array.isArray(tree!.nodes) ? tree!.nodes : [];
+  const rootNodeIds: string[] = Array.isArray((tree as any)?.root_nodes) ? (tree as any).root_nodes : [];
 
   // Validate parentId if supplied
   if (parentId && !nodes.find((n: GoalNode) => n.id === parentId)) {
@@ -589,18 +616,16 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
     .eq('user_id', userId);
   if (saveErr) throw new InternalServerError(`Failed to save new node: ${saveErr.message}`);
 
-  // 5. Increment edit count + deduct PP
-  const editCount: number = profile.goal_tree_edit_count ?? 0;
-  const { error: profileUpdateErr } = await supabase
-    .from('profiles')
-    .update({
-      praxis_points: currentPoints - NODE_CREATE_COST,
-      goal_tree_edit_count: editCount + 1,
-    })
-    .eq('id', userId);
-  if (profileUpdateErr) throw new InternalServerError('Failed to deduct PP.');
-
+  // 5. Increment edit count + deduct PP (best-effort)
   const newBalance = currentPoints - NODE_CREATE_COST;
+  try {
+    const updatePayload: Record<string, any> = { goal_tree_edit_count: editCount + 1 };
+    if (NODE_CREATE_COST > 0) updatePayload.praxis_points = newBalance;
+    await supabase.from('profiles').update(updatePayload).eq('id', userId);
+  } catch (err) {
+    logger.warn('Could not update profile after goal creation (non-fatal):', err);
+  }
+
   res.status(201).json({ node: newNode, newBalance });
 });
 
@@ -615,16 +640,22 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
 
   const { name, description, domain, targetDate, completionMetric } = req.body;
 
-  // 1. Check balance
-  const { data: profile, error: profileErr } = await supabase
-    .from('profiles')
-    .select('praxis_points, goal_tree_edit_count')
-    .eq('id', userId)
-    .single();
-  if (profileErr || !profile) throw new InternalServerError('Failed to fetch user profile.');
+  // 1. Fetch profile (resilient to missing columns)
+  let currentPoints = 0;
+  let editCount = 0;
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('praxis_points, goal_tree_edit_count')
+      .eq('id', userId)
+      .single();
+    currentPoints = profile?.praxis_points ?? 0;
+    editCount = profile?.goal_tree_edit_count ?? 0;
+  } catch {
+    logger.warn('Could not fetch profile columns for goal edit (non-fatal)');
+  }
 
-  const currentPoints: number = profile.praxis_points ?? 0;
-  if (currentPoints < NODE_EDIT_COST) {
+  if (NODE_EDIT_COST > 0 && currentPoints < NODE_EDIT_COST) {
     throw new AppError(`Insufficient Praxis Points. Editing a node costs ${NODE_EDIT_COST} PP (you have ${currentPoints}).`, 402);
   }
 
@@ -665,18 +696,16 @@ export const updateGoalNode = catchAsync(async (req: Request, res: Response, _ne
     .eq('user_id', userId);
   if (saveErr) throw new InternalServerError(`Failed to save node update: ${saveErr.message}`);
 
-  // 5. Increment edit count + deduct PP
-  const editCount: number = profile.goal_tree_edit_count ?? 0;
-  const { error: profileUpdateErr } = await supabase
-    .from('profiles')
-    .update({
-      praxis_points: currentPoints - NODE_EDIT_COST,
-      goal_tree_edit_count: editCount + 1,
-    })
-    .eq('id', userId);
-  if (profileUpdateErr) throw new InternalServerError('Failed to deduct PP.');
-
+  // 5. Increment edit count + deduct PP (best-effort)
   const newBalance = currentPoints - NODE_EDIT_COST;
+  try {
+    const updatePayload: Record<string, any> = { goal_tree_edit_count: editCount + 1 };
+    if (NODE_EDIT_COST > 0) updatePayload.praxis_points = newBalance;
+    await supabase.from('profiles').update(updatePayload).eq('id', userId);
+  } catch (err) {
+    logger.warn('Could not update profile after goal edit (non-fatal):', err);
+  }
+
   res.json({ node: updatedNode, newBalance });
 });
 

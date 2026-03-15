@@ -41,30 +41,30 @@ const AddPill: React.FC<{
   <Box
     onClick={(e) => { e.stopPropagation(); onClick(); }}
     sx={{
-      p: size === 'domain' ? '5px 14px' : '3px 10px',
-      borderRadius: '16px',
-      mb: '3px',
+      p: size === 'domain' ? '7px 16px' : '5px 12px',
+      borderRadius: '18px',
+      mb: '4px',
       cursor: 'pointer',
       display: 'inline-flex',
       alignItems: 'center',
       gap: 0.5,
       border: '1px dashed',
-      borderColor: `${color}30`,
+      borderColor: `${color}40`,
       background: 'transparent',
-      opacity: 0.45,
+      opacity: 0.55,
       transition: 'all 0.15s ease',
       '&:hover': {
-        opacity: 0.85,
-        borderColor: `${color}60`,
-        background: `${color}08`,
+        opacity: 0.9,
+        borderColor: `${color}70`,
+        background: `${color}0c`,
         transform: 'translateX(2px)',
       },
     }}
   >
     <Typography sx={{
-      fontSize: size === 'domain' ? '0.7rem' : '0.6rem',
+      fontSize: size === 'domain' ? '0.875rem' : '0.8rem',
       fontWeight: 700,
-      color: `${color}99`,
+      color: `${color}cc`,
       lineHeight: 1.2,
     }}>
       + {label}
@@ -103,17 +103,16 @@ const GoalPill: React.FC<{
   }, [isSelected]);
 
   const hasChildren = node.children.length > 0;
-  // Count total items in this branch (children + add-sub pill)
   const branchItems = node.children.length + (onAddSubgoal && isActive ? 1 : 0);
 
   return (
-    <Box sx={{ position: 'relative', pl: depth > 0 ? '20px' : 0 }}>
+    <Box sx={{ position: 'relative', pl: depth > 0 ? '24px' : 0 }}>
       {/* Horizontal branch connector */}
       {depth > 0 && (
         <Box sx={{
-          position: 'absolute', left: 0, top: '13px',
-          width: '16px', height: '2px',
-          background: isActive ? `${domainColor}40` : `${domainColor}18`,
+          position: 'absolute', left: 0, top: '16px',
+          width: '20px', height: '2px',
+          background: isActive ? `${domainColor}50` : `${domainColor}22`,
           borderRadius: '1px',
         }} />
       )}
@@ -121,8 +120,8 @@ const GoalPill: React.FC<{
       {depth > 0 && (
         <Box sx={{
           position: 'absolute', left: 0, top: 0,
-          width: '2px', height: isLast ? '14px' : '100%',
-          background: isActive ? `${domainColor}35` : `${domainColor}15`,
+          width: '2px', height: isLast ? '17px' : '100%',
+          background: isActive ? `${domainColor}45` : `${domainColor}1a`,
           borderRadius: '1px',
         }} />
       )}
@@ -132,47 +131,47 @@ const GoalPill: React.FC<{
         ref={ref}
         onClick={() => onNodeSelect(node)}
         sx={{
-          p: depth === 0 ? '6px 12px' : '4px 10px',
-          borderRadius: '16px',
-          mb: '3px',
+          p: depth === 0 ? '8px 14px' : '6px 12px',
+          borderRadius: '18px',
+          mb: '4px',
           cursor: 'pointer',
           transition: 'all 0.15s ease',
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 0.75,
+          gap: 1,
           maxWidth: '100%',
           background: isSelected
-            ? `${domainColor}14`
+            ? `${domainColor}1a`
             : isActive
-              ? 'rgba(255,255,255,0.02)'
+              ? 'rgba(255,255,255,0.03)'
               : 'transparent',
           border: '1px solid',
           borderColor: isSelected
-            ? `${domainColor}50`
+            ? `${domainColor}60`
             : isActive
-              ? 'rgba(255,255,255,0.06)'
-              : 'rgba(255,255,255,0.025)',
-          boxShadow: isSelected ? `0 0 8px ${domainColor}20` : 'none',
-          opacity: isSuspended ? 0.28 : isCompleted ? 0.4 : 1,
+              ? 'rgba(255,255,255,0.08)'
+              : 'rgba(255,255,255,0.03)',
+          boxShadow: isSelected ? `0 0 12px ${domainColor}28` : 'none',
+          opacity: isSuspended ? 0.3 : isCompleted ? 0.45 : 1,
           filter: isSuspended ? 'grayscale(0.8)' : 'none',
           '&:hover': {
-            background: isSelected ? `${domainColor}1a` : 'rgba(255,255,255,0.035)',
-            borderColor: isSelected ? `${domainColor}65` : 'rgba(255,255,255,0.1)',
+            background: isSelected ? `${domainColor}22` : 'rgba(255,255,255,0.05)',
+            borderColor: isSelected ? `${domainColor}75` : 'rgba(255,255,255,0.14)',
             transform: 'translateX(2px)',
           },
         }}
       >
         {/* Progress ring */}
         <Box sx={{
-          width: depth === 0 ? 20 : 14,
-          height: depth === 0 ? 20 : 14,
+          width: depth === 0 ? 26 : 18,
+          height: depth === 0 ? 26 : 18,
           flexShrink: 0,
         }}>
           <svg width="100%" height="100%" viewBox="0 0 20 20">
-            <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2" />
+            <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
             <circle cx="10" cy="10" r="8" fill="none"
               stroke={isCompleted ? '#10B981' : domainColor}
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeDasharray={`${(node.progress / 100) * 50.3} 50.3`}
               strokeLinecap="round"
               transform="rotate(-90 10 10)"
@@ -183,19 +182,19 @@ const GoalPill: React.FC<{
 
         <Typography sx={{
           fontWeight: depth === 0 ? 700 : 600,
-          fontSize: depth === 0 ? '0.75rem' : '0.68rem',
-          lineHeight: 1.2,
+          fontSize: depth === 0 ? '0.95rem' : '0.85rem',
+          lineHeight: 1.25,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          color: isActive ? 'text.primary' : 'text.disabled',
+          color: isActive ? '#E5E7EB' : 'rgba(255,255,255,0.35)',
         }}>
           {isSuspended ? '⏸ ' : isCompleted ? '✓ ' : ''}{node.title}
         </Typography>
 
         <Typography sx={{
-          fontSize: '0.55rem', fontWeight: 800,
-          color: isCompleted ? '#10B981' : `${domainColor}bb`,
+          fontSize: '0.72rem', fontWeight: 800,
+          color: isCompleted ? '#10B981' : `${domainColor}dd`,
           ml: 'auto', flexShrink: 0,
         }}>
           {node.progress}%
@@ -204,21 +203,22 @@ const GoalPill: React.FC<{
 
       {/* Tracker pills */}
       {trackers.length > 0 && (
-        <Box sx={{ display: 'flex', gap: '3px', flexWrap: 'wrap', ml: '30px', mb: '2px' }}>
+        <Box sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap', ml: '36px', mb: '3px' }}>
           {trackers.map(t => (
             <Box
               key={t.id}
               onClick={(e) => { e.stopPropagation(); onLogTracker(t.id, node); }}
               sx={{
-                fontSize: '0.5rem', px: '5px', py: '1px', borderRadius: '8px',
+                fontSize: '0.65rem', px: '7px', py: '2px', borderRadius: '10px',
                 bgcolor: t.bg, border: `1px solid ${t.border}`,
                 color: t.color, cursor: 'pointer', display: 'inline-flex',
-                alignItems: 'center', gap: '2px', fontWeight: 700,
+                alignItems: 'center', gap: '3px', fontWeight: 700,
                 lineHeight: 1.3,
-                '&:hover': { borderColor: t.color },
+                '&:hover': { borderColor: t.color, transform: 'scale(1.04)' },
+                transition: 'all 0.1s ease',
               }}
             >
-              <span style={{ fontSize: '0.6rem' }}>{t.icon}</span>
+              <span style={{ fontSize: '0.75rem' }}>{t.icon}</span>
               {t.label.replace(' Tracker', '').replace(' Counter', '')}
             </Box>
           ))}
@@ -227,14 +227,14 @@ const GoalPill: React.FC<{
 
       {/* Children + add-sub pill */}
       {(hasChildren || (onAddSubgoal && isActive)) && (
-        <Box sx={{ position: 'relative', mt: '1px' }}>
+        <Box sx={{ position: 'relative', mt: '2px' }}>
           {/* Vertical trunk for children branch */}
           {branchItems > 0 && (
             <Box sx={{
-              position: 'absolute', left: '20px', top: 0,
+              position: 'absolute', left: '24px', top: 0,
               width: '2px',
-              height: `calc(100% - 12px)`,
-              background: `${domainColor}20`,
+              height: `calc(100% - 14px)`,
+              background: `${domainColor}28`,
               borderRadius: '1px',
             }} />
           )}
@@ -253,17 +253,17 @@ const GoalPill: React.FC<{
           ))}
           {/* Add sub-goal pill at end of children */}
           {onAddSubgoal && isActive && (
-            <Box sx={{ position: 'relative', pl: '20px' }}>
+            <Box sx={{ position: 'relative', pl: '24px' }}>
               {/* connector line */}
               <Box sx={{
-                position: 'absolute', left: 0, top: '10px',
-                width: '16px', height: '2px',
-                background: `${domainColor}18`, borderRadius: '1px',
+                position: 'absolute', left: 0, top: '12px',
+                width: '20px', height: '2px',
+                background: `${domainColor}22`, borderRadius: '1px',
               }} />
               <Box sx={{
                 position: 'absolute', left: 0, top: 0,
-                width: '2px', height: '11px',
-                background: `${domainColor}15`, borderRadius: '1px',
+                width: '2px', height: '13px',
+                background: `${domainColor}1a`, borderRadius: '1px',
               }} />
               <AddPill
                 label="sub-goal"
@@ -286,7 +286,7 @@ const NotesCardTree: React.FC<NotesCardTreeProps> = ({
   const rootsByDomain = groupByDomain(nodes);
 
   return (
-    <Box sx={{ p: 1.5, pb: 4 }}>
+    <Box sx={{ p: 2, pb: 5 }}>
       {ALL_DOMAINS.map(domain => {
         const goals = rootsByDomain[domain] || [];
         const hasGoals = goals.length > 0;
@@ -295,66 +295,66 @@ const NotesCardTree: React.FC<NotesCardTreeProps> = ({
         const color = DOMAIN_COLORS[domain] || DOMAIN_COLORS['defaultDomain'];
 
         return (
-          <Box key={domain} sx={{ mb: 1.5, position: 'relative' }}>
+          <Box key={domain} sx={{ mb: 2, position: 'relative' }}>
             {/* Domain header — trunk root */}
             <Box sx={{
-              display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5,
+              display: 'flex', alignItems: 'center', gap: 1, mb: 0.75,
               userSelect: 'none',
-              opacity: hasGoals ? 1 : 0.4,
+              opacity: hasGoals ? 1 : 0.45,
               transition: 'opacity 0.2s',
-              '&:hover': { opacity: hasGoals ? 1 : 0.65 },
+              '&:hover': { opacity: hasGoals ? 1 : 0.7 },
             }}>
-              <Typography sx={{ fontSize: '0.8rem' }}>{icon}</Typography>
+              <Typography sx={{ fontSize: '1rem' }}>{icon}</Typography>
               <Typography sx={{
-                fontWeight: 800, fontSize: '0.6rem', letterSpacing: '0.04em',
+                fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.04em',
                 color, textTransform: 'uppercase',
               }}>
                 {domain}
               </Typography>
               {hasGoals && (
                 <>
-                  <Box sx={{ flex: 1, height: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 1, ml: 0.5 }}>
+                  <Box sx={{ flex: 1, height: 3, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 1.5, ml: 0.5 }}>
                     <Box sx={{
                       height: '100%', width: `${progress}%`,
-                      bgcolor: `${color}55`,
-                      borderRadius: 1,
+                      bgcolor: `${color}66`,
+                      borderRadius: 1.5,
                       transition: 'width 0.3s ease',
                     }} />
                   </Box>
-                  <Typography sx={{ fontSize: '0.5rem', opacity: 0.3, fontWeight: 700 }}>{progress}%</Typography>
+                  <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>{progress}%</Typography>
                 </>
               )}
             </Box>
 
             {/* Trunk + goals */}
-            <Box sx={{ position: 'relative', pl: '10px' }}>
+            <Box sx={{ position: 'relative', pl: '12px' }}>
               {/* Vertical trunk */}
               {(hasGoals || (!readOnly && onAddGoalInDomain)) && (
                 <Box sx={{
-                  position: 'absolute', left: '4px', top: 0,
+                  position: 'absolute', left: '5px', top: 0,
                   width: '2px',
-                  height: hasGoals ? 'calc(100% - 10px)' : '14px',
+                  height: hasGoals ? 'calc(100% - 12px)' : '16px',
                   background: hasGoals
-                    ? `linear-gradient(to bottom, ${color}35, ${color}08)`
-                    : `${color}15`,
+                    ? `linear-gradient(to bottom, ${color}45, ${color}0c)`
+                    : `${color}1a`,
                   borderRadius: '1px',
                 }} />
               )}
 
               {goals.map((goal, idx) => (
-                <Box key={goal.id} sx={{ position: 'relative', pl: '14px', mb: '1px' }}>
+                <Box key={goal.id} sx={{ position: 'relative', pl: '16px', mb: '2px' }}>
                   {/* Horizontal branch */}
                   <Box sx={{
-                    position: 'absolute', left: '-6px', top: '12px',
-                    width: '16px', height: '2px',
-                    background: `${color}30`, borderRadius: '1px',
+                    position: 'absolute', left: '-7px', top: '14px',
+                    width: '18px', height: '2px',
+                    background: `${color}40`, borderRadius: '1px',
                   }} />
                   {/* Junction dot */}
                   <Box sx={{
-                    position: 'absolute', left: '-8px', top: '9px',
-                    width: '5px', height: '5px', borderRadius: '50%',
-                    bgcolor: `${color}44`,
-                    border: `1.5px solid ${color}88`,
+                    position: 'absolute', left: '-9px', top: '11px',
+                    width: '6px', height: '6px', borderRadius: '50%',
+                    bgcolor: `${color}55`,
+                    border: `1.5px solid ${color}99`,
                     zIndex: 1,
                   }} />
                   <GoalPill
@@ -372,18 +372,18 @@ const NotesCardTree: React.FC<NotesCardTreeProps> = ({
 
               {/* Add-goal-in-domain pill (always visible as last branch) */}
               {!readOnly && onAddGoalInDomain && (
-                <Box sx={{ position: 'relative', pl: '14px' }}>
+                <Box sx={{ position: 'relative', pl: '16px' }}>
                   {/* Horizontal branch */}
                   <Box sx={{
-                    position: 'absolute', left: '-6px', top: '10px',
-                    width: '16px', height: '2px',
-                    background: `${color}15`, borderRadius: '1px',
+                    position: 'absolute', left: '-7px', top: '12px',
+                    width: '18px', height: '2px',
+                    background: `${color}1a`, borderRadius: '1px',
                   }} />
                   {/* Trunk cap for last item */}
                   <Box sx={{
-                    position: 'absolute', left: '-6px', top: 0,
-                    width: '2px', height: '11px',
-                    background: `${color}12`, borderRadius: '1px',
+                    position: 'absolute', left: '-7px', top: 0,
+                    width: '2px', height: '13px',
+                    background: `${color}15`, borderRadius: '1px',
                   }} />
                   <AddPill
                     label="goal"
