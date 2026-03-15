@@ -6,11 +6,17 @@
 export function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
+      // Only register on HTTPS or localhost (SW requirement)
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        console.log('ℹ️ Service Worker skipped: requires HTTPS or localhost');
+        return;
+      }
+
       navigator.serviceWorker
         .register('/service-worker.js', { scope: '/' })
         .then((registration) => {
           console.log('✅ Service Worker registered:', registration.scope);
-          
+
           // Check for updates
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
@@ -28,7 +34,8 @@ export function registerServiceWorker() {
           });
         })
         .catch((error) => {
-          console.error('❌ Service Worker registration failed:', error);
+          console.warn('⚠️ Service Worker registration failed (non-critical):', error.message);
+          // Don't show error to user - app works fine without SW
         });
     });
   }

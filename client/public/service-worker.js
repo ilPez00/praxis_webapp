@@ -1,7 +1,5 @@
-/// <reference lib="webworker" />
-
-// This is a basic service worker for offline support
-// For production, consider using Workbox for more advanced caching strategies
+// Praxis Service Worker for offline support
+// Basic implementation - network first, fallback to cache
 
 const CACHE_NAME = 'praxis-cache-v1';
 const STATIC_ASSETS = [
@@ -14,7 +12,7 @@ const STATIC_ASSETS = [
 ];
 
 // Install event - cache static assets
-self.addEventListener('install', (event: ExtendableEvent) => {
+self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
@@ -26,7 +24,7 @@ self.addEventListener('install', (event: ExtendableEvent) => {
 });
 
 // Activate event - clean up old caches
-self.addEventListener('activate', (event: ExtendableEvent) => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -40,26 +38,26 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
 });
 
 // Fetch event - network first, fallback to cache
-self.addEventListener('fetch', (event: FetchEvent) => {
+self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
-  
-  // Skip chrome-extension and other non-http requests
+
+  // Skip non-http requests
   if (!event.request.url.startsWith('http')) return;
-  
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
         // Clone the response for caching
         const responseClone = response.clone();
-        
+
         // Cache successful responses
         if (response.ok && event.request.url.startsWith(self.location.origin)) {
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
           });
         }
-        
+
         return response;
       })
       .catch(() => {
@@ -68,12 +66,12 @@ self.addEventListener('fetch', (event: FetchEvent) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          
+
           // If no cached response, return offline page for navigation requests
           if (event.request.mode === 'navigate') {
             return caches.match('/index.html');
           }
-          
+
           // Return error response for other requests
           return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
         });
