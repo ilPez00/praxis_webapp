@@ -10,6 +10,7 @@ import { Toaster } from 'react-hot-toast';
 import routes from './config/routes';
 import { useLocationSync } from './hooks/useLocationSync';
 import { useUser } from './hooks/useUser';
+import { useOfflineSync } from './hooks/useOfflineSync';
 
 const PageLoader = () => (
   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -29,6 +30,7 @@ const AppRouter: React.FC = () => {
   
   // Global background syncs (safe wrapped)
   useLocationSync();
+  useOfflineSync();
 
   // ─── Conditional Mobile Debug Console (Eruda) ───
   useEffect(() => {

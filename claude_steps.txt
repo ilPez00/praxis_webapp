@@ -182,3 +182,12 @@ Session 58: Bug Fixes + Axiom Midnight Scan Optimization
   - Trimmed context queries: .limit(5) on events/places/matches/services, trackers fetch id/type/goal only (no tracker_entries), messages trimmed to 5 × 80 chars
   - Switched from sequential (2s delay each) to 3-concurrent batches with 4s between batches
 - Updated AICoachingService model fallback list: gemini-2.0-flash-lite (30 RPM free) → gemini-2.0-flash → gemini-1.5-flash → gemini-1.5-flash-8b (removed legacy gemini-pro).
+
+Session 59: Offline Note Editing & PWA Hardening
+- Goal: Enable users to journal and edit notes without a network connection.
+- Action: Replace "suicidal" service worker with a functional Workbox-based PWA worker.
+- Action: Implement local "Pending Sync" queue using IndexedDB (Dexie.js).
+- Action: Update NodeJournalDrawer to support optimistic UI and offline logging.
+- Action: Modify api.ts to intercept network failures and reroute to local queue.
+- Action: Add visual "Sync Status" indicators to the journaling UI.
+- Sign: Gemini

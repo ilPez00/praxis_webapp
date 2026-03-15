@@ -1,24 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Drawer, Box, Typography, TextField, Button, Chip,
-  Stack, IconButton, CircularProgress, Divider,
+  Stack, IconButton, CircularProgress, Divider, Tooltip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import BookIcon from '@mui/icons-material/MenuBook';
 import SendIcon from '@mui/icons-material/Send';
+import CloudQueueIcon from '@mui/icons-material/CloudQueue';
+import CloudDoneIcon from '@mui/icons-material/CloudDone';
+import CloudOffIcon from '@mui/icons-material/CloudOff';
 import api from '../../lib/api';
 import { GoalNode as FrontendGoalNode } from '../../types/goal';
+import { db, LocalJournalEntry } from '../../lib/db';
 
 const MOODS = ['🔥', '💪', '😤', '😌', '😴', '😕'] as const;
 type Mood = typeof MOODS[number];
-
-interface JournalEntry {
-  id: string;
-  node_id: string;
-  note: string | null;
-  mood: string | null;
-  logged_at: string;
-}
 
 interface Props {
   open: boolean;
@@ -27,7 +23,7 @@ interface Props {
 }
 
 const NodeJournalDrawer: React.FC<Props> = ({ open, node, onClose }) => {
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [entries, setEntries] = useState<LocalJournalEntry[]>([]);
   const [note, setNote] = useState('');
   const [mood, setMood] = useState<Mood | ''>('');
   const [loading, setLoading] = useState(false);
@@ -37,12 +33,52 @@ const NodeJournalDrawer: React.FC<Props> = ({ open, node, onClose }) => {
     if (!node) return;
     setLoading(true);
     try {
-      const { data } = await api.get<JournalEntry[]>('/journal/entries', {
+      // 1. Get from local DB first
+      const local = await db.journalEntries
+        .where('node_id')
+        .equals(node.id)
+        .reverse()
+        .sortBy('logged_at');
+      
+      setEntries(local);
+
+      // 2. Fetch from server and sync
+      const { data: serverEntries } = await api.get<any[]>('/journal/entries', {
         params: { nodeId: node.id },
       });
-      setEntries(data ?? []);
-    } catch {
-      setEntries([]);
+
+      if (serverEntries) {
+        // Update local DB with server data (reconcile)
+        for (const se of serverEntries) {
+          const existing = await db.journalEntries
+            .where('logged_at')
+            .equals(se.logged_at)
+            .first();
+          
+          if (!existing) {
+            await db.journalEntries.add({
+              node_id: node.id,
+              note: se.note,
+              mood: se.mood,
+              logged_at: se.logged_at,
+              sync_status: 'synced'
+            });
+          } else if (existing.sync_status !== 'synced') {
+            await db.journalEntries.update(existing.id!, { sync_status: 'synced' });
+          }
+        }
+
+        // Final refresh from local DB
+        const refreshed = await db.journalEntries
+          .where('node_id')
+          .equals(node.id)
+          .reverse()
+          .sortBy('logged_at');
+        setEntries(refreshed);
+      }
+    } catch (err) {
+      console.error('Fetch journal error:', err);
+      // Fallback: we already show local entries
     } finally {
       setLoading(false);
     }
@@ -59,15 +95,38 @@ const NodeJournalDrawer: React.FC<Props> = ({ open, node, onClose }) => {
   const handleSubmit = async () => {
     if (!node || !note.trim()) return;
     setSubmitting(true);
+    
+    const newEntry: LocalJournalEntry = {
+      node_id: node.id,
+      note: note.trim(),
+      mood: mood || null,
+      logged_at: new Date().toISOString(),
+      sync_status: 'pending'
+    };
+
     try {
-      await api.post('/journal/entries', {
-        nodeId: node.id,
-        note: note.trim(),
-        mood: mood || null,
-      });
+      // 1. Save to local DB immediately (Optimistic UI)
+      const localId = await db.journalEntries.add(newEntry);
+      setEntries(prev => [ { ...newEntry, id: String(localId) }, ...prev ]);
       setNote('');
       setMood('');
-      fetchEntries();
+
+      // 2. Try to sync with server
+      try {
+        await api.post('/journal/entries', {
+          nodeId: node.id,
+          note: newEntry.note,
+          mood: newEntry.mood,
+        });
+        // Update status to synced
+        await db.journalEntries.update(localId, { sync_status: 'synced' });
+        setEntries(prev => prev.map(e => String(e.id) === String(localId) ? { ...e, sync_status: 'synced' } : e));
+      } catch (syncErr) {
+        console.warn('Sync failed, entry remains pending in local DB:', syncErr);
+        // We don't throw here, the entry is safely in IndexedDB
+      }
+    } catch (err) {
+      console.error('Failed to save journal entry locally:', err);
     } finally {
       setSubmitting(false);
     }
@@ -76,6 +135,15 @@ const NodeJournalDrawer: React.FC<Props> = ({ open, node, onClose }) => {
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const getSyncIcon = (status: string) => {
+    switch (status) {
+      case 'synced': return <CloudDoneIcon sx={{ fontSize: 14, color: 'success.main' }} />;
+      case 'pending': return <CloudQueueIcon sx={{ fontSize: 14, color: 'warning.main' }} />;
+      case 'failed': return <CloudOffIcon sx={{ fontSize: 14, color: 'error.main' }} />;
+      default: return null;
+    }
   };
 
   return (
@@ -175,7 +243,7 @@ const NodeJournalDrawer: React.FC<Props> = ({ open, node, onClose }) => {
 
       {/* Entries list */}
       <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 3, py: 2 }}>
-        {loading ? (
+        {loading && entries.length === 0 ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', pt: 4 }}>
             <CircularProgress size={28} sx={{ color: '#8B5CF6' }} />
           </Box>
@@ -189,7 +257,7 @@ const NodeJournalDrawer: React.FC<Props> = ({ open, node, onClose }) => {
         ) : (
           <Stack spacing={2}>
             {entries.map((entry, i) => (
-              <Box key={entry.id}>
+              <Box key={entry.id || i}>
                 <Box sx={{
                   p: 2,
                   borderRadius: '12px',
@@ -197,9 +265,16 @@ const NodeJournalDrawer: React.FC<Props> = ({ open, node, onClose }) => {
                   border: '1px solid rgba(255,255,255,0.06)',
                 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center' }}>
-                    <Typography variant="caption" color="text.disabled">
-                      {formatDate(entry.logged_at)}
-                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="caption" color="text.disabled">
+                        {formatDate(entry.logged_at)}
+                      </Typography>
+                      <Tooltip title={entry.sync_status === 'synced' ? 'Synced with cloud' : 'Waiting to sync'}>
+                        <Box sx={{ display: 'flex' }}>
+                          {getSyncIcon(entry.sync_status)}
+                        </Box>
+                      </Tooltip>
+                    </Stack>
                     {entry.mood && (
                       <Typography sx={{ fontSize: '1.1rem', lineHeight: 1 }}>{entry.mood}</Typography>
                     )}
