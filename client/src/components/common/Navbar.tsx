@@ -258,8 +258,8 @@ const Navbar: React.FC = () => {
               {user && (
                 <>
                   {[
-                    { label: 'Notes', to: '/notes' },
                     { label: 'Today', to: '/dashboard' },
+                    { label: 'Notes', to: '/notes' },
                     { label: 'Discover', to: '/discover' },
                     { label: 'Chat', to: '/communication' },
                   ].map(({ label, to }) => {
@@ -691,8 +691,8 @@ const Navbar: React.FC = () => {
 
             <List disablePadding>
               {[
-                { label: 'Notes', to: '/notes', icon: <NoteIcon />, primary: true },
                 { label: 'Today', to: '/dashboard', icon: <DashboardIcon />, primary: true },
+                { label: 'Notes', to: '/notes', icon: <NoteIcon />, primary: true },
                 { label: 'Discover', to: '/discover', icon: <ExploreIcon />, primary: true },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },

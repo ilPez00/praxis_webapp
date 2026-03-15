@@ -10,7 +10,7 @@ const Root: React.FC = () => {
         return <div>Loading...</div>;
     }
 
-    return user ? <Navigate to="/notes" /> : <HomePage />;
+    return user ? <Navigate to="/dashboard" /> : <HomePage />;
 };
 
 export default Root;

@@ -547,12 +547,19 @@ const NotesPage: React.FC = () => {
         <Box sx={{
           display: 'flex',
           flexDirection: 'column',
-          height: 'auto',
-          minHeight: 'calc(100vh - 240px)',
-          // Mobile: 125% scale for better readability
+          // Mobile: larger fonts and spacing for better readability
           '@media (max-width: 600px)': {
-            zoom: 1.25,
-            transformOrigin: 'top left',
+            '& .MuiTypography-root': {
+              fontSize: '1.1rem',
+            },
+            '& .MuiButton-root': {
+              fontSize: '1rem',
+              minHeight: '48px',
+            },
+            '& .MuiChip-root': {
+              fontSize: '0.9rem',
+              minHeight: '40px',
+            },
           },
         }}>
           {/* Goal Tree Panel */}
