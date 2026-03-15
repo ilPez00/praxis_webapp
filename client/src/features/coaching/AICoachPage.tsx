@@ -109,6 +109,7 @@ const AICoachPage: React.FC = () => {
   }, []);
 
   const loadDailyBrief = useCallback(async () => {
+    if (!user?.id) return;
     setLoadingDaily(true);
     try {
       const headers = await getAuthHeaders();
@@ -116,7 +117,7 @@ const AICoachPage: React.FC = () => {
       const { data: briefData } = await supabase
         .from('axiom_daily_briefs')
         .select('brief, generated_at')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('generated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
