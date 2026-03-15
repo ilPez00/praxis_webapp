@@ -4,8 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { supabase } from '../../lib/supabase';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
-import GoalTreeRadial from './components/GoalTreeRadial';
-import TrackerSection from '../trackers/TrackerSection';
+import GoalCardTree from './components/GoalCardTree';
+import GoalWorkspaceSheet from './components/GoalWorkspaceSheet';
 import NodeJournalDrawer from './NodeJournalDrawer';
 import toast from 'react-hot-toast';
 import {
@@ -29,17 +29,17 @@ import {
   TextField,
   Chip,
   MenuItem,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import Slider from '@mui/material/Slider';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ShareIcon from '@mui/icons-material/Share';
-import SettingsIcon from '@mui/icons-material/Settings';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import EditNoteIcon from '@mui/icons-material/EditNote';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
@@ -68,6 +68,12 @@ function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   return roots;
 }
 
+function flattenTree(nodes: FrontendGoalNode[]): FrontendGoalNode[] {
+  return nodes.flatMap(function flatten(n: FrontendGoalNode): FrontendGoalNode[] {
+    return [n, ...n.children.flatMap(flatten)];
+  });
+}
+
 interface DMPartner {
   userId: string;
   name: string;
@@ -76,15 +82,19 @@ interface DMPartner {
 const GoalTreePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [treeData, setTreeData] = useState<FrontendGoalNode[]>([]);
-  const [backendNodes, setBackendNodes] = useState<any[]>([]); 
-  const [domainProficiency, setDomainProficiency] = useState<Record<string, number>>({});
+  const [backendNodes, setBackendNodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [memberSince, setMemberSince] = useState<string | undefined>(undefined);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [isOwnTree, setIsOwnTree] = useState(true);
+
+  // Card tree + workspace state
+  const [selectedNode, setSelectedNode] = useState<FrontendGoalNode | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // Edit/Branch dialog state
   const [editingNode, setEditingNode] = useState<FrontendGoalNode | null>(null);
@@ -104,7 +114,7 @@ const GoalTreePage: React.FC = () => {
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
 
-  // Mark Complete (achievement) dialog state
+  // Achievement dialog state
   const [achieveNode, setAchieveNode] = useState<FrontendGoalNode | null>(null);
   const [claimingAchievement, setClaimingAchievement] = useState(false);
 
@@ -113,8 +123,8 @@ const GoalTreePage: React.FC = () => {
   const [betDeadline, setBetDeadline] = useState('');
   const [betStake, setBetStake] = useState(10);
   const [placingBet, setPlacingBet] = useState(false);
-  const [userBets, setUserBets] = useState<any[]>([]);
   const [praxisPoints, setPraxisPoints] = useState<number | null>(null);
+
   // Suspend goal dialog state
   const [suspendNode, setSuspendNode] = useState<FrontendGoalNode | null>(null);
   const [suspending, setSuspending] = useState(false);
@@ -125,9 +135,7 @@ const GoalTreePage: React.FC = () => {
   // New goal domain selection
   const [newGoalDomain, setNewGoalDomain] = useState<Domain | ''>('');
 
-  // Countdown tick — re-renders every minute so timers stay live
-  const [, setTick] = useState(0);
-
+  // ── Data fetching ──────────────────────────────────────────────
   useEffect(() => {
     const fetchGoalTree = async () => {
       setLoading(true);
@@ -137,7 +145,6 @@ const GoalTreePage: React.FC = () => {
         const authUser = authData?.user;
         let userId = id;
         if (!userId) userId = authUser?.id;
-        if (authUser?.created_at) setMemberSince(authUser.created_at);
         if (authUser?.id) setCurrentUserId(authUser.id);
         setIsOwnTree(!id || id === authUser?.id);
 
@@ -147,22 +154,13 @@ const GoalTreePage: React.FC = () => {
         }
 
         const response = await axios.get(`${API_URL}/goals/${userId}`);
-        const goalTree = response.data;
-        const allNodes: any[] = goalTree.nodes || [];
+        const allNodes: any[] = response.data.nodes || [];
         setBackendNodes(allNodes);
         setTreeData(buildFrontendTree(allNodes));
-        if (goalTree.domain_proficiency && typeof goalTree.domain_proficiency === 'object') {
-          setDomainProficiency(goalTree.domain_proficiency as Record<string, number>);
-        }
 
-        // Load bets + points for own tree
         if (!id || id === authUser?.id) {
-          const [betsRes, profileRes] = await Promise.allSettled([
-            axios.get(`${API_URL}/bets/${userId}`),
-            supabase.from('profiles').select('praxis_points').eq('id', userId).single(),
-          ]);
-          if (betsRes.status === 'fulfilled') setUserBets(Array.isArray(betsRes.value.data) ? betsRes.value.data : []);
-          if (profileRes.status === 'fulfilled') setPraxisPoints(profileRes.value.data?.praxis_points ?? null);
+          const profileRes = await supabase.from('profiles').select('praxis_points').eq('id', userId).single();
+          if (profileRes.data) setPraxisPoints(profileRes.data.praxis_points ?? null);
         }
       } catch (err: any) {
         if (err.response?.status === 404) {
@@ -177,14 +175,13 @@ const GoalTreePage: React.FC = () => {
     fetchGoalTree();
   }, [id]);
 
-  // Fetch DM partners (people the user has messaged) for the claim dialog
+  // ── DM partners for verification ──────────────────────────────
   const fetchDMPartners = async (userId: string) => {
     const { data } = await supabase
       .from('messages')
       .select('sender_id, receiver_id')
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
       .limit(100);
-
     if (!data) return;
 
     const partnerIds = new Set<string>();
@@ -201,6 +198,71 @@ const GoalTreePage: React.FC = () => {
     setDmPartners(partners);
   };
 
+  // ── New handlers for card tree + workspace ─────────────────────
+  const handleNodeSelect = (node: FrontendGoalNode) => {
+    setSelectedNode(node);
+    setSheetOpen(true);
+  };
+
+  const handleProgressUpdate = async (nodeId: string, progress: number) => {
+    if (!currentUserId) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await axios.patch(
+        `${API_URL}/goals/${currentUserId}/node/${nodeId}/progress`,
+        { progress },
+        { headers: { Authorization: `Bearer ${session?.access_token}` } }
+      );
+      toast.success(`Progress updated to ${progress}%`);
+      if (progress === 100) {
+        const node = flattenTree(treeData).find(n => n.id === nodeId);
+        if (node) setTimeout(() => setAchieveNode({ ...node, progress: 100 }), 400);
+      }
+      // Refresh tree
+      const response = await axios.get(`${API_URL}/goals/${currentUserId}`);
+      const allNodes: any[] = response.data.nodes || [];
+      setBackendNodes(allNodes);
+      const freshTree = buildFrontendTree(allNodes);
+      setTreeData(freshTree);
+      const freshNode = flattenTree(freshTree).find(n => n.id === nodeId);
+      if (freshNode) setSelectedNode(freshNode);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update progress.');
+    }
+  };
+
+  const handleLogTracker = (_trackerType: string, _goalNode: FrontendGoalNode) => {
+    navigate(`/dashboard?tracker=${_trackerType}`);
+  };
+
+  const handleAction = (action: 'journal' | 'bet' | 'verify' | 'edit' | 'suspend', node: FrontendGoalNode) => {
+    switch (action) {
+      case 'journal':
+        setJournalNode(node);
+        break;
+      case 'bet':
+        setBetNode(node);
+        break;
+      case 'verify':
+        setClaimNode(node);
+        setSelectedVerifier(null);
+        if (currentUserId) fetchDMPartners(currentUserId);
+        break;
+      case 'edit':
+        handleOpenEdit(node, false);
+        break;
+      case 'suspend':
+        setSuspendNode(node);
+        break;
+    }
+  };
+
+  const handleAddSubgoal = (parentId: string) => {
+    const parent = flattenTree(treeData).find(n => n.id === parentId);
+    if (parent) handleOpenEdit(parent, true);
+  };
+
+  // ── Existing handlers (preserved) ──────────────────────────────
   const handleRootClick = () => {
     if (!isOwnTree) return;
     setEditingNode(null);
@@ -211,26 +273,6 @@ const GoalTreePage: React.FC = () => {
     setEditMetric('');
     setEditTargetDate('');
     setEditProgress(0);
-  };
-
-  const handleNodeClick = (node: FrontendGoalNode) => {
-    if (!isOwnTree) return;
-    
-    // If it's a domain node, treat as "Add Goal" to that domain (full goal, side by side)
-    if (node.id.startsWith('__dom__')) {
-      const domain = node.domain;
-      setNewGoalDomain(domain);
-      setEditingNode(null);
-      setIsBranching(true);
-      setEditName('');
-      setEditDesc('');
-      setEditMetric('');
-      setEditTargetDate('');
-      setEditProgress(0);
-      return;
-    }
-
-    handleOpenEdit(node, false);
   };
 
   const handleOpenEdit = (node: FrontendGoalNode, branch = false) => {
@@ -246,7 +288,6 @@ const GoalTreePage: React.FC = () => {
       setEditName(node.title);
       setEditDesc(node.description || '');
       setEditProgress(node.progress);
-      // Need original metric from backendNodes
       const bNode = backendNodes.find(n => n.id === node.id);
       setEditMetric(bNode?.completionMetric || '');
       setEditTargetDate(bNode?.targetDate || '');
@@ -259,17 +300,14 @@ const GoalTreePage: React.FC = () => {
       toast.error('Please select a domain.');
       return;
     }
-
     setSavingEdit(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { Authorization: `Bearer ${session?.access_token}` };
 
       if (isBranching) {
-        // Costs 500 PP
         const domain = editingNode ? editingNode.domain : (newGoalDomain as Domain);
         const parentId = editingNode ? editingNode.id : undefined;
-
         const res = await axios.post(
           `${API_URL}/goals/${currentUserId}/node`,
           {
@@ -285,9 +323,8 @@ const GoalTreePage: React.FC = () => {
         toast.success(parentId ? 'Sub-goal added! -500 PP' : 'New goal added! -500 PP');
         if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
       } else if (editingNode) {
-        // Costs 100 PP for metadata changes
         const bNode = backendNodes.find(n => n.id === editingNode.id);
-        const metadataChanged = 
+        const metadataChanged =
           editName.trim() !== bNode?.name ||
           (editDesc.trim() || undefined) !== bNode?.customDetails ||
           (editMetric.trim() || undefined) !== bNode?.completionMetric ||
@@ -304,11 +341,10 @@ const GoalTreePage: React.FC = () => {
             },
             { headers }
           );
-          toast.success(`Goal details updated! -100 PP`);
+          toast.success('Goal details updated! -100 PP');
           if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
         }
 
-        // Check if progress changed
         if (editProgress !== editingNode.progress) {
           await axios.patch(
             `${API_URL}/goals/${currentUserId}/node/${editingNode.id}/progress`,
@@ -323,7 +359,6 @@ const GoalTreePage: React.FC = () => {
       }
 
       setEditingNode(null);
-      // Reload to see updated tree
       setTimeout(() => window.location.reload(), 1000);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save changes.');
@@ -336,14 +371,13 @@ const GoalTreePage: React.FC = () => {
     if (!betNode || !currentUserId || !betDeadline || betStake < 1) return;
     setPlacingBet(true);
     try {
-      const res = await axios.post(`${API_URL}/bets`, {
+      await axios.post(`${API_URL}/bets`, {
         userId: currentUserId,
         goalNodeId: betNode.id,
         goalName: betNode.title,
         deadline: new Date(betDeadline).toISOString(),
         stakePoints: betStake,
       });
-      setUserBets((prev) => [res.data, ...prev]);
       setPraxisPoints((p) => (p !== null ? p - betStake : null));
       toast.success(`Bet placed! ${betStake} Praxis Points at stake.`);
       setBetNode(null);
@@ -353,18 +387,6 @@ const GoalTreePage: React.FC = () => {
       toast.error(err.response?.data?.message || 'Failed to place bet.');
     } finally {
       setPlacingBet(false);
-    }
-  };
-
-  const handleCancelBet = async (betId: string) => {
-    if (!currentUserId) return;
-    try {
-      const res = await axios.delete(`${API_URL}/bets/${betId}`, { data: { userId: currentUserId } });
-      setUserBets((prev) => prev.filter((b) => b.id !== betId));
-      setPraxisPoints((p) => (p !== null ? p + res.data.refunded : null));
-      toast.success(`Bet cancelled — points refunded.`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to cancel bet.');
     }
   };
 
@@ -383,7 +405,7 @@ const GoalTreePage: React.FC = () => {
         description: achieveNode.description,
         domain: achieveNode.domain,
       }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
-      toast.success('🏆 Achievement posted to the community feed!');
+      toast.success('Achievement posted to the community feed!');
       setAchieveNode(null);
       navigate('/dashboard');
     } catch (err: any) {
@@ -437,31 +459,7 @@ const GoalTreePage: React.FC = () => {
     }
   };
 
-  // Tick every minute so bet countdowns stay live
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const getCountdown = (deadline: string): string => {
-    const diff = new Date(deadline).getTime() - Date.now();
-    if (diff <= 0) return 'Expired';
-    const days = Math.floor(diff / 86_400_000);
-    const hours = Math.floor((diff % 86_400_000) / 3_600_000);
-    const mins = Math.floor((diff % 3_600_000) / 60_000);
-    if (days > 0) return `${days}d ${hours}h left`;
-    if (hours > 0) return `${hours}h ${mins}m left`;
-    return `${mins}m left`;
-  };
-
-  const getCountdownColor = (deadline: string): string => {
-    const diff = new Date(deadline).getTime() - Date.now();
-    if (diff <= 0) return '#ef4444';
-    if (diff < 86_400_000) return '#ef4444';       // < 1 day — red
-    if (diff < 3 * 86_400_000) return '#F59E0B';   // < 3 days — amber
-    return '#10B981';                               // healthy — green
-  };
-
+  // ── Loading / Error ────────────────────────────────────────────
   if (loading) {
     return (
       <Container component="main" maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
@@ -478,42 +476,26 @@ const GoalTreePage: React.FC = () => {
     );
   }
 
+  // ── Render ─────────────────────────────────────────────────────
   return (
-    <Container component="main" maxWidth="lg" sx={{ mt: 4 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-        <Typography variant="h4" component="h1" sx={{ color: 'primary.main' }}>
-          {isOwnTree ? 'Your Goal Tree' : 'Goal Tree'}
+    <Container component="main" maxWidth="lg" sx={{ mt: 4, px: { xs: 0, sm: 3 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, px: { xs: 2, sm: 0 }, flexWrap: 'wrap', gap: 1 }}>
+        <Typography variant="h4" component="h1" sx={{ color: 'primary.main', fontWeight: 800 }}>
+          {isOwnTree ? 'Your Goals' : 'Goal Tree'}
         </Typography>
-        <Stack direction="row" spacing={1} alignItems="center">
-          {isOwnTree && praxisPoints !== null && (
-            <Chip
-              icon={<LocalFireDepartmentIcon sx={{ color: '#F59E0B !important' }} />}
-              label={`${praxisPoints} pts`}
-              size="small"
-              sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', fontWeight: 700 }}
-            />
-          )}
-          {isOwnTree && treeData.length > 0 && (
-            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-              Click node to verify or bet
-            </Typography>
-          )}
-          {isOwnTree && (
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => navigate('/goal-selection')}
-              sx={{ borderRadius: '8px', fontSize: '0.8rem' }}
-            >
-              Edit Goals
-            </Button>
-          )}
-        </Stack>
+        {isOwnTree && praxisPoints !== null && (
+          <Chip
+            icon={<LocalFireDepartmentIcon sx={{ color: '#F59E0B !important' }} />}
+            label={`${praxisPoints} pts`}
+            size="small"
+            sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', fontWeight: 700 }}
+          />
+        )}
       </Box>
 
       {treeData.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5, color: 'text.primary' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
             No goals yet
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 4, maxWidth: 400, mx: 'auto', lineHeight: 1.7 }}>
@@ -529,65 +511,61 @@ const GoalTreePage: React.FC = () => {
           </Button>
         </Box>
       ) : (
-        <Box sx={{ width: '100%' }}>
-          <GoalTreeRadial
-            rootNodes={treeData}
-            domainProficiency={domainProficiency}
-            memberSince={memberSince}
-            onNodeClick={isOwnTree ? handleNodeClick : undefined}
-            onRootClick={isOwnTree ? handleRootClick : undefined}
-          />
+        <Box sx={{ display: 'flex', height: { xs: 'auto', md: 'calc(100vh - 120px)' } }}>
+          {/* Tree panel */}
+          <Box sx={{
+            width: { xs: '100%', md: '40%' },
+            overflowY: 'auto',
+            borderRight: { xs: 'none', md: '1px solid rgba(255,255,255,0.06)' },
+          }}>
+            <GoalCardTree
+              nodes={treeData}
+              selectedNodeId={selectedNode?.id ?? null}
+              onNodeSelect={handleNodeSelect}
+              onAddGoal={handleRootClick}
+              readOnly={!isOwnTree}
+            />
+          </Box>
+
+          {/* Desktop: right panel workspace */}
+          {!isMobile && selectedNode && (
+            <Box sx={{ width: '60%' }}>
+              <GoalWorkspaceSheet
+                node={selectedNode}
+                allNodes={backendNodes}
+                open={true}
+                onClose={() => setSelectedNode(null)}
+                onProgressChange={handleProgressUpdate}
+                onNodeSelect={handleNodeSelect}
+                onAddSubgoal={handleAddSubgoal}
+                onLogTracker={handleLogTracker}
+                onAction={handleAction}
+                userId={currentUserId || ''}
+                readOnly={!isOwnTree}
+              />
+            </Box>
+          )}
         </Box>
       )}
 
-      {/* Active bets list */}
-      {isOwnTree && userBets.filter((b) => b.status === 'active').length > 0 && (
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'primary.main' }}>
-            Active Bets
-          </Typography>
-          <Stack spacing={1.5}>
-            {userBets.filter((b) => b.status === 'active').map((bet) => (
-              <Box
-                key={bet.id}
-                sx={{
-                  p: 2, borderRadius: 2,
-                  bgcolor: 'rgba(245,158,11,0.06)',
-                  border: '1px solid rgba(245,158,11,0.2)',
-                  display: 'flex', alignItems: 'center', gap: 2,
-                }}
-              >
-                <LocalFireDepartmentIcon sx={{ color: getCountdownColor(bet.deadline) }} />
-                <Box sx={{ flexGrow: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{bet.goal_name}</Typography>
-                  <Typography variant="caption" sx={{ color: getCountdownColor(bet.deadline), fontWeight: 600 }}>
-                    {getCountdown(bet.deadline)}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary"> · Stake: {bet.stake_points} pts</Typography>
-                </Box>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  onClick={() => handleCancelBet(bet.id)}
-                  sx={{ borderRadius: 2, flexShrink: 0 }}
-                >
-                  Cancel
-                </Button>
-              </Box>
-            ))}
-          </Stack>
-        </Box>
+      {/* Mobile: bottom sheet */}
+      {isMobile && (
+        <GoalWorkspaceSheet
+          node={selectedNode}
+          allNodes={backendNodes}
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          onProgressChange={handleProgressUpdate}
+          onNodeSelect={handleNodeSelect}
+          onAddSubgoal={handleAddSubgoal}
+          onLogTracker={handleLogTracker}
+          onAction={handleAction}
+          userId={currentUserId || ''}
+          readOnly={!isOwnTree}
+        />
       )}
 
-      {/* Daily Trackers — workout logs, journals, etc. */}
-      {isOwnTree && currentUserId && (
-        <Box sx={{ mt: 5 }}>
-          <TrackerSection userId={currentUserId} />
-        </Box>
-      )}
-
-      {/* Mark Complete — claim achievement dialog with celebration */}
+      {/* ── Achievement celebration dialog ──────────────────────── */}
       <Dialog open={!!achieveNode} onClose={() => setAchieveNode(null)} maxWidth="xs" fullWidth
         PaperProps={{ sx: { borderRadius: '20px', border: '1px solid rgba(245,158,11,0.3)', background: 'linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(139,92,246,0.06) 100%)' } }}>
         <DialogTitle sx={{ fontWeight: 700, textAlign: 'center', pt: 3 }}>
@@ -608,7 +586,7 @@ const GoalTreePage: React.FC = () => {
             startIcon={<ShareIcon />}
             sx={{ borderRadius: '10px', mb: 1, borderColor: 'rgba(245,158,11,0.4)', color: 'primary.main' }}
             onClick={() => {
-              const text = `Just completed "${achieveNode?.title}" on Praxis. Consistent effort pays off. 🏆 praxis.app`;
+              const text = `Just completed "${achieveNode?.title}" on Praxis. Consistent effort pays off. praxis.app`;
               if (navigator.share) {
                 navigator.share({ text }).catch(() => {});
               } else {
@@ -627,7 +605,7 @@ const GoalTreePage: React.FC = () => {
             startIcon={<EmojiEventsIcon />}
             sx={{ borderRadius: '12px', py: 1.25, background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)', fontWeight: 700 }}
           >
-            {claimingAchievement ? 'Posting…' : 'Post to Community Feed'}
+            {claimingAchievement ? 'Posting...' : 'Post to Community Feed'}
           </Button>
           <Button onClick={() => setAchieveNode(null)} sx={{ color: 'text.disabled', fontSize: '0.8rem' }}>
             Not now
@@ -635,7 +613,7 @@ const GoalTreePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Claim completion dialog */}
+      {/* ── Claim completion dialog ─────────────────────────────── */}
       <Dialog open={!!claimNode} onClose={() => setClaimNode(null)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -648,11 +626,9 @@ const GoalTreePage: React.FC = () => {
             Claiming completion of <strong style={{ color: '#F59E0B' }}>{claimNode?.title}</strong>.
             Attach evidence (photo or video), then select a partner from your DMs to verify:
           </Typography>
-
-          {/* Evidence upload */}
           <Box sx={{ mb: 2, p: 2, borderRadius: 2, border: '1px dashed rgba(245,158,11,0.4)', bgcolor: 'rgba(245,158,11,0.04)' }}>
             <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block', mb: 1 }}>
-              📎 PROOF REQUIRED
+              PROOF REQUIRED
             </Typography>
             <Button
               variant="outlined"
@@ -674,7 +650,6 @@ const GoalTreePage: React.FC = () => {
               </Typography>
             )}
           </Box>
-
           {dmPartners.length === 0 ? (
             <Typography color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
               No DM partners found. Message someone first to request verification.
@@ -715,12 +690,12 @@ const GoalTreePage: React.FC = () => {
             disabled={!selectedVerifier || !evidenceFile || submittingClaim || uploadingEvidence}
             onClick={handleSendClaim}
           >
-            {uploadingEvidence ? 'Uploading…' : submittingClaim ? 'Sending…' : 'Send Verification Request'}
+            {uploadingEvidence ? 'Uploading...' : submittingClaim ? 'Sending...' : 'Send Verification Request'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Betting dialog */}
+      {/* ── Betting dialog ──────────────────────────────────────── */}
       <Dialog open={!!betNode} onClose={() => setBetNode(null)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -732,7 +707,7 @@ const GoalTreePage: React.FC = () => {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Stake Praxis Points on completing{' '}
             <strong style={{ color: '#F59E0B' }}>{betNode?.title}</strong> by a deadline.
-            Win 2× your stake when peer-verified!
+            Win 2x your stake when peer-verified!
           </Typography>
           {praxisPoints !== null && (
             <Typography variant="caption" sx={{ mb: 2, display: 'block', color: '#F59E0B', fontWeight: 700 }}>
@@ -741,20 +716,14 @@ const GoalTreePage: React.FC = () => {
           )}
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              fullWidth
-              size="small"
-              type="date"
-              label="Deadline"
+              fullWidth size="small" type="date" label="Deadline"
               InputLabelProps={{ shrink: true }}
               value={betDeadline}
               onChange={(e) => setBetDeadline(e.target.value)}
               inputProps={{ min: new Date().toISOString().slice(0, 10) }}
             />
             <TextField
-              fullWidth
-              size="small"
-              type="number"
-              label="Stake (Praxis Points)"
+              fullWidth size="small" type="number" label="Stake (Praxis Points)"
               value={betStake}
               onChange={(e) => setBetStake(Math.max(1, parseInt(e.target.value) || 1))}
               inputProps={{ min: 1, max: praxisPoints ?? 999 }}
@@ -769,120 +738,114 @@ const GoalTreePage: React.FC = () => {
             disabled={placingBet || !betDeadline || betStake < 1}
             sx={{ background: 'linear-gradient(135deg, #F59E0B, #EF4444)' }}
           >
-            {placingBet ? 'Placing…' : `Bet ${betStake} pts`}
+            {placingBet ? 'Placing...' : `Bet ${betStake} pts`}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Edit/Branch Dialog — Consolidated UI */}
+      {/* ── Edit/Branch dialog ──────────────────────────────────── */}
       <Dialog open={isBranching || !!editingNode} onClose={() => { setEditingNode(null); setIsBranching(false); }} maxWidth="sm" fullWidth
         PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {isBranching ? <AddCircleOutlineIcon sx={{ color: 'primary.main' }} /> : <EditNoteIcon sx={{ color: 'primary.main' }} />}
-            {isBranching 
-              ? (editingNode ? `Add Sub-goal to: ${editingNode.title}` : 'Add New Goal to Tree') 
+            {isBranching
+              ? (editingNode ? `Add Sub-goal to: ${editingNode.title}` : 'Add New Goal to Tree')
               : 'Goal Details'}
           </Box>
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {isBranching && !editingNode && (
-               <TextField
-                 select
-                 fullWidth
-                 label="Select Domain"
-                 value={newGoalDomain}
-                 onChange={(e) => setNewGoalDomain(e.target.value as Domain)}
-               >
-                 {Object.values(Domain).map((dom) => (
-                   <MenuItem key={dom} value={dom}>
-                     {dom}
-                   </MenuItem>
-                 ))}
-               </TextField>
+              <TextField
+                select fullWidth label="Select Domain"
+                value={newGoalDomain}
+                onChange={(e) => setNewGoalDomain(e.target.value as Domain)}
+              >
+                {Object.values(Domain).map((dom) => (
+                  <MenuItem key={dom} value={dom}>{dom}</MenuItem>
+                ))}
+              </TextField>
             )}
             <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} placeholder={isBranching ? "What is the new goal?" : "Goal name"} />
             <TextField fullWidth label="Description" multiline rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Details..." />
             <TextField fullWidth label="Success Metric" multiline rows={2} value={editMetric} onChange={e => setEditMetric(e.target.value)} placeholder="How will you know it's done?" />
             <TextField fullWidth label="Target Date" type="date" InputLabelProps={{ shrink: true }} value={editTargetDate} onChange={e => setEditTargetDate(e.target.value)} inputProps={{ min: new Date().toISOString().slice(0, 10) }} />
-            
+
             {!isBranching && editingNode && (
-               <Box sx={{ mt: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Typography variant="body2" color="text.secondary">Progress</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: editProgress === 100 ? '#10B981' : '#F59E0B' }}>
-                      {editProgress}%
-                    </Typography>
-                  </Box>
-                  <Slider
-                    value={editProgress}
-                    onChange={(_, v) => setEditProgress(v as number)}
-                    min={0} max={100} step={5}
-                    marks={[{ value: 0, label: '0%' }, { value: 50, label: '50%' }, { value: 100, label: '100%' }]}
-                    sx={{ color: editProgress === 100 ? '#10B981' : '#F59E0B' }}
-                  />
-               </Box>
+              <Box sx={{ mt: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary">Progress</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: editProgress === 100 ? '#10B981' : '#F59E0B' }}>
+                    {editProgress}%
+                  </Typography>
+                </Box>
+                <Slider
+                  value={editProgress}
+                  onChange={(_, v) => setEditProgress(v as number)}
+                  min={0} max={100} step={5}
+                  marks={[{ value: 0, label: '0%' }, { value: 50, label: '50%' }, { value: 100, label: '100%' }]}
+                  sx={{ color: editProgress === 100 ? '#10B981' : '#F59E0B' }}
+                />
+              </Box>
             )}
           </Stack>
 
-          {/* Additional Actions */}
           {!isBranching && editingNode && (
-             <Stack direction="row" spacing={1} sx={{ mt: 3, flexWrap: 'wrap', gap: 1 }}>
-                <Button size="small" variant="outlined" startIcon={<AccountTreeIcon />} 
-                  onClick={() => {
-                    setEditingNode(editingNode); // Keep parent
-                    setNewGoalDomain('');        // Not a root goal
-                    setIsBranching(true);
-                    setEditName('');
-                    setEditDesc('');
-                    setEditMetric('');
-                    setEditTargetDate('');
-                    setEditProgress(0);
-                  }}
-                  sx={{ borderRadius: '8px', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.4)' }}
+            <Stack direction="row" spacing={1} sx={{ mt: 3, flexWrap: 'wrap', gap: 1 }}>
+              <Button size="small" variant="outlined" startIcon={<AccountTreeIcon />}
+                onClick={() => {
+                  setNewGoalDomain('');
+                  setIsBranching(true);
+                  setEditName('');
+                  setEditDesc('');
+                  setEditMetric('');
+                  setEditTargetDate('');
+                  setEditProgress(0);
+                }}
+                sx={{ borderRadius: '8px', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.4)' }}
+              >
+                Add Sub-goal
+              </Button>
+              {editingNode.progress < 100 && (
+                <>
+                  <Button size="small" variant="outlined" startIcon={<VerifiedIcon />}
+                    onClick={() => { setClaimNode(editingNode); setSelectedVerifier(null); if (currentUserId) fetchDMPartners(currentUserId); setEditingNode(null); }}
+                    sx={{ borderRadius: '8px', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.4)' }}
+                  >
+                    Verify
+                  </Button>
+                  <Button size="small" variant="outlined" startIcon={<LocalFireDepartmentIcon />}
+                    onClick={() => { setBetNode(editingNode); setEditingNode(null); }}
+                    sx={{ borderRadius: '8px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.4)' }}
+                  >
+                    Bet
+                  </Button>
+                </>
+              )}
+              <Button size="small" variant="outlined" startIcon={<MenuBookIcon />}
+                onClick={() => { setJournalNode(editingNode); setEditingNode(null); }}
+                sx={{ borderRadius: '8px', color: '#10B981', borderColor: 'rgba(16,185,129,0.4)' }}
+              >
+                Journal
+              </Button>
+              {editingNode.progress >= 100 && (
+                <Button size="small" variant="contained" startIcon={<EmojiEventsIcon />}
+                  onClick={() => { setAchieveNode(editingNode); setEditingNode(null); }}
+                  sx={{ borderRadius: '8px', background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)' }}
                 >
-                   Add Sub-goal
+                  Post Achievement
                 </Button>
-                {editingNode.progress < 100 && (
-                   <>
-                      <Button size="small" variant="outlined" startIcon={<VerifiedIcon />} 
-                        onClick={() => { setClaimNode(editingNode); setSelectedVerifier(null); if (currentUserId) fetchDMPartners(currentUserId); setEditingNode(null); }}
-                        sx={{ borderRadius: '8px', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.4)' }}
-                      >
-                         Verify
-                      </Button>
-                      <Button size="small" variant="outlined" startIcon={<LocalFireDepartmentIcon />}
-                        onClick={() => { setBetNode(editingNode); setEditingNode(null); }}
-                        sx={{ borderRadius: '8px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.4)' }}
-                      >
-                         Bet
-                      </Button>
-                   </>
-                )}
-                <Button size="small" variant="outlined" startIcon={<MenuBookIcon />}
-                  onClick={() => { setJournalNode(editingNode); setEditingNode(null); }}
-                  sx={{ borderRadius: '8px', color: '#10B981', borderColor: 'rgba(16,185,129,0.4)' }}
-                >
-                  Journal
-                </Button>
-                {editingNode.progress >= 100 && (
-                   <Button size="small" variant="contained" startIcon={<EmojiEventsIcon />} 
-                     onClick={() => { setAchieveNode(editingNode); setEditingNode(null); }}
-                     sx={{ borderRadius: '8px', background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)' }}
-                   >
-                      Post Achievement
-                   </Button>
-                )}
-             </Stack>
+              )}
+            </Stack>
           )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => { setEditingNode(null); setIsBranching(false); }} sx={{ color: 'text.secondary' }}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim() || (isBranching && !editingNode && !newGoalDomain)} 
+          <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim() || (isBranching && !editingNode && !newGoalDomain)}
             sx={{ borderRadius: '10px' }}>
             {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Sub-goal (500 PP)' : 'Add New Goal (500 PP)') : (
-              (editingNode && (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') || 
+              (editingNode && (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') ||
                editDesc.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.customDetails || '') ||
                editMetric.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.completionMetric || '') ||
                editTargetDate !== (backendNodes.find(n => n.id === editingNode?.id)?.targetDate || '')
@@ -892,7 +855,7 @@ const GoalTreePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Suspend goal confirmation */}
+      {/* ── Suspend goal confirmation ───────────────────────────── */}
       <Dialog open={!!suspendNode} onClose={() => setSuspendNode(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Suspend Goal</DialogTitle>
         <DialogContent>
@@ -931,13 +894,12 @@ const GoalTreePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Node Journal Drawer */}
+      {/* ── Node Journal Drawer ─────────────────────────────────── */}
       <NodeJournalDrawer
         open={!!journalNode}
         node={journalNode}
         onClose={() => setJournalNode(null)}
       />
-
     </Container>
   );
 };

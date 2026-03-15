@@ -1,0 +1,101 @@
+<h2>Goal Tree Mobile Layout</h2>
+<p class="subtitle">How should the goal tree work on mobile? Pick the interaction model that feels right.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Flat Card List</h3>
+      <p>Each goal is a tappable card with indent levels showing hierarchy. Expand a card to see tracker widget, progress slider, and actions. Like Todoist/Things.</p>
+      <div style="margin-top:12px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
+        <div style="padding:8px 12px; border-radius:8px; background:rgba(245,158,11,0.1); border-left:3px solid #F59E0B; margin-bottom:6px;">
+          <div style="font-weight:700; font-size:14px;">FITNESS</div>
+        </div>
+        <div style="padding:8px 12px 8px 24px; border-radius:8px; background:rgba(255,255,255,0.02); border-left:2px solid rgba(245,158,11,0.3); margin-bottom:4px;">
+          <div style="font-weight:600; font-size:13px;">Run Marathon</div>
+          <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:4px;"><div style="height:100%; width:35%; background:#F59E0B; border-radius:2px;"></div></div>
+        </div>
+        <div style="padding:8px 12px 8px 44px; border-radius:8px; background:rgba(255,255,255,0.02); border-left:2px solid rgba(245,158,11,0.15); margin-bottom:4px;">
+          <div style="font-weight:600; font-size:12px; opacity:0.7;">Run 5K under 25min</div>
+        </div>
+        <div style="padding:8px 12px 8px 24px; border-radius:8px; background:rgba(255,255,255,0.02); border-left:2px solid rgba(245,158,11,0.3);">
+          <div style="font-weight:600; font-size:13px;">Lose 10kg</div>
+          <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:4px;"><div style="height:100%; width:60%; background:#F59E0B; border-radius:2px;"></div></div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Everything visible at once</li><li>Familiar pattern</li><li>Fast scanning</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Gets crowded with many goals</li><li>Little room for tracker widgets</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)" style="border-color:rgba(139,92,246,0.4);">
+    <div class="letter" style="background:rgba(139,92,246,0.15); color:#A78BFA;">B</div>
+    <div class="content">
+      <h3>Drill-Down Navigation <span style="font-size:11px; padding:2px 8px; border-radius:6px; background:rgba(139,92,246,0.15); color:#A78BFA; margin-left:8px;">Recommended</span></h3>
+      <p>Start at domains, tap into a domain to see goals, tap a goal to get its full workspace: tracker widget, sub-goals, progress, actions. Breadcrumb nav at top.</p>
+      <div style="margin-top:12px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
+        <div style="font-size:11px; color:rgba(255,255,255,0.4); margin-bottom:8px;">Domains &gt; FITNESS &gt; <span style="color:#A78BFA;">Run Marathon</span></div>
+        <div style="text-align:center; padding:16px 0;">
+          <div style="font-size:24px; font-weight:900;">Run Marathon</div>
+          <div style="font-size:12px; color:rgba(255,255,255,0.5); margin-top:4px;">35% complete</div>
+          <div style="height:6px; background:rgba(255,255,255,0.1); border-radius:3px; margin:12px 20px 0;"><div style="height:100%; width:35%; background:linear-gradient(90deg,#F59E0B,#8B5CF6); border-radius:3px;"></div></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <div style="flex:1; padding:10px; border-radius:10px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); text-align:center; font-size:11px;">
+            <div style="font-size:16px; margin-bottom:2px;">🏃</div>
+            Log Run
+          </div>
+          <div style="flex:1; padding:10px; border-radius:10px; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.2); text-align:center; font-size:11px;">
+            <div style="font-size:16px; margin-bottom:2px;">+</div>
+            Sub-goal
+          </div>
+          <div style="flex:1; padding:10px; border-radius:10px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2); text-align:center; font-size:11px;">
+            <div style="font-size:16px; margin-bottom:2px;">📓</div>
+            Journal
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Clean, focused UI per goal</li><li>Room for tracker widgets</li><li>Scales to any depth</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Can't see full tree at once</li><li>Extra taps to navigate</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Collapsible Tree</h3>
+      <p>Indented list with expand/collapse per node. Tap a node to open a bottom sheet with actions and tracker widget. Like VS Code's file explorer.</p>
+      <div style="margin-top:12px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
+        <div style="padding:6px 0; font-size:13px;">
+          <span style="color:#F59E0B; margin-right:6px;">&#9660;</span> <span style="font-weight:700;">FITNESS</span> <span style="font-size:11px; opacity:0.4; margin-left:4px;">47%</span>
+        </div>
+        <div style="padding:6px 0 6px 20px; font-size:13px;">
+          <span style="color:rgba(255,255,255,0.3); margin-right:6px;">&#9660;</span> Run Marathon <span style="font-size:11px; opacity:0.4; margin-left:4px;">35%</span>
+        </div>
+        <div style="padding:6px 0 6px 40px; font-size:12px; opacity:0.6;">
+          <span style="margin-right:6px;">&#9654;</span> Run 5K under 25min
+        </div>
+        <div style="padding:6px 0 6px 40px; font-size:12px; opacity:0.6;">
+          <span style="margin-right:6px;">&#9654;</span> Complete training plan
+        </div>
+        <div style="padding:6px 0 6px 20px; font-size:13px;">
+          <span style="color:rgba(255,255,255,0.3); margin-right:6px;">&#9654;</span> Lose 10kg <span style="font-size:11px; opacity:0.4; margin-left:4px;">60%</span>
+        </div>
+        <div style="padding:6px 0; font-size:13px;">
+          <span style="color:#8B5CF6; margin-right:6px;">&#9654;</span> <span style="font-weight:700;">CAREER</span> <span style="font-size:11px; opacity:0.4; margin-left:4px;">20%</span>
+        </div>
+        <div style="margin-top:12px; padding:10px; border-radius:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); font-size:11px; text-align:center; color:rgba(255,255,255,0.4);">
+          Bottom sheet appears on tap with tracker + actions
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Full hierarchy visible</li><li>Familiar tree pattern</li><li>Quick expand/collapse</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Gets messy with deep nesting</li><li>Bottom sheet context-switch</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

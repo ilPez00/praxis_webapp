@@ -1,0 +1,151 @@
+<h2>Goal Workspace — Bottom Sheet Layout</h2>
+<p class="subtitle">When you tap a goal, this sheet slides up. What should it contain and how should it be organized?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)" style="border-color:rgba(139,92,246,0.4);">
+    <div class="letter" style="background:rgba(139,92,246,0.15); color:#A78BFA;">A</div>
+    <div class="content">
+      <h3>Compact Workspace <span style="font-size:11px; padding:2px 8px; border-radius:6px; background:rgba(139,92,246,0.15); color:#A78BFA; margin-left:8px;">Recommended</span></h3>
+      <p>Everything visible at half-screen height. Progress slider front and center, one smart tracker button, quick actions as icon row. Drag up for sub-goals and details.</p>
+      <div style="margin-top:12px; border-radius:16px 16px 0 0; background:rgba(15,15,25,0.98); border:1px solid rgba(139,92,246,0.2); overflow:hidden;">
+        <!-- Drag handle -->
+        <div style="padding:10px; text-align:center;">
+          <div style="width:32px; height:4px; background:rgba(255,255,255,0.2); border-radius:2px; margin:0 auto;"></div>
+        </div>
+        <!-- Header -->
+        <div style="padding:0 16px 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-size:11px; color:#F59E0B; font-weight:800; letter-spacing:0.05em;">FITNESS</div>
+              <div style="font-size:18px; font-weight:900; margin-top:2px;">Run Marathon</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:24px; font-weight:900; color:#A78BFA;">35%</div>
+            </div>
+          </div>
+          <!-- Progress slider -->
+          <div style="margin-top:12px; position:relative;">
+            <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:4px;">
+              <div style="height:100%; width:35%; background:linear-gradient(90deg,#F59E0B,#8B5CF6); border-radius:4px; position:relative;">
+                <div style="position:absolute; right:-6px; top:-4px; width:16px; height:16px; background:#fff; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>
+              </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:4px;">
+              <span style="font-size:10px; opacity:0.3;">0%</span>
+              <span style="font-size:10px; opacity:0.3;">100%</span>
+            </div>
+          </div>
+        </div>
+        <!-- Smart tracker button -->
+        <div style="padding:0 16px 12px;">
+          <div style="padding:14px; border-radius:14px; background:linear-gradient(135deg, rgba(245,158,11,0.1), rgba(249,115,22,0.06)); border:1px solid rgba(245,158,11,0.25); display:flex; align-items:center; gap:12px; cursor:pointer;">
+            <div style="width:40px; height:40px; border-radius:12px; background:rgba(245,158,11,0.15); display:flex; align-items:center; justify-content:center; font-size:20px;">🏃</div>
+            <div style="flex:1;">
+              <div style="font-weight:800; font-size:14px;">Log Run</div>
+              <div style="font-size:11px; color:rgba(255,255,255,0.4);">Last logged 2 days ago</div>
+            </div>
+            <div style="color:#F59E0B; font-size:20px;">+</div>
+          </div>
+        </div>
+        <!-- Quick action icons -->
+        <div style="display:flex; justify-content:space-around; padding:12px 16px 16px; border-top:1px solid rgba(255,255,255,0.05);">
+          <div style="text-align:center; font-size:11px; color:rgba(255,255,255,0.5); cursor:pointer;">
+            <div style="font-size:18px; margin-bottom:4px;">+</div>
+            Sub-goal
+          </div>
+          <div style="text-align:center; font-size:11px; color:rgba(255,255,255,0.5); cursor:pointer;">
+            <div style="font-size:18px; margin-bottom:4px;">📓</div>
+            Journal
+          </div>
+          <div style="text-align:center; font-size:11px; color:rgba(255,255,255,0.5); cursor:pointer;">
+            <div style="font-size:18px; margin-bottom:4px;">🎰</div>
+            Bet
+          </div>
+          <div style="text-align:center; font-size:11px; color:rgba(255,255,255,0.5); cursor:pointer;">
+            <div style="font-size:18px; margin-bottom:4px;">✅</div>
+            Verify
+          </div>
+          <div style="text-align:center; font-size:11px; color:rgba(255,255,255,0.5); cursor:pointer;">
+            <div style="font-size:18px; margin-bottom:4px;">✏️</div>
+            Edit
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Full Workspace</h3>
+      <p>Sheet opens to ~70% screen. Shows everything at once: progress slider, smart tracker, sub-goals list, and actions. No need to drag up — it's all there.</p>
+      <div style="margin-top:12px; border-radius:16px 16px 0 0; background:rgba(15,15,25,0.98); border:1px solid rgba(99,102,241,0.2); overflow:hidden;">
+        <!-- Drag handle -->
+        <div style="padding:10px; text-align:center;">
+          <div style="width:32px; height:4px; background:rgba(255,255,255,0.2); border-radius:2px; margin:0 auto;"></div>
+        </div>
+        <!-- Header -->
+        <div style="padding:0 16px 10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-size:11px; color:#F59E0B; font-weight:800; letter-spacing:0.05em;">FITNESS</div>
+              <div style="font-size:18px; font-weight:900; margin-top:2px;">Run Marathon</div>
+            </div>
+            <div style="font-size:22px; font-weight:900; color:#A78BFA;">35%</div>
+          </div>
+          <!-- Progress slider -->
+          <div style="margin-top:10px;">
+            <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:4px;">
+              <div style="height:100%; width:35%; background:linear-gradient(90deg,#F59E0B,#8B5CF6); border-radius:4px; position:relative;">
+                <div style="position:absolute; right:-6px; top:-4px; width:16px; height:16px; background:#fff; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Smart tracker -->
+        <div style="padding:0 16px 10px;">
+          <div style="padding:12px; border-radius:12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); display:flex; align-items:center; gap:10px;">
+            <div style="font-size:18px;">🏃</div>
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:13px;">Log Run</div>
+              <div style="font-size:10px; opacity:0.4;">Last: 2 days ago</div>
+            </div>
+            <div style="color:#F59E0B; font-size:18px;">+</div>
+          </div>
+        </div>
+        <!-- Sub-goals inline -->
+        <div style="padding:0 16px 10px;">
+          <div style="font-size:11px; font-weight:800; color:rgba(255,255,255,0.4); letter-spacing:0.08em; margin-bottom:6px;">SUB-GOALS</div>
+          <div style="padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); margin-bottom:4px; display:flex; align-items:center; gap:8px; font-size:13px;">
+            <div style="width:14px; height:14px; border-radius:4px; border:2px solid rgba(255,255,255,0.2);"></div>
+            Run 5K under 25min
+            <span style="margin-left:auto; font-size:11px; opacity:0.4;">20%</span>
+          </div>
+          <div style="padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); margin-bottom:4px; display:flex; align-items:center; gap:8px; font-size:13px;">
+            <div style="width:14px; height:14px; border-radius:4px; border:2px solid rgba(16,185,129,0.5); background:rgba(16,185,129,0.2);"></div>
+            Complete training plan
+            <span style="margin-left:auto; font-size:11px; opacity:0.4;">50%</span>
+          </div>
+          <div style="padding:6px 10px; font-size:12px; color:#A78BFA; display:flex; align-items:center; gap:4px; cursor:pointer;">
+            <span style="font-size:15px;">+</span> Add sub-goal
+          </div>
+        </div>
+        <!-- Actions row -->
+        <div style="display:flex; justify-content:space-around; padding:10px 16px 14px; border-top:1px solid rgba(255,255,255,0.05);">
+          <div style="text-align:center; font-size:10px; color:rgba(255,255,255,0.4);">
+            <div style="font-size:16px; margin-bottom:2px;">📓</div>Journal
+          </div>
+          <div style="text-align:center; font-size:10px; color:rgba(255,255,255,0.4);">
+            <div style="font-size:16px; margin-bottom:2px;">🎰</div>Bet
+          </div>
+          <div style="text-align:center; font-size:10px; color:rgba(255,255,255,0.4);">
+            <div style="font-size:16px; margin-bottom:2px;">✅</div>Verify
+          </div>
+          <div style="text-align:center; font-size:10px; color:rgba(255,255,255,0.4);">
+            <div style="font-size:16px; margin-bottom:2px;">✏️</div>Edit
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
