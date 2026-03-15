@@ -414,11 +414,10 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
   const requesterId = (req as any).user?.id;
   if (requesterId !== userId) throw new ForbiddenError('You can only update your own goals.');
 
-  // Validate nodeId format (should be UUID)
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!nodeId || !uuidRegex.test(nodeId)) {
-    logger.warn(`Invalid node ID format: ${nodeId}`);
-    throw new NotFoundError('Invalid node ID format.');
+  // Validate nodeId is not empty
+  if (!nodeId || nodeId.trim().length === 0) {
+    logger.warn(`Empty node ID provided`);
+    throw new NotFoundError('Node ID is required.');
   }
 
   const progress = Number(req.body.progress);
