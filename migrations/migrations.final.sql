@@ -260,6 +260,22 @@ CREATE TABLE IF NOT EXISTS public.checkins (
   streak_day INTEGER
 );
 
+-- Add win_of_the_day column if it doesn't exist (for existing tables)
+DO $$ 
+BEGIN 
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'checkins') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'checkins' AND column_name = 'win_of_the_day') THEN
+      ALTER TABLE public.checkins ADD COLUMN win_of_the_day TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'checkins' AND column_name = 'mood') THEN
+      ALTER TABLE public.checkins ADD COLUMN mood TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'checkins' AND column_name = 'streak_day') THEN
+      ALTER TABLE public.checkins ADD COLUMN streak_day INTEGER;
+    END IF;
+  END IF;
+END $$;
+
 ALTER TABLE public.checkins ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view own checkins" ON public.checkins;
@@ -632,7 +648,15 @@ DECLARE
   v_goal_id UUID;
   v_domain TEXT;
   v_mood TEXT;
+  v_win_of_the_day TEXT;
 BEGIN
+  -- Get win_of_the_day if column exists
+  BEGIN
+    SELECT NEW.win_of_the_day INTO v_win_of_the_day;
+  EXCEPTION WHEN undefined_column THEN
+    v_win_of_the_day := NULL;
+  END;
+  
   -- Determine entry type and content based on source table
   CASE TG_TABLE_NAME
     WHEN 'posts' THEN
@@ -645,7 +669,7 @@ BEGIN
       v_title := 'Tracker activity';
     WHEN 'checkins' THEN
       v_entry_type := 'checkin';
-      v_content := COALESCE(NEW.win_of_the_day, 'Daily check-in completed');
+      v_content := COALESCE(v_win_of_the_day, 'Daily check-in completed');
       v_title := 'Daily Check-in';
       v_mood := NEW.mood;
     WHEN 'journal_entries' THEN
