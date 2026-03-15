@@ -229,6 +229,15 @@ const NotesPage: React.FC = () => {
 
   const handleProgressUpdate = async (nodeId: string, progress: number) => {
     if (!currentUserId) return;
+    
+    // Validate node ID format (must be UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!nodeId || !uuidRegex.test(nodeId)) {
+      console.warn(`Invalid node ID format: ${nodeId}`);
+      toast.error('Cannot update progress: Invalid node ID');
+      return;
+    }
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       await axios.patch(

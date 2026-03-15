@@ -409,9 +409,17 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
  * Awards PP + domain proficiency if the node newly hits 100%.
  */
 export const updateNodeProgress = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId, nodeId } = req.params;
+  const userId = String(req.params.userId);
+  const nodeId = String(req.params.nodeId);
   const requesterId = (req as any).user?.id;
   if (requesterId !== userId) throw new ForbiddenError('You can only update your own goals.');
+
+  // Validate nodeId format (should be UUID)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!nodeId || !uuidRegex.test(nodeId)) {
+    logger.warn(`Invalid node ID format: ${nodeId}`);
+    throw new NotFoundError('Invalid node ID format.');
+  }
 
   const progress = Number(req.body.progress);
   if (isNaN(progress) || progress < 0 || progress > 100) {
@@ -440,7 +448,7 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
     return { ...n, progress: progress / 100 };
   });
 
-  if (updatedNodes.length === nodes.length && !updatedNodes.find(n => n.id === nodeId)) {
+  if (!updatedNodes.find(n => n.id === nodeId)) {
     throw new NotFoundError('Goal node not found in tree.');
   }
 
