@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   SpeedDial,
   SpeedDialIcon,
@@ -8,20 +8,27 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 interface Props {
-  onPostClick: () => void;
+  onPostClick?: () => void;
 }
+
+const HIDDEN_PATHS = ['/login', '/register', '/onboarding', '/widget'];
 
 const QuickActionFAB: React.FC<Props> = ({ onPostClick }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
 
+  // Hide on auth/onboarding/widget pages
+  if (HIDDEN_PATHS.some(p => location.pathname.startsWith(p))) return null;
+
   const actions = [
-    { icon: <EditIcon />, name: 'New Post', onClick: onPostClick },
+    { icon: <EditIcon />, name: 'New Post', onClick: () => onPostClick ? onPostClick() : navigate('/dashboard') },
     { icon: <AddCircleOutlineIcon />, name: 'Add Goal', onClick: () => navigate('/notes') },
+    { icon: <CheckCircleIcon />, name: 'Check In', onClick: () => navigate('/dashboard') },
     { icon: <AutoAwesomeIcon />, name: 'Ask Axiom', onClick: () => navigate('/coaching') },
   ];
 

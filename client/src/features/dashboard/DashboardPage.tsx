@@ -400,8 +400,6 @@ const DashboardPage: React.FC = () => {
         </ErrorBoundary>
       </Container>
 
-      <QuickActionFAB onPostClick={handleOpenCompose} />
-
       <SiteTour
         open={tourOpen}
         onClose={() => {

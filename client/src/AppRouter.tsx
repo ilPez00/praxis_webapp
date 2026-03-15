@@ -6,6 +6,7 @@ import Navbar from './components/common/Navbar';
 import InstallPwaBanner from './components/common/InstallPwaBanner';
 import PrivateRoute from './features/auth/PrivateRoute';
 import ErrorBoundary from './components/ErrorBoundary';
+import QuickActionFAB from './components/common/QuickActionFAB';
 import { Toaster } from 'react-hot-toast';
 import routes from './config/routes';
 import { useLocationSync } from './hooks/useLocationSync';
@@ -58,6 +59,7 @@ const AppRouter: React.FC = () => {
     <Router basename={basename}>
       {!isWidget && <Navbar />}
       {!isWidget && !isElectron && <InstallPwaBanner />}
+      {!isWidget && <QuickActionFAB />}
       <Toaster position="top-right" />
       
       {/* ErrorBoundary moved deep to catch route-level crashes only */}
