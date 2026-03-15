@@ -1,5 +1,6 @@
 import { createLogger, format, transports } from 'winston';
-import { v4 as uuidv4 } from 'uuid';
+import * as crypto from 'crypto';
+const { v4: uuidv4 } = crypto as any; // Use Node.js built-in crypto for UUID v4
 const { combine, timestamp, printf, colorize, json } = format;
 
 // Custom format for human-readable logs (development)
