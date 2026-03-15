@@ -166,6 +166,10 @@ const NotesPage: React.FC = () => {
           const nodes = treeRes.data.nodes || [];
           setBackendNodes(nodes);
           setTreeData(buildFrontendTree(nodes));
+        } else {
+          // No goal tree yet - initialize empty arrays
+          setBackendNodes([]);
+          setTreeData([]);
         }
 
         const { data: profile } = await supabase
@@ -184,6 +188,9 @@ const NotesPage: React.FC = () => {
         setActiveBets(betsRes.data || []);
       } catch (err: any) {
         console.error('Notes fetch error:', err);
+        // On error, still initialize empty state so page doesn't crash
+        setBackendNodes([]);
+        setTreeData([]);
       } finally {
         setLoadingContent(false);
       }
@@ -595,6 +602,42 @@ const NotesPage: React.FC = () => {
             width: '100%',
             mb: 4,
           }}>
+            {treeData.length === 0 ? (
+              <Box sx={{
+                textAlign: 'center',
+                py: 8,
+                px: 2,
+                borderRadius: 3,
+                border: '2px dashed rgba(139,92,246,0.3)',
+                bgcolor: 'rgba(139,92,246,0.03)',
+              }}>
+                <Typography variant="h5" sx={{ fontWeight: 800, mb: 2, color: 'primary.main' }}>
+                  🎯 Start Your Goal Tree
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 500, mx: 'auto' }}>
+                  You don't have any goals yet. Build your goal tree to start tracking your progress and getting personalized AI coaching from Axiom.
+                </Typography>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={() => handleAddNewGoal()}
+                  startIcon={<AddIcon />}
+                  sx={{
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    px: 4,
+                    py: 1.5,
+                    background: 'linear-gradient(135deg, #A78BFA, #8B5CF6)',
+                    '&:hover': { background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)' },
+                  }}
+                >
+                  Create Your First Goal
+                </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+                  Tip: Start with one big goal, then break it into smaller steps
+                </Typography>
+              </Box>
+            ) : (
             <NotesCardTree
               nodes={treeData}
               selectedNodeId={selectedNode?.id ?? null}
@@ -604,6 +647,7 @@ const NotesPage: React.FC = () => {
               onAddGoalInDomain={handleAddGoalInDomain}
               onAddSubgoal={handleAddSubgoal}
             />
+            )}
           </Box>
 
           {/* Mobile: NoteGoalDetail + actions inline below tree */}
