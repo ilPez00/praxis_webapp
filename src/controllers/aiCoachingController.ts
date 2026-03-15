@@ -1,12 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { AICoachingService, CoachingContext } from '../services/AICoachingService';
 import { AxiomScanService } from '../services/AxiomScanService';
+import { EngagementMetricService } from '../services/EngagementMetricService';
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, UnauthorizedError, InternalServerError } from '../utils/appErrors';
 
-// Instantiate once at module load — constructor no longer throws if API key missing
+// Instantiate once at module load
 const aiCoachingService = new AICoachingService();
+const engagementMetricService = new EngagementMetricService();
 
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('does not exist') || msg?.includes('42P01');
@@ -239,7 +241,39 @@ async function buildContext(userId: string): Promise<CoachingContext> {
     }
   }
 
-  return { userName, bio, streak, praxisPoints, language, goals, recentFeedback, achievements, network, boards };
+  // --- Engagement Metrics (for template personalization) ---
+  // Fetch from cache or calculate on-demand
+  let engagementMetrics: CoachingContext['engagementMetrics'];
+  try {
+    let metrics = await engagementMetricService.getCachedMetrics(userId);
+    if (!metrics) {
+      metrics = await engagementMetricService.calculateMetrics(userId);
+      await engagementMetricService.storeMetrics(userId, metrics);
+    }
+    engagementMetrics = {
+      archetype: metrics.archetype,
+      motivationStyle: metrics.motivationStyle,
+      weeklyActivityScore: metrics.weeklyActivityScore,
+      stagnationRisk: metrics.stagnationRisk,
+    };
+  } catch (err) {
+    logger.warn('[AI Coach] Failed to load engagement metrics:', err);
+    engagementMetrics = undefined;
+  }
+
+  return { 
+    userName, 
+    bio, 
+    streak, 
+    praxisPoints, 
+    language, 
+    goals, 
+    recentFeedback, 
+    achievements, 
+    network, 
+    boards,
+    engagementMetrics,
+  };
 }
 
 // ---------------------------------------------------------------------------

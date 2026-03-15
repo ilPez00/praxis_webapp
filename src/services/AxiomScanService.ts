@@ -1,79 +1,100 @@
 import cron from 'node-cron';
 import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from './AICoachingService';
+import { EngagementMetricService } from './EngagementMetricService';
 import logger from '../utils/logger';
 
 const aiCoachingService = new AICoachingService();
+const engagementMetricService = new EngagementMetricService();
 
 // ---------------------------------------------------------------------------
-// Snapshot helpers
+// Metric-based brief generation (no content scanning)
 // ---------------------------------------------------------------------------
 
-/** Build a compact text snapshot of a user's current state. */
-async function buildSnapshot(userId: string): Promise<string> {
-  const today = new Date().toISOString().slice(0, 10);
+/**
+ * Generate brief recommendations based on engagement metrics only.
+ * No message content is analyzed - only behavioral patterns.
+ */
+async function generateMetricBasededBrief(metrics: any, userName: string): Promise<any> {
+  const { archetype, motivationStyle, riskFactors, checkinStreak, weeklyActivityScore, socialEngagementScore } = metrics;
 
-  const [goalTreeRes, trackersRes, postsRes, checkinRes] = await Promise.all([
-    supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
-    supabase.from('trackers').select('id').eq('user_id', userId),
-    supabase
-      .from('posts')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('created_at', today),
-    supabase
-      .from('checkins')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('checked_in_at', today),
-  ]);
+  // Message templates based on archetype
+  const messages: Record<string, string> = {
+    consolidator: `Good morning, ${userName}. You excel at finishing what you start. Today, complete one more meaningful step.`,
+    explorer: `${userName}, you have many interests — that's your strength. Pick ONE goal to advance today.`,
+    achiever: `${userName}, your momentum is strong. Keep it going with focused action today.`,
+    struggler: `${userName}, every expert was once a beginner. Show up for 5 minutes today — that's enough.`,
+    socializer: `${userName}, your connections fuel you. Reach out to someone in your network today.`,
+    lone_wolf: `${userName}, you work best independently. Trust your process and take one step forward.`,
+    burnout_risk: `${userName}, you've been pushing hard. Today, focus on recovery AND one small win.`,
+  };
 
-  // Goals: root nodes only, name + progress%
-  const nodes: any[] = goalTreeRes.data?.nodes ?? [];
-  const rootGoals = nodes
-    .filter((n: any) => !n.parentId)
-    .map((n: any) => `${(n.name || n.title || 'Goal').slice(0, 25)} ${Math.round((n.progress ?? 0) * 100)}%`);
+  // Routine templates based on motivation style
+  const routines: Record<string, any[]> = {
+    streak_driven: [
+      { time: 'Morning', task: 'Check in to maintain your streak', alignment: 'Protect your momentum' },
+      { time: 'Afternoon', task: 'One focused action on your top goal', alignment: 'Build the chain' },
+      { time: 'Evening', task: 'Reflect on today's win', alignment: 'Reinforce the habit' },
+    ],
+    progress_focused: [
+      { time: 'Morning', task: 'Review your goal progress bars', alignment: 'Visualize the path' },
+      { time: 'Afternoon', task: 'Move one goal forward by 5%', alignment: 'Tangible progress' },
+      { time: 'Evening', task: 'Update your progress tracker', alignment: 'Measure what matters' },
+    ],
+    social_accountable: [
+      { time: 'Morning', task: 'Share your intention with someone', alignment: 'Create accountability' },
+      { time: 'Afternoon', task: 'Work on your public commitment', alignment: 'Follow through' },
+      { time: 'Evening', task: 'Report your progress', alignment: 'Close the loop' },
+    ],
+    novelty_seeking: [
+      { time: 'Morning', task: 'Try a new approach to your goal', alignment: 'Fresh perspective' },
+      { time: 'Afternoon', task: 'Explore a different workspace', alignment: 'Change of scenery' },
+      { time: 'Evening', task: 'Note what worked differently', alignment: 'Learn and adapt' },
+    ],
+    routine_based: [
+      { time: 'Morning', task: 'Follow your established routine', alignment: 'Consistency compounds' },
+      { time: 'Afternoon', task: 'Deep work block at your usual time', alignment: 'Rhythm creates flow' },
+      { time: 'Evening', task: 'Evening review ritual', alignment: 'Close the day properly' },
+    ],
+  };
 
-  // Trackers logged today
-  const trackerIds = (trackersRes.data ?? []).map((t: any) => t.id);
-  let loggedTrackers = 0;
-  if (trackerIds.length > 0) {
-    const { count } = await supabase
-      .from('tracker_entries')
-      .select('id', { count: 'exact', head: true })
-      .in('tracker_id', trackerIds)
-      .gte('logged_at', today);
-    loggedTrackers = count ?? 0;
+  // Challenge suggestions based on risk factors
+  const challenges: Record<string, { type: 'bet' | 'duel'; target: string; terms: string }> = {
+    streak_about_to_break: { type: 'bet', target: 'Check in today', terms: 'Keep your streak alive' },
+    goal_stagnation: { type: 'bet', target: 'Update any goal', terms: 'Break the stagnation' },
+    social_isolation: { type: 'bet', target: 'Give honor to someone', terms: 'Reconnect with your network' },
+    overwhelm: { type: 'bet', target: 'Complete one tiny task', terms: 'Small wins beat paralysis' },
+    declining_activity: { type: 'bet', target: 'Show up for 5 minutes', terms: 'Just start — momentum will follow' },
+    perfectionism_trap: { type: 'bet', target: 'Mark something as done', terms: 'Done is better than perfect' },
+  };
+
+  // Pick challenge based on primary risk factor
+  const primaryRisk = riskFactors[0];
+  const challenge = primaryRisk && challenges[primaryRisk] 
+    ? challenges[primaryRisk]
+    : { type: 'bet' as const, target: 'Complete one key action today', terms: 'Log it in your tracker' };
+
+  // Resource suggestions based on archetype
+  const resources: any[] = [];
+  if (archetype === 'explorer' || archetype === 'burnout_risk') {
+    resources.push({ goal: 'Focus', suggestion: 'Try time-blocking: 25 min focused, 5 min break', details: 'Pomodoro technique' });
+  }
+  if (archetype === 'struggler' || archetype === 'stagnation_risk') {
+    resources.push({ goal: 'Momentum', suggestion: 'Start with a 2-minute task', details: 'Build confidence with quick wins' });
+  }
+  if (socialEngagementScore < 40) {
+    resources.push({ goal: 'Connection', suggestion: 'Join a group session', details: 'Shared accountability works' });
   }
 
-  // Compact format: ~40 tokens vs ~120 in old format
-  return `G:${rootGoals.length > 0 ? rootGoals.join(',') : '-'}|T:${loggedTrackers}/${trackerIds.length}|P:${postsRes.count ?? 0}|C:${checkinRes.count ?? 0}`;
-}
-
-/** Load yesterday's snapshot text for a user, or null if none. */
-async function loadYesterdaySnapshot(userId: string): Promise<string | null> {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const dateStr = yesterday.toISOString().slice(0, 10);
-
-  const { data } = await supabase
-    .from('axiom_daily_snapshots')
-    .select('snapshot_text')
-    .eq('user_id', userId)
-    .eq('date', dateStr)
-    .maybeSingle();
-
-  return data?.snapshot_text ?? null;
-}
-
-/** Persist today's snapshot. */
-async function saveSnapshot(userId: string, snapshotText: string): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
-  await supabase.from('axiom_daily_snapshots').upsert({
-    user_id: userId,
-    date: today,
-    snapshot_text: snapshotText,
-  });
+  return {
+    message: messages[archetype] || `Good morning, ${userName}. Today's focus: build momentum in your key goals.`,
+    match: null as any, // Will be filled by match service
+    event: null as any, // Will be filled by event picker
+    place: null as any, // Will be filled by place picker
+    challenge,
+    resources,
+    routine: routines[motivationStyle] || routines.routine_based,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -211,101 +232,68 @@ export class AxiomScanService {
   }
 
   /**
-   * Generate daily brief for a user.
-   * Algorithmic picks for match/event/place. LLM only writes message + routine.
-   * @param useLLM - If true, use LLM for message + routine. If false, use templates.
+   * Generate daily brief for a user using ENGAGEMENT METRICS only.
+   * NO content scanning - only behavioral patterns (timestamps, counts, states).
+   * @param useLLM - Deprecated: kept for API compatibility, now uses metric-based templates
    */
   public static async generateDailyBrief(userId: string, userName: string, userCity: string, useLLM: boolean = false) {
     const today = new Date().toISOString().slice(0, 10);
 
-    // --- Phase 1: Gather all data in parallel ---
-    const [
-      todaySnapshot, yesterdaySnapshot,
-      goalTreeRes, matchRes, eventsRes, placesRes,
-    ] = await Promise.all([
-      buildSnapshot(userId),
-      loadYesterdaySnapshot(userId),
-      supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
+    // --- Phase 1: Calculate engagement metrics (no content analysis) ---
+    // Try cache first (metrics are cached for 24h)
+    let metrics = await engagementMetricService.getCachedMetrics(userId);
+    
+    if (!metrics) {
+      // Calculate fresh metrics
+      metrics = await engagementMetricService.calculateMetrics(userId);
+      // Store for 24h cache
+      await engagementMetricService.storeMetrics(userId, metrics);
+    }
+
+    // --- Phase 2: Generate metric-based recommendations ---
+    const recommendations = await generateMetricBasededBrief(metrics, userName);
+
+    // --- Phase 3: Algorithmic picks for match/event/place ---
+    const [matchRes, eventsRes, placesRes, goalTreeRes] = await Promise.all([
       supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 1 }),
       supabase.from('events').select('id, title, event_date, city').gte('event_date', today).limit(10),
       supabase.from('places').select('id, name, city, tags').limit(10),
+      supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
     ]);
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
     const userDomains = extractUserDomains(nodes);
 
-    // --- Phase 2: Algorithmic picks (zero LLM tokens) ---
-    const topMatch: PickedMatch | null = matchRes.data?.[0]
-      ? { id: matchRes.data[0].id, name: matchRes.data[0].name }
-      : null;
-    const topEvent = pickBestEvent(eventsRes.data ?? [], userCity);
-    const topPlace = pickBestPlace(placesRes.data ?? [], userCity, userDomains);
-
-    // --- Phase 3: Build diff context (compressed) ---
-    const diffContext = yesterdaySnapshot
-      ? `Y:${yesterdaySnapshot}|N:${todaySnapshot}`
-      : todaySnapshot;
-
-    // --- Phase 4: Generate message + routine (LLM or template) ---
-    let recommendations: any;
-
-    // Pre-built picks with template reasons (used by both paths)
-    const picks = {
-      match: topMatch ? { id: topMatch.id, name: topMatch.name, reason: 'Aligned goals in your active domains' } : null,
-      event: topEvent ? { id: topEvent.id, title: topEvent.title, reason: 'Coming up soon — worth checking out' } : null,
-      place: topPlace ? { id: topPlace.id, name: topPlace.name, reason: 'Potential spot for focus or reflection' } : null,
-      challenge: { type: 'bet' as const, target: 'Complete one key action today', terms: 'Log it in your tracker' },
-      resources: [] as any[],
-    };
-
-    if (!useLLM) {
-      // Template-based brief (free tier / minimal AI mode)
-      recommendations = {
-        ...picks,
-        message: `Good morning, ${userName}. Today's focus: build momentum in your key goals.`,
-        routine: [
-          { time: 'Morning', task: 'Review your top goal', alignment: 'Sets intention' },
-          { time: 'Afternoon', task: 'One focused work block', alignment: 'Deep progress' },
-          { time: 'Evening', task: 'Quick check-in', alignment: 'Tracks progress' },
-        ],
+    // Pick best match
+    if (matchRes.data?.[0]) {
+      recommendations.match = {
+        id: matchRes.data[0].id,
+        name: matchRes.data[0].name,
+        reason: 'Aligned goals in your active domains',
       };
-    } else {
-      // LLM writes message + routine only (~200 token prompt)
-      const prompt = `Axiom brief for ${userName} (${userCity}).
-State: ${todaySnapshot}
-Delta: ${diffContext}
-
-Write a short motivating morning message and a 3-4 step daily routine.
-JSON only:
-{"message":"1-2 sentence motivating message","routine":[{"time":"Morning/Afternoon/Evening","task":"action","why":"alignment"}]}`;
-
-      try {
-        const responseText = await aiCoachingService['runWithFallback'](prompt);
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        const llmOutput = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
-
-        recommendations = {
-          ...picks,
-          message: llmOutput.message || `Focus on showing up today, ${userName}.`,
-          routine: Array.isArray(llmOutput.routine) ? llmOutput.routine : [
-            { time: 'Morning', task: 'Review your top goal', alignment: 'Sets intention' },
-            { time: 'Evening', task: 'Quick check-in', alignment: 'Tracks progress' },
-          ],
-        };
-      } catch (err: any) {
-        logger.warn(`[AxiomScan] LLM failed for ${userName}, falling back to template: ${err.message}`);
-        recommendations = {
-          ...picks,
-          message: `Good morning, ${userName}. Today's focus: build momentum in your key goals.`,
-          routine: [
-            { time: 'Morning', task: 'Review your top goal', alignment: 'Sets intention' },
-            { time: 'Evening', task: 'Quick check-in', alignment: 'Tracks progress' },
-          ],
-        };
-      }
     }
 
-    // Insert a new row per day (history preserved)
+    // Pick best event
+    const topEvent = pickBestEvent(eventsRes.data ?? [], userCity);
+    if (topEvent) {
+      recommendations.event = {
+        id: topEvent.id,
+        title: topEvent.title,
+        reason: 'Coming up soon — worth checking out',
+      };
+    }
+
+    // Pick best place
+    const topPlace = pickBestPlace(placesRes.data ?? [], userCity, userDomains);
+    if (topPlace) {
+      recommendations.place = {
+        id: topPlace.id,
+        name: topPlace.name,
+        reason: 'Potential spot for focus or reflection',
+      };
+    }
+
+    // --- Phase 4: Store brief ---
     await supabase.from('axiom_daily_briefs').upsert({
       user_id: userId,
       date: today,
@@ -313,7 +301,6 @@ JSON only:
       generated_at: new Date().toISOString(),
     });
 
-    // Save today's snapshot for tomorrow's diff
-    await saveSnapshot(userId, todaySnapshot);
+    logger.info(`[AxiomScan] Generated metric-based brief for ${userName} (archetype: ${metrics.archetype})`);
   }
 }

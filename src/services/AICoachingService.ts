@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../lib/supabaseClient';
+import { EngagementMetricService, EngagementArchetype, MotivationStyle } from './EngagementMetricService';
 import logger from '../utils/logger';
 
 export interface GoalContext {
@@ -22,6 +23,13 @@ export interface CoachingContext {
   achievements: Array<{ goalName: string; date: string }>;
   network: any[];
   boards: any[];
+  // Engagement metrics (optional - if available)
+  engagementMetrics?: {
+    archetype: EngagementArchetype;
+    motivationStyle: MotivationStyle;
+    weeklyActivityScore: number;
+    stagnationRisk: number;
+  };
 }
 
 export interface CoachingReport {
@@ -38,39 +46,85 @@ export interface CoachingReport {
 
 const AXIOM_IDENTITY_DEFAULT = `You are Axiom — a wise, warm, and practical life coach. Your tone is friendly and direct. You give practical, concrete guidance. You never cite books by name or author. You just give people what they need to move forward.`;
 
+const engagementMetricService = new EngagementMetricService();
+
 /**
  * Template-based coaching responses for Minimal AI Mode.
- * No LLM calls — just smart, encouraging templates.
+ * Uses engagement metrics for personalization — no LLM calls.
  */
 function generateTemplateMotivation(context: CoachingContext): string {
-  const streakMsg = context.streak > 0 
-    ? `You're on a ${context.streak}-day streak! 🔥 Keep the momentum going.` 
-    : 'Start your streak today — every journey begins with a single step.';
+  const { engagementMetrics, streak, praxisPoints, goals } = context;
   
-  const pointsMsg = context.praxisPoints >= 100 
-    ? `With ${context.praxisPoints} Praxis Points, you've built real momentum.` 
-    : `You have ${context.praxisPoints} Praxis Points. Small wins add up!`;
-
-  const goalCount = context.goals.length;
-  const activeGoals = context.goals.filter(g => g.progress < 100).length;
+  // Use archetype-specific messaging if metrics available
+  const archetype = engagementMetrics?.archetype;
+  const motivationStyle = engagementMetrics?.motivationStyle;
   
-  return `${streakMsg} ${pointsMsg} You're tracking ${goalCount} goals (${activeGoals} active). Focus on one meaningful action today.`;
+  // Archetype-specific opening
+  const archetypeOpenings: Record<string, string> = {
+    consolidator: `You excel at finishing what you start.`,
+    explorer: `Your curiosity is your superpower — now focus it.`,
+    achiever: `Your momentum is strong. Keep building.`,
+    struggler: `Every expert was once a beginner.`,
+    socializer: `Your connections make you stronger.`,
+    lone_wolf: `You work best when you trust your process.`,
+    burnout_risk: `You've been pushing hard. Balance effort with recovery.`,
+  };
+  
+  const opening = archetypeOpenings[archetype!] || `You're making progress.`;
+  
+  // Motivation style-specific encouragement
+  let encouragement: string;
+  switch (motivationStyle) {
+    case 'streak_driven':
+      encouragement = streak > 0 
+        ? `Your ${streak}-day streak proves your commitment. Protect it.` 
+        : `Start your streak today — every journey begins with a single step.`;
+      break;
+    case 'progress_focused':
+      encouragement = `With ${praxisPoints.toLocaleString()} Praxis Points, you've built real momentum. Keep stacking.`;
+      break;
+    case 'social_accountable':
+      encouragement = `Your network is here for you. Share your goals and let them support you.`;
+      break;
+    default:
+      encouragement = streak > 0
+        ? `Your ${streak}-day streak shows commitment.`
+        : `Starting is the hardest part — you have already begun.`;
+  }
+  
+  const goalCount = goals.length;
+  const activeGoals = goals.filter(g => g.progress < 100).length;
+  
+  return `${opening} ${encouragement} You're tracking ${goalCount} goals (${activeGoals} active). Focus on one meaningful action today.`;
 }
 
 function generateTemplateStrategy(context: CoachingContext): CoachingReport['strategy'] {
-  return context.goals.slice(0, 3).map(goal => {
-    const progressBucket = goal.progress < 25 ? 'just starting' 
-      : goal.progress < 50 ? 'building momentum' 
-      : goal.progress < 75 ? 'making great progress' 
+  const { engagementMetrics, goals } = context;
+  const stagnationRisk = engagementMetrics?.stagnationRisk ?? 50;
+  
+  return goals.slice(0, 3).map(goal => {
+    const progressBucket = goal.progress < 25 ? 'just starting'
+      : goal.progress < 50 ? 'building momentum'
+      : goal.progress < 75 ? 'making great progress'
       : 'in the final stretch';
-    
-    const nextStep = goal.progress < 25
-      ? 'Define one small, concrete action you can take today.'
-      : goal.progress < 50
-      ? 'Identify the biggest obstacle right now and tackle it first.'
-      : goal.progress < 75
-      ? 'Review what is working well and double down on it.'
-      : 'Plan your final push — what is the last 10% that completes this?';
+
+    // Adjust advice based on stagnation risk
+    let nextStep: string;
+    if (stagnationRisk > 60) {
+      // High stagnation: suggest tiny actions
+      nextStep = goal.progress < 25
+        ? 'Commit to just 2 minutes on this today.'
+        : 'What's the absolute smallest next step? Do that.';
+    } else {
+      // Normal: standard advice
+      nextStep = goal.progress < 25
+        ? 'Define one small, concrete action you can take today.'
+        : goal.progress < 50
+        ? 'Identify the biggest obstacle right now and tackle it first.'
+        : goal.progress < 75
+        ? 'Review what is working well and double down on it.'
+        : 'Plan your final push — what is the last 10% that completes this?';
+    }
 
     return {
       goal: goal.name,
@@ -83,9 +137,17 @@ function generateTemplateStrategy(context: CoachingContext): CoachingReport['str
 }
 
 function generateTemplateNetwork(context: CoachingContext): string {
+  const { engagementMetrics, network } = context;
+  const socialScore = engagementMetrics ? 
+    (context.network as any[]).length > 0 ? engagementMetrics.weeklyActivityScore : 0 
+    : 0;
+  
   const networkSize = context.network?.length || 0;
+  
   if (networkSize === 0) {
-    return 'Connect with 3 people working on similar goals. Accountability accelerates progress.';
+    return socialScore < 40 
+      ? 'Connect with 3 people working on similar goals. Accountability accelerates progress.'
+      : 'Consider reaching out to someone new this week.';
   }
   if (networkSize < 5) {
     return `You have ${networkSize} connections. Consider reaching out to one person this week for a check-in.`;
