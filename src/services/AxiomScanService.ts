@@ -39,13 +39,13 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
   // Message templates based on archetype WITH content context
   // TONE: Warm, encouraging, curious - never critical
   const messages: Record<string, string> = {
-    consolidator: `Good morning, ${userName}. You have a gift for finishing what you start. ${currentFocus ? `How's "${currentFocus}" coming along?` : 'What feels meaningful to complete today?'}`,
-    explorer: `${userName}, your curiosity is your superpower. ${interestedTopics?.[0] ? `I notice ${interestedTopics[0]} has been on your mind - what's one small step?` : 'What's calling to you today?'}`,
-    achiever: `${userName}, your momentum is inspiring. ${recentAchievements?.[0] ? `After "${recentAchievements[0]}", what's next on your list?` : 'Keep building - you're on a roll.'}`,
-    struggler: `${userName}, every expert was once a beginner. ${trackerTrends?.[0] ? `How's "${trackerTrends[0].trackerName}" going?` : 'What feels doable today, even if small?'}`,
-    socializer: `${userName}, your connections make you stronger. ${socialEngagementScore > 60 ? 'Who could you share a win with today?' : 'Consider reaching out to someone - they'd love to hear from you.'}`,
+    consolidator: `Good morning, ${userName}. You have a gift for finishing what you start. ${currentFocus ? `How is "${currentFocus}" coming along?` : 'What feels meaningful to complete today?'}`,
+    explorer: `${userName}, your curiosity is your superpower. ${interestedTopics?.[0] ? `I notice ${interestedTopics[0]} has been on your mind - what is one small step?` : 'What is calling to you today?'}`,
+    achiever: `${userName}, your momentum is inspiring. ${recentAchievements?.[0] ? `After "${recentAchievements[0]}", what is next on your list?` : 'Keep building - you are on a roll.'}`,
+    struggler: `${userName}, every expert was once a beginner. ${trackerTrends?.[0] ? `How is "${trackerTrends[0].trackerName}" going?` : 'What feels doable today, even if small?'}`,
+    socializer: `${userName}, your connections make you stronger. ${socialEngagementScore > 60 ? 'Who could you share a win with today?' : 'Consider reaching out to someone - they would love to hear from you.'}`,
     lone_wolf: `${userName}, you do your best work when you trust yourself. ${currentFocus ? `What does your intuition say about "${currentFocus}"?` : 'What feels like the right next step?'}`,
-    burnout_risk: `${userName}, you've been giving a lot. ${trackerTrends?.some(t => t.direction === 'declining') ? `Some things feel harder lately - what would support look like?` : 'What would feel restorative today?'}`,
+    burnout_risk: `${userName}, you have been giving a lot. ${trackerTrends?.some((t: any) => t.direction === 'declining') ? `Some things feel harder lately - what would support look like?` : 'What would feel restorative today?'}`,
   };
 
   // Routine templates based on motivation style
@@ -53,7 +53,7 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
     streak_driven: [
       { time: 'Morning', task: 'Check in to maintain your streak', alignment: 'Protect your momentum' },
       { time: 'Afternoon', task: 'One focused action on your top goal', alignment: 'Build the chain' },
-      { time: 'Evening', task: 'Reflect on today's win', alignment: 'Reinforce the habit' },
+      { time: 'Evening', task: 'Reflect on your win today', alignment: 'Reinforce the habit' },
     ],
     progress_focused: [
       { time: 'Morning', task: 'Review your goal progress bars', alignment: 'Visualize the path' },
@@ -83,9 +83,9 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
     streak_about_to_break: { type: 'bet', target: 'Check in today', terms: 'Your streak is worth protecting - want to keep it going?' },
     goal_stagnation: { type: 'bet', target: 'Update any goal', terms: 'What would feel like progress, even tiny?' },
     social_isolation: { type: 'bet', target: 'Give honor to someone', terms: 'Who could use encouragement today?' },
-    overwhelm: { type: 'bet', target: 'Complete one tiny task', terms: 'What's the smallest thing that would feel good?' },
+    overwhelm: { type: 'bet', target: 'Complete one tiny task', terms: 'What is the smallest thing that would feel good?' },
     declining_activity: { type: 'bet', target: 'Show up for 5 minutes', terms: 'Just start - see how it feels' },
-    perfectionism_trap: { type: 'bet', target: 'Mark something as done', terms: 'What's "good enough" today?' },
+    perfectionism_trap: { type: 'bet', target: 'Mark something as done', terms: 'What is "good enough" today?' },
   };
 
   // Pick challenge based on primary risk factor
@@ -99,12 +99,12 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
   const resources: any[] = [];
   
   // Tracker-based suggestions - ASK about declining, don't criticize
-  if (trackerTrends?.some(t => t.direction === 'declining')) {
-    const declining = trackerTrends.find(t => t.direction === 'declining');
-    resources.push({ 
-      goal: declining?.trackerName || 'Consistency', 
-      suggestion: `How's ${declining?.trackerName || 'this'} going? Want to talk about what's been hard?`, 
-      details: `You're ${Math.abs(declining?.weekOverWeekChange || 10)}% from last week - no judgment, just curious` 
+  if (trackerTrends?.some((t: any) => t.direction === 'declining')) {
+    const declining = trackerTrends.find((t: any) => t.direction === 'declining');
+    resources.push({
+      goal: declining?.trackerName || 'Consistency',
+      suggestion: `How is ${declining?.trackerName || 'this'} going? Want to talk about what has been hard?`,
+      details: `You are ${Math.abs(declining?.weekOverWeekChange || 10)}% from last week - no judgment, just curious`
     });
   }
   
@@ -126,10 +126,10 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
     });
   }
   if (archetype === 'struggler') {
-    resources.push({ 
-      goal: 'Momentum', 
-      suggestion: 'What's one thing you could do in 2 minutes?', 
-      details: 'Small starts count' 
+    resources.push({
+      goal: 'Momentum',
+      suggestion: 'What is one thing you could do in 2 minutes?',
+      details: 'Small starts count'
     });
   }
   if (socialEngagementScore < 40) {

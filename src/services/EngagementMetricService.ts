@@ -549,7 +549,7 @@ export class EngagementMetricService {
 
   private calculateWeeklyActivityScore(checkinData: any, sessionData: any): number {
     const checkinsThisWeek = checkinData.history.filter(
-      d => d > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      (d: any) => d > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     ).length;
 
     const idealCheckins = 7; // Daily ideal
@@ -686,6 +686,7 @@ export class EngagementMetricService {
     socialEngagementScore: number;
     weeklyActivityScore: number;
     goalData: any;
+    trackerTrends?: Array<{ trackerName: string; direction: string; weekOverWeekChange: number }>;
   }): RiskFactor[] {
     const risks: RiskFactor[] = [];
 

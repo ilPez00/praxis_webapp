@@ -30,6 +30,7 @@ export interface CoachingContext {
     weeklyActivityScore: number;
     stagnationRisk: number;
   };
+  trackerTrends?: Array<{ trackerName: string; direction: string; weekOverWeekChange: number }>;
 }
 
 export interface CoachingReport {
