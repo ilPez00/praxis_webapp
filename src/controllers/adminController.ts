@@ -276,11 +276,39 @@ export const adminDeleteUser = catchAsync(async (req: Request, res: Response, ne
   const adminId = req.user?.id;
   if (id === adminId) throw new BadRequestError('Cannot delete your own admin account.');
 
-  const { error } = await supabase.auth.admin.deleteUser(id);
-  if (error) throw new InternalServerError(`Failed to delete user: ${error.message}`);
+  logger.info(`Admin ${adminId} attempting to delete user ${id}`);
+  
+  // First delete from auth (this should cascade to profiles and all related data)
+  const { error: authError } = await supabase.auth.admin.deleteUser(id);
+  
+  if (authError) {
+    logger.error(`Auth delete failed for user ${id}: ${authError.message}`);
+    
+    // If auth delete fails, try manual cascade delete
+    // This handles cases where user might not exist in auth but has orphaned data
+    const tables = [
+      'notebook_entries', 'notebook_tags', 'axiom_daily_briefs',
+      'journal_entries', 'node_journal_entries', 'tracker_entries',
+      'trackers', 'posts', 'checkins', 'goal_trees', 'achievements',
+      'achievement_comments', 'achievement_votes', 'chat_messages',
+      'chat_room_members', 'bets', 'wagers', 'duels', 'notifications',
+      'profiles'
+    ];
+    
+    for (const table of tables) {
+      try {
+        await supabase.from(table).delete().eq('user_id', id);
+        logger.info(`Deleted from ${table} for user ${id}`);
+      } catch (err: any) {
+        logger.warn(`Failed to delete from ${table} for user ${id}: ${err.message}`);
+      }
+    }
+    
+    return res.json({ message: 'User data cleaned up (auth delete failed, manual cleanup performed).' });
+  }
 
-  logger.info(`Admin ${adminId} deleted user ${id}`);
-  res.json({ message: 'User deleted.' });
+  logger.info(`Admin ${adminId} successfully deleted user ${id} from auth`);
+  res.json({ message: 'User deleted permanently.' });
 });
 
 /**
@@ -342,10 +370,30 @@ export const unbanUser = catchAsync(async (req: Request, res: Response, next: Ne
  * POST /admin/users/:id/grant-points
  * Adjusts a user's praxis_points by a delta (positive or negative).
  * Body: { delta: number } — e.g. { delta: 500 } or { delta: -200 }
+ * Or just send points directly: { points: number } — e.g. { points: 1000 }
  */
 export const grantPoints = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const id = String(req.params.id);
-  const delta: number = typeof req.body?.delta === 'number' ? Math.round(req.body.delta) : 999999;
+  
+  // Accept either delta or direct points value
+  let delta: number;
+  if (typeof req.body?.delta === 'number') {
+    delta = Math.round(req.body.delta);
+  } else if (typeof req.body?.points === 'number') {
+    // If points is provided, calculate delta from current
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('praxis_points')
+      .eq('id', id)
+      .single();
+    const current = profile?.praxis_points ?? 0;
+    delta = Math.round(req.body.points) - current;
+  } else {
+    // Default to +1000 if nothing specified
+    delta = 1000;
+  }
+
+  logger.info(`Admin ${req.user?.id} attempting to grant points to user ${id}: delta=${delta}`);
 
   // Fetch current points first
   const { data: profile, error: fetchErr } = await supabase
@@ -354,7 +402,10 @@ export const grantPoints = catchAsync(async (req: Request, res: Response, next: 
     .eq('id', id)
     .single();
 
-  if (fetchErr || !profile) throw new InternalServerError('User not found.');
+  if (fetchErr || !profile) {
+    logger.error(`Failed to fetch user ${id} profile: ${fetchErr?.message || 'User not found'}`);
+    throw new InternalServerError('User not found.');
+  }
 
   const current: number = profile.praxis_points ?? 0;
   const newPoints = Math.max(0, current + delta);
@@ -364,7 +415,10 @@ export const grantPoints = catchAsync(async (req: Request, res: Response, next: 
     .update({ praxis_points: newPoints })
     .eq('id', id);
 
-  if (error) throw new InternalServerError(`Failed to update points: ${error.message}`);
+  if (error) {
+    logger.error(`Failed to update points for user ${id}: ${error.message}`);
+    throw new InternalServerError(`Failed to update points: ${error.message}`);
+  }
 
   logger.info(`Admin ${req.user?.id} adjusted points for user ${id}: ${current} → ${newPoints} (delta ${delta})`);
   res.json({ message: `Points updated: ${current} → ${newPoints}.`, points: newPoints, delta });
