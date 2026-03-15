@@ -43,8 +43,6 @@ const QuickActionFAB: React.FC<Props> = ({ onPostClick }) => {
   const actions = [
     { icon: <EditIcon />, name: 'New Post', onClick: handleNewPost },
     { icon: <NoteAddIcon />, name: 'Quick Log', onClick: () => setQuickLogOpen(true) },
-    { icon: <CheckCircleIcon />, name: 'Check In', onClick: () => navigate('/dashboard') },
-    { icon: <AutoAwesomeIcon />, name: 'Ask Axiom', onClick: () => navigate('/coaching') },
   ];
 
   return (

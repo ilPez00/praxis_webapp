@@ -31,6 +31,7 @@ import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
 import ReferencePicker from '../../components/common/ReferencePicker';
+import ShareButton from '../../components/common/ShareButton';
 
 interface Post {
   id: string;
@@ -664,6 +665,14 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                   >
                     {post.comment_count}
                   </Typography>
+                  
+                  <ShareButton
+                    sourceTable="posts"
+                    sourceId={post.id}
+                    title={post.title || 'Post'}
+                    content={post.content}
+                    tooltip="Share to diary"
+                  />
                 </Box>
 
                 {/* Inline comments */}
