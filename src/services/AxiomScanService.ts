@@ -297,7 +297,7 @@ export class AxiomScanService {
     }
 
     // --- Phase 2: Fetch all data for LLM context ---
-    const [goalTreeRes, checkinsRes, trackersRes, notesRes, matchesRes, eventsRes, placesRes] = await Promise.all([
+    const [goalTreeRes, checkinsRes, trackersRes, notesRes, matchesRes, eventsRes, placesRes, diaryEntriesRes] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
       supabase.from('checkins').select('checked_in_at,streak_day,mood,win_of_the_day').eq('user_id', userId).order('checked_in_at', { ascending: false }).limit(7),
       supabase.from('trackers').select('id,type,goal').eq('user_id', userId),
@@ -305,6 +305,7 @@ export class AxiomScanService {
       supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
       supabase.from('events').select('id, title, event_date, city, description').gte('event_date', today).limit(10),
       supabase.from('places').select('id, name, city, tags, description').limit(10),
+      supabase.from('diary_entries').select('title,content,entry_type,mood,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
     ]);
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
@@ -318,11 +319,13 @@ export class AxiomScanService {
     const yEnd = `${yesterdayStr}T23:59:59`;
 
     let recapText = '';
+    let topNoteThemes: string[] = [];
+    
     try {
       const trackerIds = (trackersRes.data || []).map((t: any) => t.id);
       const typeMap = Object.fromEntries((trackersRes.data || []).map((t: any) => [t.id, t.type]));
 
-      const [trackerEntries, journalEntries, checkinEntries] = await Promise.all([
+      const [trackerEntries, journalEntries, checkinEntries, recentDiary] = await Promise.all([
         trackerIds.length > 0
           ? supabase.from('tracker_entries').select('tracker_id, data')
               .in('tracker_id', trackerIds).gte('logged_at', yStart).lte('logged_at', yEnd)
@@ -347,7 +350,16 @@ export class AxiomScanService {
           .then(({ data }) => (data || []).map((e: any) =>
             `Check-in day ${e.streak_day || '?'}${e.win_of_the_day ? ': ' + e.win_of_the_day : ''}`
           )),
+        // Extract themes from recent diary entries
+        Promise.resolve((diaryEntriesRes.data || []).slice(0, 5).map((d: any) => {
+          if (d.title) return d.title;
+          if (d.content) return d.content.slice(0, 50);
+          return d.entry_type;
+        }).filter(Boolean)),
       ]);
+      
+      // Use diary titles/themes as note themes
+      topNoteThemes = recentDiary;
 
       const recapItems = [...trackerEntries, ...journalEntries, ...checkinEntries];
       if (recapItems.length > 0) {
@@ -552,7 +564,7 @@ RULES:
     let schedule = null;
     try {
       logger.info(`[AxiomScan] Generating schedule for ${userName}...`);
-      
+
       const scheduleContext = {
         userName,
         archetype: metrics.archetype,
@@ -561,7 +573,7 @@ RULES:
         checkinStreak: metrics.checkinStreak,
         goals: goalsSlice,
         trackerTrends: metrics.trackerTrends || [],
-        topNoteThemes: metrics.topNoteThemes || [],
+        topNoteThemes, // From diary entries
         recentAchievements: (metrics as any).recommendationContext?.recentAchievements || [],
         currentFocus: (metrics as any).recommendationContext?.currentFocus || undefined,
         interestedTopics: (metrics as any).recommendationContext?.interestedTopics || [],

@@ -137,35 +137,44 @@ export class AxiomScheduleService {
       progress: Math.round(g.progress * 100) + '%',
     }));
 
-    return `Generate a daily schedule for ${context.userName} from 6:00 AM to 10:00 PM (16 hours).
+    return `You are Axiom, a wise warm and practical life coach. Generate a daily schedule for ${context.userName}.
 
-USER DATA:
-- Goals: ${JSON.stringify(goalsSlice)}
-- Streak: ${context.checkinStreak} days
+FULL CONTEXT:
 - Archetype: ${context.archetype}
+- Motivation style: ${context.motivationStyle}
+- Check-in streak: ${context.checkinStreak} days
+- Risk factors: ${context.riskFactors.join(', ') || 'None'}
+- Goals: ${JSON.stringify(goalsSlice)}
 - Tracker trends: ${context.trackerTrends.map(t => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
-${bestMatch ? `- Accountability partner: ${bestMatch.name}` : ''}
+- Top note themes: ${context.topNoteThemes.join(', ') || 'None'}
+- Recent achievements: ${context.recentAchievements.join(', ') || 'None'}
+- Current focus: ${context.currentFocus || 'Not specified'}
+- Interested topics: ${context.interestedTopics?.join(', ') || 'None'}
+- Social engagement: ${context.socialEngagementScore}/100
+${bestMatch ? `- Accountability partner: ${bestMatch.name} (${bestMatch.reason})` : ''}
 ${bestEvents.length > 0 ? `- Events: ${bestEvents.map(e => e.title).join(', ')}` : ''}
 ${bestPlaces.length > 0 ? `- Places: ${bestPlaces.map(p => p.name).join(', ')}` : ''}
 
-Return ONLY valid JSON with this structure:
+Generate a schedule from 6:00 AM to 10:00 PM (16 hours, 1 block per hour).
+
+Return ONLY valid JSON (no markdown):
 {
   "date": "${new Date().toISOString().slice(0, 10)}",
   "wakeTime": "06:00",
   "sleepTime": "22:00",
   "totalWorkHours": 6,
   "totalRestHours": 4,
-  "focusTheme": "Brief theme sentence",
+  "focusTheme": "One sentence theme",
   "energyCurve": "morning_peak" | "evening_peak" | "balanced",
   "timeSlots": [
     {
       "hour": 6,
       "timeLabel": "06:00 - 07:00",
-      "task": "Specific task",
-      "alignment": "Why it matters",
+      "task": "Specific task tied to their goals",
+      "alignment": "Why this matters for them personally",
       "duration": "45 min",
       "preparation": "What to prepare",
-      "isFlexible": true/false,
+      "isFlexible": true,
       "priority": "high" | "medium" | "low",
       "category": "deep_work" | "admin" | "rest" | "exercise" | "social" | "learning" | "planning" | "reflection"
     }
@@ -173,13 +182,41 @@ Return ONLY valid JSON with this structure:
 }
 
 RULES:
-1. Generate exactly 16 time slots (hours 6-22)
-2. Each task should connect to their actual goals by name
-3. Include 4-6 deep work blocks, 2-3 rest blocks, 1-2 exercise
-4. Mark 4-6 slots as flexible
-5. Assign priorities: 3-5 high, 6-8 medium, rest low
-6. Keep task and alignment concise (1-2 sentences max)
-7. No archetype labels or psychological categories in output`;
+1. **16 time slots** covering hours 6-22 (6am to 10pm)
+
+2. **Task Specificity** - Each task must:
+   - Reference their actual goals BY NAME
+   - Connect to their tracker trends (mention specific trackers)
+   - Reference their note themes (show you read their reflections)
+   - Be concrete: exact action, not vague advice
+   - Example: "Work on 'Career Certification' - complete module 3" NOT "Study for your goals"
+
+3. **Personalization** - Use their data:
+   - Mention their streak: "Your ${context.checkinStreak}-day streak shows commitment"
+   - Reference tracker trends: "Your ${context.trackerTrends[0]?.trackerName || 'fitness'} is ${context.trackerTrends[0]?.direction || 'stable'}"
+   - Reference note themes: "You've been reflecting on '${context.topNoteThemes[0] || 'growth'}'"
+   - Acknowledge achievements: "After '${context.recentAchievements[0] || 'recent progress'}'"
+
+4. **Energy Alignment**:
+   - morning_peak: Deep work 6-10am
+   - evening_peak: Creative work 6-10pm
+   - balanced: Distribute evenly
+
+5. **Category Distribution**:
+   - 4-6 blocks: deep_work
+   - 2-3 blocks: rest (include post-lunch ~14:00)
+   - 1-2 blocks: exercise
+   - 1-2 blocks: admin
+   - 1 block: planning/reflection
+
+6. **Suggestions**:
+   - Social blocks: Include ${bestMatch?.name || 'partner'} check-in
+   - Exercise blocks: Suggest ${bestPlaces[0]?.name || 'a place'}
+   - Schedule events at their times
+
+7. **Priorities**: 3-5 high, 6-8 medium, rest low
+
+8. **TONE**: Warm, specific, encouraging. Reference THEIR data in every alignment. No generic advice.`;
   }
 
   /**
