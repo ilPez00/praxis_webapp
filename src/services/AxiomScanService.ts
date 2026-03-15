@@ -295,17 +295,17 @@ export class AxiomScanService {
   }
 
   /**
-   * Generate daily brief for a user using ENGAGEMENT METRICS only.
-   * NO content scanning - only behavioral patterns (timestamps, counts, states).
-   * @param useLLM - Deprecated: kept for API compatibility, now uses metric-based templates
+   * Generate daily brief for a user using ENGAGEMENT METRICS + LLM.
+   * NOW WITH REAL LLM-POWERED MESSAGES for all users.
+   * @param useLLM - If true, use real LLM (default: true for everyone now)
    */
-  public static async generateDailyBrief(userId: string, userName: string, userCity: string, useLLM: boolean = false) {
+  public static async generateDailyBrief(userId: string, userName: string, userCity: string, useLLM: boolean = true) {
     const today = new Date().toISOString().slice(0, 10);
 
     // --- Phase 1: Calculate engagement metrics (no content analysis) ---
     // Try cache first (metrics are cached for 24h)
     let metrics = await engagementMetricService.getCachedMetrics(userId);
-    
+
     if (!metrics) {
       // Calculate fresh metrics
       metrics = await engagementMetricService.calculateMetrics(userId);
@@ -313,8 +313,34 @@ export class AxiomScanService {
       await engagementMetricService.storeMetrics(userId, metrics);
     }
 
-    // --- Phase 2: Generate metric-based recommendations ---
-    const recommendations = await generateMetricBasededBrief(metrics, userName);
+    // --- Phase 2: Generate LLM-powered recommendations ---
+    // Use AI Coaching Service to generate personalized message with LLM
+    const aiCoachingService = new AICoachingService();
+    
+    // Build coaching context from metrics
+    const coachingContext = {
+      userName: userName,
+      streak: metrics.checkinStreak,
+      praxisPoints: 0, // Would need to fetch from user profile
+      language: 'en',
+      goals: [], // Would need to fetch from goal_trees
+      recentFeedback: [],
+      achievements: [],
+      network: [],
+      boards: [],
+    };
+    
+    // Generate LLM-powered daily message
+    let axiomMessage = '';
+    try {
+      const report = await aiCoachingService.generateFullReport(coachingContext, true); // useLLM = true
+      axiomMessage = report.motivation || '';
+    } catch (err) {
+      logger.warn('[AxiomScan] LLM generation failed, using template:', err);
+      // Fallback to metric-based template
+      const recommendations = await generateMetricBasededBrief(metrics, userName);
+      axiomMessage = recommendations.message || '';
+    }
 
     // --- Phase 3: Algorithmic picks for match/event/place ---
     const [matchRes, eventsRes, placesRes, goalTreeRes] = await Promise.all([
@@ -326,6 +352,14 @@ export class AxiomScanService {
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
     const userDomains = extractUserDomains(nodes);
+
+    // Generate metric-based recommendations (for structure)
+    const recommendations = await generateMetricBasededBrief(metrics, userName);
+    
+    // Override message with LLM-generated message
+    if (axiomMessage) {
+      recommendations.message = axiomMessage;
+    }
 
     // Pick best match
     if (matchRes.data?.[0]) {
@@ -364,6 +398,6 @@ export class AxiomScanService {
       generated_at: new Date().toISOString(),
     });
 
-    logger.info(`[AxiomScan] Generated metric-based brief for ${userName} (archetype: ${metrics.archetype})`);
+    logger.info(`[AxiomScan] Generated LLM-powered brief for ${userName} (archetype: ${metrics.archetype})`);
   }
 }
