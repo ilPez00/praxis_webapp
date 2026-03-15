@@ -514,8 +514,8 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
 
 // ─── Per-node CRUD with higher PP gate ────────────────────────────────────────
 
-const NODE_CREATE_COST = 500;
-const NODE_EDIT_COST = 100;
+const NODE_CREATE_COST = 0;   // Free — Notes is the primary page, goals should be easy to add
+const NODE_EDIT_COST = 0;     // Free — removing friction from the core loop
 
 /**
  * POST /goals/:userId/node

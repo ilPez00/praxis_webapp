@@ -9,12 +9,10 @@ import NotesCardTree from './NotesCardTree';
 import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspaceSheet';
 import NoteGoalDetail from './NoteGoalDetail';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
-import DiaryTimeline from './DiaryTimeline';
 import DiaryFeed from './DiaryFeed';
 import ActivityCalendar from './ActivityCalendar';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import Slider from '@mui/material/Slider';
-import HistoryIcon from '@mui/icons-material/History';
 import AccountTreeIcon2 from '@mui/icons-material/Park';
 
 import {
@@ -87,7 +85,6 @@ const NotesPage: React.FC = () => {
   const [loadingContent, setLoadingContent] = useState(true);
   const [streak, setStreak] = useState<number>(0);
   const [praxisPoints, setPraxisPoints] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<'tree' | 'diary'>('tree');
 
   const [selectedNode, setSelectedNode] = useState<FrontendGoalNode | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -545,110 +542,86 @@ const NotesPage: React.FC = () => {
         {/* Activity calendar */}
         {currentUserId && <ActivityCalendar userId={currentUserId} />}
 
-        {/* View toggle */}
-        <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5, px: { xs: 2, sm: 0 } }}>
-          <Box
-            onClick={() => setViewMode('tree')}
-            sx={{
-              px: 1.5, py: 0.5, borderRadius: '12px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 0.5,
-              fontSize: '0.7rem', fontWeight: 700,
-              background: viewMode === 'tree' ? 'rgba(139,92,246,0.12)' : 'transparent',
-              color: viewMode === 'tree' ? '#A78BFA' : 'text.disabled',
-              border: '1px solid',
-              borderColor: viewMode === 'tree' ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.06)',
-              transition: 'all 0.15s ease',
-              '&:hover': { borderColor: 'rgba(139,92,246,0.3)' },
-            }}
-          >
-            <AccountTreeIcon2 sx={{ fontSize: 14 }} /> Goal Tree
+        {/* Main content - Goal tree with diary below, infinitely scrollable */}
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: 'auto',
+          minHeight: 'calc(100vh - 240px)',
+        }}>
+          {/* Goal Tree Panel */}
+          <Box sx={{ 
+            width: '100%',
+            mb: 4,
+          }}>
+            <NotesCardTree
+              nodes={treeData}
+              selectedNodeId={selectedNode?.id ?? null}
+              onNodeSelect={handleNodeSelect}
+              onLogTracker={handleLogTracker}
+              onAddGoal={handleAddNewGoal}
+              onAddGoalInDomain={handleAddGoalInDomain}
+              onAddSubgoal={handleAddSubgoal}
+            />
           </Box>
-          <Box
-            onClick={() => setViewMode('diary')}
-            sx={{
-              px: 1.5, py: 0.5, borderRadius: '12px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 0.5,
-              fontSize: '0.7rem', fontWeight: 700,
-              background: viewMode === 'diary' ? 'rgba(139,92,246,0.12)' : 'transparent',
-              color: viewMode === 'diary' ? '#A78BFA' : 'text.disabled',
-              border: '1px solid',
-              borderColor: viewMode === 'diary' ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.06)',
-              transition: 'all 0.15s ease',
-              '&:hover': { borderColor: 'rgba(139,92,246,0.3)' },
-            }}
-          >
-            <HistoryIcon sx={{ fontSize: 14 }} /> Diary
-          </Box>
+
+          {/* Diary Feed - Infinite Scroll */}
+          {currentUserId && (
+            <Box sx={{ width: '100%' }}>
+              <DiaryFeed userId={currentUserId} />
+            </Box>
+          )}
         </Box>
 
-        <Box sx={{ display: 'flex', height: { xs: 'auto', md: 'calc(100vh - 240px)' } }}>
-            {/* Left panel — tree or diary */}
-            <Box sx={{
-              width: { xs: '100%', md: viewMode === 'diary' ? '100%' : '40%' },
-              overflowY: 'auto',
-              borderRight: { xs: 'none', md: viewMode === 'diary' ? 'none' : '1px solid rgba(255,255,255,0.06)' },
-              transition: 'width 0.2s ease',
-            }}>
-              {viewMode === 'tree' ? (
-                <>
-                  <NotesCardTree
-                    nodes={treeData}
-                    selectedNodeId={selectedNode?.id ?? null}
-                    onNodeSelect={handleNodeSelect}
-                    onLogTracker={handleLogTracker}
-                    onAddGoal={handleAddNewGoal}
-                    onAddGoalInDomain={handleAddGoalInDomain}
-                    onAddSubgoal={handleAddSubgoal}
-                  />
-                  {currentUserId && (
-                    <Box sx={{ px: 1.5 }}>
-                      <DiaryFeed userId={currentUserId} />
-                    </Box>
-                  )}
-                </>
-              ) : (
-                currentUserId ? <DiaryTimeline userId={currentUserId} /> : null
-              )}
-            </Box>
-
-            {/* Desktop: right panel (hidden in diary mode) */}
-            {!isMobile && viewMode === 'tree' && (
-              <Box sx={{ width: '60%', overflowY: 'auto' }}>
-                {selectedNode && currentUserId ? (
-                  <>
-                    <NoteGoalDetail
-                      node={selectedNode}
-                      allNodes={backendNodes}
-                      userId={currentUserId}
-                      activeBets={activeBets}
-                      onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
-                      focusedTrackerType={activeLogType}
-                    />
-                    <GoalWorkspaceSheet
-                      node={selectedNode}
-                      allNodes={backendNodes}
-                      open={true}
-                      onClose={() => setSelectedNode(null)}
-                      onProgressChange={handleProgressUpdate}
-                      onNodeSelect={handleNodeSelect}
-                      onAddSubgoal={handleAddSubgoal}
-                      onLogTracker={handleLogTracker}
-                      onAction={handleAction}
-                      userId={currentUserId}
-                      actions={NOTES_ACTIONS}
-                    />
-                  </>
-                ) : (
-                  <Box sx={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'rgba(255,255,255,0.2)', py: 6,
-                  }}>
-                    <Typography sx={{ color: 'inherit' }}>Select a goal to track progress</Typography>
-                  </Box>
-                )}
+        {/* Desktop: Right panel for goal details */}
+        {!isMobile && (
+          <Box sx={{ 
+            position: 'fixed', 
+            right: 0, 
+            top: '80px', 
+            width: '40%', 
+            maxWidth: '500px',
+            height: 'calc(100vh - 100px)',
+            overflowY: 'auto',
+            bgcolor: 'rgba(17,24,39,0.95)',
+            backdropFilter: 'blur(10px)',
+            borderLeft: '1px solid rgba(255,255,255,0.06)',
+            pl: 3,
+          }}>
+            {selectedNode && currentUserId ? (
+              <>
+                <NoteGoalDetail
+                  node={selectedNode}
+                  allNodes={backendNodes}
+                  userId={currentUserId}
+                  activeBets={activeBets}
+                  onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
+                  focusedTrackerType={activeLogType}
+                />
+                <GoalWorkspaceSheet
+                  node={selectedNode}
+                  allNodes={backendNodes}
+                  open={true}
+                  onClose={() => setSelectedNode(null)}
+                  onProgressChange={handleProgressUpdate}
+                  onNodeSelect={handleNodeSelect}
+                  onAddSubgoal={handleAddSubgoal}
+                  onLogTracker={handleLogTracker}
+                  onAction={handleAction}
+                  userId={currentUserId}
+                  actions={NOTES_ACTIONS}
+                />
+              </>
+            ) : (
+              <Box sx={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'rgba(255,255,255,0.2)', py: 6,
+              }}>
+                <Typography sx={{ color: 'inherit' }}>Select a goal to track progress</Typography>
               </Box>
             )}
           </Box>
+        )}
 
         {/* Mobile: widget below tree */}
         {isMobile && currentUserId && selectedNode && (
