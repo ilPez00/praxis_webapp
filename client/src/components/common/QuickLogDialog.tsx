@@ -6,6 +6,7 @@ import {
 import { TransitionProps } from '@mui/material/transitions';
 import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
@@ -45,12 +46,15 @@ interface QuickLogDialogProps {
   onClose: () => void;
 }
 
+type ViewMode = 'selector' | 'goal' | 'free';
+
 const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   const { user } = useUser();
   const [rawNodes, setRawNodes] = useState<RawGoalNode[]>([]);
   const [goals, setGoals] = useState<RawGoalNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGoal, setSelectedGoal] = useState<RawGoalNode | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('selector');
   const [note, setNote] = useState('');
   const [mood, setMood] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -60,6 +64,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
     if (!open || !user?.id) return;
     setLoading(true);
     setSelectedGoal(null);
+    setViewMode('selector');
     setNote('');
     setMood(null);
 
@@ -99,7 +104,6 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   }), []);
 
   const handleProgressUpdate = useCallback((nodeId: string, newProgress: number) => {
-    // Update local state so widget reflects change
     setRawNodes(prev => prev.map(n =>
       n.id === nodeId ? { ...n, progress: newProgress / 100 } : n
     ));
@@ -108,21 +112,46 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
     }
   }, [selectedGoal?.id]);
 
+  const handleSelectGoal = (goal: RawGoalNode) => {
+    setSelectedGoal(goal);
+    setViewMode('goal');
+  };
+
+  const handleBack = () => {
+    setSelectedGoal(null);
+    setViewMode('selector');
+    setNote('');
+    setMood(null);
+  };
+
   const handleSaveJournal = async () => {
-    if (!user?.id || !selectedGoal) return;
+    if (!user?.id) return;
     if (!note.trim() && !mood) { toast.error('Write a note or pick a mood.'); return; }
     setSaving(true);
     try {
-      await supabase.from('node_journal_entries').insert({
-        user_id: user.id,
-        node_id: selectedGoal.id,
-        note: note.trim() || (mood ? `Mood: ${mood}` : ''),
-        mood: mood,
-        logged_at: new Date().toISOString(),
-      });
-      toast.success(`Logged on "${selectedGoal.name}"!`);
+      if (viewMode === 'goal' && selectedGoal) {
+        // Goal-linked entry → node_journal_entries
+        await supabase.from('node_journal_entries').insert({
+          user_id: user.id,
+          node_id: selectedGoal.id,
+          note: note.trim() || (mood ? `Mood: ${mood}` : ''),
+          mood: mood,
+          logged_at: new Date().toISOString(),
+        });
+        toast.success(`Logged on "${selectedGoal.name}"!`);
+      } else {
+        // Free diary entry → journal_entries (uncategorized)
+        await supabase.from('journal_entries').insert({
+          user_id: user.id,
+          note: note.trim() || (mood ? `Mood: ${mood}` : ''),
+          mood: mood,
+          created_at: new Date().toISOString(),
+        });
+        toast.success('Diary entry saved!');
+      }
       setNote('');
       setMood(null);
+      if (viewMode === 'free') onClose();
     } catch (err: any) {
       toast.error('Failed to save: ' + (err.message || 'Unknown error'));
     } finally {
@@ -131,6 +160,78 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   };
 
   const domainColor = (domain: string) => DOMAIN_COLORS[domain] || '#A78BFA';
+
+  const headerTitle = viewMode === 'goal' && selectedGoal
+    ? selectedGoal.name
+    : viewMode === 'free'
+    ? 'Diary Entry'
+    : 'Quick Log';
+
+  // Shared journal form (mood + note + save)
+  const renderJournalForm = (accentColor: string) => (
+    <Box sx={{ px: 2.5, mt: viewMode === 'free' ? 0 : 1 }}>
+      <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', mb: 1, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        {viewMode === 'free' ? 'How are you feeling?' : 'Quick journal'}
+      </Typography>
+
+      {/* Mood picker */}
+      <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1.5 }}>
+        {MOODS.map(m => (
+          <Chip
+            key={m.emoji}
+            label={`${m.emoji} ${m.label}`}
+            size="small"
+            onClick={() => setMood(mood === m.emoji ? null : m.emoji)}
+            sx={{
+              fontSize: '0.72rem', fontWeight: 600,
+              bgcolor: mood === m.emoji ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.06)',
+              color: mood === m.emoji ? '#A78BFA' : 'rgba(255,255,255,0.6)',
+              border: mood === m.emoji ? '1px solid rgba(167,139,250,0.4)' : '1px solid transparent',
+              cursor: 'pointer',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+            }}
+          />
+        ))}
+      </Box>
+
+      {/* Note input */}
+      <TextField
+        fullWidth
+        multiline
+        minRows={viewMode === 'free' ? 3 : 2}
+        maxRows={6}
+        autoFocus={viewMode === 'free'}
+        placeholder={viewMode === 'free' ? "What's on your mind today?" : "What did you do? How's it going?"}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        sx={{
+          mb: 2,
+          '& .MuiOutlinedInput-root': {
+            borderRadius: '14px',
+            bgcolor: 'rgba(255,255,255,0.04)',
+            fontSize: '0.9rem',
+          },
+        }}
+      />
+
+      {/* Save button */}
+      <Button
+        fullWidth
+        variant="contained"
+        onClick={handleSaveJournal}
+        disabled={saving || (!note.trim() && !mood)}
+        startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+        sx={{
+          borderRadius: '14px', fontWeight: 800, py: 1.5, fontSize: '0.9rem',
+          background: `linear-gradient(135deg, ${accentColor}, #F59E0B)`,
+          '&:hover': { filter: 'brightness(1.1)' },
+          '&:disabled': { opacity: 0.4 },
+        }}
+      >
+        {saving ? 'Saving...' : viewMode === 'free' ? 'Save Diary Entry' : 'Save Journal Entry'}
+      </Button>
+    </Box>
+  );
 
   return (
     <Dialog
@@ -162,11 +263,11 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2.5, pb: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {selectedGoal && (
+            {viewMode !== 'selector' && (
               <Chip
                 label="←"
                 size="small"
-                onClick={() => setSelectedGoal(null)}
+                onClick={handleBack}
                 sx={{
                   fontSize: '0.7rem', fontWeight: 800, minWidth: 28,
                   bgcolor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)',
@@ -176,7 +277,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
               />
             )}
             <Typography sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
-              {selectedGoal ? selectedGoal.name : 'Quick Log'}
+              {headerTitle}
             </Typography>
           </Box>
           <IconButton onClick={onClose} size="small" sx={{ color: 'rgba(255,255,255,0.4)' }}>
@@ -188,15 +289,49 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
             <CircularProgress size={28} sx={{ color: '#A78BFA' }} />
           </Box>
-        ) : !selectedGoal ? (
-          /* ── Goal selector ─────────────────────── */
+        ) : viewMode === 'selector' ? (
+          /* ── Goal selector + free entry ──────── */
           <Box sx={{ px: 2.5, pb: 3 }}>
+            {/* Free diary entry option */}
+            <Box
+              onClick={() => setViewMode('free')}
+              sx={{
+                display: 'flex', alignItems: 'center', gap: 1.5,
+                p: '12px 14px', borderRadius: '14px', mb: 1.5,
+                bgcolor: 'rgba(167,139,250,0.06)',
+                border: '1px solid rgba(167,139,250,0.15)',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                '&:hover': { bgcolor: 'rgba(167,139,250,0.12)', borderColor: 'rgba(167,139,250,0.3)' },
+                '&:active': { transform: 'scale(0.98)' },
+              }}
+            >
+              <MenuBookIcon sx={{ fontSize: '1.3rem', color: '#A78BFA' }} />
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: '#F3F4F6' }}>
+                  Free diary entry
+                </Typography>
+                <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>
+                  Write without linking to a goal
+                </Typography>
+              </Box>
+              <Chip
+                label="📝"
+                size="small"
+                sx={{
+                  height: 28, fontSize: '0.85rem',
+                  bgcolor: 'rgba(167,139,250,0.1)',
+                  border: '1px solid rgba(167,139,250,0.2)',
+                }}
+              />
+            </Box>
+
             <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', mb: 1.5, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-              Select a goal to log progress
+              Or select a goal to log progress
             </Typography>
 
             {goals.length === 0 ? (
-              <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem', py: 4, textAlign: 'center' }}>
+              <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem', py: 2, textAlign: 'center' }}>
                 No active goals yet. Create one in Notes first.
               </Typography>
             ) : (
@@ -208,7 +343,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
                   return (
                     <Box
                       key={goal.id}
-                      onClick={() => setSelectedGoal(goal)}
+                      onClick={() => handleSelectGoal(goal)}
                       sx={{
                         display: 'flex', alignItems: 'center', gap: 1.5,
                         p: '12px 14px', borderRadius: '14px',
@@ -262,10 +397,14 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
               </Box>
             )}
           </Box>
-        ) : (
+        ) : viewMode === 'free' ? (
+          /* ── Free diary entry (no goal) ──────── */
+          <Box sx={{ pb: 3 }}>
+            {renderJournalForm('#A78BFA')}
+          </Box>
+        ) : selectedGoal ? (
           /* ── Goal detail + widgets + journal ──── */
           <Box sx={{ pb: 2 }}>
-            {/* NoteGoalDetail — full tracker widgets */}
             <NoteGoalDetail
               node={toFrontendNode(selectedGoal)}
               allNodes={rawNodes}
@@ -273,71 +412,9 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
               activeBets={activeBets}
               onProgressUpdate={handleProgressUpdate}
             />
-
-            {/* ── Quick journal entry (mood + note) ── */}
-            <Box sx={{ px: 2.5, mt: 1 }}>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', mb: 1, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                Quick journal
-              </Typography>
-
-              {/* Mood picker */}
-              <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1.5 }}>
-                {MOODS.map(m => (
-                  <Chip
-                    key={m.emoji}
-                    label={`${m.emoji} ${m.label}`}
-                    size="small"
-                    onClick={() => setMood(mood === m.emoji ? null : m.emoji)}
-                    sx={{
-                      fontSize: '0.72rem', fontWeight: 600,
-                      bgcolor: mood === m.emoji ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.06)',
-                      color: mood === m.emoji ? '#A78BFA' : 'rgba(255,255,255,0.6)',
-                      border: mood === m.emoji ? '1px solid rgba(167,139,250,0.4)' : '1px solid transparent',
-                      cursor: 'pointer',
-                      '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
-                    }}
-                  />
-                ))}
-              </Box>
-
-              {/* Note input */}
-              <TextField
-                fullWidth
-                multiline
-                minRows={2}
-                maxRows={4}
-                placeholder="What did you do? How's it going?"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                sx={{
-                  mb: 2,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '14px',
-                    bgcolor: 'rgba(255,255,255,0.04)',
-                    fontSize: '0.9rem',
-                  },
-                }}
-              />
-
-              {/* Save journal button */}
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleSaveJournal}
-                disabled={saving || (!note.trim() && !mood)}
-                startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
-                sx={{
-                  borderRadius: '14px', fontWeight: 800, py: 1.5, fontSize: '0.9rem',
-                  background: `linear-gradient(135deg, ${domainColor(selectedGoal.domain)}, #F59E0B)`,
-                  '&:hover': { filter: 'brightness(1.1)' },
-                  '&:disabled': { opacity: 0.4 },
-                }}
-              >
-                {saving ? 'Saving...' : 'Save Journal Entry'}
-              </Button>
-            </Box>
+            {renderJournalForm(domainColor(selectedGoal.domain))}
           </Box>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );

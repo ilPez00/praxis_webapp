@@ -558,8 +558,9 @@ export const generateAxiomBrief = catchAsync(async (req: Request, res: Response,
     .eq('id', userId)
     .single();
 
-  // Force refresh always uses LLM; normal generation respects minimal_ai_mode
-  const useLLM = force || ((profile?.is_premium || profile?.is_admin) && !profile?.minimal_ai_mode);
+  // Daily briefs ALWAYS try LLM — it's once-daily, not per-request
+  // Force refresh also bypasses any remaining gates
+  const useLLM = true;
 
   await AxiomScanService.generateDailyBrief(
     userId,

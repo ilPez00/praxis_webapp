@@ -99,6 +99,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
   const { user } = useUser();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composeInputRef = useRef<HTMLInputElement>(null);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -151,7 +152,8 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
       const composeBox = document.getElementById('dashboard-post-compose');
       if (composeBox) {
         composeBox.scrollIntoView({ behavior: 'smooth' });
-        // Optional: focus the text field if you want
+        // Focus the text field after scroll animation
+        setTimeout(() => composeInputRef.current?.focus(), 350);
       }
     };
     window.addEventListener('praxis_open_compose', handleOpen);
@@ -440,6 +442,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                   onChange={e => setText(e.target.value)}
                   variant="outlined"
                   size="small"
+                  inputRef={composeInputRef}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '12px',

@@ -27,8 +27,21 @@ const QuickActionFAB: React.FC<Props> = ({ onPostClick }) => {
   // Hide on auth/onboarding/widget pages
   if (HIDDEN_PATHS.some(p => location.pathname.startsWith(p))) return null;
 
+  const handleNewPost = () => {
+    if (onPostClick) {
+      onPostClick();
+    } else if (location.pathname === '/dashboard' || location.pathname === '/') {
+      // Already on dashboard — just open compose
+      window.dispatchEvent(new Event('praxis_open_compose'));
+    } else {
+      // Navigate to dashboard, then open compose after mount
+      navigate('/dashboard');
+      setTimeout(() => window.dispatchEvent(new Event('praxis_open_compose')), 500);
+    }
+  };
+
   const actions = [
-    { icon: <EditIcon />, name: 'New Post', onClick: () => onPostClick ? onPostClick() : navigate('/dashboard') },
+    { icon: <EditIcon />, name: 'New Post', onClick: handleNewPost },
     { icon: <NoteAddIcon />, name: 'Quick Log', onClick: () => setQuickLogOpen(true) },
     { icon: <CheckCircleIcon />, name: 'Check In', onClick: () => navigate('/dashboard') },
     { icon: <AutoAwesomeIcon />, name: 'Ask Axiom', onClick: () => navigate('/coaching') },
