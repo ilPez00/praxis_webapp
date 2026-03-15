@@ -5,24 +5,25 @@ import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 
 interface DayData {
   date: string;
-  emoji: string;
-  color: string;
+  emojis: string[];   // up to 3 activity emojis
+  color: string;       // dominant color
   count: number;
   tooltip: string;
 }
 
 interface ActivityCalendarProps {
   userId: string;
-  weeks?: number; // how many weeks to show (default 16 = ~4 months)
+  weeks?: number;
+  selectedDate?: string | null;
+  onDaySelect?: (date: string) => void;
 }
 
 const WEEKDAYS = ['M', '', 'W', '', 'F', '', ''];
 
-/** Build a grid of dates: rows = 7 (Mon-Sun), cols = N weeks */
 function buildGrid(weeks: number): string[][] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const dayOfWeek = (today.getDay() + 6) % 7; // Mon=0
+  const dayOfWeek = (today.getDay() + 6) % 7;
   const startDate = new Date(today);
   startDate.setDate(startDate.getDate() - dayOfWeek - (weeks - 1) * 7);
 
@@ -32,19 +33,30 @@ function buildGrid(weeks: number): string[][] {
     for (let d = 0; d < 7; d++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + w * 7 + d);
-      if (date <= today) {
-        col.push(date.toISOString().slice(0, 10));
-      } else {
-        col.push('');
-      }
+      col.push(date <= today ? date.toISOString().slice(0, 10) : '');
     }
     grid.push(col);
   }
   return grid;
 }
 
-/** Pick which domain "won" the day based on activity counts */
-function dominantDomain(
+const TRACKER_DOMAIN: Record<string, string> = {
+  lift: 'Fitness', cardio: 'Fitness', meal: 'Fitness', steps: 'Fitness',
+  sleep: 'Mental Health', focus: 'Academics', read: 'Academics',
+  meditate: 'Mental Health', journal: 'Mental Health',
+  code: 'Career', apply: 'Career', network: 'Career',
+  save: 'Investing / Financial Growth', invest: 'Investing / Financial Growth',
+};
+
+const TRACKER_EMOJI: Record<string, string> = {
+  lift: '🏋️', cardio: '🏃', meal: '🍽️', steps: '👟',
+  sleep: '😴', focus: '🎯', read: '📖', meditate: '🧘',
+  code: '💻', apply: '📋', network: '🤝',
+  save: '💰', invest: '📈',
+};
+
+/** Build multiple emojis + dominant color for a day */
+function buildDayDisplay(
   trackerTypes: string[],
   goalDomains: string[],
   hasJournal: boolean,
@@ -52,62 +64,76 @@ function dominantDomain(
   hasAchievement: boolean,
   hasBet: boolean,
   hasEvent: boolean,
-): { emoji: string; color: string; tooltip: string } {
-  // Priority: achievement > goal domain > tracker domain > checkin > journal > bet > event
-  if (hasAchievement) return { emoji: '🏆', color: '#F59E0B', tooltip: 'Goal achieved' };
-
-  // Count domain occurrences from both trackers and goals
+): { emojis: string[]; color: string; tooltip: string } {
+  const emojis: string[] = [];
   const domainCounts: Record<string, number> = {};
-  const TRACKER_DOMAIN: Record<string, string> = {
-    lift: 'Fitness', cardio: 'Fitness', meal: 'Fitness', steps: 'Fitness', sleep: 'Mental Health',
-    focus: 'Academics', read: 'Academics', meditate: 'Mental Health', journal: 'Mental Health',
-    code: 'Career', apply: 'Career', network: 'Career',
-    save: 'Investing / Financial Growth', invest: 'Investing / Financial Growth',
-  };
 
+  // Achievement is always first
+  if (hasAchievement) emojis.push('🏆');
+
+  // Tracker emojis (unique)
+  const seenTrackers = new Set<string>();
   for (const t of trackerTypes) {
+    if (!seenTrackers.has(t) && TRACKER_EMOJI[t]) {
+      emojis.push(TRACKER_EMOJI[t]);
+      seenTrackers.add(t);
+    }
     const dom = TRACKER_DOMAIN[t] || 'Personal Goals';
     domainCounts[dom] = (domainCounts[dom] || 0) + 1;
   }
+
+  // Goal domain emojis
   for (const d of goalDomains) {
-    domainCounts[d] = (domainCounts[d] || 0) + 2; // goals weigh more
+    domainCounts[d] = (domainCounts[d] || 0) + 2;
+    const icon = DOMAIN_ICONS[d];
+    if (icon && !emojis.includes(icon)) emojis.push(icon);
   }
 
-  // Find top domain
+  if (hasCheckin && !emojis.includes('✅')) emojis.push('✅');
+  if (hasJournal && !emojis.includes('📓')) emojis.push('📓');
+  if (hasBet && !emojis.includes('🎰')) emojis.push('🎰');
+  if (hasEvent && !emojis.includes('📅')) emojis.push('📅');
+
+  // Find dominant color
   let topDomain = '';
   let topCount = 0;
   for (const [dom, count] of Object.entries(domainCounts)) {
     if (count > topCount) { topDomain = dom; topCount = count; }
   }
 
-  if (topDomain) {
-    return {
-      emoji: DOMAIN_ICONS[topDomain] || '🎯',
-      color: DOMAIN_COLORS[topDomain] || '#A78BFA',
-      tooltip: topDomain,
-    };
-  }
+  let color = '#A78BFA';
+  if (hasAchievement) color = '#F59E0B';
+  else if (topDomain) color = DOMAIN_COLORS[topDomain] || '#A78BFA';
+  else if (hasCheckin) color = '#10B981';
+  else if (hasJournal) color = '#8B5CF6';
+  else if (hasBet) color = '#EF4444';
+  else if (hasEvent) color = '#06B6D4';
 
-  if (hasCheckin) return { emoji: '✅', color: '#10B981', tooltip: 'Check-in' };
-  if (hasJournal) return { emoji: '📓', color: '#8B5CF6', tooltip: 'Journal' };
-  if (hasBet) return { emoji: '🎰', color: '#EF4444', tooltip: 'Bet placed' };
-  if (hasEvent) return { emoji: '📅', color: '#06B6D4', tooltip: 'Event attended' };
+  // Build tooltip
+  const parts: string[] = [];
+  if (hasAchievement) parts.push('Achievement');
+  if (topDomain) parts.push(topDomain);
+  if (hasCheckin) parts.push('Check-in');
+  if (hasJournal) parts.push('Journal');
+  if (hasBet) parts.push('Bet');
+  if (hasEvent) parts.push('Event');
 
-  return { emoji: '·', color: '#333', tooltip: '' };
+  return { emojis: emojis.slice(0, 3), color, tooltip: parts.join(' · ') };
 }
 
-const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 }) => {
+const ActivityCalendar: React.FC<ActivityCalendarProps> = ({
+  userId, weeks = 16, selectedDate, onDaySelect,
+}) => {
   const [dayMap, setDayMap] = useState<Record<string, DayData>>({});
   const [loaded, setLoaded] = useState(false);
 
   const grid = useMemo(() => buildGrid(weeks), [weeks]);
 
-  // Month labels from the grid
   const monthLabels = useMemo(() => {
     const labels: { label: string; col: number }[] = [];
     let lastMonth = -1;
     for (let w = 0; w < grid.length; w++) {
-      const dateStr = grid[w][0]; // Monday of that week
+      const dateStr = grid[w][0];
       if (!dateStr) continue;
       const month = new Date(dateStr + 'T00:00:00').getMonth();
       if (month !== lastMonth) {
@@ -139,8 +165,7 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
         };
       };
 
-      const results = await Promise.allSettled([
-        // Tracker entries
+      await Promise.allSettled([
         (async () => {
           const { data: trackers } = await supabase
             .from('trackers').select('id, type').eq('user_id', userId);
@@ -158,7 +183,6 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
           }
         })(),
 
-        // Journal entries
         supabase
           .from('node_journal_entries').select('logged_at')
           .eq('user_id', userId).gte('logged_at', since)
@@ -169,7 +193,6 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
             }
           }),
 
-        // Check-ins
         supabase
           .from('checkins').select('checked_in_at')
           .eq('user_id', userId).gte('checked_in_at', since)
@@ -180,7 +203,6 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
             }
           }),
 
-        // Achievements
         supabase
           .from('achievements').select('domain, created_at')
           .eq('user_id', userId).gte('created_at', since)
@@ -191,7 +213,6 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
             }
           }),
 
-        // Bets
         supabase
           .from('bets').select('created_at')
           .eq('user_id', userId).gte('created_at', since)
@@ -202,7 +223,6 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
             }
           }),
 
-        // Goal updates (from nodes updated_at)
         supabase
           .from('goal_trees').select('nodes').eq('user_id', userId).single()
           .then(({ data }) => {
@@ -217,7 +237,6 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
             }
           }),
 
-        // Event RSVPs
         supabase
           .from('event_rsvps').select('event_id, created_at')
           .eq('user_id', userId)
@@ -231,14 +250,16 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
           }),
       ]);
 
-      // Convert to DayData
       const result: Record<string, DayData> = {};
       for (const [date, info] of Object.entries(map)) {
-        const dom = dominantDomain(
+        const display = buildDayDisplay(
           info.trackerTypes, info.goalDomains,
           info.journal, info.checkin, info.achievement, info.bet, info.event,
         );
-        result[date] = { date, emoji: dom.emoji, color: dom.color, count: info.count, tooltip: dom.tooltip };
+        result[date] = {
+          date, emojis: display.emojis, color: display.color,
+          count: info.count, tooltip: display.tooltip,
+        };
       }
       setDayMap(result);
       setLoaded(true);
@@ -248,22 +269,19 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
   }, [userId, weeks]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const CELL = 15;
+  const CELL = 28;
   const GAP = 2;
 
   return (
     <Box sx={{ px: { xs: 1, sm: 0 }, mb: 2, overflowX: 'auto' }}>
-      <Box sx={{
-        display: 'inline-flex', flexDirection: 'column',
-        minWidth: 'fit-content',
-      }}>
+      <Box sx={{ display: 'inline-flex', flexDirection: 'column', minWidth: 'fit-content' }}>
         {/* Month labels */}
-        <Box sx={{ display: 'flex', ml: '18px', mb: '2px', height: 12 }}>
+        <Box sx={{ display: 'flex', ml: '22px', mb: '3px', height: 14, position: 'relative' }}>
           {monthLabels.map((m, i) => (
             <Typography key={i} sx={{
               position: 'absolute',
-              left: `${18 + m.col * (CELL + GAP)}px`,
-              fontSize: '0.5rem', fontWeight: 700, color: 'text.disabled',
+              left: `${22 + m.col * (CELL + GAP)}px`,
+              fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)',
               lineHeight: 1,
             }}>
               {m.label}
@@ -273,10 +291,10 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
 
         <Box sx={{ display: 'flex', position: 'relative' }}>
           {/* Weekday labels */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${GAP}px`, mr: '4px', pt: '14px' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${GAP}px`, mr: '4px', pt: '16px' }}>
             {WEEKDAYS.map((label, i) => (
-              <Box key={i} sx={{ width: 12, height: CELL, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <Typography sx={{ fontSize: '0.42rem', color: 'text.disabled', fontWeight: 600, lineHeight: 1 }}>
+              <Box key={i} sx={{ width: 16, height: CELL, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <Typography sx={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600, lineHeight: 1 }}>
                   {label}
                 </Typography>
               </Box>
@@ -284,47 +302,62 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ userId, weeks = 16 
           </Box>
 
           {/* Grid */}
-          <Box sx={{ display: 'flex', gap: `${GAP}px`, pt: '14px' }}>
+          <Box sx={{ display: 'flex', gap: `${GAP}px`, pt: '16px' }}>
             {grid.map((week, wi) => (
               <Box key={wi} sx={{ display: 'flex', flexDirection: 'column', gap: `${GAP}px` }}>
                 {week.map((dateStr, di) => {
-                  if (!dateStr) {
-                    return <Box key={di} sx={{ width: CELL, height: CELL }} />;
-                  }
+                  if (!dateStr) return <Box key={di} sx={{ width: CELL, height: CELL }} />;
+
                   const day = dayMap[dateStr];
                   const isToday = dateStr === todayStr;
+                  const isSelected = dateStr === selectedDate;
                   const hasActivity = !!day;
+                  const clickable = !!onDaySelect && hasActivity;
 
                   return (
                     <Box
                       key={di}
-                      title={day ? `${dateStr}: ${day.tooltip} (${day.count} activities)` : dateStr}
+                      onClick={() => clickable && onDaySelect!(dateStr)}
+                      title={day ? `${dateStr}: ${day.tooltip} (${day.count})` : dateStr}
                       sx={{
                         width: CELL, height: CELL,
-                        borderRadius: '3px',
+                        borderRadius: '4px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: hasActivity ? '0.55rem' : '0',
+                        gap: '1px',
+                        fontSize: '0.6rem',
                         lineHeight: 1,
-                        background: hasActivity
-                          ? `${day.color}18`
-                          : 'rgba(255,255,255,0.025)',
-                        border: '1px solid',
-                        borderColor: isToday
-                          ? 'rgba(167,139,250,0.5)'
+                        background: isSelected
+                          ? `${day?.color || '#A78BFA'}30`
                           : hasActivity
-                            ? `${day.color}30`
-                            : 'rgba(255,255,255,0.04)',
-                        cursor: 'default',
+                            ? `${day.color}18`
+                            : 'rgba(255,255,255,0.025)',
+                        border: '1px solid',
+                        borderColor: isSelected
+                          ? `${day?.color || '#A78BFA'}70`
+                          : isToday
+                            ? 'rgba(167,139,250,0.5)'
+                            : hasActivity
+                              ? `${day.color}30`
+                              : 'rgba(255,255,255,0.04)',
+                        cursor: clickable ? 'pointer' : 'default',
                         transition: 'all 0.1s ease',
-                        '&:hover': {
-                          transform: hasActivity ? 'scale(1.4)' : 'none',
+                        overflow: 'hidden',
+                        '&:hover': clickable ? {
+                          transform: 'scale(1.3)',
+                          zIndex: 10,
+                          borderColor: `${day?.color}70`,
+                          background: `${day?.color}35`,
+                        } : {
+                          transform: hasActivity ? 'scale(1.2)' : 'none',
                           zIndex: hasActivity ? 10 : 0,
-                          borderColor: hasActivity ? `${day.color}60` : 'rgba(255,255,255,0.08)',
-                          background: hasActivity ? `${day.color}30` : 'rgba(255,255,255,0.04)',
                         },
                       }}
                     >
-                      {hasActivity ? day.emoji : ''}
+                      {hasActivity && day.emojis.map((e, i) => (
+                        <span key={i} style={{ fontSize: day.emojis.length > 2 ? '0.45rem' : day.emojis.length > 1 ? '0.5rem' : '0.65rem' }}>
+                          {e}
+                        </span>
+                      ))}
                     </Box>
                   );
                 })}

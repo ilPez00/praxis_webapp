@@ -11,6 +11,8 @@ import NoteGoalDetail from './NoteGoalDetail';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import DiaryFeed from './DiaryFeed';
 import ActivityCalendar from './ActivityCalendar';
+import DayDetailView from './DayDetailView';
+import AxiomNoteCard from './AxiomNoteCard';
 import GoalNotesPanel from './GoalNotesPanel';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import Slider from '@mui/material/Slider';
@@ -127,6 +129,9 @@ const NotesPage: React.FC = () => {
   // Suspend dialog
   const [suspendNode, setSuspendNode] = useState<FrontendGoalNode | null>(null);
   const [suspending, setSuspending] = useState(false);
+
+  // Calendar day detail
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
 
   const currentUserId = user?.id;
 
@@ -555,8 +560,26 @@ const NotesPage: React.FC = () => {
           </Stack>
         </Box>
 
-        {/* Activity calendar */}
-        {currentUserId && <ActivityCalendar userId={currentUserId} />}
+        {/* Axiom Daily Brief */}
+        {currentUserId && <AxiomNoteCard userId={currentUserId} />}
+
+        {/* Activity calendar — clickable days */}
+        {currentUserId && (
+          <ActivityCalendar
+            userId={currentUserId}
+            selectedDate={selectedCalendarDate}
+            onDaySelect={(date) => setSelectedCalendarDate(prev => prev === date ? null : date)}
+          />
+        )}
+
+        {/* Day Detail — shown when a calendar day is clicked */}
+        {currentUserId && selectedCalendarDate && (
+          <DayDetailView
+            userId={currentUserId}
+            date={selectedCalendarDate}
+            onClose={() => setSelectedCalendarDate(null)}
+          />
+        )}
 
         {/* Main content - Goal tree with diary below, infinitely scrollable */}
         <Box sx={{

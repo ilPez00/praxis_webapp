@@ -231,67 +231,50 @@ export class AxiomScanService {
   }
 
   public static async runGlobalScan() {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const today = new Date().toISOString().slice(0, 10);
 
+    // Get ALL active users (no frequency limits - always generate fresh briefs)
     const { data: users, error: userError } = await supabase
       .from('profiles')
-      .select('id, name, city, is_premium, is_admin, minimal_ai_mode, last_activity_date')
-      .gte('last_activity_date', sevenDaysAgo.toISOString().slice(0, 10));
+      .select('id, name, city, is_premium, is_admin, minimal_ai_mode, last_activity_date');
 
     if (userError) throw userError;
     if (!users || users.length === 0) return;
 
-    // Build pending list respecting premium/free frequency limits
-    const pendingUsers: typeof users = [];
-    for (const user of users) {
-      const isPro = user.is_premium || user.is_admin;
-      if (!isPro) {
-        // Free users: only generate once per 7 days
-        const { count } = await supabase
-          .from('axiom_daily_briefs')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .gte('date', sevenDaysAgo.toISOString().slice(0, 10));
-        if ((count ?? 0) >= 1) {
-          logger.info(`[AxiomScan] Skipping free user ${user.name} - brief already generated this week.`);
-          continue;
-        }
-      } else {
-        // Pro users: skip if already generated today
-        const { count } = await supabase
-          .from('axiom_daily_briefs')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .gte('date', today);
-        if ((count ?? 0) >= 1) {
-          logger.info(`[AxiomScan] Skipping pro user ${user.name} - brief already generated today.`);
-          continue;
-        }
-      }
-      pendingUsers.push(user);
-    }
+    // Filter to only users who have been active in last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const activeUsers = users.filter(u => 
+      !u.last_activity_date || new Date(u.last_activity_date) >= thirtyDaysAgo
+    );
 
-    logger.info(`[AxiomScan] ${pendingUsers.length} users need briefs.`);
+    logger.info(`[AxiomScan] ${activeUsers.length} active users found for daily brief generation.`);
 
-    // Process up to 3 concurrently to stay within free-tier RPM
-    const CONCURRENCY = 3;
-    for (let i = 0; i < pendingUsers.length; i += CONCURRENCY) {
-      const batch = pendingUsers.slice(i, i + CONCURRENCY);
-      await Promise.all(batch.map(async user => {
+    // Process up to 5 concurrently (increased for better throughput)
+    const CONCURRENCY = 5;
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (let i = 0; i < activeUsers.length; i += CONCURRENCY) {
+      const batch = activeUsers.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(batch.map(async user => {
         try {
-          const useLLM = (user.is_premium || user.is_admin) && !user.minimal_ai_mode;
-          await this.generateDailyBrief(user.id, user.name, user.city || 'Unknown', useLLM);
+          // ALWAYS use LLM for all users now
+          await this.generateDailyBrief(user.id, user.name || 'Student', user.city || 'Unknown', true);
+          successCount++;
         } catch (err: any) {
-          logger.warn(`[AxiomScan] Failed for ${user.name}: ${err.message}`);
+          logger.warn(`[AxiomScan] Failed for ${user.name || user.id}: ${err.message}`);
+          failCount++;
         }
       }));
+      
       // Small pause between batches to respect RPM limits
-      if (i + CONCURRENCY < pendingUsers.length) {
-        await new Promise(resolve => setTimeout(resolve, 4000));
+      if (i + CONCURRENCY < activeUsers.length) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
+    
+    logger.info(`[AxiomScan] Scan complete: ${successCount} succeeded, ${failCount} failed.`);
   }
 
   /**
@@ -323,6 +306,53 @@ export class AxiomScanService {
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
     const userDomains = extractUserDomains(nodes);
+
+    // --- Phase 2b: Build daily recap from yesterday's notes/trackers ---
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    const yStart = `${yesterdayStr}T00:00:00`;
+    const yEnd = `${yesterdayStr}T23:59:59`;
+
+    let recapText = '';
+    try {
+      const trackerIds = (trackersRes.data || []).map((t: any) => t.id);
+      const typeMap = Object.fromEntries((trackersRes.data || []).map((t: any) => [t.id, t.type]));
+
+      const [trackerEntries, journalEntries, checkinEntries] = await Promise.all([
+        trackerIds.length > 0
+          ? supabase.from('tracker_entries').select('tracker_id, data')
+              .in('tracker_id', trackerIds).gte('logged_at', yStart).lte('logged_at', yEnd)
+              .then(({ data }) => (data || []).map((e: any) => {
+                const tType = typeMap[e.tracker_id] || 'log';
+                const d = e.data || {};
+                if (tType === 'lift') return `Lifted: ${d.exercise || '?'} ${d.sets}x${d.reps} @ ${d.weight}kg`;
+                if (tType === 'cardio') return `Cardio: ${d.activity || '?'} ${d.duration || '?'}min`;
+                if (tType === 'meal') return `Ate: ${d.food || '?'} ${d.calories ? d.calories + ' kcal' : ''}`;
+                if (tType === 'steps') return `Walked: ${d.steps || 0} steps`;
+                if (tType === 'sleep') return `Slept: ${d.hours || '?'}h`;
+                return `Logged: ${tType}`;
+              }))
+          : Promise.resolve([]),
+        supabase.from('node_journal_entries').select('note, mood')
+          .eq('user_id', userId).gte('logged_at', yStart).lte('logged_at', yEnd)
+          .then(({ data }) => (data || []).map((e: any) =>
+            `Journal${e.mood ? ' (' + e.mood + ')' : ''}: ${(e.note || '').slice(0, 80)}`
+          )),
+        supabase.from('checkins').select('mood, win_of_the_day, streak_day')
+          .eq('user_id', userId).gte('checked_in_at', yStart).lte('checked_in_at', yEnd)
+          .then(({ data }) => (data || []).map((e: any) =>
+            `Check-in day ${e.streak_day || '?'}${e.win_of_the_day ? ': ' + e.win_of_the_day : ''}`
+          )),
+      ]);
+
+      const recapItems = [...trackerEntries, ...journalEntries, ...checkinEntries];
+      if (recapItems.length > 0) {
+        recapText = `Yesterday you logged ${recapItems.length} activities: ${recapItems.slice(0, 6).join('. ')}.`;
+      }
+    } catch (err) {
+      logger.warn('[AxiomScan] Recap generation failed (non-fatal):', err);
+    }
 
     // --- Phase 3: Generate FULL LLM-powered protocol ---
     const aiCoachingService = new AICoachingService();
@@ -364,6 +394,7 @@ CONTEXT:
 - Goals: ${JSON.stringify(coachingContext.goals.slice(0, 5))}
 - Recent Check-ins: ${JSON.stringify(checkinsRes.data?.slice(0, 3))}
 - Tracker Activity: ${metrics.trackerTrends?.length || 0} active trackers
+${recapText ? `- Yesterday's Activity: ${recapText}` : '- Yesterday: No activity logged'}
 
 Generate JSON with:
 1. "message": Warm personalized greeting (2-3 sentences) acknowledging their journey
@@ -442,6 +473,7 @@ TONE: Warm encouraging curious - NEVER critical. Focus on what's working. Ask ab
     // --- Phase 5: Store brief ---
     const recommendations = {
       message: axiomMessage,
+      recap: recapText || null,
       match: match,
       event: event,
       place: place,
