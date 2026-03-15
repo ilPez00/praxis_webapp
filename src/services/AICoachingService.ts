@@ -44,13 +44,13 @@ export interface CoachingReport {
   network: string;
 }
 
-const AXIOM_IDENTITY_DEFAULT = `You are Axiom — a wise, warm, and practical life coach. Your tone is friendly and direct. You give practical, concrete guidance. You never cite books by name or author. You just give people what they need to move forward.`;
+const AXIOM_IDENTITY_DEFAULT = `You are Axiom - a wise, warm, and practical life coach. Your tone is friendly and direct. You give practical, concrete guidance. You never cite books by name or author. You just give people what they need to move forward.`;
 
 const engagementMetricService = new EngagementMetricService();
 
 /**
  * Template-based coaching responses for Minimal AI Mode.
- * Uses engagement metrics for personalization — no LLM calls.
+ * Uses engagement metrics for personalization - no LLM calls.
  */
 function generateTemplateMotivation(context: CoachingContext): string {
   const { engagementMetrics, streak, praxisPoints, goals } = context;
@@ -62,7 +62,7 @@ function generateTemplateMotivation(context: CoachingContext): string {
   // Archetype-specific opening
   const archetypeOpenings: Record<string, string> = {
     consolidator: `You excel at finishing what you start.`,
-    explorer: `Your curiosity is your superpower — now focus it.`,
+    explorer: `Your curiosity is your superpower - now focus it.`,
     achiever: `Your momentum is strong. Keep building.`,
     struggler: `Every expert was once a beginner.`,
     socializer: `Your connections make you stronger.`,
@@ -78,7 +78,7 @@ function generateTemplateMotivation(context: CoachingContext): string {
     case 'streak_driven':
       encouragement = streak > 0 
         ? `Your ${streak}-day streak proves your commitment. Protect it.` 
-        : `Start your streak today — every journey begins with a single step.`;
+        : `Start your streak today - every journey begins with a single step.`;
       break;
     case 'progress_focused':
       encouragement = `With ${praxisPoints.toLocaleString()} Praxis Points, you've built real momentum. Keep stacking.`;
@@ -89,7 +89,7 @@ function generateTemplateMotivation(context: CoachingContext): string {
     default:
       encouragement = streak > 0
         ? `Your ${streak}-day streak shows commitment.`
-        : `Starting is the hardest part — you have already begun.`;
+        : `Starting is the hardest part - you have already begun.`;
   }
   
   const goalCount = goals.length;
@@ -114,7 +114,7 @@ function generateTemplateStrategy(context: CoachingContext): CoachingReport['str
       // High stagnation: suggest tiny actions
       nextStep = goal.progress < 25
         ? 'Commit to just 2 minutes on this today.'
-        : 'What's the absolute smallest next step? Do that.';
+        : 'What is the absolute smallest next step? Do that.';
     } else {
       // Normal: standard advice
       nextStep = goal.progress < 25
@@ -123,7 +123,7 @@ function generateTemplateStrategy(context: CoachingContext): CoachingReport['str
         ? 'Identify the biggest obstacle right now and tackle it first.'
         : goal.progress < 75
         ? 'Review what is working well and double down on it.'
-        : 'Plan your final push — what is the last 10% that completes this?';
+        : 'Plan your final push - what is the last 10% that completes this?';
     }
 
     return {
@@ -267,7 +267,7 @@ export class AICoachingService {
   ): Promise<string> {
     const errors: string[] = [];
 
-    // 1. Try DeepSeek first — cheapest per token when key is configured
+    // 1. Try DeepSeek first - cheapest per token when key is configured
     if (this.deepseekApiKey) {
       try {
         const response = await fetch('https://api.deepseek.com/chat/completions', {
@@ -382,7 +382,7 @@ export class AICoachingService {
       return generateTemplateReport(context);
     }
 
-    // Premium "Axiom Boost" — real LLM call
+    // Premium "Axiom Boost" - real LLM call
     logger.info('[AICoachingService] Using LLM for premium report (Axiom Boost)');
     const identity = await this.getIdentity();
     const prompt = `${identity}\nStudent: ${context.userName}\nLanguage: ${context.language}\nGoals: ${JSON.stringify(context.goals)}\nActionable JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}. Respond concise in ${context.language}.`;
@@ -409,7 +409,7 @@ export class AICoachingService {
       return generateTemplateWeeklyNarrative(stats);
     }
 
-    // Premium — real LLM call
+    // Premium - real LLM call
     logger.info('[AICoachingService] Using LLM for premium weekly narrative');
     const identity = await this.getIdentity();
     const lang = stats.language || 'en';
@@ -435,11 +435,11 @@ export class AICoachingService {
       logger.info('[AICoachingService] Using template-based response (Minimal AI Mode)');
       // Simple template: acknowledge + encourage + suggest action
       const goalCount = context.goals.length;
-      const streakMsg = context.streak > 0 ? `Your ${context.streak}-day streak shows commitment.` : 'Starting is the hardest part — you have already begun.';
+      const streakMsg = context.streak > 0 ? `Your ${context.streak}-day streak shows commitment.` : 'Starting is the hardest part - you have already begun.';
       return `${streakMsg} With ${goalCount} goals in focus, try this: pick ONE small action today that moves the needle. Progress compounds.`;
     }
 
-    // Premium — real LLM call
+    // Premium - real LLM call
     logger.info('[AICoachingService] Using LLM for premium coaching response');
     const identity = await this.getIdentity();
     const prompt = `${identity}\nContext: ${JSON.stringify(context)}\nUser: ${userPrompt}\nReply concisely in ${context.language}.`;

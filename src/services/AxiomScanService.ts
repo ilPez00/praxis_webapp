@@ -16,7 +16,7 @@ const engagementMetricService = new EngagementMetricService();
  * READS: Trackers, notes, public posts, goal data
  * DOES NOT READ: Private messages, DMs
  * 
- * TONE: Encouraging, suggestive, curious — NOT critical
+ * TONE: Encouraging, suggestive, curious - NOT critical
  * - Focus on what's working
  * - Ask about struggles instead of pointing them out
  * - Suggest small actions, don't demand
@@ -37,15 +37,15 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
   const { interestedTopics, recentAchievements, currentFocus } = recommendationContext || {};
 
   // Message templates based on archetype WITH content context
-  // TONE: Warm, encouraging, curious — never critical
+  // TONE: Warm, encouraging, curious - never critical
   const messages: Record<string, string> = {
     consolidator: `Good morning, ${userName}. You have a gift for finishing what you start. ${currentFocus ? `How's "${currentFocus}" coming along?` : 'What feels meaningful to complete today?'}`,
-    explorer: `${userName}, your curiosity is your superpower. ${interestedTopics?.[0] ? `I notice ${interestedTopics[0]} has been on your mind — what's one small step?` : 'What's calling to you today?'}`,
-    achiever: `${userName}, your momentum is inspiring. ${recentAchievements?.[0] ? `After "${recentAchievements[0]}", what's next on your list?` : 'Keep building — you're on a roll.'}`,
+    explorer: `${userName}, your curiosity is your superpower. ${interestedTopics?.[0] ? `I notice ${interestedTopics[0]} has been on your mind - what's one small step?` : 'What's calling to you today?'}`,
+    achiever: `${userName}, your momentum is inspiring. ${recentAchievements?.[0] ? `After "${recentAchievements[0]}", what's next on your list?` : 'Keep building - you're on a roll.'}`,
     struggler: `${userName}, every expert was once a beginner. ${trackerTrends?.[0] ? `How's "${trackerTrends[0].trackerName}" going?` : 'What feels doable today, even if small?'}`,
-    socializer: `${userName}, your connections make you stronger. ${socialEngagementScore > 60 ? 'Who could you share a win with today?' : 'Consider reaching out to someone — they'd love to hear from you.'}`,
+    socializer: `${userName}, your connections make you stronger. ${socialEngagementScore > 60 ? 'Who could you share a win with today?' : 'Consider reaching out to someone - they'd love to hear from you.'}`,
     lone_wolf: `${userName}, you do your best work when you trust yourself. ${currentFocus ? `What does your intuition say about "${currentFocus}"?` : 'What feels like the right next step?'}`,
-    burnout_risk: `${userName}, you've been giving a lot. ${trackerTrends?.some(t => t.direction === 'declining') ? `Some things feel harder lately — what would support look like?` : 'What would feel restorative today?'}`,
+    burnout_risk: `${userName}, you've been giving a lot. ${trackerTrends?.some(t => t.direction === 'declining') ? `Some things feel harder lately - what would support look like?` : 'What would feel restorative today?'}`,
   };
 
   // Routine templates based on motivation style
@@ -78,13 +78,13 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
   };
 
   // Challenge suggestions based on risk factors
-  // TONE: Inviting, not demanding — frame as opportunities
+  // TONE: Inviting, not demanding - frame as opportunities
   const challenges: Record<string, { type: 'bet' | 'duel'; target: string; terms: string }> = {
-    streak_about_to_break: { type: 'bet', target: 'Check in today', terms: 'Your streak is worth protecting — want to keep it going?' },
+    streak_about_to_break: { type: 'bet', target: 'Check in today', terms: 'Your streak is worth protecting - want to keep it going?' },
     goal_stagnation: { type: 'bet', target: 'Update any goal', terms: 'What would feel like progress, even tiny?' },
     social_isolation: { type: 'bet', target: 'Give honor to someone', terms: 'Who could use encouragement today?' },
     overwhelm: { type: 'bet', target: 'Complete one tiny task', terms: 'What's the smallest thing that would feel good?' },
-    declining_activity: { type: 'bet', target: 'Show up for 5 minutes', terms: 'Just start — see how it feels' },
+    declining_activity: { type: 'bet', target: 'Show up for 5 minutes', terms: 'Just start - see how it feels' },
     perfectionism_trap: { type: 'bet', target: 'Mark something as done', terms: 'What's "good enough" today?' },
   };
 
@@ -98,26 +98,26 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
   // TONE: Supportive suggestions, not prescriptions
   const resources: any[] = [];
   
-  // Tracker-based suggestions — ASK about declining, don't criticize
+  // Tracker-based suggestions - ASK about declining, don't criticize
   if (trackerTrends?.some(t => t.direction === 'declining')) {
     const declining = trackerTrends.find(t => t.direction === 'declining');
     resources.push({ 
       goal: declining?.trackerName || 'Consistency', 
       suggestion: `How's ${declining?.trackerName || 'this'} going? Want to talk about what's been hard?`, 
-      details: `You're ${Math.abs(declining?.weekOverWeekChange || 10)}% from last week — no judgment, just curious` 
+      details: `You're ${Math.abs(declining?.weekOverWeekChange || 10)}% from last week - no judgment, just curious` 
     });
   }
   
-  // Note theme-based suggestions — encourage reflection
+  // Note theme-based suggestions - encourage reflection
   if (topNoteThemes?.[0]) {
     resources.push({ 
       goal: topNoteThemes[0], 
-      suggestion: `You've been writing about "${topNoteThemes[0]}" — what's it teaching you?`, 
+      suggestion: `You've been writing about "${topNoteThemes[0]}" - what's it teaching you?`, 
       details: 'Your reflections matter' 
     });
   }
   
-  // Archetype-based suggestions — supportive, not prescriptive
+  // Archetype-based suggestions - supportive, not prescriptive
   if (archetype === 'explorer' || archetype === 'burnout_risk') {
     resources.push({ 
       goal: 'Focus', 
@@ -140,11 +140,11 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
     });
   }
   
-  // Event follow-up — ASK about failed events, don't criticize
+  // Event follow-up - ASK about failed events, don't criticize
   if (riskFactors.includes('declining_activity')) {
     resources.push({ 
       goal: 'Check-in', 
-      suggestion: 'I noticed things have been quieter lately — how are you doing?', 
+      suggestion: 'I noticed things have been quieter lately - how are you doing?', 
       details: 'No pressure, just checking in' 
     });
   }
@@ -161,7 +161,7 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
 }
 
 // ---------------------------------------------------------------------------
-// Server-side pick scoring — replaces raw JSON dumps to LLM
+// Server-side pick scoring - replaces raw JSON dumps to LLM
 // ---------------------------------------------------------------------------
 
 interface PickedMatch { id: string; name: string }
@@ -255,7 +255,7 @@ export class AxiomScanService {
           .eq('user_id', user.id)
           .gte('date', sevenDaysAgo.toISOString().slice(0, 10));
         if ((count ?? 0) >= 1) {
-          logger.info(`[AxiomScan] Skipping free user ${user.name} — brief already generated this week.`);
+          logger.info(`[AxiomScan] Skipping free user ${user.name} - brief already generated this week.`);
           continue;
         }
       } else {
@@ -266,7 +266,7 @@ export class AxiomScanService {
           .eq('user_id', user.id)
           .gte('date', today);
         if ((count ?? 0) >= 1) {
-          logger.info(`[AxiomScan] Skipping pro user ${user.name} — brief already generated today.`);
+          logger.info(`[AxiomScan] Skipping pro user ${user.name} - brief already generated today.`);
           continue;
         }
       }
@@ -342,7 +342,7 @@ export class AxiomScanService {
       recommendations.event = {
         id: topEvent.id,
         title: topEvent.title,
-        reason: 'Coming up soon — worth checking out',
+        reason: 'Coming up soon - worth checking out',
       };
     }
 

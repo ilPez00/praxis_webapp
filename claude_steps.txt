@@ -192,3 +192,20 @@ Session 59: Offline Note Editing & PWA Hardening
 - Action: Enabled service worker registration in index.tsx for production.
 - Action: Verified PWA "App Shell" caching to allow launching app without network.
 - Sign: Gemini
+
+Session 60: Notes as Full Goal Tree Replacement
+- Made Notes page a complete replacement for GoalTreePage — all goal management inline
+- Added edit/branch dialog (create root goals with domain, add sub-goals, edit metadata + progress)
+- Added betting dialog (stake PP on goal completion with deadline)
+- Added verification dialog (evidence upload + DM partner selection for peer verification)
+- Added achievement dialog (celebrate completion, share to Twitter/native, post to community feed)
+- Added suspend dialog (pause goal for 50 PP via /points/spend)
+- NotesCardTree: added onAddGoal prop with dashed "Add New Goal" button at top of tree
+- All nodes always visible (greyed out if inactive/suspended/completed)
+- Reduced tracker log PP from +10 to +1 (backend trackerController.ts)
+- NoteGoalDetail renders ABOVE GoalWorkspaceSheet for above-the-fold visibility
+- Tracker pill clicks now select the goal AND focus the tracker widget
+- Files: NotesPage.tsx (rewrite, ~900 lines), NotesCardTree.tsx, NoteGoalDetail.tsx, GoalWidgets.tsx, trackerController.ts
+- Verification: TypeScript check passes (0 source errors), committed 902f553, pushed to both remotes
+- Next: Test on Vercel deployment, verify all dialogs work end-to-end
+- Sign: Claude
