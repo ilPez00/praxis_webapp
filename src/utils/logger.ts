@@ -1,7 +1,11 @@
 import { createLogger, format, transports } from 'winston';
 import * as crypto from 'crypto';
-const { v4: uuidv4 } = crypto as any; // Use Node.js built-in crypto for UUID v4
 const { combine, timestamp, printf, colorize, json } = format;
+
+// Simple UUID v4 generator using Node.js crypto (avoids ESM uuid package)
+const generateUUID = () => {
+  return crypto.randomUUID();
+};
 
 // Custom format for human-readable logs (development)
 const devFormat = printf(({ level, message, timestamp, stack, traceId, userId, method, path, durationMs }) => {
@@ -54,7 +58,7 @@ const logger = createLogger({
  */
 export const requestTracer = (req: any, res: any, next: () => void) => {
   // Generate or extract trace ID
-  const traceId = req.headers['x-trace-id'] as string || uuidv4();
+  const traceId = req.headers['x-trace-id'] as string || generateUUID();
   req.traceId = traceId;
   
   // Add trace ID to response headers
