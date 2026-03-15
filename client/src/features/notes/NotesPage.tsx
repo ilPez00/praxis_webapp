@@ -10,6 +10,7 @@ import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspac
 import NoteGoalDetail from './NoteGoalDetail';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import DiaryTimeline from './DiaryTimeline';
+import ActivityCalendar from './ActivityCalendar';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import Slider from '@mui/material/Slider';
 import HistoryIcon from '@mui/icons-material/History';
@@ -539,6 +540,9 @@ const NotesPage: React.FC = () => {
             )}
           </Stack>
         </Box>
+
+        {/* Activity calendar */}
+        {currentUserId && <ActivityCalendar userId={currentUserId} />}
 
         {/* View toggle */}
         <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5, px: { xs: 2, sm: 0 } }}>
