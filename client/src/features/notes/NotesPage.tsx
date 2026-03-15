@@ -256,32 +256,41 @@ const NotesPage: React.FC = () => {
               />
             </Box>
 
-            {/* Desktop: right panel workspace */}
-            {!isMobile && selectedNode && (
+            {/* Desktop: right panel — workspace + trackers + insights */}
+            {!isMobile && (
               <Box sx={{ width: '60%', overflowY: 'auto' }}>
-                <GoalWorkspaceSheet
-                  node={selectedNode}
-                  allNodes={backendNodes}
-                  open={true}
-                  onClose={() => setSelectedNode(null)}
-                  onProgressChange={handleProgressUpdate}
-                  onNodeSelect={handleNodeSelect}
-                  onAddSubgoal={handleAddSubgoal}
-                  onLogTracker={handleLogTracker}
-                  onAction={handleAction}
-                  userId={currentUserId || ''}
-                  actions={NOTES_ACTIONS}
-                />
-              </Box>
-            )}
+                {selectedNode ? (
+                  <GoalWorkspaceSheet
+                    node={selectedNode}
+                    allNodes={backendNodes}
+                    open={true}
+                    onClose={() => setSelectedNode(null)}
+                    onProgressChange={handleProgressUpdate}
+                    onNodeSelect={handleNodeSelect}
+                    onAddSubgoal={handleAddSubgoal}
+                    onLogTracker={handleLogTracker}
+                    onAction={handleAction}
+                    userId={currentUserId || ''}
+                    actions={NOTES_ACTIONS}
+                  />
+                ) : (
+                  <Box sx={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'rgba(255,255,255,0.2)', py: 6,
+                  }}>
+                    <Typography sx={{ color: 'inherit' }}>Select a goal to track progress</Typography>
+                  </Box>
+                )}
 
-            {/* Desktop: placeholder when no node selected */}
-            {!isMobile && !selectedNode && (
-              <Box sx={{
-                width: '60%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'rgba(255,255,255,0.2)',
-              }}>
-                <Typography sx={{ color: 'inherit' }}>Select a goal to track progress</Typography>
+                {/* Trackers + Insights inside the right panel */}
+                {currentUserId && (
+                  <Box sx={{ px: 2.5, pb: 3 }}>
+                    <Stack spacing={3}>
+                      <TrackerSection userId={currentUserId} />
+                      <WeeklyNarrativeWidget userId={currentUserId} />
+                    </Stack>
+                  </Box>
+                )}
               </Box>
             )}
           </Box>
@@ -304,9 +313,9 @@ const NotesPage: React.FC = () => {
           />
         )}
 
-        {/* Trackers + Insights below the tree */}
-        {currentUserId && (
-          <Box sx={{ mt: 4, px: { xs: 2, sm: 0 } }}>
+        {/* Mobile: trackers below tree */}
+        {isMobile && currentUserId && (
+          <Box sx={{ mt: 4, px: 2 }}>
             <Stack spacing={3}>
               <TrackerSection userId={currentUserId} />
               <WeeklyNarrativeWidget userId={currentUserId} />
