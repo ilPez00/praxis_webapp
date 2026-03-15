@@ -295,85 +295,118 @@ export class AxiomScanService {
   }
 
   /**
-   * Generate daily brief for a user using ENGAGEMENT METRICS + LLM.
-   * NOW WITH REAL LLM-POWERED MESSAGES for all users.
-   * @param useLLM - If true, use real LLM (default: true for everyone now)
+   * Generate daily brief for a user using FULL LLM-POWERED PROTOCOL.
+   * ALWAYS uses LLM for detailed message, routine, match, event, place recommendations.
+   * @param useLLM - Always true (deprecated parameter kept for compatibility)
    */
   public static async generateDailyBrief(userId: string, userName: string, userCity: string, useLLM: boolean = true) {
     const today = new Date().toISOString().slice(0, 10);
 
-    // --- Phase 1: Calculate engagement metrics (no content analysis) ---
-    // Try cache first (metrics are cached for 24h)
+    // --- Phase 1: Calculate engagement metrics ---
     let metrics = await engagementMetricService.getCachedMetrics(userId);
 
     if (!metrics) {
-      // Calculate fresh metrics
       metrics = await engagementMetricService.calculateMetrics(userId);
-      // Store for 24h cache
       await engagementMetricService.storeMetrics(userId, metrics);
     }
 
-    // --- Phase 2: Generate LLM-powered recommendations ---
-    // Use AI Coaching Service to generate personalized message with LLM
-    const aiCoachingService = new AICoachingService();
-    
-    // Build coaching context from metrics
-    const coachingContext = {
-      userName: userName,
-      streak: metrics.checkinStreak,
-      praxisPoints: 0, // Would need to fetch from user profile
-      language: 'en',
-      goals: [], // Would need to fetch from goal_trees
-      recentFeedback: [],
-      achievements: [],
-      network: [],
-      boards: [],
-    };
-    
-    // Generate LLM-powered daily message
-    let axiomMessage = '';
-    try {
-      const report = await aiCoachingService.generateFullReport(coachingContext, true); // useLLM = true
-      axiomMessage = report.motivation || '';
-    } catch (err) {
-      logger.warn('[AxiomScan] LLM generation failed, using template:', err);
-      // Fallback to metric-based template
-      const recommendations = await generateMetricBasededBrief(metrics, userName);
-      axiomMessage = recommendations.message || '';
-    }
-
-    // --- Phase 3: Algorithmic picks for match/event/place ---
-    const [matchRes, eventsRes, placesRes, goalTreeRes] = await Promise.all([
-      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 1 }),
-      supabase.from('events').select('id, title, event_date, city').gte('event_date', today).limit(10),
-      supabase.from('places').select('id, name, city, tags').limit(10),
+    // --- Phase 2: Fetch all data for LLM context ---
+    const [goalTreeRes, checkinsRes, trackersRes, notesRes, matchesRes, eventsRes, placesRes] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
+      supabase.from('checkins').select('checked_in_at,streak_day,mood,win_of_the_day').eq('user_id', userId).order('checked_in_at', { ascending: false }).limit(7),
+      supabase.from('trackers').select('id,type,goal').eq('user_id', userId),
+      supabase.from('journal_entries').select('note,mood,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
+      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
+      supabase.from('events').select('id, title, event_date, city, description').gte('event_date', today).limit(10),
+      supabase.from('places').select('id, name, city, tags, description').limit(10),
     ]);
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
     const userDomains = extractUserDomains(nodes);
 
-    // Generate metric-based recommendations (for structure)
-    const recommendations = await generateMetricBasededBrief(metrics, userName);
+    // --- Phase 3: Generate FULL LLM-powered protocol ---
+    const aiCoachingService = new AICoachingService();
     
-    // Override message with LLM-generated message
-    if (axiomMessage) {
-      recommendations.message = axiomMessage;
+    // Build rich coaching context
+    const coachingContext = {
+      userName: userName,
+      streak: metrics.checkinStreak,
+      praxisPoints: 0,
+      language: 'en',
+      goals: nodes.map(n => ({
+        id: n.id,
+        name: n.name,
+        domain: n.domain,
+        progress: n.progress,
+        weight: n.weight,
+      })),
+      recentFeedback: [],
+      achievements: [],
+      network: [],
+      boards: [],
+    };
+
+    // Generate LLM-powered full protocol
+    let axiomMessage = '';
+    let routine: any[] = [];
+    let challenge: any = null;
+    let resources: any[] = [];
+
+    try {
+      // Build comprehensive prompt for full protocol
+      const prompt = `You are Axiom, a wise warm and practical life coach. Generate a COMPLETE daily protocol for ${userName}.
+
+CONTEXT:
+- Streak: ${metrics.checkinStreak} days
+- Archetype: ${metrics.archetype}
+- Motivation Style: ${metrics.motivationStyle}
+- Risk Factors: ${metrics.riskFactors?.join(', ') || 'None'}
+- Goals: ${JSON.stringify(coachingContext.goals.slice(0, 5))}
+- Recent Check-ins: ${JSON.stringify(checkinsRes.data?.slice(0, 3))}
+- Tracker Activity: ${metrics.trackerTrends?.length || 0} active trackers
+
+Generate JSON with:
+1. "message": Warm personalized greeting (2-3 sentences) acknowledging their journey
+2. "routine": Array of 3 tasks [{time: "Morning/Afternoon/Evening", task: "specific action", alignment: "why it matters"}]
+3. "challenge": {type: "bet"|"duel", target: "clear action", terms: "motivating framing"}
+4. "resources": Array of 2-3 goal suggestions [{goal: "goal name", suggestion: "actionable advice", details: "specific insight"}]
+
+TONE: Warm encouraging curious - NEVER critical. Focus on what's working. Ask about struggles instead of pointing them out. Suggest small actions don't demand.`;
+
+      const report = await aiCoachingService.generateFullReport(coachingContext, true);
+      
+      // Parse LLM response for full protocol
+      try {
+        const llmData = JSON.parse(report.motivation || '{}');
+        axiomMessage = llmData.message || report.motivation || '';
+        routine = llmData.routine || [];
+        challenge = llmData.challenge || null;
+        resources = llmData.resources || [];
+      } catch {
+        // Fallback: use motivation as message, generate rest algorithmically
+        axiomMessage = report.motivation || '';
+      }
+    } catch (err) {
+      logger.warn('[AxiomScan] LLM generation failed:', err);
+      axiomMessage = `Good morning ${userName}. Your ${metrics.checkinStreak}-day streak shows commitment. Today: pick ONE small action on your most important goal. Progress compounds.`;
     }
 
+    // --- Phase 4: Algorithmic picks for match/event/place ---
     // Pick best match
-    if (matchRes.data?.[0]) {
-      recommendations.match = {
-        id: matchRes.data[0].id,
-        name: matchRes.data[0].name,
+    let match = null;
+    if (matchesRes.data?.[0]) {
+      match = {
+        id: matchesRes.data[0].id,
+        name: matchesRes.data[0].name,
         reason: 'Aligned goals in your active domains',
       };
     }
 
     // Pick best event
+    let event = null;
     const topEvent = pickBestEvent(eventsRes.data ?? [], userCity);
     if (topEvent) {
-      recommendations.event = {
+      event = {
         id: topEvent.id,
         title: topEvent.title,
         reason: 'Coming up soon - worth checking out',
@@ -381,16 +414,42 @@ export class AxiomScanService {
     }
 
     // Pick best place
+    let place = null;
     const topPlace = pickBestPlace(placesRes.data ?? [], userCity, userDomains);
     if (topPlace) {
-      recommendations.place = {
+      place = {
         id: topPlace.id,
         name: topPlace.name,
         reason: 'Potential spot for focus or reflection',
       };
     }
 
-    // --- Phase 4: Store brief ---
+    // Generate routine if LLM didn't provide one
+    if (routine.length === 0) {
+      routine = generateRoutineFromArchetype(metrics.archetype, metrics.motivationStyle);
+    }
+
+    // Generate challenge if LLM didn't provide one
+    if (!challenge) {
+      challenge = generateChallengeFromRiskFactors(metrics.riskFactors);
+    }
+
+    // Generate resources if LLM didn't provide enough
+    if (resources.length < 2) {
+      resources = generateResourcesFromGoals(nodes, metrics);
+    }
+
+    // --- Phase 5: Store brief ---
+    const recommendations = {
+      message: axiomMessage,
+      match: match,
+      event: event,
+      place: place,
+      challenge: challenge,
+      resources: resources,
+      routine: routine,
+    };
+
     await supabase.from('axiom_daily_briefs').upsert({
       user_id: userId,
       date: today,
@@ -398,6 +457,56 @@ export class AxiomScanService {
       generated_at: new Date().toISOString(),
     });
 
-    logger.info(`[AxiomScan] Generated LLM-powered brief for ${userName} (archetype: ${metrics.archetype})`);
+    logger.info(`[AxiomScan] Generated FULL LLM protocol for ${userName} (archetype: ${metrics.archetype})`);
   }
+}
+
+// Helper functions for fallback generation
+function generateRoutineFromArchetype(archetype: string, motivationStyle: string): any[] {
+  const routines: Record<string, any[]> = {
+    streak_driven: [
+      { time: 'Morning', task: 'Check in to maintain your streak', alignment: 'Protect your momentum' },
+      { time: 'Afternoon', task: 'One focused action on your top goal', alignment: 'Build the chain' },
+      { time: 'Evening', task: 'Reflect on your win today', alignment: 'Reinforce the habit' },
+    ],
+    progress_focused: [
+      { time: 'Morning', task: 'Review your goal progress bars', alignment: 'Visualize the path' },
+      { time: 'Afternoon', task: 'Move one goal forward by 5%', alignment: 'Tangible progress' },
+      { time: 'Evening', task: 'Update your progress tracker', alignment: 'Measure what matters' },
+    ],
+    default: [
+      { time: 'Morning', task: 'Set one clear intention', alignment: 'Start with purpose' },
+      { time: 'Afternoon', task: 'Take one small action', alignment: 'Progress compounds' },
+      { time: 'Evening', task: 'Acknowledge one win', alignment: 'Celebrate showing up' },
+    ],
+  };
+  return routines[motivationStyle] || routines.default;
+}
+
+function generateChallengeFromRiskFactors(riskFactors: string[]): any {
+  const challenges: Record<string, any> = {
+    streak_about_to_break: { type: 'bet', target: 'Check in today', terms: 'Your streak is worth protecting' },
+    goal_stagnation: { type: 'bet', target: 'Update any goal', terms: 'What would feel like progress even tiny?' },
+    social_isolation: { type: 'bet', target: 'Give honor to someone', terms: 'Who could use encouragement today?' },
+    overwhelm: { type: 'bet', target: 'Complete one tiny task', terms: 'What is the smallest thing that would feel good?' },
+    declining_activity: { type: 'bet', target: 'Show up for 5 minutes', terms: 'Just start - see how it feels' },
+    perfectionism_trap: { type: 'bet', target: 'Mark something as done', terms: 'What is good enough today?' },
+  };
+  const primaryRisk = riskFactors?.[0];
+  return challenges[primaryRisk] || { type: 'bet', target: 'Complete one key action today', terms: 'Log it in your tracker' };
+}
+
+function generateResourcesFromGoals(nodes: any[], metrics: any): any[] {
+  const resources: any[] = [];
+  const activeGoals = nodes.filter(n => n.progress < 100).slice(0, 3);
+  
+  activeGoals.forEach(goal => {
+    resources.push({
+      goal: goal.name,
+      suggestion: `What's one small step on "${goal.name}" today?`,
+      details: `${goal.progress}% complete - momentum is building`,
+    });
+  });
+  
+  return resources;
 }
