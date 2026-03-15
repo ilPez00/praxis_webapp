@@ -86,6 +86,7 @@ const NotesPage: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<FrontendGoalNode | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [journalNode, setJournalNode] = useState<FrontendGoalNode | null>(null);
+  const [activeLogType, setActiveLogType] = useState<string | null>(null);
 
   const currentUserId = user?.id;
 
@@ -158,7 +159,9 @@ const NotesPage: React.FC = () => {
   };
 
   const handleLogTracker = (trackerType: string, _goalNode: FrontendGoalNode) => {
-    navigate(`/dashboard?tracker=${trackerType}`);
+    setActiveLogType(trackerType);
+    // Clear after a tick so the prop change triggers the effect in TrackerSection
+    setTimeout(() => setActiveLogType(null), 100);
   };
 
   const handleAction = (action: string, node: FrontendGoalNode) => {
@@ -300,7 +303,7 @@ const NotesPage: React.FC = () => {
                     <Box sx={{ px: 2.5, pb: 3 }}>
                       <Stack spacing={3}>
                         {domainTrackers.length > 0 && (
-                          <TrackerSection userId={currentUserId} filterTypes={domainTrackers} />
+                          <TrackerSection userId={currentUserId} filterTypes={domainTrackers} initialLogType={activeLogType} />
                         )}
                         <WeeklyNarrativeWidget userId={currentUserId} />
                       </Stack>
@@ -337,7 +340,7 @@ const NotesPage: React.FC = () => {
             <Box sx={{ mt: 4, px: 2 }}>
               <Stack spacing={3}>
                 {domainTrackers.length > 0 && (
-                  <TrackerSection userId={currentUserId} filterTypes={domainTrackers} />
+                  <TrackerSection userId={currentUserId} filterTypes={domainTrackers} initialLogType={activeLogType} />
                 )}
                 <WeeklyNarrativeWidget userId={currentUserId} />
               </Stack>

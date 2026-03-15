@@ -57,11 +57,13 @@ interface TrackerSectionProps {
   userId: string;
   /** When set, only show trackers whose type is in this list */
   filterTypes?: string[];
+  /** When set, auto-opens the log dialog for this tracker type */
+  initialLogType?: string | null;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes }) => {
+const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes, initialLogType }) => {
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [entries, setEntries] = useState<Record<string, TrackerEntry[]>>({});
   const [loading, setLoading] = useState(true);
@@ -168,6 +170,19 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes }) 
   }, [userId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-open log dialog when initialLogType is set
+  useEffect(() => {
+    if (!initialLogType || loading || trackers.length === 0) return;
+    const tracker = trackers.find(t => t.type === initialLogType);
+    if (tracker) {
+      const def = TRACKER_MAP[tracker.type];
+      if (def) {
+        setLogTracker({ ...tracker, def });
+        setLogFields({});
+      }
+    }
+  }, [initialLogType, loading, trackers]);
 
   // ── activate tracker ────────────────────────────────────────────────────────
 
