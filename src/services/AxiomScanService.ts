@@ -355,26 +355,12 @@ export class AxiomScanService {
     }
 
     // --- Phase 3: Generate FULL LLM-powered protocol ---
-    const aiCoachingService = new AICoachingService();
-    
-    // Build rich coaching context
-    const coachingContext = {
-      userName: userName,
-      streak: metrics.checkinStreak,
-      praxisPoints: 0,
-      language: 'en',
-      goals: nodes.map(n => ({
-        id: n.id,
-        name: n.name,
-        domain: n.domain,
-        progress: n.progress,
-        weight: n.weight,
-      })),
-      recentFeedback: [],
-      achievements: [],
-      network: [],
-      boards: [],
-    };
+    const aiCoaching = new AICoachingService();
+
+    const goalsSlice = nodes.slice(0, 5).map((n: any) => ({
+      name: n.name, domain: n.domain,
+      progress: Math.round((n.progress || 0) * 100) + '%', weight: n.weight,
+    }));
 
     // Generate LLM-powered full protocol
     let axiomMessage = '';
@@ -383,43 +369,61 @@ export class AxiomScanService {
     let resources: any[] = [];
 
     try {
-      // Build comprehensive prompt for full protocol
-      const prompt = `You are Axiom, a wise warm and practical life coach. Generate a COMPLETE daily protocol for ${userName}.
+      const prompt = `You are Axiom, a wise warm and practical life coach inside the Praxis app. Generate a COMPLETE daily protocol for ${userName}.
 
 CONTEXT:
 - Streak: ${metrics.checkinStreak} days
 - Archetype: ${metrics.archetype}
-- Motivation Style: ${metrics.motivationStyle}
-- Risk Factors: ${metrics.riskFactors?.join(', ') || 'None'}
-- Goals: ${JSON.stringify(coachingContext.goals.slice(0, 5))}
-- Recent Check-ins: ${JSON.stringify(checkinsRes.data?.slice(0, 3))}
-- Tracker Activity: ${metrics.trackerTrends?.length || 0} active trackers
-${recapText ? `- Yesterday's Activity: ${recapText}` : '- Yesterday: No activity logged'}
+- Motivation style: ${metrics.motivationStyle}
+- Risk factors: ${metrics.riskFactors?.join(', ') || 'None'}
+- Goals: ${JSON.stringify(goalsSlice)}
+- Recent check-ins: ${JSON.stringify((checkinsRes.data || []).slice(0, 3).map((c: any) => ({ mood: c.mood, win: c.win_of_the_day, streak: c.streak_day })))}
+- Tracker trends: ${metrics.trackerTrends?.map((t: any) => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
+${recapText ? `- Yesterday's activity: ${recapText}` : '- Yesterday: No activity logged'}
 
-Generate JSON with:
-1. "message": Warm personalized greeting (2-3 sentences) acknowledging their journey
-2. "routine": Array of 3 tasks [{time: "Morning/Afternoon/Evening", task: "specific action", alignment: "why it matters"}]
-3. "challenge": {type: "bet"|"duel", target: "clear action", terms: "motivating framing"}
-4. "resources": Array of 2-3 goal suggestions [{goal: "goal name", suggestion: "actionable advice", details: "specific insight"}]
+Respond ONLY with valid JSON (no markdown, no backticks) matching this exact shape:
+{
+  "message": "Warm personalized greeting (2-3 sentences) acknowledging their specific journey and goals",
+  "routine": [
+    {"time": "Morning", "task": "specific action tied to their goals", "alignment": "why it matters for them"},
+    {"time": "Afternoon", "task": "specific action", "alignment": "why"},
+    {"time": "Evening", "task": "specific action", "alignment": "why"}
+  ],
+  "challenge": {"type": "bet", "target": "clear specific action", "terms": "motivating framing"},
+  "resources": [
+    {"goal": "goal name from their list", "suggestion": "actionable advice", "details": "specific insight based on their progress"}
+  ]
+}
 
-TONE: Warm encouraging curious - NEVER critical. Focus on what's working. Ask about struggles instead of pointing them out. Suggest small actions don't demand.`;
+RULES:
+- Reference their ACTUAL goals by name
+- Routine tasks must be specific to their situation, not generic
+- Challenge should push them just outside comfort zone
+- Resources should give concrete next-step advice for 2-3 of their goals
+- TONE: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out.`;
 
-      const report = await aiCoachingService.generateFullReport(coachingContext, true);
-      
-      // Parse LLM response for full protocol
-      try {
-        const llmData = JSON.parse(report.motivation || '{}');
-        axiomMessage = llmData.message || report.motivation || '';
-        routine = llmData.routine || [];
+      const rawText = await aiCoaching.runWithFallback(prompt);
+
+      // Extract JSON from response (strip markdown fences if present)
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const llmData = JSON.parse(jsonMatch[0]);
+        axiomMessage = llmData.message || '';
+        routine = Array.isArray(llmData.routine) ? llmData.routine : [];
         challenge = llmData.challenge || null;
-        resources = llmData.resources || [];
-      } catch {
-        // Fallback: use motivation as message, generate rest algorithmically
-        axiomMessage = report.motivation || '';
+        resources = Array.isArray(llmData.resources) ? llmData.resources : [];
+      } else {
+        // LLM returned plain text — use as message
+        axiomMessage = rawText.slice(0, 500);
       }
-    } catch (err) {
-      logger.warn('[AxiomScan] LLM generation failed:', err);
-      axiomMessage = `Good morning ${userName}. Your ${metrics.checkinStreak}-day streak shows commitment. Today: pick ONE small action on your most important goal. Progress compounds.`;
+    } catch (err: any) {
+      logger.warn('[AxiomScan] LLM generation failed, using metric-based brief:', err.message);
+      // Fall back to the fully algorithmic brief
+      const metricBrief = await generateMetricBasededBrief(metrics, userName);
+      axiomMessage = metricBrief.message;
+      routine = metricBrief.routine || [];
+      challenge = metricBrief.challenge || null;
+      resources = metricBrief.resources || [];
     }
 
     // --- Phase 4: Algorithmic picks for match/event/place ---

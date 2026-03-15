@@ -263,7 +263,7 @@ export class AICoachingService {
   /**
    * Helper to attempt a generation with model fallbacks (including DeepSeek).
    */
-  private async runWithFallback(
+  public async runWithFallback(
     prompt: string
   ): Promise<string> {
     const errors: string[] = [];
