@@ -52,12 +52,15 @@ interface CoachingReport {
 }
 
 interface DailyRecommendation {
+  message?: string;
   match: { id: string; name: string; reason: string };
   event: { id: string; title: string; reason: string };
   place: { id: string; name: string; reason: string };
   challenge: { type: 'bet' | 'duel'; target: string; terms: string };
   resources: Array<{ goal: string; suggestion: string; details: string }>;
   routine: Array<{ time: string; task: string; alignment: string }>;
+  source?: 'llm' | 'algorithm';
+  llm_error?: string;
 }
 
 interface ChatMessage {
@@ -171,8 +174,29 @@ const AICoachPage: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await generateBrief();
-    setRefreshing(false);
+    setReportError(null);
+    setDetailedError(null);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/ai-coaching/generate-axiom-brief?force=1`, {
+        method: 'POST', headers,
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.brief) {
+        setDailyBrief(data.brief);
+        setLastAxiomMessage(data.brief.message || null);
+        setGeneratedAt(data.generated_at || new Date().toISOString());
+        if (data.brief.source === 'algorithm' && data.brief.llm_error) {
+          setReportError(`LLM failed: ${data.brief.llm_error}. Showing algorithm-generated brief.`);
+        }
+      } else {
+        setReportError('Failed to generate Axiom brief.');
+      }
+    } catch (err: any) {
+      setReportError(err.message || 'Failed to refresh.');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -257,8 +281,8 @@ const AICoachPage: React.FC = () => {
             {generatedAt && <Typography variant="caption" color="text.disabled">Updated {formatAge(generatedAt)}</Typography>}
           </Box>
         </Box>
-        <Button size="small" variant="outlined" startIcon={refreshing ? <CircularProgress size={14} /> : <RefreshIcon />} onClick={handleRefresh} disabled={refreshing || loadingReport} sx={{ borderRadius: '10px' }}>
-          {report ? 'Refresh' : 'Initialize'}
+        <Button size="small" variant="outlined" startIcon={refreshing ? <CircularProgress size={14} /> : <RefreshIcon />} onClick={handleRefresh} disabled={refreshing} sx={{ borderRadius: '10px' }}>
+          {refreshing ? 'Generating...' : 'Refresh Brief'}
         </Button>
       </Box>
       
@@ -282,9 +306,23 @@ const AICoachPage: React.FC = () => {
               flexShrink: 0,
             }}>🥋</Avatar>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 0.5, letterSpacing: '0.08em' }}>
-                LAST FROM AXIOM
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, letterSpacing: '0.08em' }}>
+                  LAST FROM AXIOM
+                </Typography>
+                {dailyBrief?.source && (
+                  <Chip
+                    label={dailyBrief.source === 'llm' ? '🧠 AI' : '⚙️ Auto'}
+                    size="small"
+                    sx={{
+                      height: 16, fontSize: '0.5rem', fontWeight: 700,
+                      bgcolor: dailyBrief.source === 'llm' ? 'rgba(167,139,250,0.15)' : 'rgba(245,158,11,0.12)',
+                      color: dailyBrief.source === 'llm' ? '#A78BFA' : '#F59E0B',
+                      '& .MuiChip-label': { px: '5px' },
+                    }}
+                  />
+                )}
+              </Box>
               <Typography variant="body1" sx={{
                 color: 'text.primary',
                 lineHeight: 1.6,

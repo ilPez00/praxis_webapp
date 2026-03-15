@@ -537,17 +537,20 @@ export const generateAxiomBrief = catchAsync(async (req: Request, res: Response,
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated.');
 
+  const force = req.query.force === '1' || req.body?.force === true;
   const today = new Date().toISOString().slice(0, 10);
 
-  // Return cached brief if already generated today
-  const { data: existing } = await supabase
-    .from('axiom_daily_briefs')
-    .select('date, brief, generated_at')
-    .eq('user_id', userId)
-    .eq('date', today)
-    .maybeSingle();
+  // Return cached brief if already generated today (unless force refresh)
+  if (!force) {
+    const { data: existing } = await supabase
+      .from('axiom_daily_briefs')
+      .select('date, brief, generated_at')
+      .eq('user_id', userId)
+      .eq('date', today)
+      .maybeSingle();
 
-  if (existing) return res.json(existing);
+    if (existing) return res.json(existing);
+  }
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -555,7 +558,8 @@ export const generateAxiomBrief = catchAsync(async (req: Request, res: Response,
     .eq('id', userId)
     .single();
 
-  const useLLM = (profile?.is_premium || profile?.is_admin) && !profile?.minimal_ai_mode;
+  // Force refresh always uses LLM; normal generation respects minimal_ai_mode
+  const useLLM = force || ((profile?.is_premium || profile?.is_admin) && !profile?.minimal_ai_mode);
 
   await AxiomScanService.generateDailyBrief(
     userId,
