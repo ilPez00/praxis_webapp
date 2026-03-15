@@ -471,6 +471,121 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
               </Button>
             </Box>
           )}
+
+          {/* Suggested Bets */}
+          {data?.suggestedBets && data.suggestedBets.length > 0 && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="overline" sx={{ color: '#F59E0B', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.1em', px: 0.5 }}>
+                AXIOM SUGGESTS: STAKE YOUR GOALS
+              </Typography>
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                {data.suggestedBets.map((bet, idx) => (
+                  <Grid size={{ xs: 12, sm: 6 }} key={idx}>
+                    <Box
+                      sx={{
+                        p: 2.5, borderRadius: '20px',
+                        background: 'linear-gradient(135deg, rgba(245,158,11,0.06), rgba(249,115,22,0.03))',
+                        border: '1px solid rgba(245,158,11,0.15)',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography sx={{ fontWeight: 800, fontSize: '0.9rem' }}>{bet.goalName}</Typography>
+                        <Chip
+                          icon={<CasinoIcon sx={{ fontSize: '14px !important' }} />}
+                          label={`${bet.suggestedStake} PP`}
+                          size="small"
+                          sx={{ height: 22, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}
+                        />
+                      </Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={bet.currentProgress}
+                        sx={{ height: 6, borderRadius: 3, mb: 1, bgcolor: 'rgba(255,255,255,0.05)', '& .MuiLinearProgress-bar': { bgcolor: '#F59E0B' } }}
+                      />
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, lineHeight: 1.4 }}>
+                        {bet.reason}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => navigate(`/betting?goal=${bet.goalNodeId}&stake=${bet.suggestedStake}&name=${encodeURIComponent(bet.goalName)}`)}
+                        sx={{
+                          borderRadius: '10px', fontSize: '0.7rem', fontWeight: 800,
+                          borderColor: '#F59E0B', color: '#F59E0B',
+                          '&:hover': { bgcolor: 'rgba(245,158,11,0.08)', borderColor: '#F59E0B' },
+                        }}
+                      >
+                        Place Bet
+                      </Button>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+
+          {/* Sub-goal Suggestions */}
+          {data?.suggestedSubgoals && data.suggestedSubgoals.suggestions.length > 0 && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="overline" sx={{ color: '#8B5CF6', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.1em', px: 0.5 }}>
+                GROW: {data.suggestedSubgoals.targetGoalName.toUpperCase()}
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap', gap: 1 }}>
+                {data.suggestedSubgoals.suggestions.map((sg, idx) => (
+                  <Chip
+                    key={idx}
+                    icon={<AddCircleOutlineIcon sx={{ fontSize: '16px !important', color: '#8B5CF6 !important' }} />}
+                    label={sg.title}
+                    variant="outlined"
+                    onClick={() => navigate(`/goals?addSubgoal=${data.suggestedSubgoals!.targetGoalId}&title=${encodeURIComponent(sg.title)}&desc=${encodeURIComponent(sg.description)}`)}
+                    sx={{
+                      borderColor: 'rgba(139,92,246,0.3)', color: 'text.primary',
+                      fontSize: '0.75rem', fontWeight: 600, height: 36,
+                      bgcolor: 'rgba(139,92,246,0.05)',
+                      '&:hover': { bgcolor: 'rgba(139,92,246,0.12)', borderColor: '#8B5CF6' },
+                    }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Next Level — Progression */}
+          {data?.suggestedProgression && (
+            <Box
+              sx={{
+                mt: 4, p: 2.5, borderRadius: '20px',
+                background: 'linear-gradient(90deg, rgba(16,185,129,0.08), transparent)',
+                border: '1px solid rgba(16,185,129,0.2)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                flexDirection: { xs: 'column', sm: 'row' }, gap: 2,
+              }}
+            >
+              <Box sx={{ flex: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  <TrendingUpIcon sx={{ color: '#10B981', fontSize: 20 }} />
+                  <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 900, letterSpacing: '0.05em' }}>
+                    NEXT LEVEL
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.5 }}>
+                  {data.suggestedProgression.suggestion}
+                </Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => navigate('/goals')}
+                sx={{
+                  borderRadius: '10px', fontSize: '0.7rem', fontWeight: 800, px: 3,
+                  borderColor: '#10B981', color: '#10B981', flexShrink: 0,
+                  '&:hover': { bgcolor: 'rgba(16,185,129,0.08)', borderColor: '#10B981' },
+                }}
+              >
+                Create Goal
+              </Button>
+            </Box>
+          )}
         </Box>
       </GlassCard>
     </Box>
