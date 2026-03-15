@@ -5,7 +5,7 @@ import { catchAsync, UnauthorizedError, BadRequestError } from '../utils/appErro
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('42P01') || msg?.includes('does not exist');
 
-const PP_PER_LOG = 10; // Praxis Points awarded per tracker log
+const PP_PER_LOG = 1; // Praxis Points awarded per tracker log
 
 /**
  * GET /trackers/calendar

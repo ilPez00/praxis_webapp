@@ -397,7 +397,7 @@ function FullTrackerWidget({ trackerConfig, tracker, onLog, focused }: {
       await axios.post(`${API_URL}/trackers/log`, { type: trackerConfig.id, data }, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      toast.success(`${trackerConfig.icon} Logged! +5⚡`);
+      toast.success(`${trackerConfig.icon} Logged! +1⚡`);
       setForm({});
       setLogOpen(false);
       onLog();
@@ -531,7 +531,7 @@ function FullTrackerWidget({ trackerConfig, tracker, onLog, focused }: {
                 transition: 'all 0.15s ease',
               }}
             >
-              {loggedToday ? 'Log again +5⚡' : 'Log +5⚡'}
+              {loggedToday ? 'Log again +1⚡' : 'Log +1⚡'}
             </Button>
           </Box>
         </Collapse>
@@ -621,7 +621,7 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
       await axios.post(`${API_URL}/trackers/log`, { type: config.type, data }, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      toast.success(`${config.emoji} Logged! +5⚡`);
+      toast.success(`${config.emoji} Logged! +1⚡`);
       setForm({});
       setLogOpen(false);
       fetchTrackers();
@@ -872,7 +872,7 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  {loggedToday ? 'Log again +5⚡' : 'Log today +5⚡'}
+                  {loggedToday ? 'Log again +1⚡' : 'Log today +1⚡'}
                 </Button>
               </Box>
             </Collapse>

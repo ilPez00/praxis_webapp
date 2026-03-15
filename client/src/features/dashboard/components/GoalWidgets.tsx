@@ -1279,7 +1279,7 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
       await axios.post(`${API_URL}/trackers/log`, { type: config.type, data }, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      toast.success(`${config.emoji} Logged! +5⚡`);
+      toast.success(`${config.emoji} Logged! +1⚡`);
       setForm({});
       setLogOpen(false);
       onLogged();
@@ -1593,7 +1593,7 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
                   transition: 'all 0.15s ease',
                 }}
               >
-                {loggedToday ? 'Log again +5⚡' : 'Log today +5⚡'}
+                {loggedToday ? 'Log again +1⚡' : 'Log today +1⚡'}
               </Button>
             </Box>
           </Collapse>
