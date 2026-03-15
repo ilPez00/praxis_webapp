@@ -593,6 +593,16 @@ const NotesPage: React.FC = () => {
                 onProgressUpdate={(nodeId, progress) => handleProgressUpdate(nodeId, progress)}
                 focusedTrackerType={activeLogType}
               />
+              
+              {/* Mobile: Goal Notes Panel below widget */}
+              <Box sx={{ mt: 2 }}>
+                <GoalNotesPanel
+                  nodeId={selectedNode.id}
+                  nodeTitle={selectedNode.title}
+                  userId={currentUserId}
+                  compact={true}
+                />
+              </Box>
             </Box>
           )}
 

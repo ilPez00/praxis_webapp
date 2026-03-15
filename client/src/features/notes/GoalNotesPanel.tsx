@@ -21,9 +21,10 @@ interface GoalNotesPanelProps {
   nodeId: string;
   nodeTitle: string;
   userId: string;
+  compact?: boolean;  // Mobile compact mode
 }
 
-const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, userId }) => {
+const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, userId, compact = false }) => {
   const [notes, setNotes] = useState<GoalNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState('');
@@ -37,6 +38,12 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
     { emoji: '🔥', label: 'Great' },
     { emoji: '💪', label: 'Strong' },
   ];
+  
+  const QUICK_EMOJIS = ['🎯', '⭐', '💡', '✅', '❌', '📝', '🚀', '💭', '❤️', '🤔', '👍', '🎉'];
+
+  const handleInsertEmoji = (emoji: string) => {
+    setNewNote(prev => prev + emoji);
+  };
 
   const fetchNotes = async () => {
     // Validate nodeId is a proper UUID
@@ -120,18 +127,20 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
 
   return (
     <Box sx={{
-      height: '100%',
+      height: compact ? 'auto' : '100%',
       overflowY: 'auto',
-      p: 2,
+      p: compact ? 1 : 2,
     }}>
       <Box sx={{ mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-          <EditNoteIcon sx={{ fontSize: 20, mr: 0.5, verticalAlign: 'middle' }} />
-          Notes for "{nodeTitle}"
+        <Typography variant={compact ? 'subtitle1' : 'h6'} sx={{ fontWeight: 700, mb: 0.5 }}>
+          <EditNoteIcon sx={{ fontSize: compact ? 18 : 20, mr: 0.5, verticalAlign: 'middle' }} />
+          {compact ? 'Notes' : `Notes for "${nodeTitle}"`}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
-          Journal entries and reflections
-        </Typography>
+        {!compact && (
+          <Typography variant="caption" color="text.secondary">
+            Journal entries and reflections
+          </Typography>
+        )}
       </Box>
 
       {/* Add Note Form */}
@@ -139,8 +148,8 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
         <TextField
           fullWidth
           multiline
-          rows={3}
-          placeholder="Add a note about your progress..."
+          rows={compact ? 2 : 3}
+          placeholder="Add a quick note..."
           value={newNote}
           onChange={(e) => setNewNote(e.target.value)}
           sx={{
@@ -153,6 +162,26 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
             },
           }}
         />
+        
+        {/* Quick Emoji Picker */}
+        <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, flexWrap: 'wrap' }}>
+          {QUICK_EMOJIS.map((emoji) => (
+            <IconButton
+              key={emoji}
+              size="small"
+              onClick={() => handleInsertEmoji(emoji)}
+              sx={{
+                width: 32,
+                height: 32,
+                fontSize: '1.2rem',
+                color: 'rgba(255,255,255,0.8)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+              }}
+            >
+              {emoji}
+            </IconButton>
+          ))}
+        </Stack>
 
         {/* Mood Selection */}
         <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, flexWrap: 'wrap' }}>
