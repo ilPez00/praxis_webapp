@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError, BadRequestError, InternalServerError } from '../utils/appErrors';
 import logger from '../utils/logger';
+import { importOSMPlaces } from '../services/OSMImportService';
 
 /**
  * Demo user profiles + goal trees seeded for beta testing.
@@ -1152,4 +1153,29 @@ export const streakAlerts = catchAsync(async (req: Request, res: Response) => {
 
   logger.info(`[StreakAlerts] Notified ${alerted} at-risk users`);
   return res.json({ alerted, total_with_streak: userIds.length, already_checked_in: checkedInSet.size });
+});
+
+// ── OSM Place Import ──────────────────────────────────────────────────────────
+
+export const importOSMPlacesEndpoint = catchAsync(async (req: Request, res: Response) => {
+  const { city, dryRun } = req.body;
+  if (!city || typeof city !== 'string') {
+    throw new BadRequestError('city is required (e.g. "Verona")');
+  }
+
+  // Use the authenticated admin's ID as the owner of imported places
+  const ownerId = (req as any).user?.id;
+  if (!ownerId) throw new UnauthorizedError('Admin user ID required');
+
+  const result = await importOSMPlaces(city, ownerId, {
+    dryRun: !!dryRun,
+    skipExisting: true,
+  });
+
+  res.json({
+    success: true,
+    city,
+    dryRun: !!dryRun,
+    ...result,
+  });
 });

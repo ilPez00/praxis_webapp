@@ -450,3 +450,15 @@ Session 72: Click-to-Open Axiom Briefs from Notebook
 - Verification: 0 TypeScript errors
 - Next: Test with real axiom_brief notebook entries, verify navigation flow end-to-end
 - Sign: Claude
+
+Session 73: OSM Place Import — Verona (2,580 places)
+- Created `src/services/OSMImportService.ts`: Overpass API integration, OSM tag → Praxis domain mapping (9 domains), dedup by name+coords, batch insert
+- Created `scripts/import-verona-places.ts`: standalone CLI script with --dry-run mode, stats output, skip-existing logic
+- Added `POST /admin/import-osm-places` endpoint (JWT + requireAdmin) to adminRoutes + adminController
+- OSM tag mapping covers: amenity, tourism, leisure, shop, sport, historic → Body & Health, Mind & Learning, Craft & Career, Money & Assets, Environment & Gear, Spirit & Purpose, Culture & Hobbies, Friendship & Social, Intimacy & Romance
+- Ran live import: 2,580 unique Verona places inserted (1612 social, 296 health, 274 career, 192 culture, 93 learning, 92 spirit, 12 environment, 8 money, 1 intimacy)
+- Strategy is city-agnostic: change "Verona" to any city name to import that area
+- Files: src/services/OSMImportService.ts, src/controllers/adminController.ts, src/routes/adminRoutes.ts, scripts/import-verona-places.ts
+- Verification: 0 TypeScript errors (backend + frontend)
+- Next: Extend import to cover more OSM tag types (shops, leisure subtypes), add admin UI button for on-demand city imports
+- Sign: Claude

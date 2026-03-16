@@ -7,7 +7,8 @@ import {
   listAllServices, adminDeleteService, listAllCoaches, decayPoints, promoteUser,
   leaderboardBonus,
   streakAlerts,
-  getSystemConfig, updateSystemConfig, triggerAxiomScan, togglePremium
+  getSystemConfig, updateSystemConfig, triggerAxiomScan, togglePremium,
+  importOSMPlacesEndpoint,
 } from '../controllers/adminController';
 import adminAxiomRoutes from './adminAxiomRoutes';
 import { authenticateToken } from '../middleware/authenticateToken';
@@ -55,6 +56,9 @@ router.get('/config', authenticateToken, requireAdmin, getSystemConfig);
 router.put('/config/:key', authenticateToken, requireAdmin, updateSystemConfig);
 router.post('/axiom/trigger-scan', authenticateToken, requireAdmin, triggerAxiomScan);
 router.post('/axiom/generate-all-briefs', authenticateToken, requireAdmin, generateAllBriefs);
+// OSM place import
+router.post('/import-osm-places', authenticateToken, requireAdmin, importOSMPlacesEndpoint);
+
 router.use('/axiom', adminAxiomRoutes);
 
 export default router;
