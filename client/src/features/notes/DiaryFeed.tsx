@@ -38,6 +38,7 @@ const TYPE_META: Record<string, { badge: string; color: string }> = {
   match:        { badge: 'Match', color: '#EC4899' },
   chat:         { badge: 'Conversation', color: '#F97316' },
   event:        { badge: 'Event', color: '#06B6D4' },
+  place:        { badge: 'Place', color: '#A78BFA' },
 };
 
 type SortMode = 'time' | 'goal' | 'emoji';
@@ -358,6 +359,18 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
           }
           return chatItems;
         })(),
+
+        // 11. Places reported/bookmarked
+        supabase
+          .from('places').select('id, name, type, description, created_at')
+          .eq('owner_id', userId).gte('created_at', since)
+          .order('created_at', { ascending: false }).limit(20)
+          .then(({ data }) => (data || []).map(e => ({
+            id: `pl-${e.id}`, type: 'place', timestamp: e.created_at,
+            title: `Reported Place: ${e.name}`,
+            detail: e.description || e.type,
+            icon: '📍', color: '#A78BFA', badge: 'Place',
+          }))),
       ]);
 
       const all: FeedItem[] = [];
