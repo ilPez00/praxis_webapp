@@ -43,11 +43,28 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
 
   // ── User actions ─────────────────────────────────────────────────────────────
 
+  const handleResetUser = async (userId: string) => {
+    setActing(true);
+    try {
+      const res = await apiFetch(`/admin/users/${userId}?reset_only=true`, { method: 'DELETE' });
+      if (res.ok) { 
+        toast.success('User reset. They must complete onboarding again.'); 
+        setUsers(prev => prev.map(u => u.id === userId ? { 
+          ...u, 
+          onboarding_completed: false,
+          bio: null,
+          avatar_url: null,
+        } : u));
+      }
+      else { const b = await res.json().catch(() => ({})); toast.error((b as any).message || 'Failed.'); }
+    } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
+  };
+
   const handleDeleteUser = async (userId: string) => {
     setActing(true);
     try {
-      const res = await apiFetch(`/admin/users/${userId}`, { method: 'DELETE' });
-      if (res.ok) { setUsers(prev => prev.filter(u => u.id !== userId)); toast.success('User deleted.'); }
+      const res = await apiFetch(`/admin/users/${userId}?hard_delete=true`, { method: 'DELETE' });
+      if (res.ok) { setUsers(prev => prev.filter(u => u.id !== userId)); toast.success('User deleted permanently.'); }
       else { const b = await res.json().catch(() => ({})); toast.error((b as any).message || 'Failed.'); }
     } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
   };
@@ -375,6 +392,11 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
                               </IconButton>
                             </Tooltip>
                           )}
+                          <Tooltip title="Reset to onboarding">
+                            <IconButton size="small" onClick={() => setConfirm({ type: 'reset', user: u })} sx={{ color: 'info.main', opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                              <RefreshIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="Delete permanently">
                             <IconButton size="small" onClick={() => setConfirm({ type: 'delete', user: u })} sx={{ color: 'error.main', opacity: 0.5, '&:hover': { opacity: 1 } }}>
                               <DeleteOutlineIcon fontSize="small" />
@@ -400,6 +422,41 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
 
       {/* ── Confirm dialog ─────────────────────────────────────────────────────── */}
       <Dialog open={!!confirm} onClose={() => !acting && setConfirm(null)} maxWidth="xs" fullWidth>
+        {confirm?.type === 'reset' && (
+          <>
+            <DialogTitle sx={{ fontWeight: 700, color: 'info.main' }}>Reset user to onboarding?</DialogTitle>
+            <DialogContent>
+              <Typography variant="body2">
+                Reset <strong>{confirm.user.name || confirm.user.email}</strong> to pre-onboarding state?
+              </Typography>
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(59,130,246,0.08)', borderRadius: 2, border: '1px solid rgba(59,130,246,0.2)' }}>
+                <Typography variant="caption" sx={{ color: '#3B82F6', fontWeight: 700, display: 'block', mb: 1 }}>
+                  This will:
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  ✓ Delete all their data (goals, posts, trackers, messages, etc.)
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  ✓ Reset their profile (bio, avatar, stats, premium status)
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  ✓ Keep their account (email/password) intact
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 700 }}>
+                  → They will need to complete onboarding again on next login
+                </Typography>
+              </Box>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button onClick={() => setConfirm(null)} disabled={acting}>Cancel</Button>
+              <Button variant="contained" color="info" disabled={acting}
+                endIcon={acting ? <CircularProgress size={14} color="inherit" /> : null}
+                onClick={() => handleResetUser(confirm.user.id)}>
+                Reset User
+              </Button>
+            </DialogActions>
+          </>
+        )}
         {confirm?.type === 'delete' && (
           <>
             <DialogTitle sx={{ fontWeight: 700 }}>Delete user?</DialogTitle>

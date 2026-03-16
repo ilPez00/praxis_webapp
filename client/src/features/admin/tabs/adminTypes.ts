@@ -103,6 +103,7 @@ export interface AdminCoach {
 
 export type ConfirmAction =
   | { type: 'delete'; user: AdminUser }
+  | { type: 'reset'; user: AdminUser }
   | { type: 'ban'; user: AdminUser }
   | { type: 'delete-demo' }
   | { type: 'delete-group'; group: AdminGroup }
