@@ -462,3 +462,18 @@ Session 73: OSM Place Import — Verona (2,580 places)
 - Verification: 0 TypeScript errors (backend + frontend)
 - Next: Extend import to cover more OSM tag types (shops, leisure subtypes), add admin UI button for on-demand city imports
 - Sign: Claude
+
+Session 77: Notebook Reply/Share + Axiom Share Buttons + Backend Integration (2026-03-16)
+- NotebookPage.tsx: Added reply functionality — inline TextField below entries, creates new notebook_entry with metadata.reply_to linking to parent entry
+- NotebookPage.tsx: Added share functionality — ShareDialog with sourceTable='notebook_entries', opens from entry menu
+- NotebookPage.tsx: Added axiom_brief click-to-navigate (/coaching with brief in route state)
+- AxiomMorningBrief.tsx: Added ShareButton on all quick target cards (match/event/place) and routine cards — shares to diary with comment
+- ShareDialog.tsx: Extended sourceTable union to include 'notebook_entries'
+- diaryRoutes.ts: Added 'notebook_entries' case to diary share endpoint switch — fetches title/content/entry_type/tags/domain from notebook_entries table
+- notebookRoutes.ts: Added 'metadata' field to POST /notebook/entries insert (JSONB for reply_to, share context, tagged users)
+- Created migrations/add_notebook_metadata.sql: adds metadata JSONB column to notebook_entries + relaxes entry_type CHECK to include axiom_brief/reply/place/user
+- Updated docs/manual_actions.txt with migration instructions
+- Files: client/src/features/notebook/NotebookPage.tsx, client/src/features/dashboard/components/AxiomMorningBrief.tsx, client/src/components/common/ShareDialog.tsx, client/src/components/common/ShareButton.tsx, src/routes/diaryRoutes.ts, src/routes/notebookRoutes.ts, migrations/add_notebook_metadata.sql, docs/manual_actions.txt
+- Verification: 0 TypeScript errors (backend + frontend, excluding node_modules/i18next)
+- Next: Run SQL migration, commit + push, test reply/share end-to-end with live data
+- Sign: Claude

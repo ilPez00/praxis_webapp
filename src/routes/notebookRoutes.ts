@@ -80,6 +80,7 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
     source_id,
     attachments,
     is_private = false,
+    metadata,
   } = req.body;
 
   if (!content) throw new BadRequestError('content is required');
@@ -99,6 +100,7 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
       source_id: source_id || null,
       attachments: attachments || [],
       is_private,
+      metadata: metadata || null,
       occurred_at: new Date().toISOString(),
     })
     .select()

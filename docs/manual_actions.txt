@@ -807,3 +807,13 @@ Also verify Railway SUPABASE_SERVICE_ROLE_KEY starts with "eyJ" (service-role JW
 If it's the anon key, ALL backend writes will 500 regardless of schema fixes.
 
 ================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SQL MIGRATION: Notebook metadata + axiom_brief entry type (Session 77)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHERE: Supabase SQL Editor
+WHAT: Run migrations/add_notebook_metadata.sql
+WHY: Adds `metadata` JSONB column to notebook_entries (for reply threading,
+     share context), and relaxes entry_type CHECK to include axiom_brief,
+     reply, place, user types.
+SUCCESS: SELECT metadata FROM notebook_entries LIMIT 1; -- should not error

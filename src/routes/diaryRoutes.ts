@@ -225,10 +225,29 @@ router.post('/entries/share', authenticateToken, catchAsync(async (req: Request,
       if (messageData) {
         title = 'Saved message';
         entryContent = messageData.content;
-        metadata = { 
+        metadata = {
           shared_from: 'message',
           sender_id: messageData.sender_id,
           sent_at: messageData.created_at,
+        };
+      }
+      break;
+
+    case 'notebook_entries':
+      entryType = 'note';
+      const { data: notebookData } = await supabase
+        .from('notebook_entries')
+        .select('title, content, entry_type, tags, domain')
+        .eq('id', source_id)
+        .single();
+      if (notebookData) {
+        title = `Saved note: ${notebookData.title || 'Untitled'}`;
+        entryContent = notebookData.content || '';
+        metadata = {
+          shared_from: 'notebook_entry',
+          original_entry_type: notebookData.entry_type,
+          original_tags: notebookData.tags,
+          original_domain: notebookData.domain,
         };
       }
       break;
