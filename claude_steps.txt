@@ -376,11 +376,16 @@ Step 8: Standardize error handling [BACKEND]
   - Add typed error codes for frontend consumption
 
 Progress:
-  [ ] Step 1 — Remove react-scripts
-  [ ] Step 2 — Split AdminPage
-  [ ] Step 3 — Extract GoalWidgets
-  [ ] Step 4 — Split ChatRoom
-  [ ] Step 5 — Shared types
-  [ ] Step 6 — Dashboard aggregation
-  [ ] Step 7 — Dead code cleanup
-  [ ] Step 8 — Error handling standardization
+  [x] Step 1 — Remove react-scripts (commit eb95855)
+  [x] Step 2 — Split AdminPage: 2138→248 LOC + 8 tab files (commit eb95855)
+  [x] Step 3 — Extract GoalWidgets: 1698→692 LOC + widgetConfigs.ts (commit eb95855)
+  [ ] Step 4 — Split ChatRoom (deferred — lower priority)
+  [ ] Step 5 — Shared types (deferred — needs monorepo restructure)
+  [ ] Step 6 — Dashboard aggregation (deferred — needs backend endpoint)
+  [x] Step 7 — Dead code: deleted EmbeddingService, removed uuid (commit f47e68a)
+  [ ] Step 8 — Error handling standardization (deferred)
+- Files modified: client/package.json, client/src/lib/api.ts, AdminPage.tsx, GoalWidgets.tsx, goalController.ts, package.json
+- Files created: admin/tabs/{adminTypes,UsersTab,GroupsTab,StatsTab,NetworkTab,ChallengesTab,ServicesTab,CoachesTab,AxiomTab}, widgetConfigs.ts
+- Files deleted: src/services/EmbeddingService.ts
+- Verification: 0 source TypeScript errors (both frontend and backend)
+- Sign: Claude
