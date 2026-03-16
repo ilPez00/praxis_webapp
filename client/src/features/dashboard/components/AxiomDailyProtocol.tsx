@@ -231,235 +231,48 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
             </Box>
           </Grid>
 
-          {/* Strategic Insight - Expanded */}
-          <Grid size={{ xs: 12, md: 7 }}>
-            <Box sx={{ mt: 1 }}>
-              <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 800, display: 'block', mb: 2 }}>🎯 GOAL RESOURCES</Typography>
-              <Stack spacing={1.5}>
-                {Array.isArray(data?.resources) && data.resources.length > 0 ? data.resources.map((res, i) => (
-                  <Box 
-                    key={i} 
-                    sx={{ 
-                      p: 2, 
-                      borderRadius: 3, 
-                      bgcolor: 'rgba(16,185,129,0.06)', 
-                      border: '1px solid rgba(16,185,129,0.2)' 
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 800, fontSize: '0.65rem', display: 'block', mb: 0.5 }}>
-                      {String(res?.goal || 'General Goal')}
+          {/* Simplified Dashboard View - Just Match, Event, Place */}
+          <Grid size={{ xs: 12 }}>
+            <Box sx={{ mt: 2, p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
+              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 2 }}>
+                📋 TODAY'S HIGHLIGHTS
+              </Typography>
+              <Stack spacing={2}>
+                {/* Match */}
+                {data?.match && (
+                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.2)' }}>
+                    <Typography variant="caption" sx={{ color: '#EC4899', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                      🤝 BEST MATCH
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.85rem', mb: 1, lineHeight: 1.4 }}>
-                      {String(res?.suggestion || 'Review your progress and take the next step')}
-                    </Typography>
-                    {res?.details && (
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.5, mb: 1 }}>
-                        {res.details}
-                      </Typography>
-                    )}
-                    {res?.estimatedImpact && (
-                      <Box sx={{ 
-                        mt: 1, 
-                        p: 1, 
-                        bgcolor: 'rgba(16,185,129,0.08)', 
-                        borderRadius: 2,
-                        border: '1px solid rgba(16,185,129,0.15)',
-                      }}>
-                        <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700, display: 'block' }}>
-                          ⚡ IMPACT
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          {res.estimatedImpact}
-                        </Typography>
-                      </Box>
-                    )}
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{data.match.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">{data.match.reason}</Typography>
                   </Box>
-                )) : (
-                  <Typography variant="caption" color="text.disabled">No specific resources for today.</Typography>
+                )}
+
+                {/* Event */}
+                {data?.event && (
+                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.2)' }}>
+                    <Typography variant="caption" sx={{ color: '#EC4899', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                      📅 UPCOMING EVENT
+                    </Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{data.event.title}</Typography>
+                    <Typography variant="caption" color="text.secondary">{data.event.reason}</Typography>
+                  </Box>
+                )}
+
+                {/* Place */}
+                {data?.place && (
+                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                    <Typography variant="caption" sx={{ color: '#6366F1', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                      📍 RECOMMENDED PLACE
+                    </Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{data.place.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">{data.place.reason}</Typography>
+                  </Box>
                 )}
               </Stack>
             </Box>
           </Grid>
-
-          {/* Goal Strategy Section */}
-          {data?.goalStrategy && data.goalStrategy.length > 0 && (
-            <Grid size={{ xs: 12 }}>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 2 }}>
-                  🎯 GOAL STRATEGY
-                </Typography>
-                <Stack spacing={1.5}>
-                  {data.goalStrategy.map((item, i) => (
-                    <Box
-                      key={i}
-                      sx={{
-                        p: 2,
-                        borderRadius: 3,
-                        bgcolor: 'rgba(167,139,250,0.06)',
-                        border: '1px solid rgba(167,139,250,0.2)'
-                      }}
-                    >
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                        {item.goal} ({item.currentProgress})
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
-                        <strong>Bottleneck:</strong> {item.bottleneck}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
-                        <strong>Next Milestone:</strong> {item.nextMilestone}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                        <strong>Advice:</strong> {item.tacticalAdvice}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Stack>
-              </Box>
-            </Grid>
-          )}
-
-          {/* Network Leverage Section */}
-          {data?.networkLeverage && (
-            <Grid size={{ xs: 12 }}>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="caption" sx={{ color: '#8B5CF6', fontWeight: 800, display: 'block', mb: 2 }}>
-                  🤝 NETWORK LEVERAGE
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 1 }}>
-                        📤 OUTREACH
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {data.networkLeverage.outreach}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 1 }}>
-                        🙏 ASK FOR
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {data.networkLeverage.askFor}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 1 }}>
-                        🎁 OFFER
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {data.networkLeverage.offer}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 1 }}>
-                        🌟 COMMUNITY
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {data.networkLeverage.communityAction}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </Box>
-            </Grid>
-          )}
-
-          {/* Competitive Challenge - Expanded */}
-          <Grid size={{ xs: 12, md: 5 }}>
-            <Box sx={{ mt: 1 }}>
-              <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block', mb: 2 }}>⚡ DAILY CHALLENGE</Typography>
-              <Box sx={{ 
-                p: 2.5, 
-                bgcolor: 'rgba(245,158,11,0.06)', 
-                borderRadius: 3, 
-                border: '2px dashed rgba(245,158,11,0.3)',
-                position: 'relative',
-              }}>
-                {/* Type badge */}
-                <Chip 
-                  label={String(data?.challenge?.type || 'BET').toUpperCase()} 
-                  size="small"
-                  sx={{ 
-                    mb: 1.5, 
-                    fontWeight: 800, 
-                    bgcolor: 'rgba(245,158,11,0.2)', 
-                    color: '#F59E0B',
-                    border: '1px solid rgba(245,158,11,0.4)',
-                  }}
-                />
-                
-                {/* Target */}
-                <Typography variant="body1" sx={{ fontWeight: 800, fontSize: '0.95rem', mb: 1.5, lineHeight: 1.4 }}>
-                  {String(data?.challenge?.target || 'Stay consistent and show up for your goals today')}
-                </Typography>
-                
-                {/* Terms */}
-                {data?.challenge?.terms && (
-                  <Box sx={{ 
-                    mb: 1.5, 
-                    p: 1.5, 
-                    bgcolor: 'rgba(255,255,255,0.05)', 
-                    borderRadius: 2,
-                    border: '1px solid rgba(255,255,255,0.1)',
-                  }}>
-                    <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                      🎯 WHY THIS MATTERS
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
-                      {data.challenge.terms}
-                    </Typography>
-                  </Box>
-                )}
-                
-                {/* Deadline */}
-                {data?.challenge?.deadline && (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 1, 
-                    mb: 1,
-                    p: 1, 
-                    bgcolor: 'rgba(239,68,68,0.1)', 
-                    borderRadius: 2,
-                  }}>
-                    <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 800 }}>
-                      ⏰ DEADLINE
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {data.challenge.deadline}
-                    </Typography>
-                  </Box>
-                )}
-                
-                {/* Reward */}
-                {data?.challenge?.reward && (
-                  <Box sx={{ 
-                    p: 1.5, 
-                    bgcolor: 'rgba(245,158,11,0.08)', 
-                    borderRadius: 2,
-                    border: '1px solid rgba(245,158,11,0.2)',
-                  }}>
-                    <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                      🏆 YOUR REWARD
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
-                      {data.challenge.reward}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
-    </Box>
   );
 };
 
