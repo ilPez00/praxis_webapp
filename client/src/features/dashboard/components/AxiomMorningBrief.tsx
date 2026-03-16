@@ -42,6 +42,22 @@ interface MorningBriefProps {
   initialCheckedIn?: boolean;
 }
 
+interface GoalStrategyItem {
+  goal: string;
+  currentProgress: string;
+  bottleneck: string;
+  nextMilestone: string;
+  tacticalAdvice: string;
+  weeklyTarget: string;
+}
+
+interface NetworkLeverage {
+  outreach: string;
+  askFor: string;
+  offer: string;
+  communityAction: string;
+}
+
 interface DailyProtocol {
   message: string;
   match: { id: string; name: string; reason: string };
@@ -49,9 +65,22 @@ interface DailyProtocol {
   place: { id: string; name: string; reason: string };
   challenge: { type: 'bet' | 'duel'; target: string; terms: string };
   resources: Array<{ goal: string; suggestion: string; details: string }>;
-  routine: Array<{ time: string; task: string; alignment: string }>;
+  routine: Array<{ time: string; task: string; alignment: string; category?: string }>;
+  goalStrategy?: GoalStrategyItem[];
+  networkLeverage?: NetworkLeverage;
   source?: 'llm' | 'algorithm';
 }
+
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string; emoji: string }> = {
+  deep_work:  { bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.25)', text: '#A78BFA', emoji: '🧠' },
+  admin:      { bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.25)', text: '#9CA3AF', emoji: '📋' },
+  rest:       { bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)', text: '#60A5FA', emoji: '😴' },
+  exercise:   { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)', text: '#F87171', emoji: '💪' },
+  social:     { bg: 'rgba(236,72,153,0.08)', border: 'rgba(236,72,153,0.25)', text: '#F472B6', emoji: '👥' },
+  learning:   { bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.25)', text: '#34D399', emoji: '📚' },
+  planning:   { bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', text: '#FBBF24', emoji: '🎯' },
+  reflection: { bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.25)', text: '#C084FC', emoji: '🪷' },
+};
 
 interface BriefRecord {
   date: string;
@@ -383,47 +412,75 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
             ))}
           </Grid>
 
-          {/* Routine — horizontally scrollable timeline */}
+          {/* Routine — full hourly schedule */}
           {data?.routine && data.routine.length > 0 && (
             <Box sx={{ mt: 4 }}>
               <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.1em', px: 0.5 }}>
-                DAILY ROUTINE
+                HOURLY SCHEDULE ({data.routine.length} blocks)
               </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: 1.5,
-                  mt: 1.5,
-                  overflowX: 'auto',
-                  pb: 1,
-                  scrollbarWidth: 'none',
-                  '&::-webkit-scrollbar': { display: 'none' },
-                }}
-              >
-                {data.routine.map((item, idx) => (
-                  <Box
-                    key={idx}
-                    sx={{
-                      flexShrink: 0,
-                      width: 140,
-                      p: 2,
-                      borderRadius: '16px',
-                      bgcolor: 'rgba(255,255,255,0.02)',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    <Typography sx={{ fontWeight: 900, fontSize: '0.75rem', color: '#F59E0B', mb: 0.5 }}>
-                      {item.time}
-                    </Typography>
-                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', lineHeight: 1.3, mb: 0.5 }}>
-                      {item.task}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3 }}>
-                      {item.alignment}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
+              <Stack spacing={1} sx={{ mt: 1.5 }}>
+                {data.routine.map((item, idx) => {
+                  const cat = CATEGORY_COLORS[item.category || 'admin'] || CATEGORY_COLORS.admin;
+                  const isNow = (() => {
+                    const h = new Date().getHours();
+                    const slotH = parseInt(item.time?.slice(0, 2) || '0', 10);
+                    return h === slotH;
+                  })();
+                  return (
+                    <Box
+                      key={idx}
+                      sx={{
+                        display: 'flex', gap: 1.5, alignItems: 'flex-start',
+                        p: 1.5, borderRadius: '14px',
+                        bgcolor: isNow ? `${cat.bg.replace('0.08', '0.18')}` : cat.bg,
+                        border: `1px solid ${isNow ? cat.text : cat.border}`,
+                        transition: 'all 0.2s',
+                        position: 'relative',
+                        ...(isNow && {
+                          boxShadow: `0 0 12px ${cat.text}30`,
+                          '&::before': {
+                            content: '"NOW"',
+                            position: 'absolute', top: -8, right: 12,
+                            fontSize: '0.5rem', fontWeight: 900, letterSpacing: '0.1em',
+                            color: '#0A0B14', bgcolor: cat.text,
+                            px: 0.8, py: 0.2, borderRadius: '6px',
+                          },
+                        }),
+                      }}
+                    >
+                      {/* Time column */}
+                      <Box sx={{ minWidth: 44, textAlign: 'center', pt: 0.25 }}>
+                        <Typography sx={{ fontWeight: 900, fontSize: '0.7rem', color: cat.text, lineHeight: 1 }}>
+                          {item.time}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.85rem', mt: 0.25 }}>{cat.emoji}</Typography>
+                      </Box>
+
+                      {/* Content */}
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', lineHeight: 1.3 }}>
+                          {item.task}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3, display: 'block', mt: 0.25 }}>
+                          {item.alignment}
+                        </Typography>
+                      </Box>
+
+                      {/* Category chip */}
+                      <Chip
+                        label={(item.category || 'task').replace('_', ' ')}
+                        size="small"
+                        sx={{
+                          height: 18, fontSize: '0.55rem', fontWeight: 700,
+                          bgcolor: `${cat.text}15`, color: cat.text,
+                          border: `1px solid ${cat.text}30`,
+                          flexShrink: 0,
+                        }}
+                      />
+                    </Box>
+                  );
+                })}
+              </Stack>
             </Box>
           )}
 
@@ -460,6 +517,102 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
               >
                 Accept
               </Button>
+            </Box>
+          )}
+
+          {/* Goal Strategy */}
+          {Array.isArray(data?.goalStrategy) && data.goalStrategy.length > 0 && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.1em', px: 0.5 }}>
+                GOAL STRATEGY
+              </Typography>
+              <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                {data.goalStrategy.map((gs, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      p: 2, borderRadius: '16px',
+                      bgcolor: 'rgba(139,92,246,0.05)',
+                      border: '1px solid rgba(139,92,246,0.15)',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.85rem' }}>
+                        🎯 {gs.goal}
+                      </Typography>
+                      <Chip
+                        label={gs.currentProgress}
+                        size="small"
+                        sx={{ height: 20, fontSize: '0.6rem', fontWeight: 800, bgcolor: 'rgba(139,92,246,0.15)', color: '#A78BFA' }}
+                      />
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 0.5, mb: 1, flexWrap: 'wrap' }}>
+                      <Chip label={`⚡ ${gs.nextMilestone}`} size="small"
+                        sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: 'rgba(245,158,11,0.1)', color: '#FBBF24' }} />
+                      <Chip label={`🎯 ${gs.weeklyTarget}`} size="small"
+                        sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: 'rgba(16,185,129,0.1)', color: '#34D399' }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#F87171', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                      Bottleneck: {gs.bottleneck}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4 }}>
+                      {gs.tacticalAdvice}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Network Leverage */}
+          {data?.networkLeverage && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.1em', px: 0.5 }}>
+                NETWORK LEVERAGE
+              </Typography>
+              <Box sx={{
+                mt: 1.5, p: 2.5, borderRadius: '20px',
+                background: 'linear-gradient(135deg, rgba(236,72,153,0.06), rgba(99,102,241,0.06))',
+                border: '1px solid rgba(236,72,153,0.15)',
+              }}>
+                <Stack spacing={1.5}>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#F472B6', fontWeight: 900, display: 'block', mb: 0.25, fontSize: '0.6rem', letterSpacing: '0.05em' }}>
+                      👤 REACH OUT
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.82rem' }}>
+                      {data.networkLeverage.outreach}
+                    </Typography>
+                  </Box>
+                  <Divider sx={{ opacity: 0.08 }} />
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Typography variant="caption" sx={{ color: '#60A5FA', fontWeight: 900, display: 'block', mb: 0.25, fontSize: '0.55rem' }}>
+                        🙋 ASK FOR
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+                        {data.networkLeverage.askFor}
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Typography variant="caption" sx={{ color: '#34D399', fontWeight: 900, display: 'block', mb: 0.25, fontSize: '0.55rem' }}>
+                        🎁 OFFER
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+                        {data.networkLeverage.offer}
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Typography variant="caption" sx={{ color: '#FBBF24', fontWeight: 900, display: 'block', mb: 0.25, fontSize: '0.55rem' }}>
+                        📣 COMMUNITY ACTION
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+                        {data.networkLeverage.communityAction}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Stack>
+              </Box>
             </Box>
           )}
 

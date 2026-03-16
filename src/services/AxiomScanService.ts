@@ -51,34 +51,26 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
     burnout_risk: `${userName}, you have been giving a lot. ${trackerTrends?.some((t: any) => t.direction === 'declining') ? `Some things feel harder lately - what would support look like?` : 'What would feel restorative today?'}`,
   };
 
-  // Routine templates based on motivation style
-  const routines: Record<string, any[]> = {
-    streak_driven: [
-      { time: 'Morning', task: 'Check in to maintain your streak', alignment: 'Protect your momentum' },
-      { time: 'Afternoon', task: 'One focused action on your top goal', alignment: 'Build the chain' },
-      { time: 'Evening', task: 'Reflect on your win today', alignment: 'Reinforce the habit' },
-    ],
-    progress_focused: [
-      { time: 'Morning', task: 'Review your goal progress bars', alignment: 'Visualize the path' },
-      { time: 'Afternoon', task: 'Move one goal forward by 5%', alignment: 'Tangible progress' },
-      { time: 'Evening', task: 'Update your progress tracker', alignment: 'Measure what matters' },
-    ],
-    social_accountable: [
-      { time: 'Morning', task: 'Share your intention with someone', alignment: 'Create accountability' },
-      { time: 'Afternoon', task: 'Work on your public commitment', alignment: 'Follow through' },
-      { time: 'Evening', task: 'Report your progress', alignment: 'Close the loop' },
-    ],
-    novelty_seeking: [
-      { time: 'Morning', task: 'Try a new approach to your goal', alignment: 'Fresh perspective' },
-      { time: 'Afternoon', task: 'Explore a different workspace', alignment: 'Change of scenery' },
-      { time: 'Evening', task: 'Note what worked differently', alignment: 'Learn and adapt' },
-    ],
-    routine_based: [
-      { time: 'Morning', task: 'Follow your established routine', alignment: 'Consistency compounds' },
-      { time: 'Afternoon', task: 'Deep work block at your usual time', alignment: 'Rhythm creates flow' },
-      { time: 'Evening', task: 'Evening review ritual', alignment: 'Close the day properly' },
-    ],
-  };
+  // Full 17-slot hourly routine (06:00-22:00)
+  const routine = [
+    { time: '06:00', task: 'Morning intention setting and day review', alignment: 'Starting with clarity sets the tone', category: 'planning' },
+    { time: '07:00', task: 'Movement routine — walk, stretch, or workout', alignment: 'Exercise boosts energy and mood', category: 'exercise' },
+    { time: '08:00', task: 'Deep work on your #1 goal', alignment: 'Peak morning focus — your best energy goes here', category: 'deep_work' },
+    { time: '09:00', task: 'Continue focused goal work', alignment: 'Sustained focus compounds results', category: 'deep_work' },
+    { time: '10:00', task: 'Second priority goal work', alignment: 'Diversify effort across goals', category: 'deep_work' },
+    { time: '11:00', task: 'Skill building or learning session', alignment: 'Continuous learning compounds daily', category: 'learning' },
+    { time: '12:00', task: 'Lunch break and mental reset', alignment: 'Your brain consolidates during rest', category: 'rest' },
+    { time: '13:00', task: 'Light review or journaling', alignment: 'Midday reflection anchors the morning', category: 'rest' },
+    { time: '14:00', task: 'Admin — email, messages, logistics', alignment: 'Afternoon dip suits lower-cognitive tasks', category: 'admin' },
+    { time: '15:00', task: 'Creative or exploratory work', alignment: 'Relaxed attention opens creativity', category: 'learning' },
+    { time: '16:00', task: 'Deep work block #2', alignment: 'Second wind — push one goal forward', category: 'deep_work' },
+    { time: '17:00', task: 'Wrap up deep work and review progress', alignment: 'Track what moved today', category: 'deep_work' },
+    { time: '18:00', task: 'Connect with an accountability partner', alignment: 'Social support multiplies commitment', category: 'social' },
+    { time: '19:00', task: 'Personal project or hobby time', alignment: 'Balance fuels sustainable growth', category: 'rest' },
+    { time: '20:00', task: 'Evening goal session', alignment: 'One more push on what matters', category: 'deep_work' },
+    { time: '21:00', task: 'Evening review — what went well? what did you learn?', alignment: 'Reflection turns experience into wisdom', category: 'reflection' },
+    { time: '22:00', task: 'Wind down — prepare for restful sleep', alignment: 'Sleep consolidates today\'s gains', category: 'rest' },
+  ];
 
   // Challenge suggestions based on risk factors
   // TONE: Inviting, not demanding - frame as opportunities
@@ -159,7 +151,7 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
     place: null as any, // Will be filled by place picker
     challenge,
     resources,
-    routine: routines[motivationStyle] || routines.routine_based,
+    routine,
   };
 }
 
@@ -384,6 +376,8 @@ export class AxiomScanService {
     let routine: any[] = [];
     let challenge: any = null;
     let resources: any[] = [];
+    let goalStrategy: any[] = [];
+    let networkLeverage: any = null;
     let source: 'llm' | 'algorithm' = 'algorithm';
     let llmError: string | null = null;
 
@@ -407,27 +401,19 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
   
   "routine": [
     {
-      "time": "Morning (First 2 Hours)",
-      "task": "Highly specific first action tied to their #1 goal or biggest opportunity. Include exact duration, what to prepare, and why this specific timing matters for them.",
-      "alignment": "Connect this task to their motivation style and long-term vision. Explain WHY this specific morning routine compounds for their situation.",
-      "duration": "Specific time like '15 min' or '30 min'",
-      "preparation": "What to set up the night before or have ready"
+      "time": "06:00",
+      "task": "Specific task tied to their goals. Reference goal BY NAME. Be concrete.",
+      "alignment": "Why this matters for THEM specifically.",
+      "category": "planning"
     },
     {
-      "time": "Afternoon (Deep Work Block)",
-      "task": "Specific action on their most neglected or highest-leverage goal. Reference the goal by name and give exact next step (not vague advice).",
-      "alignment": "Explain how this afternoon block addresses their specific risk factors. Why THIS action for THIS person today.",
-      "duration": "Specific time like '25 min' or '50 min'",
-      "preparation": "What to close/eliminate to protect this block"
-    },
-    {
-      "time": "Evening (Reflection & Reset)",
-      "task": "Specific reflection or preparation ritual. Tie to their check-in streak, journal themes, or goal progress tracking.",
-      "alignment": "Explain how this evening practice reinforces their identity and sets up tomorrow's success. Connect to their motivation style.",
-      "duration": "Specific time like '10 min' or '20 min'",
-      "preparation": "What to have ready or review"
+      "time": "07:00",
+      "task": "...",
+      "alignment": "...",
+      "category": "exercise"
     }
   ],
+  "ROUTINE_NOTE": "Generate EXACTLY 17 entries from 06:00 to 22:00 (one per hour). Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection. Mix 4-6 deep_work, 2-3 rest, 1-2 exercise, 1-2 admin, 1-2 learning, 1 social, 1 planning, 1 reflection.",
   
   "challenge": {
     "type": "bet",
@@ -450,17 +436,36 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
       "details": "Show awareness of their progress or struggle in this area",
       "estimatedImpact": "Specific benefit for them"
     }
-  ]
+  ],
+
+  "goalStrategy": [
+    {
+      "goal": "Goal name from their list",
+      "currentProgress": "e.g. 35%",
+      "bottleneck": "What's most likely blocking them on this goal right now",
+      "nextMilestone": "Specific milestone they could hit this week",
+      "tacticalAdvice": "Concrete step-by-step strategy (2-3 sentences) to move this goal forward TODAY. Be specific: what to do, how long, what tools/resources.",
+      "weeklyTarget": "What 'done' looks like by end of week for this goal"
+    }
+  ],
+
+  "networkLeverage": {
+    "outreach": "Who in their network (match or community) they should reach out to today and why — be specific about the value exchange",
+    "askFor": "What specifically to ask for (feedback, collaboration, accountability check, skill swap)",
+    "offer": "What they can offer others based on their strengths and progress",
+    "communityAction": "One action in groups/boards that builds their reputation (post insight, answer question, share resource)"
+  }
 }
 
 RULES:
 1. **Radical Personalization**: Every sentence must reference something specific about THIS user - their goals by name, their streak, their recent activity. No generic advice.
 
-2. **Routine Specificity**: Each routine task must include:
-   - Exact duration (15 min, 25 min, etc.)
-   - Specific preparation step
-   - Connection to their actual goals (by name)
-   - Why this timing matters for THEIR situation
+2. **Routine — EXACTLY 17 HOURLY SLOTS (06:00 to 22:00)**:
+   - One entry per hour: "06:00", "07:00", ..., "22:00"
+   - Reference their actual goals BY NAME in tasks
+   - Each entry needs: time, task, alignment, category
+   - Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection
+   - Spread: 4-6 deep_work, 2-3 rest, 1-2 exercise, 1-2 admin, 1 social, 1 planning/reflection
 
 3. **Challenge Design**: The challenge should:
    - Directly address their #1 risk factor
@@ -474,9 +479,20 @@ RULES:
    - Acknowledge patterns (streaks, gaps, themes)
    - Give advice that compounds for their specific situation
 
-5. **TONE**: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out. Speak as a wise mentor who knows them deeply.
+5. **Goal Strategy** — one entry per active goal (up to 5):
+   - Identify the BOTTLENECK (not just "keep going")
+   - Give tactical, actionable advice specific to the goal
+   - Set a clear weekly target with measurable outcome
+   - Reference their actual progress % and tracker data
 
-6. **NO ARCHETYPE LABELS**: Do not mention archetypes, personality types, or psychological categories. Speak to the person directly without categorizing them.`;
+6. **Network Leverage** — how to use their community TODAY:
+   - Name a specific match or community member if available
+   - Frame as mutual value: what to ask AND what to offer
+   - Include one community action (post, comment, share)
+
+7. **TONE**: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out. Speak as a wise mentor who knows them deeply.
+
+8. **NO ARCHETYPE LABELS**: Do not mention archetypes, personality types, or psychological categories. Speak to the person directly without categorizing them.`;
 
       const rawText = await aiCoaching.runWithFallback(prompt);
 
@@ -490,6 +506,8 @@ RULES:
         routine = Array.isArray(llmData.routine) ? llmData.routine : [];
         challenge = llmData.challenge || null;
         resources = Array.isArray(llmData.resources) ? llmData.resources : [];
+        goalStrategy = Array.isArray(llmData.goalStrategy) ? llmData.goalStrategy : [];
+        networkLeverage = llmData.networkLeverage || null;
         source = 'llm';
         logger.info(`[AxiomScan] LLM SUCCESS for ${userName} - message: ${axiomMessage.slice(0, 50)}...`);
       } else {
@@ -560,6 +578,33 @@ RULES:
       resources = generateResourcesFromGoals(nodes, metrics);
     }
 
+    // Generate goal strategy if LLM didn't provide one
+    if (goalStrategy.length === 0) {
+      goalStrategy = nodes
+        .filter((n: any) => !n.parentId && (n.progress || 0) < 1)
+        .slice(0, 5)
+        .map((g: any) => ({
+          goal: g.name,
+          currentProgress: `${Math.round((g.progress || 0) * 100)}%`,
+          bottleneck: (g.progress || 0) < 0.1 ? 'Getting started — break into first micro-step' :
+                      (g.progress || 0) < 0.5 ? 'Building momentum — maintain daily touchpoints' :
+                      'Final push — focus on completion criteria',
+          nextMilestone: `Reach ${Math.min(100, Math.round((g.progress || 0) * 100) + 15)}% this week`,
+          tacticalAdvice: `Spend 25 minutes today on "${g.name}". Set a timer, eliminate distractions, and focus on the smallest next action.`,
+          weeklyTarget: `Move "${g.name}" forward by at least 10% by end of week`,
+        }));
+    }
+
+    // Generate network leverage if LLM didn't provide one
+    if (!networkLeverage) {
+      networkLeverage = {
+        outreach: match ? `Reach out to ${match.name} — share your progress and ask about theirs` : 'Find an accountability partner in your groups',
+        askFor: 'Ask for honest feedback on your approach to your top goal',
+        offer: 'Share one lesson from your recent progress that could help someone else',
+        communityAction: 'Post a short update in a group board about what you learned today',
+      };
+    }
+
     // --- Phase 5: Generate daily schedule ---
     let schedule = null;
     try {
@@ -607,6 +652,8 @@ RULES:
       challenge: challenge,
       resources: resources,
       routine: routine,
+      goalStrategy: goalStrategy,
+      networkLeverage: networkLeverage,
       schedule: schedule,
       source: source,
       llm_error: llmError,
@@ -625,24 +672,27 @@ RULES:
 
 // Helper functions for fallback generation
 function generateRoutineFromArchetype(archetype: string, motivationStyle: string): any[] {
-  const routines: Record<string, any[]> = {
-    streak_driven: [
-      { time: 'Morning', task: 'Check in to maintain your streak', alignment: 'Protect your momentum' },
-      { time: 'Afternoon', task: 'One focused action on your top goal', alignment: 'Build the chain' },
-      { time: 'Evening', task: 'Reflect on your win today', alignment: 'Reinforce the habit' },
-    ],
-    progress_focused: [
-      { time: 'Morning', task: 'Review your goal progress bars', alignment: 'Visualize the path' },
-      { time: 'Afternoon', task: 'Move one goal forward by 5%', alignment: 'Tangible progress' },
-      { time: 'Evening', task: 'Update your progress tracker', alignment: 'Measure what matters' },
-    ],
-    default: [
-      { time: 'Morning', task: 'Set one clear intention', alignment: 'Start with purpose' },
-      { time: 'Afternoon', task: 'Take one small action', alignment: 'Progress compounds' },
-      { time: 'Evening', task: 'Acknowledge one win', alignment: 'Celebrate showing up' },
-    ],
-  };
-  return routines[motivationStyle] || routines.default;
+  // Full 17-slot hourly routine (06:00-22:00)
+  const hourlySlots = [
+    { time: '06:00', task: 'Morning intention setting and day review', alignment: 'Starting with clarity sets the tone', category: 'planning' },
+    { time: '07:00', task: 'Movement routine — walk, stretch, or workout', alignment: 'Exercise boosts energy and mood', category: 'exercise' },
+    { time: '08:00', task: 'Deep work on your #1 goal', alignment: 'Peak morning focus — your best energy goes here', category: 'deep_work' },
+    { time: '09:00', task: 'Continue focused goal work', alignment: 'Sustained focus compounds results', category: 'deep_work' },
+    { time: '10:00', task: 'Second priority goal work', alignment: 'Diversify effort across goals', category: 'deep_work' },
+    { time: '11:00', task: 'Skill building or learning session', alignment: 'Continuous learning compounds daily', category: 'learning' },
+    { time: '12:00', task: 'Lunch break and mental reset', alignment: 'Your brain consolidates during rest', category: 'rest' },
+    { time: '13:00', task: 'Light review or journaling', alignment: 'Midday reflection anchors the morning', category: 'rest' },
+    { time: '14:00', task: 'Admin — email, messages, logistics', alignment: 'Afternoon dip suits lower-cognitive tasks', category: 'admin' },
+    { time: '15:00', task: 'Creative or exploratory work', alignment: 'Relaxed attention opens creativity', category: 'learning' },
+    { time: '16:00', task: 'Deep work block #2', alignment: 'Second wind — push one goal forward', category: 'deep_work' },
+    { time: '17:00', task: 'Wrap up deep work and review progress', alignment: 'Track what moved today', category: 'deep_work' },
+    { time: '18:00', task: 'Connect with an accountability partner', alignment: 'Social support multiplies commitment', category: 'social' },
+    { time: '19:00', task: 'Personal project or hobby time', alignment: 'Balance fuels sustainable growth', category: 'rest' },
+    { time: '20:00', task: 'Evening goal session', alignment: 'One more push on what matters', category: 'deep_work' },
+    { time: '21:00', task: 'Evening review — what went well? what did you learn?', alignment: 'Reflection turns experience into wisdom', category: 'reflection' },
+    { time: '22:00', task: 'Wind down — prepare for restful sleep', alignment: 'Sleep consolidates today\'s gains', category: 'rest' },
+  ];
+  return hourlySlots;
 }
 
 function generateChallengeFromRiskFactors(riskFactors: string[]): any {
