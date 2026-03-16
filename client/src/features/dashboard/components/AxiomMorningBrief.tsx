@@ -12,7 +12,6 @@ import {
   Grid,
   Stack,
   Chip,
-  Avatar,
   LinearProgress,
   Button,
   useTheme,
@@ -24,7 +23,7 @@ import {
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
-import EmojiLightbulbIcon from '@mui/icons-material/EmojiObjects';
+
 import HistoryIcon from '@mui/icons-material/History';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -312,64 +311,18 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
             </Box>
           )}
 
-          {/* Axiom Message Area */}
-          <Box sx={{ display: 'flex', gap: 3, mb: 4, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
-            <Avatar sx={{
-              width: 64, height: 64,
-              background: 'linear-gradient(135deg, #78350F, #92400E)',
-              border: '2px solid rgba(245,158,11,0.4)',
-              fontSize: '1.75rem',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            }}>
-              🥋
-            </Avatar>
-            <Box sx={{ flex: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#F59E0B', letterSpacing: '0.02em' }}>
-                  AXIOM PROTOCOL
-                </Typography>
-                <Chip
-                  icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important' }} />}
-                  label={isToday ? 'Daily Brief' : formatDate(currentDate)}
-                  size="small"
-                  sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}
-                />
-                <Chip
-                  label={data?.source === 'llm' ? '🧠 AI' : '⚙️ Auto'}
-                  size="small"
-                  sx={{
-                    height: 18, fontSize: '0.55rem', fontWeight: 700,
-                    bgcolor: data?.source === 'llm' ? 'rgba(167,139,250,0.15)' : 'rgba(245,158,11,0.1)',
-                    color: data?.source === 'llm' ? '#A78BFA' : '#F59E0B',
-                    border: `1px solid ${data?.source === 'llm' ? 'rgba(167,139,250,0.25)' : 'rgba(245,158,11,0.2)'}`,
-                  }}
-                />
-              </Box>
-              <Typography variant="h6" sx={{ color: 'text.primary', lineHeight: 1.5, fontWeight: 500, fontSize: { xs: '1rem', sm: '1.1rem' }, letterSpacing: '-0.01em' }}>
-                {data?.message || `Focus on showing up today, ${userName}. Discipline is the only shortcut.`}
-              </Typography>
-
-              <Box sx={{ mt: 2.5 }}>
-                <Chip
-                  icon={<EmojiLightbulbIcon sx={{ fontSize: '16px !important', color: '#FCD34D !important' }} />}
-                  label="Tip: High-intensity blocks work better than long shallow sessions."
-                  variant="outlined"
-                  onClick={() => navigate('/coaching')}
-                  sx={{
-                    borderColor: 'rgba(255,255,255,0.1)',
-                    bgcolor: 'rgba(255,255,255,0.03)',
-                    color: 'text.secondary',
-                    fontSize: '0.75rem',
-                    height: 32,
-                    px: 1,
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' }
-                  }}
-                />
-              </Box>
-            </Box>
+          {/* Section label */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#F59E0B', letterSpacing: '0.02em' }}>
+              AXIOM PROTOCOL
+            </Typography>
+            <Chip
+              icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important' }} />}
+              label={isToday ? 'Daily Brief' : formatDate(currentDate)}
+              size="small"
+              sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}
+            />
           </Box>
-
-          <Divider sx={{ mb: 4, opacity: 0.1 }} />
 
           {/* Quick Targets Grid */}
           <Grid container spacing={2}>
