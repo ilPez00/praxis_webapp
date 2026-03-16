@@ -5,12 +5,9 @@ import { GoalTree } from '../models/GoalTree';
 import { GoalNode } from '../models/GoalNode';
 import { Domain } from '../models/Domain';
 import { createAchievementFromGoal } from './achievementController';
-import { EmbeddingService } from '../services/EmbeddingService';
 import logger from '../utils/logger';
 import { catchAsync, AppError, NotFoundError, ForbiddenError, BadRequestError, InternalServerError } from '../utils/appErrors';
 import { bumpDomainProficiency } from '../utils/proficiency';
-
-const embeddingService = new EmbeddingService();
 
 const MILESTONE_THRESHOLDS = [25, 50, 75, 100];
 const MILESTONE_MESSAGES: Record<number, string> = {
@@ -362,11 +359,6 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       logger.warn('Could not update goal_tree_edit_count/streak (columns may not exist yet):', incrementErr);
     }
 
-    // Fire-and-forget: generate + store embeddings for semantic matching
-    embeddingService.generateAndStoreEmbeddings(userId, safeRootNodes).catch((e) =>
-      logger.error('Embedding generation failed (non-fatal):', e)
-    );
-
     res.json(data); // Respond with the updated goal tree
   } else {
     // If no tree exists, create a new one
@@ -393,11 +385,6 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     } catch (streakErr) {
       logger.warn('Could not update streak on initial save:', streakErr);
     }
-
-    // Fire-and-forget: generate + store embeddings for semantic matching
-    embeddingService.generateAndStoreEmbeddings(userId, safeRootNodes).catch((e) =>
-      logger.error('Embedding generation failed (non-fatal):', e)
-    );
 
     res.status(201).json(data); // Respond with the newly created goal tree
   }
