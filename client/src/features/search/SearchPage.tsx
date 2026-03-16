@@ -17,6 +17,8 @@ import PersonIcon from '@mui/icons-material/Person';
 import SchoolIcon from '@mui/icons-material/School';
 import GroupsIcon from '@mui/icons-material/Groups';
 import EventIcon from '@mui/icons-material/Event';
+import PlaceIcon from '@mui/icons-material/Place';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import { API_URL } from '../../lib/api';
 
 interface UserResult {
@@ -61,11 +63,32 @@ interface EventResult {
   creator?: { name: string };
 }
 
+interface PlaceResult {
+  id: string;
+  name: string;
+  type?: string;
+  address?: string;
+  city?: string;
+  description?: string;
+}
+
+interface NoteResult {
+  id: string;
+  entry_type: string;
+  title: string;
+  content: string;
+  domain?: string;
+  tags?: string[];
+  occurred_at: string;
+}
+
 interface SearchResults {
   users?: UserResult[];
   coaches?: CoachResult[];
   groups?: GroupResult[];
   events?: EventResult[];
+  places?: PlaceResult[];
+  notes?: NoteResult[];
 }
 
 const SearchPage: React.FC = () => {
@@ -105,12 +128,16 @@ const SearchPage: React.FC = () => {
     (results.users?.length ?? 0) +
     (results.coaches?.length ?? 0) +
     (results.groups?.length ?? 0) +
-    (results.events?.length ?? 0);
+    (results.events?.length ?? 0) +
+    (results.places?.length ?? 0) +
+    (results.notes?.length ?? 0);
 
   const showUsers  = tab === 'all' || tab === 'users';
   const showCoaches = tab === 'all' || tab === 'coaches';
   const showGroups  = tab === 'all' || tab === 'groups';
   const showEvents  = tab === 'all' || tab === 'events';
+  const showPlaces  = tab === 'all' || tab === 'places';
+  const showNotes   = tab === 'all' || tab === 'notes';
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', px: { xs: 2, md: 3 }, py: 4 }}>
@@ -142,6 +169,12 @@ const SearchPage: React.FC = () => {
         </ToggleButton>
         <ToggleButton value="events">
           <EventIcon sx={{ fontSize: 16, mr: 0.5 }} />Events
+        </ToggleButton>
+        <ToggleButton value="places">
+          <PlaceIcon sx={{ fontSize: 16, mr: 0.5 }} />Places
+        </ToggleButton>
+        <ToggleButton value="notes">
+          <MenuBookIcon sx={{ fontSize: 16, mr: 0.5 }} />Notes
         </ToggleButton>
       </ToggleButtonGroup>
 
@@ -353,6 +386,114 @@ const SearchPage: React.FC = () => {
                           {ev.city && ` · ${ev.city}`}
                           {ev.creator?.name && ` · by ${ev.creator.name}`}
                         </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            </Box>
+          )}
+          {/* Places */}
+          {showPlaces && (results.places?.length ?? 0) > 0 && (
+            <Box>
+              {tab === 'all' && (
+                <Typography variant="overline" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+                  Places
+                </Typography>
+              )}
+              <Stack spacing={1.5}>
+                {results.places!.map(p => (
+                  <Card
+                    key={p.id}
+                    onClick={() => navigate('/discover?tab=places')}
+                    sx={{
+                      cursor: 'pointer',
+                      bgcolor: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', borderColor: '#6366F1' },
+                    }}
+                  >
+                    <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: '12px !important' }}>
+                      <Box
+                        sx={{
+                          width: 44, height: 44, borderRadius: '12px',
+                          bgcolor: 'rgba(99,102,241,0.12)',
+                          border: '1px solid rgba(99,102,241,0.3)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <PlaceIcon sx={{ color: '#6366F1', fontSize: 22 }} />
+                      </Box>
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Typography variant="body1" sx={{ fontWeight: 700 }}>{p.name}</Typography>
+                        <Typography variant="body2" color="text.secondary" noWrap>
+                          {[p.type, p.address, p.city].filter(Boolean).join(' · ')}
+                        </Typography>
+                        {p.description && (
+                          <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.25 }}>
+                            {p.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Notes */}
+          {showNotes && (results.notes?.length ?? 0) > 0 && (
+            <Box>
+              {tab === 'all' && (
+                <Typography variant="overline" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+                  Notes
+                </Typography>
+              )}
+              <Stack spacing={1.5}>
+                {results.notes!.map(n => (
+                  <Card
+                    key={n.id}
+                    onClick={() => navigate(n.entry_type === 'axiom_brief' ? '/coaching' : '/notebook')}
+                    sx={{
+                      cursor: 'pointer',
+                      bgcolor: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', borderColor: '#8B5CF6' },
+                    }}
+                  >
+                    <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: '12px !important' }}>
+                      <Box
+                        sx={{
+                          width: 44, height: 44, borderRadius: '12px',
+                          bgcolor: 'rgba(139,92,246,0.12)',
+                          border: '1px solid rgba(139,92,246,0.3)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <MenuBookIcon sx={{ color: '#8B5CF6', fontSize: 22 }} />
+                      </Box>
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                            {n.title || n.entry_type}
+                          </Typography>
+                          <Chip
+                            label={n.entry_type.replace(/_/g, ' ')}
+                            size="small"
+                            sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: 'rgba(139,92,246,0.12)', color: '#A78BFA' }}
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" noWrap>
+                          {n.content}
+                        </Typography>
+                        {Array.isArray(n.tags) && n.tags.length > 0 && (
+                          <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                            {n.tags.slice(0, 4).map(t => (
+                              <Chip key={t} label={`#${t}`} size="small" variant="outlined" sx={{ fontSize: '0.6rem', height: 18 }} />
+                            ))}
+                          </Box>
+                        )}
                       </Box>
                     </CardContent>
                   </Card>

@@ -2,16 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync } from '../utils/appErrors';
 
-// GET /search?q=<query>&type=users|coaches|groups|events|all
+// GET /search?q=<query>&type=users|coaches|groups|events|places|notes|all
 export const search = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { q = '', type = 'all' } = req.query as { q?: string; type?: string };
   const query = q.trim();
 
   if (!query) {
-    return res.status(200).json({ users: [], coaches: [], groups: [], events: [] });
+    return res.status(200).json({ users: [], coaches: [], groups: [], events: [], places: [], notes: [] });
   }
 
-  const results: { users?: any[]; coaches?: any[]; groups?: any[]; events?: any[] } = {};
+  const results: { users?: any[]; coaches?: any[]; groups?: any[]; events?: any[]; places?: any[]; notes?: any[] } = {};
 
   if (type === 'all' || type === 'users') {
     const { data: users } = await supabase
@@ -64,6 +64,27 @@ export const search = catchAsync(async (req: Request, res: Response, _next: Next
       .limit(10);
 
     results.events = events ?? [];
+  }
+
+  if (type === 'all' || type === 'places') {
+    const { data: places } = await supabase
+      .from('places')
+      .select('id, name, type, address, city, latitude, longitude, description')
+      .or(`name.ilike.%${query}%,address.ilike.%${query}%,city.ilike.%${query}%,description.ilike.%${query}%`)
+      .limit(15);
+
+    results.places = places ?? [];
+  }
+
+  if (type === 'all' || type === 'notes') {
+    const { data: notes } = await supabase
+      .from('notebook_entries')
+      .select('id, entry_type, title, content, domain, tags, occurred_at')
+      .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
+      .order('occurred_at', { ascending: false })
+      .limit(15);
+
+    results.notes = notes ?? [];
   }
 
   return res.status(200).json(results);
