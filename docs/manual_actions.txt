@@ -772,3 +772,38 @@ NOTE: Sparring tables (sparring_requests, sparring_partners) also need to exist.
   Run the full setup.sql if those tables are missing.
 
 ================================================================================
+SQL MIGRATIONS TO RUN (Session 66 — Fix trackers/log 500 + AI always-on)
+================================================================================
+
+Run in Supabase SQL Editor:
+
+-- 1. FIX: tracker_entries missing user_id column (root cause of /trackers/log 500)
+ALTER TABLE public.tracker_entries
+  ADD COLUMN IF NOT EXISTS user_id UUID;
+
+ALTER TABLE public.tracker_entries
+  DROP CONSTRAINT IF EXISTS tracker_entries_user_id_fkey;
+
+ALTER TABLE public.tracker_entries
+  ADD CONSTRAINT tracker_entries_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_tracker_entries_user_id
+  ON public.tracker_entries(user_id);
+
+-- 2. FIX: unique constraint for tracker upsert (onConflict: 'user_id,type')
+CREATE UNIQUE INDEX IF NOT EXISTS idx_trackers_user_type
+  ON public.trackers(user_id, type);
+
+-- 3. NOTE: minimal_ai_mode column is now unused (AI is always on as of Session 66).
+--    No need to drop it — it's harmless — but the Settings toggle was removed.
+
+ROOT CAUSE of /trackers/log 500: two issues:
+  a) tracker_entries table may lack a user_id column (insert fails)
+  b) trackers table may lack a UNIQUE(user_id, type) constraint (upsert fails)
+Run the SQL above to fix both.
+
+Also verify Railway SUPABASE_SERVICE_ROLE_KEY starts with "eyJ" (service-role JWT).
+If it's the anon key, ALL backend writes will 500 regardless of schema fixes.
+
+================================================================================

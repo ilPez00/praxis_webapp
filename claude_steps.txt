@@ -294,3 +294,36 @@ Session 65: DiaryFeed Sort/Filter + GoalActivityGraph
 - Commits: 2e0c938 (GoalActivityGraph integration)
 - Next: Test activity graph rendering on deployed app, verify sort/filter UX in Notes page
 - Sign: Claude
+
+Session 66: Hourly Schedule + Goal Strategy + Diary Export + AI Always-On
+- AxiomScanService.ts: LLM prompt rewritten from 3 summary blocks (Morning/Afternoon/Evening) to 17 hourly slots (06:00–22:00)
+  - Each slot: time, task, alignment, category (deep_work/admin/rest/exercise/social/learning/planning/reflection)
+  - Added goalStrategy (per-goal: bottleneck, tactical, milestone) and networkLeverage (outreach/ask/offer/community) to prompt + response parsing
+  - Algorithmic fallbacks for both new sections when LLM unavailable
+  - generateRoutineFromArchetype() and generateMetricBasedBrief() rewritten to return 17 hourly slots
+  - Removed all minimal_ai_mode references from profile queries and gating logic
+- AxiomMorningBrief.tsx: redesigned schedule rendering
+  - CATEGORY_COLORS constant: 8 categories with bg/border/text/emoji
+  - Vertical Stack timeline replacing horizontal 3-card scroll
+  - "NOW" indicator: current hour slot highlighted with glow + badge via CSS
+  - Goal Strategy section: per-goal cards with progress chip, bottleneck, tactical advice, milestones
+  - Network Leverage section: gradient card with 3-column layout (outreach/ask/offer/community)
+- SettingsPage.tsx: removed minimal_ai_mode toggle, state, handler, and AI Settings section
+- scheduleController.ts: removed minimal_ai_mode from profile select query
+- CLAUDE.md: AI Policy section updated — AI is always on, no toggle
+- GoalNotesPanel.tsx: fixed journal_entries 400 error
+  - Switched all operations from journal_entries to node_journal_entries table
+  - Changed created_at → logged_at field references
+  - Relaxed node ID validation from UUID regex to nodeId.length < 4 guard (nanoid compatibility)
+- diaryRoutes.ts: added diary export endpoints
+  - GET /diary/export/plain: free plain-text export (journal + node_journal + checkins + goals + bets + achievements, chronological grouped by date)
+  - POST /diary/export/axiom: 500 PP Axiom-refined narrative (deduct-first-refund-on-failure, LLM memoir prompt, 15k char limit)
+- NotesPage.tsx: "Download Diary" button + export dialog
+  - Two options: plain txt (free) and Axiom narrative (500 PP)
+  - Axiom preview with download button after generation
+- Files: AxiomScanService.ts, AxiomMorningBrief.tsx, SettingsPage.tsx, scheduleController.ts, CLAUDE.md, GoalNotesPanel.tsx, diaryRoutes.ts, NotesPage.tsx
+- Verification: TypeScript check 0 source errors
+- Commits: 16e76e1 (diary export), earlier commits for schedule + AI changes
+- Known issue: trackers/log 500 — likely upsert constraint or tracker_entries.user_id column mismatch in Supabase; not yet investigated
+- Next: Auto places/events system (planned, awaiting user direction), event expiration/cleanup, fix trackers/log 500
+- Sign: Claude
