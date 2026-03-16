@@ -7,10 +7,12 @@ const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('42P01') || msg?.includes('42703');
 
 export const getPlaces = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { type, lat, lng, radius } = req.query;
+  const { type, lat, lng, radius, limit: limitParam } = req.query;
   const userLat = lat ? parseFloat(lat as string) : null;
   const userLng = lng ? parseFloat(lng as string) : null;
   const radiusKm = radius ? parseFloat(radius as string) : 50;
+  const hasGeo = userLat !== null && userLng !== null && !isNaN(userLat!) && !isNaN(userLng!);
+  const maxResults = Math.min(limitParam ? parseInt(limitParam as string, 10) : (hasGeo ? 10 : 50), 200);
 
   let query = supabase
     .from('places')
@@ -18,6 +20,8 @@ export const getPlaces = catchAsync(async (req: Request, res: Response, _next: N
     .order('name', { ascending: true });
 
   if (type) query = query.eq('type', type as string);
+  // When no geo, apply DB-level limit for performance
+  if (!hasGeo) query = query.limit(maxResults);
 
   const { data, error } = await query;
 
@@ -50,7 +54,8 @@ export const getPlaces = catchAsync(async (req: Request, res: Response, _next: N
         if (a.distance_km === null) return 1;
         if (b.distance_km === null) return -1;
         return a.distance_km - b.distance_km;
-      });
+      })
+      .slice(0, maxResults);
   }
 
   res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min

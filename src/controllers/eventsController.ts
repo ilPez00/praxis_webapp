@@ -24,12 +24,14 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 }
 
 export const getEvents = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { lat, lng, radius } = req.query;
+  const { lat, lng, radius, limit: limitParam } = req.query;
   const userLat = lat ? parseFloat(lat as string) : null;
   const userLng = lng ? parseFloat(lng as string) : null;
   const radiusKm = radius ? parseFloat(radius as string) : 50;
+  const hasGeo = userLat !== null && userLng !== null && !isNaN(userLat!) && !isNaN(userLng!);
+  const maxResults = Math.min(limitParam ? parseInt(limitParam as string, 10) : (hasGeo ? 10 : 50), 200);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('events')
     .select(`
       *,
@@ -39,6 +41,10 @@ export const getEvents = catchAsync(async (req: Request, res: Response, _next: N
     .gte('event_date', new Date().toISOString().slice(0, 10))
     .order('event_date', { ascending: true })
     .order('event_time', { ascending: true });
+
+  if (!hasGeo) query = query.limit(maxResults);
+
+  const { data, error } = await query;
 
   if (error) {
     if (SCHEMA_MISSING(error.message)) {
@@ -67,7 +73,8 @@ export const getEvents = catchAsync(async (req: Request, res: Response, _next: N
         if (a.distance_km === null) return 1;
         if (b.distance_km === null) return -1;
         return a.distance_km - b.distance_km;
-      });
+      })
+      .slice(0, maxResults);
   }
 
   res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min

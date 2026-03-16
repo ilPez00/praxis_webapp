@@ -582,27 +582,36 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
                       return;
                     }
                     setGeoLoading(true);
+                    const onSuccess = (pos: GeolocationPosition) => {
+                      const lat = pos.coords.latitude.toFixed(5);
+                      const lng = pos.coords.longitude.toFixed(5);
+                      setBookmarkLat(lat);
+                      setBookmarkLng(lng);
+                      setUserGeo({ lat: parseFloat(lat), lng: parseFloat(lng) });
+                      setGeoLoading(false);
+                      toast.success('Location detected!');
+                    };
+                    const onError = (err: GeolocationPositionError) => {
+                      // If high-accuracy failed, retry with low accuracy
+                      if (err.code === 2) {
+                        navigator.geolocation.getCurrentPosition(
+                          onSuccess,
+                          () => { setGeoLoading(false); toast('Location not available — you can type coordinates manually.', { icon: '📍' }); },
+                          { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+                        );
+                        return;
+                      }
+                      setGeoLoading(false);
+                      if (err.code === 1) {
+                        toast.error('Location permission denied. Enable it in browser settings.');
+                      } else {
+                        toast('Location timed out — you can enter coordinates manually.', { icon: '📍' });
+                      }
+                    };
                     navigator.geolocation.getCurrentPosition(
-                      (pos) => {
-                        const lat = pos.coords.latitude.toFixed(5);
-                        const lng = pos.coords.longitude.toFixed(5);
-                        setBookmarkLat(lat);
-                        setBookmarkLng(lng);
-                        setUserGeo({ lat: parseFloat(lat), lng: parseFloat(lng) });
-                        setGeoLoading(false);
-                        toast.success('Location detected!');
-                      },
-                      (err) => {
-                        setGeoLoading(false);
-                        if (err.code === 1) {
-                          toast.error('Location permission denied. Please enable location access in your browser settings.');
-                        } else if (err.code === 2) {
-                          toast.error('Location unavailable. Make sure GPS is enabled.');
-                        } else {
-                          toast.error('Location timed out. Please try again.');
-                        }
-                      },
-                      { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 }
+                      onSuccess,
+                      onError,
+                      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
                     );
                   }}
                   disabled={geoLoading}
