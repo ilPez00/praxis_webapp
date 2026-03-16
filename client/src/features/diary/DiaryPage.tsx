@@ -26,8 +26,6 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import MicIcon from '@mui/icons-material/Mic';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import CloseIcon from '@mui/icons-material/Close';
-import LockIcon from '@mui/icons-material/Lock';
-import PublicIcon from '@mui/icons-material/Public';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
@@ -106,9 +104,6 @@ const DiaryPage: React.FC = () => {
   const [reference, setReference] = useState<Reference | null>(null);
   const [refPickerOpen, setRefPickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Privacy toggle for new entries
-  const [showPrivacyOptions, setShowPrivacyOptions] = useState(false);
 
   const fetchEntries = useCallback(async () => {
     if (!user?.id) return;
@@ -675,43 +670,6 @@ const DiaryPage: React.FC = () => {
                 onDelete={() => setReference(null)}
                 sx={{ ml: 1, bgcolor: 'primary.light', color: 'primary.contrastText' }}
               />
-            )}
-          </Box>
-          
-          {/* Privacy Toggle */}
-          <Box sx={{ mb: 2 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => setShowPrivacyOptions(!showPrivacyOptions)}
-              startIcon={isPrivate ? <LockIcon /> : <PublicIcon />}
-              sx={{ mr: 1 }}
-            >
-              {isPrivate ? '🔒 Private (only me)' : '🌍 Public (everyone can see)'}
-            </Button>
-            {showPrivacyOptions && (
-              <Box sx={{ mt: 1, p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
-                  Who can see this entry?
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Chip
-                    label="🔒 Private"
-                    onClick={() => setIsPrivate(true)}
-                    sx={{ bgcolor: isPrivate ? 'primary.main' : 'transparent', color: isPrivate ? 'primary.contrastText' : 'text.secondary' }}
-                  />
-                  <Chip
-                    label="🌍 Public"
-                    onClick={() => setIsPrivate(false)}
-                    sx={{ bgcolor: !isPrivate ? 'primary.main' : 'transparent', color: !isPrivate ? 'primary.contrastText' : 'text.secondary' }}
-                  />
-                </Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
-                  {isPrivate 
-                    ? 'Only you can see this entry' 
-                    : 'Anyone can see this entry (goal names always visible)'}
-                </Typography>
-              </Box>
             )}
           </Box>
 

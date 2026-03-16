@@ -70,6 +70,7 @@ const SettingsPage: React.FC = () => {
   // Privacy
   const [matchVisibility, setMatchVisibility] = useState<string>('all');
   const [profilePublic, setProfilePublic] = useState(true);
+  const [shareNotesPublicly, setShareNotesPublicly] = useState(false);
   const [privacySaving, setPrivacySaving] = useState(false);
 
   // Analytics
@@ -92,13 +93,14 @@ const SettingsPage: React.FC = () => {
     const loadProfile = async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('city, is_public, match_visibility')
+        .select('city, is_public, match_visibility, share_notes_publicly')
         .eq('id', user.id)
         .single();
       if (data) {
         setGeoCity(data.city || '');
         setProfilePublic(data.is_public !== false);
         setMatchVisibility(data.match_visibility || 'all');
+        setShareNotesPublicly(data.share_notes_publicly || false);
       }
     };
     loadProfile();
@@ -157,7 +159,11 @@ const SettingsPage: React.FC = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       await axios.put(`${API_URL}/users/${user.id}`,
-        { is_public: profilePublic, match_visibility: matchVisibility },
+        { 
+          is_public: profilePublic, 
+          match_visibility: matchVisibility,
+          share_notes_publicly: shareNotesPublicly,
+        },
         { headers: { Authorization: `Bearer ${session?.access_token}` } }
       );
       toast.success('Privacy settings saved.');
@@ -268,7 +274,7 @@ const SettingsPage: React.FC = () => {
       </Section>
 
       {/* Privacy */}
-      <Section icon={<LockIcon sx={{ color: '#A78BFA' }} />} title="Profile Privacy">
+      <Section icon={<LockIcon sx={{ color: '#A78BFA' }} />} title="Profile & Notes Privacy">
         <Stack spacing={2}>
           <FormControlLabel
             control={<Switch checked={profilePublic} onChange={e => setProfilePublic(e.target.checked)} />}
@@ -277,6 +283,19 @@ const SettingsPage: React.FC = () => {
                 <Typography variant="body2" fontWeight={600}>Public profile</Typography>
                 <Typography variant="caption" color="text.secondary">
                   Others can view your profile, goals, and stats
+                </Typography>
+              </Box>
+            }
+            sx={{ justifyContent: 'space-between', ml: 0, mr: 0 }}
+            labelPlacement="start"
+          />
+          <FormControlLabel
+            control={<Switch checked={shareNotesPublicly} onChange={e => setShareNotesPublicly(e.target.checked)} />}
+            label={
+              <Box>
+                <Typography variant="body2" fontWeight={600}>📔 Share my notes publicly</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Others can see BROAD DETAILS of your diary/notebook entries (goal names only, no content)
                 </Typography>
               </Box>
             }
@@ -295,6 +314,11 @@ const SettingsPage: React.FC = () => {
               <MenuItem value="none">Nobody (hide from matches)</MenuItem>
             </Select>
           </FormControl>
+          <Alert severity="info" sx={{ fontSize: '0.75rem', borderRadius: '10px' }}>
+            <Typography variant="caption">
+              <strong>Note:</strong> Even when public, others ONLY see goal names you've selected — never your private content, mood, or details.
+            </Typography>
+          </Alert>
           <Button
             variant="contained"
             onClick={savePrivacy}
