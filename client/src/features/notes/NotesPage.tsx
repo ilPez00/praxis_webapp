@@ -10,6 +10,7 @@ import GoalWorkspaceSheet, { ActionItem } from '../goals/components/GoalWorkspac
 import NoteGoalDetail from './NoteGoalDetail';
 import NodeJournalDrawer from '../goals/NodeJournalDrawer';
 import DiaryFeed from './DiaryFeed';
+import ClickableDiaryFeed from './ClickableDiaryFeed';
 import ActivityCalendar from './ActivityCalendar';
 import DayDetailView from './DayDetailView';
 import GoalNotesPanel from './GoalNotesPanel';
@@ -692,7 +693,7 @@ const NotesPage: React.FC = () => {
                     <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 800, mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Recent Activity
                     </Typography>
-                    <DiaryFeed userId={currentUserId} />
+                    <ClickableDiaryFeed userId={currentUserId} />
                   </Box>
                 </Stack>
               )}

@@ -23,7 +23,7 @@ import { API_URL } from '../../lib/api';
 interface ShareDialogProps {
   open: boolean;
   onClose: () => void;
-  sourceTable: 'posts' | 'places' | 'events' | 'goal_nodes' | 'profiles' | 'messages';
+  sourceTable: 'posts' | 'places' | 'events' | 'goal_nodes' | 'profiles' | 'messages' | 'notebook_entries';
   sourceId: string;
   title?: string;
   content?: string;

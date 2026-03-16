@@ -27,6 +27,7 @@ import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import HistoryIcon from '@mui/icons-material/History';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ShareButton from '../../../components/common/ShareButton';
 
 interface MorningBriefProps {
   userName: string;
@@ -327,22 +328,20 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
           {/* Quick Targets Grid */}
           <Grid container spacing={2}>
             {[
-              { label: 'USER MATCH', title: data?.match?.name, reason: data?.match?.reason, to: `/profile/${data?.match?.id}`, color: '#F59E0B', icon: '👤' },
-              { label: 'FEATURED EVENT', title: data?.event?.title, reason: data?.event?.reason, to: `/discover?tab=events`, color: '#EC4899', icon: '📅' },
-              { label: 'VISIT PLACE', title: data?.place?.name, reason: data?.place?.reason, to: `/discover?tab=places`, color: '#6366F1', icon: '📍' },
+              { label: 'USER MATCH', title: data?.match?.name, reason: data?.match?.reason, to: `/profile/${data?.match?.id}`, color: '#F59E0B', icon: '👤', shareType: 'axiom_match' as const, shareId: data?.match?.id },
+              { label: 'FEATURED EVENT', title: data?.event?.title, reason: data?.event?.reason, to: `/discover?tab=events`, color: '#EC4899', icon: '📅', shareType: 'axiom_event' as const, shareId: data?.event?.id },
+              { label: 'VISIT PLACE', title: data?.place?.name, reason: data?.place?.reason, to: `/discover?tab=places`, color: '#6366F1', icon: '📍', shareType: 'axiom_place' as const, shareId: data?.place?.id },
             ].map((item, idx) => (
               <Grid size={{ xs: 12, sm: 4 }} key={idx}>
                 <Box
-                  onClick={() => item.title && navigate(item.to)}
                   sx={{
                     p: 2.5, borderRadius: '20px', bgcolor: 'rgba(255,255,255,0.02)',
                     border: '1px solid rgba(255,255,255,0.05)',
-                    cursor: item.title ? 'pointer' : 'default', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                     height: '100%',
                     display: 'flex', flexDirection: 'column',
                     '&:hover': item.title ? {
                       bgcolor: 'rgba(255,255,255,0.04)',
-                      transform: 'translateY(-4px)',
                       borderColor: `${item.color}55`,
                       boxShadow: `0 8px 24px ${item.color}15`
                     } : {}
@@ -352,14 +351,32 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
                     <Typography variant="overline" sx={{ color: item.color, fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.1em' }}>
                       {item.label}
                     </Typography>
-                    <Box sx={{ fontSize: '1rem' }}>{item.icon}</Box>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      {item.title && (
+                        <Box onClick={e => e.stopPropagation()}>
+                          <ShareButton
+                            sourceTable={item.shareType}
+                            sourceId={item.shareId || `axiom-${idx}`}
+                            title={`${item.label}: ${item.title}`}
+                            content={item.reason || ''}
+                            userId={userId}
+                          />
+                        </Box>
+                      )}
+                      <Box sx={{ fontSize: '1rem' }}>{item.icon}</Box>
+                    </Stack>
                   </Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5, lineHeight: 1.2, opacity: item.title ? 1 : 0.4 }}>
-                    {item.title || 'None available'}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4, mt: 'auto', opacity: item.title ? 1 : 0.4 }}>
-                    {item.reason || 'Check back tomorrow'}
-                  </Typography>
+                  <Box
+                    onClick={() => item.title && navigate(item.to)}
+                    sx={{ cursor: item.title ? 'pointer' : 'default', flex: 1, display: 'flex', flexDirection: 'column' }}
+                  >
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5, lineHeight: 1.2, opacity: item.title ? 1 : 0.4 }}>
+                      {item.title || 'None available'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4, mt: 'auto', opacity: item.title ? 1 : 0.4 }}>
+                      {item.reason || 'Check back tomorrow'}
+                    </Typography>
+                  </Box>
                 </Box>
               </Grid>
             ))}
@@ -422,9 +439,19 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
                       <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {item.task}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3, display: 'block', mt: 0.5 }}>
-                        {item.alignment}
-                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3, flex: 1 }}>
+                          {item.alignment}
+                        </Typography>
+                        <ShareButton
+                          sourceTable="axiom_routine"
+                          sourceId={`routine-${idx}`}
+                          title={`${item.time} — ${item.task}`}
+                          content={`${item.alignment} (${(item.category || 'task').replace('_', ' ')})`}
+                          userId={userId}
+                          tooltip="Share to notes"
+                        />
+                      </Box>
                     </Box>
                   );
                 })}

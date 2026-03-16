@@ -8,7 +8,7 @@ import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 import NoteEditDialog from './NoteEditDialog';
 
 /* ─── Types ─────────────────────────────────────── */
-interface FeedItem {
+export interface FeedItem {
   id: string;
   type: string;
   timestamp: string;
@@ -24,6 +24,8 @@ interface FeedItem {
 interface DiaryFeedProps {
   userId: string;
   days?: number;
+  onItemClick?: (item: FeedItem) => void;
+  onItemContextMenu?: (event: React.MouseEvent, item: FeedItem) => void;
 }
 
 const TYPE_META: Record<string, { badge: string; color: string }> = {
@@ -473,18 +475,25 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
   const renderCard = (item: FeedItem) => {
     const meta = TYPE_META[item.type] || { badge: item.type, color: '#888' };
     return (
-      <Box key={item.id} sx={{
-        mb: 1,
-        p: '10px 12px',
-        borderRadius: '14px',
-        bgcolor: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        transition: 'all 0.15s ease',
-        '&:hover': {
-          bgcolor: 'rgba(255,255,255,0.08)',
-          borderColor: `${item.color}30`,
-        },
-      }}>
+      <Box 
+        key={item.id} 
+        sx={{
+          mb: 1,
+          p: '10px 12px',
+          borderRadius: '14px',
+          bgcolor: 'rgba(255,255,255,0.06)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          transition: 'all 0.15s ease',
+          cursor: 'pointer',
+          '&:hover': {
+            bgcolor: 'rgba(255,255,255,0.08)',
+            borderColor: `${item.color}30`,
+            transform: 'translateX(2px)',
+          },
+        }}
+        onClick={() => onItemClick?.(item)}
+        onContextMenu={(e) => onItemContextMenu?.(e, item)}
+      >
         {/* Top row: icon + title + badge + time + edit */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box sx={{

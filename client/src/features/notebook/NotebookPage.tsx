@@ -26,11 +26,15 @@ import PinIcon from '@mui/icons-material/PushPin';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import ReplyIcon from '@mui/icons-material/Reply';
+import ShareIcon from '@mui/icons-material/Share';
+import SendIcon from '@mui/icons-material/Send';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import NoteEditDialog from './NoteEditDialog';
+import ShareDialog from '../../components/common/ShareDialog';
 
 const ENTRY_TYPE_ICONS: Record<string, React.ReactNode> = {
   note: <EditNoteIcon />,
@@ -94,6 +98,12 @@ const NotebookPage: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedEntry, setSelectedEntry] = useState<NotebookEntry | null>(null);
   const [stats, setStats] = useState<any>(null);
+  // Reply state
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replySaving, setReplySaving] = useState(false);
+  // Share state
+  const [shareEntry, setShareEntry] = useState<NotebookEntry | null>(null);
 
   const fetchEntries = useCallback(async () => {
     if (!user?.id) return;
@@ -195,6 +205,47 @@ const NotebookPage: React.FC = () => {
     setEntries(prev => prev.map(e => 
       e.id === updatedEntry.id ? updatedEntry : e
     ));
+  };
+
+  const handleReply = async (parentEntry: NotebookEntry) => {
+    if (!replyText.trim() || !user?.id) return;
+    setReplySaving(true);
+    try {
+      const headers = {
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        'Content-Type': 'application/json',
+      };
+      const res = await fetch(`${API_URL}/notebook/entries`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          user_id: user.id,
+          entry_type: 'note',
+          title: `Re: ${parentEntry.title || parentEntry.entry_type}`,
+          content: replyText.trim(),
+          metadata: {
+            reply_to: parentEntry.id,
+            reply_to_title: parentEntry.title,
+            reply_to_type: parentEntry.entry_type,
+          },
+        }),
+      });
+      if (res.ok) {
+        const newEntry = await res.json();
+        setEntries(prev => [newEntry, ...prev]);
+        setReplyText('');
+        setReplyingTo(null);
+        toast.success('Reply added');
+      } else {
+        toast.error('Failed to reply');
+      }
+    } catch { toast.error('Failed to reply'); }
+    finally { setReplySaving(false); }
+  };
+
+  const handleShareClick = (entry: NotebookEntry) => {
+    setShareEntry(entry);
+    setAnchorEl(null);
   };
 
   const relativeTime = (ts: string) => {
@@ -501,6 +552,30 @@ const NotebookPage: React.FC = () => {
                       <MoreVertIcon fontSize="small" />
                     </IconButton>
                   </Box>
+                  {/* Inline reply */}
+                  {replyingTo === entry.id && (
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        multiline
+                        maxRows={3}
+                        placeholder="Write a reply..."
+                        value={replyText}
+                        onChange={e => setReplyText(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply(entry); } }}
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.03)', fontSize: '0.82rem' } }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => handleReply(entry)}
+                        disabled={replySaving || !replyText.trim()}
+                        sx={{ color: '#A78BFA', alignSelf: 'flex-end' }}
+                      >
+                        <SendIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  )}
                 </Paper>
               ))}
             </Stack>
@@ -516,6 +591,12 @@ const NotebookPage: React.FC = () => {
       >
         <MenuItem onClick={(e) => selectedEntry && handleEditClick(selectedEntry, e)}>
           <EditIcon sx={{ mr: 1, fontSize: 18 }} /> Edit
+        </MenuItem>
+        <MenuItem onClick={() => { if (selectedEntry) { setReplyingTo(selectedEntry.id); setAnchorEl(null); } }}>
+          <ReplyIcon sx={{ mr: 1, fontSize: 18 }} /> Reply
+        </MenuItem>
+        <MenuItem onClick={() => selectedEntry && handleShareClick(selectedEntry)}>
+          <ShareIcon sx={{ mr: 1, fontSize: 18 }} /> Share
         </MenuItem>
         <MenuItem onClick={() => selectedEntry && handlePinClick(selectedEntry)}>
           <PinIcon sx={{ mr: 1, fontSize: 18 }} /> {selectedEntry?.is_pinned ? 'Unpin' : 'Pin'}
@@ -547,6 +628,18 @@ const NotebookPage: React.FC = () => {
             setEditingEntry(null);
           }}
           onUpdated={handleEntryUpdated}
+        />
+      )}
+
+      {/* Share Dialog */}
+      {shareEntry && (
+        <ShareDialog
+          open={!!shareEntry}
+          onClose={() => setShareEntry(null)}
+          sourceTable="notebook_entries"
+          sourceId={shareEntry.id}
+          title={shareEntry.title || shareEntry.entry_type}
+          content={shareEntry.content}
         />
       )}
     </Container>
