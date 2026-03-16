@@ -131,6 +131,19 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
     checkAdmin();
   }, [currentUserId]);
 
+  // Auto-detect user location on mount (silent — no error toast)
+  useEffect(() => {
+    if (userGeo || hideMap) return;
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => { /* silent fail — map will center on places instead */ },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+    );
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Detect bookmark action from URL
   useEffect(() => {
     const action = searchParams.get('action');
@@ -163,7 +176,8 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
     finally { setLoading(false); }
   }, [filterType]);
 
-  useEffect(() => { fetchPlaces(nearbyMode && userGeo ? userGeo : undefined); }, [fetchPlaces, nearbyMode, userGeo]);
+  // Always pass geo if available — backend returns 10 closest when geo is provided
+  useEffect(() => { fetchPlaces(userGeo || undefined); }, [fetchPlaces, userGeo]);
 
   const filteredPlaces = useMemo(() => {
     if (!filterType) return places;
@@ -171,7 +185,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
   }, [places, filterType]);
 
   const handleNearby = () => {
-    if (nearbyMode) { setNearbyMode(false); setUserGeo(null); fetchPlaces(); return; }
+    if (nearbyMode) { setNearbyMode(false); return; }
     if (!navigator.geolocation) { toast.error('Geolocation not supported.'); return; }
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
