@@ -378,10 +378,16 @@ const ProfilePage: React.FC = () => {
         setDetectingLocation(false);
       },
       (err) => {
-        toast.error(`Location error: ${err.message}`);
+        console.warn('[Profile] Location detection failed:', err.message);
+        if (err.code === err.PERMISSION_DENIED) {
+          toast.error('Location access denied. You can manually enter your city below.');
+          sessionStorage.setItem('praxis_suppress_auto_geo', 'true');
+        } else {
+          toast.error(`Location error: ${err.message}`);
+        }
         setDetectingLocation(false);
       },
-      { timeout: 10000 }
+      { timeout: 10000, enableHighAccuracy: true }
     );
   };
 
