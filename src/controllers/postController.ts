@@ -313,7 +313,6 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
     contentLength: content?.length,
     context,
     hasReference: !!reference,
-    referenceType: reference?.type,
   });
 
   if (!userId) throw new BadRequestError('userId is required.');
@@ -322,39 +321,56 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
 
   logger.info('[createPost] Validation passed, attempting insert...');
 
-  const { data, error } = await supabase
-    .from('posts')
-    .insert({
-      user_id: userId,
-      user_name: userName,
-      user_avatar_url: userAvatarUrl ?? null,
-      title: title?.trim() || null,
-      content: content.trim(),
-      media_url: mediaUrl ?? null,
-      media_type: mediaType ?? null,
-      context: context || 'general',
-      reference: reference ?? null,
-    })
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('posts')
+      .insert({
+        user_id: userId,
+        user_name: userName,
+        user_avatar_url: userAvatarUrl ?? null,
+        title: title?.trim() || null,
+        content: content.trim(),
+        media_url: mediaUrl ?? null,
+        media_type: mediaType ?? null,
+        context: context || 'general',
+        reference: reference ?? null,
+      })
+      .select()
+      .single();
 
-  if (error) {
-    logger.error('[createPost] Supabase insert failed:', {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code,
-    });
-    handleSupabaseError(error);
-  }
-  
-  if (!data) {
-    logger.error('[createPost] Insert returned no data');
-    throw new InternalServerError('Insert returned no data.');
-  }
+    if (error) {
+      logger.error('[createPost] Supabase insert failed:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      
+      // Check for specific errors
+      if (error.message?.includes('reference')) {
+        logger.error('[createPost] Missing reference column - run migrations!');
+      }
+      if (error.message?.includes('policy')) {
+        logger.error('[createPost] RLS policy violation - check user_id matches auth.uid()');
+      }
+      
+      throw new InternalServerError(error.message);
+    }
+    
+    if (!data) {
+      logger.error('[createPost] Insert returned no data');
+      throw new InternalServerError('Insert returned no data.');
+    }
 
-  logger.info('[createPost] Post created successfully:', { postId: data.id });
-  res.status(201).json({ ...data, like_count: 0, comment_count: 0, user_liked: false });
+    logger.info('[createPost] Post created successfully:', { postId: data.id });
+    res.status(201).json({ ...data, like_count: 0, comment_count: 0, user_liked: false });
+  } catch (err: any) {
+    // Re-throw if it's already an app error
+    if (err.constructor.name !== 'InternalServerError') {
+      logger.error('[createPost] Unexpected error:', err);
+    }
+    throw err;
+  }
 });
 
 // ---------------------------------------------------------------------------
