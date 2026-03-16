@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 
 /**
  * Base URL for all backend API calls.
- * Set REACT_APP_API_URL in client/.env for production.
+ * Set VITE_API_URL in client/.env for production.
  */
 const getBaseUrl = () => {
   const envUrl = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_API_URL : undefined;
