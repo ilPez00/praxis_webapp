@@ -998,10 +998,10 @@ const ProfilePage: React.FC = () => {
             <AccountTreeIcon sx={{ color: 'secondary.main' }} />
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {isOwnProfile ? 'Your Goal Tree' : `${profile.name}'s Goal Tree`}
+                {isOwnProfile ? 'Your Notebook' : `${profile.name}'s Notebook`}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {isOwnProfile ? 'Visualize and manage your hierarchical goals.' : 'View their goal architecture.'}
+                {isOwnProfile ? 'Visualize and manage your hierarchical life in your notebook.' : 'View their notebook architecture.'}
               </Typography>
             </Box>
           </Box>
@@ -1011,7 +1011,7 @@ const ProfilePage: React.FC = () => {
             color="secondary"
             onClick={() => navigate('/notes')}
           >
-            View Notes
+            Open Notebook
           </Button>
         </Box>
       </GlassCard>

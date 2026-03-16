@@ -114,9 +114,9 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
     {
       num: 2,
       icon: <TrackChangesIcon sx={{ fontSize: 32 }} />,
-      title: 'Build your goal tree',
-      description: "Map out what you're working toward. Break big ambitions into trackable sub-goals — the more specific, the better Praxis works for you. Your goal tree is the foundation of everything — it's how Praxis understands what you're building and helps you stay accountable.",
-      cta: 'Set up goals →',
+      title: 'Build your hierarchical notebook',
+      description: "Map out what you're working toward in your personal notebook. Break big topics into chapters — the more specific, the better Praxis works for you. Your notebook is the foundation of everything — it's how Praxis understands what you're building and helps you stay accountable.",
+      cta: 'Open Notebook →',
       to: '/notes',
       color: '#F59E0B',
     },
