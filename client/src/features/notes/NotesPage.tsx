@@ -664,24 +664,7 @@ const NotesPage: React.FC = () => {
                   userId={currentUserId || ''}
                 />
               </Stack>
-            ) : (
-              /* Welcome State (If no node selected) */
-              <Box sx={{ py: 4, textAlign: 'center' }}>
-                <Box sx={{
-                  width: 60, height: 60, borderRadius: '18px',
-                  bgcolor: 'primary.main', opacity: 0.1, mb: 2, mx: 'auto',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <MenuBookIcon sx={{ fontSize: 30, color: 'primary.main', opacity: 1 }} />
-                </Box>
-                <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>
-                  Life Design Notebook
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 450, mx: 'auto', mb: 4 }}>
-                  Select a topic from the left sidebar to view its chapters, track daily progress, and write reflections.
-                </Typography>
-              </Box>
-            )}
+            ) : null}
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', my: 6 }} />
 
