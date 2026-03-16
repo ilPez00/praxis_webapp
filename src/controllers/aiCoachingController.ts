@@ -301,6 +301,10 @@ export const requestReport = catchAsync(async (req: Request, res: Response, _nex
   try {
     const context = await buildContext(userId);
     const report = await aiCoachingService.generateFullReport(context, useLLM);
+
+    // Save to profile
+    await supabase.from('profiles').update({ latest_axiom_report: report }).eq('id', userId);
+
     res.json(report);
   } catch (err: any) {
     logger.error('[AI Coach] Report generation failed:', err.message);

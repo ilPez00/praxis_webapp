@@ -505,6 +505,99 @@ router.get('/export/plain', authenticateToken, catchAsync(async (req: Request, r
 }));
 
 /**
+ * POST /diary/export/notes
+ * Comprehensive Markdown export of the entire notebook (costs 500 PP for free users)
+ */
+router.post('/export/notes', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  // 1. Fetch user profile for balance and status
+  const { data: profile } = await supabase
+    .from('profiles').select('name, praxis_points, is_premium').eq('id', userId).single();
+
+  const isPro = !!profile?.is_premium;
+  const balance = profile?.praxis_points ?? 0;
+  const userName = profile?.name || 'User';
+
+  if (!isPro && balance < 500) {
+    throw new BadRequestError(`Not enough PP. You have ${balance}, need 500.`);
+  }
+
+  // 2. Fetch ALL data
+  const [journalsRes, nodeJournalsRes, checkinsRes, goalsRes, betsRes, achievementsRes, trackersRes, friendsRes] = await Promise.all([
+    supabase.from('journal_entries').select('note, mood, created_at')
+      .eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('node_journal_entries').select('node_id, note, mood, logged_at')
+      .eq('user_id', userId).order('logged_at', { ascending: true }),
+    supabase.from('checkins').select('mood, win_of_the_day, checked_in_at, streak_day')
+      .eq('user_id', userId).order('checked_in_at', { ascending: true }),
+    supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
+    supabase.from('bets').select('goal_name, stake_points, status, created_at')
+      .eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('achievements').select('title, domain, created_at')
+      .eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('trackers').select('id, type, goal')
+      .eq('user_id', userId),
+    supabase.from('messages').select('sender_id, receiver_id').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`).is('room_id', null).limit(100),
+  ]);
+
+  const trackers = trackersRes.data || [];
+  let trackerEntries: any[] = [];
+  if (trackers.length > 0) {
+    const { data } = await supabase.from('tracker_entries').select('tracker_id, data, logged_at').in('tracker_id', trackers.map(t => t.id)).order('logged_at', { ascending: true });
+    trackerEntries = data || [];
+  }
+
+  // Build Markdown
+  let md = `# Praxis Notebook: ${userName}\n`;
+  md += `Exported: ${new Date().toLocaleDateString()}\n\n`;
+
+  // Goals
+  md += `## 🎯 Goals & Hierarchy\n\n`;
+  const nodes = goalsRes.data?.nodes || [];
+  for (const n of nodes) {
+    const indent = n.parentId ? '  ' : '';
+    md += `${indent}- **${n.name}** (${n.domain}) — ${Math.round((n.progress || 0) * 100)}%\n`;
+    if (n.customDetails) md += `${indent}  *${n.customDetails}*\n`;
+  }
+  md += `\n`;
+
+  // Trackers
+  md += `## 📊 Daily Trackers\n\n`;
+  for (const t of trackers) {
+    md += `### ${t.type.toUpperCase()}: ${t.goal || 'General'}\n`;
+    const entries = trackerEntries.filter(e => e.tracker_id === t.id);
+    for (const e of entries) {
+      md += `- ${new Date(e.logged_at).toLocaleDateString()}: ${JSON.stringify(e.data)}\n`;
+    }
+    md += `\n`;
+  }
+
+  // Diary
+  md += `## 📓 Life Logs\n\n`;
+  const timeline: any[] = [];
+  (journalsRes.data || []).forEach(e => timeline.push({ d: e.created_at, t: `[Journal] ${e.mood ? e.mood + ': ' : ''}${e.note}` }));
+  (checkinsRes.data || []).forEach(e => timeline.push({ d: e.checked_in_at, t: `[Check-in] Day ${e.streak_day}: ${e.win_of_the_day}` }));
+  timeline.sort((a, b) => b.d.localeCompare(a.d));
+  for (const entry of timeline) {
+    md += `### ${new Date(entry.d).toLocaleDateString()}\n${entry.t}\n\n`;
+  }
+
+  // Save to profile
+  await supabase.from('profiles').update({ latest_axiom_report: { type: 'notebook_export', timestamp: new Date().toISOString(), summary: `Goals: ${nodes.length}, Logs: ${timeline.length}` } }).eq('id', userId);
+
+  // Deduct PP if not Pro
+  if (!isPro) {
+    await supabase.from('profiles').update({ praxis_points: balance - 500 }).eq('id', userId);
+  }
+
+  res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="praxis-notebook-${new Date().toISOString().slice(0, 10)}.md"`);
+  res.send(md);
+}));
+
+/**
  * POST /diary/export/axiom
  * Generate Axiom-refined diary narrative (costs 500 PP)
  */
@@ -630,6 +723,9 @@ Write the complete diary now.`;
     const narrative = await aiCoaching.runWithFallback(prompt);
 
     logger.info(`[DiaryExport] Axiom narrative generated for ${userName} (${narrative.length} chars)`);
+
+    // Save to user profile
+    await supabase.from('profiles').update({ latest_ai_narrative: narrative }).eq('id', userId);
 
     res.json({
       narrative,
