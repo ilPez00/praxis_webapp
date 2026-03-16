@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Container, Box, Typography, TextField, InputAdornment,
   Chip, IconButton, Menu, MenuItem, Button, Dialog,
   DialogTitle, DialogContent, DialogActions, CircularProgress,
   Paper, Divider, Stack, Avatar, Tooltip, Fab, Grid,
   Card, CardContent, CardActions, Switch, FormControlLabel,
+  LinearProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ShareIcon from '@mui/icons-material/Share';
@@ -21,12 +22,15 @@ import EventIcon from '@mui/icons-material/Event';
 import NoteIcon from '@mui/icons-material/EditNote';
 import LinkIcon from '@mui/icons-material/Link';
 import PhotoIcon from '@mui/icons-material/PhotoLibrary';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import MicIcon from '@mui/icons-material/Mic';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
+import CloseIcon from '@mui/icons-material/Close';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
+import ReferencePicker, { Reference } from '../../components/common/ReferencePicker';
 
 const ENTRY_TYPE_ICONS: Record<string, React.ReactNode> = {
   note: <NoteIcon />,
@@ -92,6 +96,14 @@ const DiaryPage: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
   const [stats, setStats] = useState<any>(null);
+  
+  // New: File upload and reference linking
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [reference, setReference] = useState<Reference | null>(null);
+  const [refPickerOpen, setRefPickerOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchEntries = useCallback(async () => {
     if (!user?.id) return;
@@ -149,12 +161,37 @@ const DiaryPage: React.FC = () => {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFilePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setFilePreview(null);
+      }
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleQuickAdd = async () => {
-    if (!content.trim() && !title.trim()) {
-      toast.error('Please add a title or content');
+    if (!content.trim() && !title.trim() && !selectedFile) {
+      toast.error('Please add a title, content, or attach a file');
       return;
     }
 
+    setUploading(true);
     try {
       const headers = {
         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
@@ -162,6 +199,33 @@ const DiaryPage: React.FC = () => {
       };
 
       const tagArray = tags.split(',').map(t => t.trim()).filter(Boolean);
+      let mediaUrl: string | null = null;
+      let mediaType: string | null = null;
+
+      // Upload file if selected
+      if (selectedFile) {
+        const ext = selectedFile.name.split('.').pop() ?? 'bin';
+        const path = `diary/${user?.id}/${Date.now()}.${ext}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('chat-media')
+          .upload(path, selectedFile);
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-media')
+          .getPublicUrl(path);
+        
+        mediaUrl = publicUrl;
+        mediaType = selectedFile.type.startsWith('image/') ? 'image' : 'file';
+      }
+
+      // Build metadata with reference
+      const metadata: any = {};
+      if (reference) {
+        metadata.reference = reference;
+      }
 
       const res = await fetch(`${API_URL}/diary/entries`, {
         method: 'POST',
@@ -176,6 +240,9 @@ const DiaryPage: React.FC = () => {
           longitude: location.lng || null,
           location_name: location.name || null,
           is_private: isPrivate,
+          media_url: mediaUrl,
+          media_type: mediaType,
+          metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         }),
       });
 
@@ -187,6 +254,9 @@ const DiaryPage: React.FC = () => {
         setTags('');
         setMood('');
         setLocation({});
+        setSelectedFile(null);
+        setFilePreview(null);
+        setReference(null);
         fetchEntries();
       } else {
         const error = await res.json();
@@ -194,6 +264,8 @@ const DiaryPage: React.FC = () => {
       }
     } catch (err: any) {
       toast.error('Failed to add entry: ' + err.message);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -537,6 +609,70 @@ const DiaryPage: React.FC = () => {
             onChange={(e) => setContent(e.target.value)}
             sx={{ mb: 2 }}
           />
+          
+          {/* File Upload */}
+          <Box sx={{ mb: 2 }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => fileInputRef.current?.click()}
+              startIcon={<AttachFileIcon />}
+              sx={{ mr: 1 }}
+            >
+              Attach File
+            </Button>
+            {selectedFile && (
+              <Chip
+                label={selectedFile.name}
+                onDelete={handleRemoveFile}
+                sx={{ ml: 1 }}
+              />
+            )}
+            {filePreview && (
+              <Box sx={{ mt: 2, position: 'relative' }}>
+                <img
+                  src={filePreview}
+                  alt="Preview"
+                  style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={handleRemoveFile}
+                  sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'rgba(0,0,0,0.6)' }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+            )}
+          </Box>
+
+          {/* Reference Linking */}
+          <Box sx={{ mb: 2 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setRefPickerOpen(true)}
+              startIcon={<LinkIcon />}
+              sx={{ mr: 1 }}
+            >
+              {reference ? `Linked: ${reference.name}` : 'Link Person/Event/Place'}
+            </Button>
+            {reference && (
+              <Chip
+                label={reference.name}
+                onDelete={() => setReference(null)}
+                sx={{ ml: 1, bgcolor: 'primary.light', color: 'primary.contrastText' }}
+              />
+            )}
+          </Box>
+
           <TextField
             fullWidth
             placeholder="Tags (comma separated)"
@@ -577,14 +713,23 @@ const DiaryPage: React.FC = () => {
             }
             label="Private (only I can see)"
           />
+          {uploading && <LinearProgress sx={{ mt: 2 }} />}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setQuickAddOpen(false)}>Cancel</Button>
-          <Button onClick={handleQuickAdd} variant="contained" disabled={!content.trim() && !title.trim()}>
-            Add to Diary
+          <Button onClick={handleQuickAdd} variant="contained" disabled={uploading || (!content.trim() && !title.trim() && !selectedFile)}>
+            {uploading ? 'Uploading...' : 'Add to Diary'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Reference Picker Dialog */}
+      <ReferencePicker
+        open={refPickerOpen}
+        onClose={() => setRefPickerOpen(false)}
+        onSelect={setReference}
+        selected={reference}
+      />
 
       {/* FAB for quick add */}
       <Fab

@@ -327,3 +327,60 @@ Session 66: Hourly Schedule + Goal Strategy + Diary Export + AI Always-On
 - Known issue: trackers/log 500 — likely upsert constraint or tracker_entries.user_id column mismatch in Supabase; not yet investigated
 - Next: Auto places/events system (planned, awaiting user direction), event expiration/cleanup, fix trackers/log 500
 - Sign: Claude
+
+Session 67: Project Efficiency Overhaul — Refactor & DX Improvements
+=======================================================================
+PLAN (8 steps, ordered by impact):
+
+Step 1: Remove react-scripts, keep Vite only [FRONTEND BUILD]
+  - Remove react-scripts from client/package.json
+  - Clean scripts: dev/build/preview all Vite
+  - Remove CRA env var prefixes if any conflict (REACT_APP_ → VITE_)
+  - Verify build still works
+
+Step 2: Split AdminPage.tsx (2138 LOC → 5 tab components) [FRONTEND]
+  - Create client/src/features/admin/tabs/
+  - Extract: UsersTab, StatsTab, NetworkTab, ChallengesTab, CoachesTab
+  - AdminPage becomes thin router with Tabs + Suspense
+  - Move dialog states into their respective tabs
+
+Step 3: Extract GoalWidgets.tsx (1698 LOC → per-domain files) [FRONTEND]
+  - Create client/src/features/dashboard/widgets/
+  - One file per domain: fitness, career, education, finance, health, social, creative, custom
+  - GoalWidgets.tsx becomes a registry that imports + merges all
+
+Step 4: Split ChatRoom.tsx (1334 LOC → sub-components) [FRONTEND]
+  - Extract: MessageList, MessageComposer, VideoCallDialog, CompletionRequestCard
+  - ChatRoom becomes orchestrator with state + sub-component rendering
+
+Step 5: Shared types between backend/frontend [MONOREPO]
+  - Create shared/types/ at project root
+  - Move canonical interfaces: User, GoalNode, GoalTree, Message, Achievement, Match, etc.
+  - Update imports in src/ and client/src/ to point to shared/
+  - Delete duplicate client/src/models/ and src/models/ files
+
+Step 6: Dashboard aggregation endpoint [BACKEND + FRONTEND]
+  - New GET /api/dashboard/summary — returns goalTree, matches, leaderboard, nearby, briefs in one call
+  - DashboardPage: replace 8 useEffect blocks with single useSWR call
+  - Use SWR for caching + deduplication
+
+Step 7: Remove dead code & cleanup [FULL STACK]
+  - Delete EmbeddingService.ts (170 LOC, unused since minimal-AI pivot)
+  - Remove uuid from backend package.json (using crypto.randomUUID)
+  - Remove minimal_ai_mode remnants from docs/manual_actions.txt
+  - Replace select('*') with explicit columns in hot-path queries
+
+Step 8: Standardize error handling [BACKEND]
+  - Audit controllers for mixed error patterns (throw vs return res.status)
+  - Ensure all use catchAsync + AppError classes consistently
+  - Add typed error codes for frontend consumption
+
+Progress:
+  [ ] Step 1 — Remove react-scripts
+  [ ] Step 2 — Split AdminPage
+  [ ] Step 3 — Extract GoalWidgets
+  [ ] Step 4 — Split ChatRoom
+  [ ] Step 5 — Shared types
+  [ ] Step 6 — Dashboard aggregation
+  [ ] Step 7 — Dead code cleanup
+  [ ] Step 8 — Error handling standardization

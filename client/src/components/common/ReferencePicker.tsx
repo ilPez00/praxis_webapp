@@ -1,217 +1,198 @@
-/**
- * ReferencePicker — modal dialog for attaching a Goal / Service / Post reference
- * to a message or board post.
- */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, Box, Tabs, Tab,
-  TextField, List, ListItem, ListItemButton, ListItemText,
-  ListItemAvatar, Avatar, Typography, CircularProgress,
-  InputAdornment,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, Tabs, Tab, Box, Typography, List, ListItem,
+  ListItemAvatar, Avatar, ListItemText, CircularProgress, Chip,
 } from '@mui/material';
-import FlagIcon from '@mui/icons-material/Flag';
-import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
-import GroupsIcon from '@mui/icons-material/Groups';
+import PersonIcon from '@mui/icons-material/Person';
 import EventIcon from '@mui/icons-material/Event';
-import PlaceIcon from '@mui/icons-material/Place';
+import PlaceIcon from '@mui/icons-material/LocationOn';
 import SearchIcon from '@mui/icons-material/Search';
+import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
-import { Reference } from './ReferenceCard';
 
-interface Props {
-  open: boolean;
-  userId: string;
-  onSelect: (ref: Reference) => void;
-  onClose: () => void;
+export interface Reference {
+  type: 'person' | 'event' | 'place';
+  id: string;
+  name: string;
+  subtitle?: string;
+  city?: string;
+  avatar_url?: string;
 }
 
-const ReferencePicker: React.FC<Props> = ({ open, userId, onSelect, onClose }) => {
-  const [tab, setTab] = useState(0);
+interface ReferencePickerProps {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (ref: Reference | null) => void;
+  selected?: Reference | null;
+}
+
+const ReferencePicker: React.FC<ReferencePickerProps> = ({
+  open,
+  onClose,
+  onSelect,
+  selected,
+}) => {
+  const [tab, setTab] = useState<'people' | 'events' | 'places'>('people');
   const [search, setSearch] = useState('');
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [goals, setGoals]       = useState<Reference[]>([]);
-  const [services, setServices] = useState<Reference[]>([]);
-  const [posts, setPosts]       = useState<Reference[]>([]);
-  const [groups, setGroups]     = useState<Reference[]>([]);
-  const [events, setEvents]     = useState<Reference[]>([]);
-  const [places, setPlaces]     = useState<Reference[]>([]);
-  const [loading, setLoading]   = useState(false);
+  useEffect(() => {
+    if (open) {
+      fetchItems();
+    }
+  }, [tab, search, open]);
 
-  const fetchAll = useCallback(async () => {
-    if (!userId) return;
+  const fetchItems = async () => {
     setLoading(true);
     try {
-      const [goalsRes, servicesRes, postsRes, groupsRes, eventsRes, placesRes] = await Promise.allSettled([
-        fetch(`${API_URL}/goals/${userId}`).then(r => r.ok ? r.json() : null),
-        fetch(`${API_URL}/services`).then(r => r.ok ? r.json() : []),
-        fetch(`${API_URL}/posts?context=general&userId=${userId}`).then(r => r.ok ? r.json() : []),
-        fetch(`${API_URL}/groups`).then(r => r.ok ? r.json() : []),
-        fetch(`${API_URL}/events`).then(r => r.ok ? r.json() : []),
-        fetch(`${API_URL}/places`).then(r => r.ok ? r.json() : []),
-      ]);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      // Goals: flatten tree nodes
-      if (goalsRes.status === 'fulfilled' && goalsRes.value?.nodes) {
-        const nodes: any[] = Array.isArray(goalsRes.value.nodes) ? goalsRes.value.nodes : [];
-        setGoals(nodes.map(n => ({
-          type: 'goal' as const,
-          id: n.id,
-          title: n.name,
-          subtitle: `${n.domain ?? ''}${n.progress != null ? ` · ${Math.round(n.progress * 100)}% done` : ''}`.trim().replace(/^·\s*/, ''),
-          url: `/goals/${userId}`,
-        })));
-      }
+      const headers = { Authorization: `Bearer ${session.access_token}` };
+      let data: any[] = [];
 
-      // Services
-      if (servicesRes.status === 'fulfilled') {
-        const all: any[] = Array.isArray(servicesRes.value) ? servicesRes.value : [];
-        setServices(all.map(s => ({
-          type: 'service' as const,
-          id: s.id,
-          title: s.title,
-          subtitle: `${s.type ?? ''} · ${s.price ? `${s.price_currency ?? '€'}${s.price}` : 'Free'}`.replace(/^·\s*/, ''),
-          url: `/services`,
-        })));
-      }
-
-      // Posts
-      if (postsRes.status === 'fulfilled') {
-        const all: any[] = Array.isArray(postsRes.value) ? postsRes.value : [];
-        setPosts(all.slice(0, 30).map(p => ({
-          type: 'post' as const,
-          id: p.id,
-          title: p.title || p.content?.slice(0, 60) || 'Untitled post',
-          subtitle: `by ${p.user_name}`,
-          url: `/communication`,
-        })));
-      }
-
-      // Groups / boards
-      if (groupsRes.status === 'fulfilled') {
-        const all: any[] = Array.isArray(groupsRes.value) ? groupsRes.value : [];
-        setGroups(all.map(g => ({
-          type: 'group' as const,
-          id: g.id,
-          title: g.name,
-          subtitle: g.domain ? `${g.domain}${g.description ? ` · ${g.description.slice(0, 40)}` : ''}` : (g.description?.slice(0, 50) ?? ''),
-          url: `/boards/${g.id}`,
-        })));
-      }
-
-      // Events
-      if (eventsRes.status === 'fulfilled') {
-        const all: any[] = Array.isArray(eventsRes.value) ? eventsRes.value : [];
-        setEvents(all.slice(0, 30).map(e => ({
-          type: 'event' as const,
+      if (tab === 'people') {
+        const { data: matches } = await fetch(`${API_URL}/matches?userId=${session.user.id}`, { headers })
+          .then(r => r.json()).catch(() => null);
+        data = (matches || []).map((m: any) => ({
+          type: 'person',
+          id: m.id,
+          name: m.name,
+          subtitle: m.bio || 'Accountability partner',
+          avatar_url: m.avatar_url,
+        }));
+      } else if (tab === 'events') {
+        const { data: events } = await supabase
+          .from('events')
+          .select('id, title, description, event_date, city')
+          .gte('event_date', new Date().toISOString())
+          .order('event_date', { ascending: true })
+          .limit(20);
+        data = (events || []).map((e: any) => ({
+          type: 'event',
           id: e.id,
-          title: e.title,
-          subtitle: `${e.event_date ?? ''}${e.location ? ` · ${e.location}` : ''}`.replace(/^·\s*/, ''),
-          url: `/events`,
-        })));
+          name: e.title,
+          subtitle: `${new Date(e.event_date).toLocaleDateString()}${e.city ? ' · ' + e.city : ''}`,
+          city: e.city,
+        }));
+      } else if (tab === 'places') {
+        const { data: places } = await supabase
+          .from('places')
+          .select('id, name, description, city, tags')
+          .order('created_at', { ascending: false })
+          .limit(20);
+        data = (places || []).map((p: any) => ({
+          type: 'place',
+          id: p.id,
+          name: p.name,
+          subtitle: p.city || p.description,
+          city: p.city,
+        }));
       }
 
-      // Places
-      if (placesRes.status === 'fulfilled') {
-        const all: any[] = Array.isArray(placesRes.value) ? placesRes.value : [];
-        setPlaces(all.slice(0, 30).map(p => ({
-          type: 'place' as const,
-          id: p.id,
-          title: p.name,
-          subtitle: `${p.type ?? ''}${p.city ? ` · ${p.city}` : ''}`.replace(/^·\s*/, ''),
-          url: `/discover?tab=places`,
-        })));
-      }
+      setItems(data);
+    } catch (err) {
+      console.error('Failed to fetch items:', err);
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  };
 
-  useEffect(() => {
-    if (open) fetchAll();
-  }, [open, fetchAll]);
+  const handleSelect = (item: any) => {
+    onSelect(item);
+    onClose();
+  };
 
-  const filtered = (items: Reference[]) =>
-    search.trim()
-      ? items.filter(i => `${i.title} ${i.subtitle}`.toLowerCase().includes(search.toLowerCase()))
-      : items;
-
-  const lists = [filtered(goals), filtered(services), filtered(posts), filtered(groups), filtered(events), filtered(places)];
-  const tabIcons = [
-    <FlagIcon sx={{ fontSize: 16 }} />,
-    <WorkOutlineIcon sx={{ fontSize: 16 }} />,
-    <ArticleOutlinedIcon sx={{ fontSize: 16 }} />,
-    <GroupsIcon sx={{ fontSize: 16 }} />,
-    <EventIcon sx={{ fontSize: 16 }} />,
-    <PlaceIcon sx={{ fontSize: 16 }} />,
-  ];
-  const tabLabels = ['Goals', 'Services', 'Posts', 'Groups', 'Events', 'Places'];
-  const tabColors = ['#10B981', '#F59E0B', '#3B82F6', '#8B5CF6', '#EC4899', '#6366F1'];
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'person': return <PersonIcon />;
+      case 'event': return <EventIcon />;
+      case 'place': return <PlaceIcon />;
+      default: return null;
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 800, pb: 0 }}>Attach a Reference</DialogTitle>
-      <DialogContent sx={{ pt: 1, px: 2, pb: 0 }}>
+      <DialogTitle>
+        Link Reference
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+          Attach a person, event, or place to your entry
+        </Typography>
+      </DialogTitle>
+      <DialogContent>
+        {/* Search */}
         <TextField
           fullWidth
           size="small"
-          placeholder="Search…"
+          placeholder="Search..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18 }} /></InputAdornment> }}
-          sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+          onChange={(e) => setSearch(e.target.value)}
+          InputProps={{
+            startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
+          }}
+          sx={{ mb: 2 }}
         />
 
-        <Tabs
-          value={tab}
-          onChange={(_, v) => setTab(v)}
-          sx={{
-            minHeight: 36,
-            '& .MuiTab-root': { minHeight: 36, textTransform: 'none', fontWeight: 600, fontSize: '0.85rem', py: 0, gap: 0.5 },
-            '& .MuiTabs-indicator': { bgcolor: tabColors[tab] },
-          }}
-        >
-          {tabLabels.map((label, i) => (
-            <Tab key={label} label={label} icon={tabIcons[i]} iconPosition="start"
-              sx={{ color: tab === i ? `${tabColors[i]} !important` : 'text.secondary' }} />
-          ))}
+        {/* Tabs */}
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
+          <Tab label="People" value="people" />
+          <Tab label="Events" value="events" />
+          <Tab label="Places" value="places" />
         </Tabs>
-      </DialogContent>
 
-      <Box sx={{ px: 2, pb: 2, maxHeight: 340, overflowY: 'auto' }}>
+        {/* List */}
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress size={24} />
+            <CircularProgress />
           </Box>
-        ) : lists[tab].length === 0 ? (
-          <Typography variant="body2" color="text.disabled" sx={{ textAlign: 'center', py: 3 }}>
-            {search ? 'No matches.' : `No ${tabLabels[tab].toLowerCase()} found.`}
+        ) : items.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+            No items found
           </Typography>
         ) : (
-          <List dense disablePadding>
-            {lists[tab].map(ref => (
-              <ListItem key={ref.id} disablePadding>
-                <ListItemButton
-                  onClick={() => { onSelect(ref); onClose(); }}
-                  sx={{ borderRadius: '10px', px: 1.5, py: 0.75, '&:hover': { bgcolor: `${tabColors[tab]}11` } }}
-                >
-                  <ListItemAvatar sx={{ minWidth: 36 }}>
-                    <Avatar sx={{ width: 28, height: 28, bgcolor: `${tabColors[tab]}22`, color: tabColors[tab] }}>
-                      {tabIcons[tab]}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={ref.title}
-                    secondary={ref.subtitle}
-                    primaryTypographyProps={{ fontWeight: 600, fontSize: '0.88rem', noWrap: true }}
-                    secondaryTypographyProps={{ fontSize: '0.72rem', noWrap: true }}
-                  />
-                </ListItemButton>
+          <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+            {items.map((item) => (
+              <ListItem
+                key={item.id}
+                button
+                onClick={() => handleSelect(item)}
+                sx={{
+                  bgcolor: selected?.id === item.id ? 'primary.light' : 'transparent',
+                  '&:hover': { bgcolor: 'primary.main', color: 'white' },
+                }}
+              >
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: item.avatar_url ? 'transparent' : 'primary.main' }}>
+                    {item.avatar_url ? (
+                      <img src={item.avatar_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      getIcon(item.type)
+                    )}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={item.name}
+                  secondary={item.subtitle}
+                />
+                {selected?.id === item.id && (
+                  <Chip label="Selected" size="small" color="primary" />
+                )}
               </ListItem>
             ))}
           </List>
         )}
-      </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        {selected && (
+          <Button onClick={() => onSelect(null)} sx={{ mr: 'auto' }}>
+            Clear
+          </Button>
+        )}
+      </DialogActions>
     </Dialog>
   );
 };

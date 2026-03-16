@@ -30,13 +30,12 @@ const QuickActionFAB: React.FC<Props> = ({ onPostClick }) => {
   const handleNewPost = () => {
     if (onPostClick) {
       onPostClick();
-    } else if (location.pathname === '/dashboard' || location.pathname === '/') {
-      // Already on dashboard — just open compose
-      window.dispatchEvent(new Event('praxis_open_compose'));
     } else {
-      // Navigate to dashboard, then open compose after mount
-      navigate('/dashboard');
-      setTimeout(() => window.dispatchEvent(new Event('praxis_open_compose')), 500);
+      // Always dispatch event - PostFeed will handle navigation if needed
+      const event = new CustomEvent('praxis_open_compose', { 
+        detail: { context: 'general' } 
+      });
+      window.dispatchEvent(event);
     }
   };
 
