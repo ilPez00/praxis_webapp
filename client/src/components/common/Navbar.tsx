@@ -259,7 +259,7 @@ const Navbar: React.FC = () => {
                 <>
                   {[
                     { label: 'Today', to: '/dashboard' },
-                    { label: 'Notes', to: '/notes' },
+                    { label: 'Notebook', to: '/notes' },
                     { label: 'Discover', to: '/discover' },
                     { label: 'Chat', to: '/communication' },
                   ].map(({ label, to }) => {
@@ -552,7 +552,7 @@ const Navbar: React.FC = () => {
                     </MenuItem>
                     <MenuItem onClick={() => handleNav('/notes')} sx={{ gap: 1.5, py: 1.25 }}>
                       <NoteIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">Notes</Typography>
+                      <Typography variant="body2">Notebook</Typography>
                     </MenuItem>
                     <MenuItem onClick={() => handleNav('/marketplace')} sx={{ gap: 1.5, py: 1.25 }}>
                       <StorefrontOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
@@ -692,7 +692,7 @@ const Navbar: React.FC = () => {
             <List disablePadding>
               {[
                 { label: 'Today', to: '/dashboard', icon: <DashboardIcon />, primary: true },
-                { label: 'Notes', to: '/notes', icon: <NoteIcon />, primary: true },
+                { label: 'Notebook', to: '/notes', icon: <NoteIcon />, primary: true },
                 { label: 'Discover', to: '/discover', icon: <ExploreIcon />, primary: true },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
