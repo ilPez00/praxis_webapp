@@ -210,6 +210,16 @@ const NotesPage: React.FC = () => {
       setAxiomNarrative(res.data.narrative);
       setPraxisPoints(prev => (prev ?? 0) - 500);
       toast.success(`Axiom diary created! (${res.data.entryCount} entries)`);
+
+      // Trigger automatic download
+      const blob = new Blob([res.data.narrative], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `praxis-axiom-diary-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportDialogOpen(false);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to generate';
       toast.error(msg);
