@@ -20,7 +20,7 @@ import {
   Container, Box, Typography, Stack, CircularProgress,
   Chip, useTheme, useMediaQuery, Dialog, DialogTitle,
   DialogContent, DialogActions, Button, TextField, MenuItem,
-  List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Avatar,
+  List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Avatar, Divider,
 } from '@mui/material';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
@@ -574,7 +574,7 @@ const NotesPage: React.FC = () => {
               onClick={() => setExportDialogOpen(true)}
               sx={{ borderRadius: '12px', borderColor: 'rgba(255,255,255,0.1)', color: 'text.secondary' }}
             >
-              Export Diary
+              Download Notebook
             </Button>
           </Box>
         </Box>
@@ -588,22 +588,37 @@ const NotesPage: React.FC = () => {
           bgcolor: '#0a0b14',
           position: 'relative',
         }}>
-          {selectedNode ? (
-            <Box sx={{ maxWidth: '900px', mx: 'auto', p: { xs: 2, md: 4 }, pb: 10 }}>
-              
-              {/* Back button on mobile */}
-              {isMobile && (
-                <Button
-                  startIcon={<AccountTreeIcon />}
-                  onClick={() => setSelectedNode(null)}
-                  sx={{ mb: 3, color: 'primary.main' }}
-                >
-                  Back to TOC
-                </Button>
+          <Box sx={{ maxWidth: '900px', mx: 'auto', p: { xs: 2, md: 4 }, pb: 10 }}>
+            
+            {/* 1. TOP: Activity Calendar (Persistent) */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ fontWeight: 900, mb: 2, color: 'text.primary', opacity: 0.9 }}>
+                Activity Calendar
+              </Typography>
+              {currentUserId && (
+                <ActivityCalendar
+                  userId={currentUserId}
+                  onDaySelect={(date) => setSelectedCalendarDate(date)}
+                />
               )}
+            </Box>
 
-              {/* Page Content */}
+            <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', my: 4 }} />
+
+            {/* 2. MIDDLE: Selected Goal or Overview */}
+            {selectedNode ? (
               <Stack spacing={4}>
+                {/* Back button on mobile */}
+                {isMobile && (
+                  <Button
+                    startIcon={<AccountTreeIcon />}
+                    onClick={() => setSelectedNode(null)}
+                    sx={{ alignSelf: 'flex-start', color: 'primary.main' }}
+                  >
+                    Back to TOC
+                  </Button>
+                )}
+
                 {/* Goal Detail & Trackers */}
                 <NoteGoalDetail
                   node={selectedNode}
@@ -642,55 +657,54 @@ const NotesPage: React.FC = () => {
                   </Box>
                 </Box>
 
-                {/* Notes Panel */}
+                {/* Notes Panel for Goal */}
                 <GoalNotesPanel
                   nodeId={selectedNode.id}
                   nodeTitle={selectedNode.title}
                   userId={currentUserId || ''}
                 />
-
-                {/* Activity Feed for this goal */}
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>Activity History</Typography>
-                  <DiaryFeed userId={currentUserId || ''} filterGoalId={selectedNode.id} />
-                </Box>
               </Stack>
-            </Box>
-          ) : (
-            /* Welcome / Account Creation State */
-            <Box sx={{
-              height: '100%', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', px: 3, textAlign: 'center'
-            }}>
-              <Box sx={{
-                width: 80, height: 80, borderRadius: '24px',
-                bgcolor: 'primary.main', opacity: 0.1, mb: 3,
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <MenuBookIcon sx={{ fontSize: 40, color: 'primary.main', opacity: 1 }} />
-              </Box>
-              <Typography variant="h4" sx={{ fontWeight: 900, mb: 1.5 }}>
-                Your Hierarchical Notebook
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500, mb: 4 }}>
-                This is where you design your life. Topics on the left represent your primary goals.
-                Chapters within those topics are the actionable sub-goals that drive progress.
+            ) : (
+              /* Welcome State (If no node selected) */
+              <Box sx={{ py: 4, textAlign: 'center' }}>
+                <Box sx={{
+                  width: 60, height: 60, borderRadius: '18px',
+                  bgcolor: 'primary.main', opacity: 0.1, mb: 2, mx: 'auto',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <MenuBookIcon sx={{ fontSize: 30, color: 'primary.main', opacity: 1 }} />
+                </Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>
+                  Life Design Notebook
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 450, mx: 'auto', mb: 4 }}>
+                  Select a topic from the left sidebar to view its chapters, track daily progress, and write reflections.
+                </Typography>
+              </Stack>
+            )}
+
+            <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', my: 6 }} />
+
+            {/* 3. BOTTOM: Global Logs & Free Notes (Persistent) */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 900, mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <MenuBookIcon sx={{ color: 'primary.main', fontSize: '1.2rem' }} />
+                Notebook Logs
               </Typography>
               
               {currentUserId && (
-                <Box sx={{ width: '100%', maxWidth: 600 }}>
-                  <ActivityCalendar
-                    userId={currentUserId}
-                    onDaySelect={(date) => setSelectedCalendarDate(date)}
-                  />
-                  <Box sx={{ mt: 4 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, textAlign: 'left' }}>Recent Diary</Typography>
+                <Stack spacing={4}>
+                  {/* General Diary Feed */}
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 800, mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Recent Activity
+                    </Typography>
                     <DiaryFeed userId={currentUserId} />
                   </Box>
-                </Box>
+                </Stack>
               )}
             </Box>
-          )}
+          </Box>
         </Box>
 
         {/* ── Dialogs ── */}
@@ -724,9 +738,6 @@ const NotesPage: React.FC = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Betting, Verification, Achievement, Suspend, Export Dialogs (Same as previous version but integrated) */}
-        {/* ... (Existing dialogs from NotesPage.tsx would be here) ... */}
-        
         {/* Betting dialog */}
         <Dialog open={!!betNode} onClose={() => setBetNode(null)} maxWidth="xs" fullWidth>
           <DialogTitle sx={{ fontWeight: 700 }}>🎰 Bet on this Goal</DialogTitle>
@@ -767,7 +778,7 @@ const NotesPage: React.FC = () => {
           <DialogTitle sx={{ fontWeight: 800 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <DownloadIcon sx={{ color: '#A78BFA' }} />
-              Export Your Data
+              Export Your Notebook
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
               Download your goals, notes, trackers, and accountability network
@@ -787,7 +798,7 @@ const NotesPage: React.FC = () => {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <DescriptionIcon sx={{ color: '#9CA3AF' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Plain Text Diary</Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Plain Text Notebook</Typography>
                   <Chip label="FREE" size="small" sx={{ height: 18, bgcolor: 'rgba(148,163,184,0.2)', color: '#94A3B8' }} />
                 </Box>
                 <Typography variant="caption" color="text.secondary">
@@ -813,7 +824,7 @@ const NotesPage: React.FC = () => {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <MenuBookIcon sx={{ color: '#A78BFA' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Complete Notes Export</Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Complete Notebook Export</Typography>
                   {user?.is_premium ? (
                     <Chip label="PRO" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B' }} />
                   ) : (
