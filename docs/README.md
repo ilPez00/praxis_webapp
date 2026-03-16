@@ -4,6 +4,21 @@ Praxis is an accountability partnership platform. Users define goal trees, get m
 
 ---
 
+## 🆕 Business Launch Kit
+
+**New:** Complete business strategy for launching Praxis from €0 → €1,000 MRR in 30 days.
+
+**Quick Links:**
+- [📚 Business Strategy Wiki](wiki/business/README.md) — Complete launch documentation
+- [🎯 Launch Checklist](wiki/business/LAUNCH_CHECKLIST.md) — Day-by-day execution guide
+- [📊 Analytics Dashboard](wiki/business/ANALYTICS_DASHBOARD_TEMPLATE.md) — Metrics tracking template
+- [💳 Stripe Setup (Italy)](wiki/business/STRIPE_SETUP_GUIDE.md) — Payment configuration
+- [📱 Launch Thread Templates](wiki/business/LAUNCH_THREAD_TEMPLATES.md) — Social media content
+
+**See:** [Business Strategy Complete](wiki/business/BUSINESS_STRATEGY_COMPLETE.md) for the full executive summary.
+
+---
+
 ## Private Beta Instructions
 
 1. Sign up at the Vercel URL (see below)
