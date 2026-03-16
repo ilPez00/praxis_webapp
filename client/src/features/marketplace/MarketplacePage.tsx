@@ -88,7 +88,6 @@ const itemIcon = (type: string) => {
   if (type === 'badge_mentor')      return <GroupsIcon sx={{ color: '#60A5FA' }} />;
   if (type === 'badge_legend')      return <EmojiEventsIcon sx={{ color: '#F97316' }} />;
   if (type === 'badge_visionary')   return <AutoAwesomeIcon sx={{ color: '#A78BFA' }} />;
-  if (type === 'goal_tree_edit')    return <AccountTreeIcon sx={{ color: '#34D399' }} />;
   if (type === 'premium_trial')     return <StarIcon sx={{ color: '#A78BFA' }} />;
   if (type === 'coaching_session')  return <SchoolIcon sx={{ color: '#F59E0B' }} />;
   return null;
@@ -112,7 +111,7 @@ const isOwned = (type: string, user: any): boolean => {
 const SECTIONS = [
   { label: 'Boosts',   types: ['streak_shield', 'profile_boost', 'profile_boost_7d'] },
   { label: 'Badges',   types: ['badge_pioneer', 'badge_apprentice', 'badge_achiever', 'badge_mentor', 'badge_legend', 'badge_visionary'] },
-  { label: 'Premium',  types: ['goal_tree_edit', 'premium_trial'] },
+  { label: 'Premium',  types: ['premium_trial'] },
 ];
 
 // ── Offers types ──────────────────────────────────────────────────────────────

@@ -15,7 +15,6 @@ const CATALOGUE = [
   { item_type: 'badge_legend',     label: 'Legend Badge',         cost: 150, description: 'Display the Legend badge on your profile.' },
   { item_type: 'badge_visionary',  label: 'Visionary Badge',      cost: 200, description: 'The highest-tier badge on Praxis.' },
   // Premium
-  { item_type: 'goal_tree_edit',   label: 'Goal Tree Edit',       cost: 100, description: 'Reset your goal tree edit counter to allow changes.' },
   { item_type: 'premium_trial',    label: '7-Day Premium',        cost: 250, description: 'Get 7 days of premium access.' },
   // Coaching (variable cost)
   { item_type: 'coaching_session', label: 'Coaching Session',     cost: 0,   description: 'Book a session with a coach (points transfer to coach).' },
@@ -101,10 +100,6 @@ export const purchase = catchAsync(async (req: Request, res: Response, _next: Ne
     }
     case 'badge_visionary': {
       await supabase.from('profiles').update({ badge: 'Visionary' }).eq('id', userId);
-      break;
-    }
-    case 'goal_tree_edit': {
-      await supabase.from('profiles').update({ goal_tree_edit_count: 0 }).eq('id', userId);
       break;
     }
     case 'premium_trial': {

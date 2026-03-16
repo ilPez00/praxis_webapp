@@ -432,6 +432,11 @@ export class AxiomScanService {
     logger.info(`[AxiomScan] Starting LLM generation for ${userName} (streak: ${metrics.checkinStreak}, archetype: ${metrics.archetype})`);
 
     try {
+      // Build notebook context for routine personalization
+      const notebookContext = recentNotebookNotes.length > 0 
+        ? `Recent Notebook Entries (use these to make routine RELEVANT to what they're working on):\n${recentNotebookNotes.map((n: any, i: number) => `${i + 1}. "${n.title}" — ${n.content?.slice(0, 100) || ''}`).join('\n')}`
+        : 'No recent notebook entries';
+
       const prompt = `You are Axiom, a wise warm and practical life coach inside the Praxis app. Generate a COMPLETE daily protocol for ${userName}.
 
 CONTEXT:
@@ -441,13 +446,13 @@ CONTEXT:
 - Goals: ${JSON.stringify(goalsSlice)}
 - Recent check-ins: ${JSON.stringify((checkinsRes.data || []).slice(0, 3).map((c: any) => ({ mood: c.mood, win: c.win_of_the_day, streak: c.streak_day })))}
 - Tracker trends: ${metrics.trackerTrends?.map((t: any) => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
-- Recent Notebook Notes: ${JSON.stringify(recentNotebookNotes)}
+${notebookContext}
 ${recapText ? `- Yesterday's activity: ${recapText}` : '- Yesterday: No activity logged'}
 
 Respond ONLY with valid JSON (no markdown, no backticks) matching this exact shape:
 {
-  "message": "Warm personalized greeting (2-3 sentences) acknowledging their specific journey, recent wins, and current challenges. Reference their streak if > 0, mention a specific goal by name, and acknowledge something from their recent activity.",
-  
+  "message": "Warm personalized greeting (2-3 sentences) acknowledging their specific journey, recent wins, and current challenges. Reference their streak if > 0, mention a specific goal by name, and acknowledge something from their recent notebook entries or activity.",
+
   "routine": [
     {
       "time": "06:00",
@@ -462,8 +467,8 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
       "category": "exercise"
     }
   ],
-  "ROUTINE_NOTE": "Generate EXACTLY 17 entries from 06:00 to 22:00 (one per hour). TASKS: max 12 words, specific + concise. ALIGNMENT: max 10 words. Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection.",
-  
+  "ROUTINE_NOTE": "Generate EXACTLY 17 entries from 06:00 to 22:00 (one per hour). TASKS: max 12 words, specific + concise. ALIGNMENT: max 10 words. Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection. MAKE ROUTINE RELEVANT TO THEIR NOTEBOOK ENTRIES — if they wrote about 'Career Certification', schedule study blocks. If they noted 'feeling burned out', add rest blocks.",
+
   "challenge": {
     "type": "bet",
     "target": "One specific, slightly uncomfortable action that directly addresses their primary risk factor",
@@ -471,7 +476,7 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
     "deadline": "Today only - specific time like 'by 8pm' or 'before bed'",
     "reward": "Intrinsic reward they'll feel (not external) - connect to their personal values"
   },
-  
+
   "resources": [
     {
       "goal": "Exact goal name from their list",
@@ -497,6 +502,7 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
       "weeklyTarget": "What 'done' looks like by end of week for this goal"
     }
   ],
+  "GOAL_STRATEGY_NOTE": "You MUST include goalStrategy array with ONE entry per active goal (up to 5 goals). This is CRITICAL — users need specific strategy for each goal.",
 
   "networkLeverage": {
     "outreach": "Who in their network (match or community) they should reach out to today and why — be specific about the value exchange",
@@ -506,8 +512,13 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
   }
 }
 
-RULES:
-1. **Radical Personalization**: Every sentence must reference something specific about THIS user - their goals by name, their streak, their recent activity. No generic advice.
+CRITICAL RULES:
+
+1. **Routine MUST Reference Notebook Entries**:
+   - If they wrote about "Career Certification" → Schedule "09:00 — Study for Career Certification (AWS Module 3) — 45min"
+   - If they noted "feeling tired" → Add "14:00 — Rest block (nap or meditation) — 30min"
+   - If they mentioned "Project X deadline" → Add "10:00 — Deep work on Project X — 90min"
+   - MAKE IT OBVIOUS you read their notes by naming specific goals/projects from their notebook
 
 2. **Routine — EXACTLY 17 HOURLY SLOTS (06:00 to 22:00)**:
    - One entry per hour: "06:00", "07:00", ..., "22:00"
@@ -518,32 +529,26 @@ RULES:
    - Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection
    - Spread: 4-6 deep_work, 2-3 rest, 1-2 exercise, 1-2 admin, 1 social, 1 planning/reflection
 
-3. **Challenge Design**: The challenge should:
-   - Directly address their #1 risk factor
-   - Feel slightly uncomfortable but achievable
-   - Have a clear deadline (today only)
-   - Connect to their deeper values and identity
+3. **Goal Strategy — ONE ENTRY PER ACTIVE GOAL (UP TO 5)**:
+   - This is NOT optional — you MUST generate goalStrategy array
+   - For EACH goal in their goal tree (up to 5), provide:
+     - goal: Exact name from their list
+     - currentProgress: "X%" based on their data
+     - bottleneck: What's blocking them (be specific, not generic)
+     - nextMilestone: What they can achieve THIS WEEK
+     - tacticalAdvice: 2-3 sentences of concrete steps
+     - weeklyTarget: Measurable outcome by week's end
+   - Example: {"goal": "Career Certification", "currentProgress": "35%", "bottleneck": "Procrastinating on difficult modules", "nextMilestone": "Complete AWS Module 3 quiz", "tacticalAdvice": "Start with 25min Pomodoro on Module 3 video. Take notes. Do 5 practice questions immediately after.", "weeklyTarget": "Finish Module 3 and score 80%+ on quiz"}
 
-4. **Resource Insights**: Show you see THEIR data:
-   - Reference current progress % on goals
-   - Mention recent tracker activity or lack thereof
-   - Acknowledge patterns (streaks, gaps, themes)
-   - Give advice that compounds for their specific situation
+4. **Radical Personalization**:
+   - Every sentence must reference something SPECIFIC about THIS user
+   - Mention goals by NAME (not "your goal" but "Career Certification")
+   - Reference notebook entries ("I saw your note about feeling overwhelmed")
+   - Acknowledge streaks, patterns, recent wins
 
-5. **Goal Strategy** — one entry per active goal (up to 5):
-   - Identify the BOTTLENECK (not just "keep going")
-   - Give tactical, actionable advice specific to the goal
-   - Set a clear weekly target with measurable outcome
-   - Reference their actual progress % and tracker data
+5. **TONE**: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out. Speak as a wise mentor who knows them deeply.
 
-6. **Network Leverage** — how to use their community TODAY:
-   - Name a specific match or community member if available
-   - Frame as mutual value: what to ask AND what to offer
-   - Include one community action (post, comment, share)
-
-7. **TONE**: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out. Speak as a wise mentor who knows them deeply.
-
-8. **NO ARCHETYPE LABELS**: Do not mention archetypes, personality types, or psychological categories. Speak to the person directly without categorizing them.`;
+6. **NO ARCHETYPE LABELS**: Do not mention archetypes, personality types, or psychological categories. Speak to the person directly without categorizing them.`;
 
       const rawText = await aiCoaching.runWithFallback(prompt);
 

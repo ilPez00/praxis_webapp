@@ -129,6 +129,10 @@ const GoalTreePage: React.FC = () => {
   const [suspendNode, setSuspendNode] = useState<FrontendGoalNode | null>(null);
   const [suspending, setSuspending] = useState(false);
 
+  // Delete goal dialog state
+  const [deleteNode, setDeleteNode] = useState<FrontendGoalNode | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Journal drawer state
   const [journalNode, setJournalNode] = useState<FrontendGoalNode | null>(null);
 
@@ -235,7 +239,7 @@ const GoalTreePage: React.FC = () => {
     navigate(`/dashboard?tracker=${_trackerType}`);
   };
 
-  const handleAction = (action: 'journal' | 'bet' | 'verify' | 'edit' | 'suspend', node: FrontendGoalNode) => {
+  const handleAction = (action: string, node: FrontendGoalNode) => {
     switch (action) {
       case 'journal':
         setJournalNode(node);
@@ -253,6 +257,9 @@ const GoalTreePage: React.FC = () => {
         break;
       case 'suspend':
         setSuspendNode(node);
+        break;
+      case 'delete':
+        setDeleteNode(node);
         break;
     }
   };
@@ -320,7 +327,7 @@ const GoalTreePage: React.FC = () => {
           },
           { headers }
         );
-        toast.success(parentId ? 'Sub-goal added! -500 PP' : 'New goal added! -500 PP');
+        toast.success(parentId ? 'Sub-goal added! -150 PP' : 'New goal added! -150 PP');
         if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
       } else if (editingNode) {
         const bNode = backendNodes.find(n => n.id === editingNode.id);
@@ -341,7 +348,7 @@ const GoalTreePage: React.FC = () => {
             },
             { headers }
           );
-          toast.success('Goal details updated! -100 PP');
+          toast.success('Goal details updated! -50 PP');
           if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
         }
 
@@ -844,12 +851,12 @@ const GoalTreePage: React.FC = () => {
           <Button onClick={() => { setEditingNode(null); setIsBranching(false); }} sx={{ color: 'text.secondary' }}>Cancel</Button>
           <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim() || (isBranching && !editingNode && !newGoalDomain)}
             sx={{ borderRadius: '10px' }}>
-            {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Sub-goal (500 PP)' : 'Add New Goal (500 PP)') : (
+            {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Sub-goal (150 PP)' : 'Add New Goal (150 PP)') : (
               (editingNode && (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') ||
                editDesc.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.customDetails || '') ||
                editMetric.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.completionMetric || '') ||
                editTargetDate !== (backendNodes.find(n => n.id === editingNode?.id)?.targetDate || '')
-              )) ? 'Save Details (100 PP)' : 'Save Progress'
+              )) ? 'Save Details (50 PP)' : 'Save Progress'
             ))}
           </Button>
         </DialogActions>
@@ -890,6 +897,52 @@ const GoalTreePage: React.FC = () => {
             sx={{ borderRadius: '10px' }}
           >
             {suspending ? <CircularProgress size={18} color="inherit" /> : 'Confirm (50 PP)'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Delete goal confirmation ────────────────────────────── */}
+      <Dialog open={!!deleteNode} onClose={() => setDeleteNode(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Goal</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Permanently delete <strong>{deleteNode?.title}</strong>{deleteNode?.children && deleteNode.children.length > 0 ? ' and all its sub-goals' : ''}? Costs <strong>150 PP</strong>.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setDeleteNode(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleting}
+            onClick={async () => {
+              if (!deleteNode || !currentUserId) return;
+              setDeleting(true);
+              try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const res = await axios.delete(
+                  `${API_URL}/goals/${currentUserId}/node/${deleteNode.id}`,
+                  { headers: { Authorization: `Bearer ${session?.access_token}` } }
+                );
+                if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
+                toast.success('Goal deleted! -150 PP');
+                setDeleteNode(null);
+                setSelectedNode(null);
+                setSheetOpen(false);
+                // Refresh tree
+                const response = await axios.get(`${API_URL}/goals/${currentUserId}`);
+                const allNodes: any[] = response.data.nodes || [];
+                setBackendNodes(allNodes);
+                setTreeData(buildFrontendTree(allNodes));
+              } catch (e: any) {
+                toast.error(e.response?.data?.message || 'Failed to delete goal');
+              } finally {
+                setDeleting(false);
+              }
+            }}
+            sx={{ borderRadius: '10px' }}
+          >
+            {deleting ? <CircularProgress size={18} color="inherit" /> : 'Delete (150 PP)'}
           </Button>
         </DialogActions>
       </Dialog>

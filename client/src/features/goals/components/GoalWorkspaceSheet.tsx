@@ -185,7 +185,7 @@ const GoalWorkspaceSheet: React.FC<GoalWorkspaceSheetProps> = ({
           }}
         >
           <Typography sx={{ fontSize: '1rem' }}>+</Typography>
-          <Typography sx={{ fontSize: '0.8rem' }}>Add sub-goal</Typography>
+          <Typography sx={{ fontSize: '0.8rem' }}>Add sub-goal (150 PP)</Typography>
         </Box>
       )}
 
@@ -196,11 +196,11 @@ const GoalWorkspaceSheet: React.FC<GoalWorkspaceSheetProps> = ({
           pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.05)',
         }}>
           {(actions || [
+            { key: 'edit', icon: '✏️', label: 'Edit (50)' },
             { key: 'journal', icon: '📓', label: 'Journal' },
             { key: 'bet', icon: '🎰', label: 'Bet' },
             { key: 'verify', icon: '✅', label: 'Verify' },
-            { key: 'suspend', icon: '⏸', label: 'Suspend' },
-            { key: 'edit', icon: '✏️', label: 'Edit' },
+            { key: 'delete', icon: '🗑️', label: 'Delete (150)' },
           ]).map(action => (
             <Box
               key={action.key}

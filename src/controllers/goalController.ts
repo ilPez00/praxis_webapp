@@ -510,8 +510,9 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
 
 // ─── Per-node CRUD with higher PP gate ────────────────────────────────────────
 
-const NODE_CREATE_COST = 0;   // Free — Notes is the primary page, goals should be easy to add
-const NODE_EDIT_COST = 0;     // Free — removing friction from the core loop
+const NODE_CREATE_COST = 150;  // Creating a new goal node
+const NODE_EDIT_COST   = 50;   // Modifying an existing goal node
+const NODE_DELETE_COST = 150;  // Deleting an active goal node (cascades to children)
 
 /**
  * POST /goals/:userId/node
@@ -726,6 +727,23 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
   const requesterId = req.user?.id;
   if (requesterId !== userId) throw new ForbiddenError('You can only modify your own goals.');
 
+  // 0. Fetch profile + check PP balance
+  let currentPoints = 0;
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('praxis_points')
+      .eq('id', userId)
+      .single();
+    currentPoints = profile?.praxis_points ?? 0;
+  } catch {
+    logger.warn('Could not fetch profile columns for goal delete (non-fatal)');
+  }
+
+  if (NODE_DELETE_COST > 0 && currentPoints < NODE_DELETE_COST) {
+    throw new AppError(`Insufficient Praxis Points. Deleting a node costs ${NODE_DELETE_COST} PP (you have ${currentPoints}).`, 402);
+  }
+
   // 1. Load existing tree
   const { data: tree, error: treeErr } = await supabase
     .from('goal_trees')
@@ -768,5 +786,15 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
     if (fb) throw new InternalServerError(`Failed to delete node: ${fb.message}`);
   }
 
-  res.json({ message: 'Node deleted.', deletedCount: toDelete.size });
+  // 4. Deduct PP (best-effort)
+  const newBalance = currentPoints - NODE_DELETE_COST;
+  if (NODE_DELETE_COST > 0) {
+    try {
+      await supabase.from('profiles').update({ praxis_points: newBalance }).eq('id', userId);
+    } catch (err) {
+      logger.warn('Could not deduct PP after goal delete (non-fatal):', err);
+    }
+  }
+
+  res.json({ message: 'Node deleted.', deletedCount: toDelete.size, newBalance });
 });
