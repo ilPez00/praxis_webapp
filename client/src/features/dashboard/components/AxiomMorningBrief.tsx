@@ -418,7 +418,11 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
               <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.1em', px: 0.5 }}>
                 HOURLY SCHEDULE ({data.routine.length} blocks)
               </Typography>
-              <Stack spacing={1} sx={{ mt: 1.5 }}>
+              <Box sx={{
+                display: 'flex', gap: 1.5, mt: 1.5, overflowX: 'auto', pb: 2,
+                '&::-webkit-scrollbar': { height: 4 },
+                '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(139,92,246,0.3)', borderRadius: 2 },
+              }}>
                 {data.routine.map((item, idx) => {
                   const cat = CATEGORY_COLORS[item.category || 'admin'] || CATEGORY_COLORS.admin;
                   const isNow = (() => {
@@ -430,7 +434,7 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
                     <Box
                       key={idx}
                       sx={{
-                        display: 'flex', gap: 1.5, alignItems: 'flex-start',
+                        minWidth: 200, maxWidth: 220, flexShrink: 0,
                         p: 1.5, borderRadius: '14px',
                         bgcolor: isNow ? `${cat.bg.replace('0.08', '0.18')}` : cat.bg,
                         border: `1px solid ${isNow ? cat.text : cat.border}`,
@@ -448,39 +452,30 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
                         }),
                       }}
                     >
-                      {/* Time column */}
-                      <Box sx={{ minWidth: 44, textAlign: 'center', pt: 0.25 }}>
-                        <Typography sx={{ fontWeight: 900, fontSize: '0.7rem', color: cat.text, lineHeight: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+                        <Typography sx={{ fontWeight: 900, fontSize: '0.7rem', color: cat.text }}>
                           {item.time}
                         </Typography>
-                        <Typography sx={{ fontSize: '0.85rem', mt: 0.25 }}>{cat.emoji}</Typography>
+                        <Chip
+                          label={(item.category || 'task').replace('_', ' ')}
+                          size="small"
+                          sx={{
+                            height: 18, fontSize: '0.55rem', fontWeight: 700,
+                            bgcolor: `${cat.text}15`, color: cat.text,
+                            border: `1px solid ${cat.text}30`,
+                          }}
+                        />
                       </Box>
-
-                      {/* Content */}
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', lineHeight: 1.3 }}>
-                          {item.task}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3, display: 'block', mt: 0.25 }}>
-                          {item.alignment}
-                        </Typography>
-                      </Box>
-
-                      {/* Category chip */}
-                      <Chip
-                        label={(item.category || 'task').replace('_', ' ')}
-                        size="small"
-                        sx={{
-                          height: 18, fontSize: '0.55rem', fontWeight: 700,
-                          bgcolor: `${cat.text}15`, color: cat.text,
-                          border: `1px solid ${cat.text}30`,
-                          flexShrink: 0,
-                        }}
-                      />
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {item.task}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3, display: 'block', mt: 0.5 }}>
+                        {item.alignment}
+                      </Typography>
                     </Box>
                   );
                 })}
-              </Stack>
+              </Box>
             </Box>
           )}
 

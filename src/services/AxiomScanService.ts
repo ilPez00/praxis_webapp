@@ -738,10 +738,28 @@ CRITICAL RULES:
 
     await supabase.from('axiom_daily_briefs').upsert({
       user_id: userId,
-      date: today,
+      date: todayStr,
       brief: recommendations,
       generated_at: new Date().toISOString(),
     });
+
+    // Auto-save brief to notebook for history
+    Promise.resolve(
+      supabase.from('notebook_entries').insert({
+        user_id: userId,
+        entry_type: 'axiom_brief',
+        title: `Axiom Brief — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`,
+        content: axiomMessage || 'Daily brief generated',
+        metadata: {
+          source: source,
+          routine_count: routine?.length || 0,
+          has_challenge: !!challenge,
+          brief_date: todayStr,
+        },
+        mood: null,
+        occurred_at: new Date().toISOString(),
+      })
+    ).then(() => {}).catch((err: any) => logger.warn('Auto-save brief to notebook failed (non-fatal):', err));
 
     // AUTO-SAVE: Store full narrative in axiom_narratives table
     try {

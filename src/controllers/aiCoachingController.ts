@@ -101,7 +101,9 @@ async function generateAndStoreBrief(userId: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function buildContext(userId: string): Promise<CoachingContext> {
-  const [profileRes, goalTreeRes, feedbackRes, achievementsRes, boardMembershipsRes, dmPartnersRes, notebookRes] =
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const [profileRes, goalTreeRes, feedbackRes, achievementsRes, boardMembershipsRes, dmPartnersRes, notebookRes, placesRes, eventsRes, axiomChatRes] =
     await Promise.allSettled([
       // 1. Profile
       supabase
@@ -155,6 +157,29 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .eq('entry_type', 'note')
         .order('occurred_at', { ascending: false })
         .limit(10),
+
+      // 8. Recent places — popular or nearby, limit 5
+      supabase
+        .from('places')
+        .select('id, name, description, city, domain')
+        .limit(5),
+
+      // 9. Upcoming events — from today onward, limit 5
+      supabase
+        .from('events')
+        .select('id, title, description, date, city')
+        .gte('date', todayStr)
+        .order('date', { ascending: true })
+        .limit(5),
+
+      // 10. Recent Axiom chat history — last 20 messages with AI
+      supabase
+        .from('messages')
+        .select('content, is_ai, created_at')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .eq('is_ai', true)
+        .order('created_at', { ascending: false })
+        .limit(20),
     ]);
 
   // --- Profile ---
@@ -265,6 +290,34 @@ async function buildContext(userId: string): Promise<CoachingContext> {
     }
   }
 
+  // --- Places ---
+  const rawPlaces: any[] = placesRes.status === 'fulfilled' ? (placesRes.value.data ?? []) : [];
+  const recentPlaces = rawPlaces.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description ? p.description.slice(0, 100) : undefined,
+    city: p.city,
+    domain: p.domain,
+  }));
+
+  // --- Upcoming Events ---
+  const rawEvents: any[] = eventsRes.status === 'fulfilled' ? (eventsRes.value.data ?? []) : [];
+  const upcomingEvents = rawEvents.map((e: any) => ({
+    id: e.id,
+    title: e.title,
+    description: e.description ? e.description.slice(0, 100) : undefined,
+    date: e.date ? new Date(e.date).toISOString().slice(0, 10) : 'upcoming',
+    city: e.city,
+  }));
+
+  // --- Axiom Chat History ---
+  const rawAxiomChat: any[] = axiomChatRes.status === 'fulfilled' ? (axiomChatRes.value.data ?? []) : [];
+  const axiomChatHistory = rawAxiomChat.map((m: any) => ({
+    content: (m.content || '').slice(0, 200),
+    is_ai: !!m.is_ai,
+    created_at: m.created_at,
+  }));
+
   // --- Engagement Metrics (for template personalization) ---
   // Fetch from cache or calculate on-demand
   let engagementMetrics: CoachingContext['engagementMetrics'];
@@ -285,19 +338,22 @@ async function buildContext(userId: string): Promise<CoachingContext> {
     engagementMetrics = undefined;
   }
 
-  return { 
-    userName, 
-    bio, 
-    streak, 
-    praxisPoints, 
-    language, 
-    goals, 
-    recentFeedback, 
-    achievements, 
-    network, 
+  return {
+    userName,
+    bio,
+    streak,
+    praxisPoints,
+    language,
+    goals,
+    recentFeedback,
+    achievements,
+    network,
     boards,
     engagementMetrics,
     recentNotes,
+    recentPlaces,
+    upcomingEvents,
+    axiomChatHistory,
   };
 }
 

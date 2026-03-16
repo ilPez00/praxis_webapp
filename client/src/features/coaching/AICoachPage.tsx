@@ -41,9 +41,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FlagIcon from '@mui/icons-material/Flag';
 import PeopleIcon from '@mui/icons-material/People';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import LockIcon from '@mui/icons-material/Lock';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import PsychologyIcon from '@mui/icons-material/Psychology';
 import DownloadIcon from '@mui/icons-material/Download';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import HistoryIcon from '@mui/icons-material/History';
@@ -99,6 +97,7 @@ const AICoachPage: React.FC = () => {
   const [lastAxiomMessage, setLastAxiomMessage] = useState<string | null>(null);
 
   const [chat, setChat] = useState<ChatMessage[]>([]);
+  const [chatLoaded, setChatLoaded] = useState(false);
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
   
@@ -182,13 +181,6 @@ const AICoachPage: React.FC = () => {
     }
   }, []);
 
-  const triggerBackgroundUpdate = useCallback(async () => {
-    try {
-      const headers = await getAuthHeaders();
-      await fetch(`${API_URL}/ai-coaching/trigger`, { method: 'POST', headers });
-    } catch { /* ignore */ }
-  }, []);
-
   const handleRefresh = async () => {
     setRefreshing(true);
     setReportError(null);
@@ -235,28 +227,57 @@ const AICoachPage: React.FC = () => {
     
     // Load saved narratives
     loadSavedNarratives();
-    
-    // Send 3 automatic algorithmic messages from Axiom on chat open
-    setTimeout(() => {
-      setChat([
-        { 
-          role: 'coach', 
-          text: "👋 I'm Axiom, your accountability coach. I'm here to help you stay consistent and achieve your goals." 
-        },
-        { 
-          role: 'coach', 
-          text: "📊 I've been analyzing your progress patterns. Your consistency is key to long-term success." 
-        },
-        { 
-          role: 'coach', 
-          text: "💬 Ask me anything about your goals, routine, or accountability strategy. I'm here to help!" 
-        },
-      ]);
-    }, 500);
-    
+
+    // Load persisted Axiom chat history
+    loadChatHistory();
+
     return () => { cancelled = true; };
   }, [loadCachedBrief, loadDailyBrief]);
   
+  const loadChatHistory = async () => {
+    if (!user?.id) return;
+    try {
+      // Fetch Axiom chat messages (user questions + AI responses)
+      const { data: msgs } = await supabase
+        .from('messages')
+        .select('content, is_ai, created_at')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .eq('is_ai', true)
+        .order('created_at', { ascending: true })
+        .limit(50);
+
+      // Also fetch user's questions to Axiom (sender_id = user, receiver_id = user which is how AI msgs are stored)
+      const { data: userMsgs } = await supabase
+        .from('messages')
+        .select('content, is_ai, created_at, sender_id, receiver_id')
+        .eq('sender_id', user.id)
+        .eq('receiver_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(50);
+
+      // Merge and sort — AI responses have is_ai=true, user questions don't
+      const allMsgs = [
+        ...(Array.isArray(msgs) ? msgs : []).map(m => ({ ...m, role: 'coach' as const })),
+        ...(Array.isArray(userMsgs) ? userMsgs : []).filter(m => !m.is_ai).map(m => ({ ...m, role: 'user' as const })),
+      ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      if (allMsgs.length > 0) {
+        setChat(allMsgs.map(m => ({ role: m.role, text: m.content })));
+      } else {
+        // No history — show welcome
+        setChat([
+          { role: 'coach', text: "I'm Axiom, your accountability coach. Ask me anything about your goals, routine, people, places, events, or notes." },
+        ]);
+      }
+    } catch {
+      setChat([
+        { role: 'coach', text: "I'm Axiom. Ask me anything about your goals, routine, or strategy." },
+      ]);
+    } finally {
+      setChatLoaded(true);
+    }
+  };
+
   const loadSavedNarratives = async () => {
     setLoadingNarratives(true);
     try {
@@ -307,18 +328,17 @@ const AICoachPage: React.FC = () => {
       const res = await fetch(`${API_URL}/ai-coaching/request`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ userPrompt: q, useBoost: true }), // Always use AI
+        body: JSON.stringify({ userPrompt: q, useBoost: true }),
       });
       const body = await res.json().catch(() => ({}));
       if (res.status === 402) {
-        setChat(prev => [...prev, { role: 'coach', text: `⚡ ${body.message}` }]);
+        setChat(prev => [...prev, { role: 'coach', text: `${body.message}` }]);
         return;
       }
       if (!res.ok) {
         throw new Error(body.detailed ? `${body.message} (${body.detailed})` : (body.message || `Error ${res.status}`));
       }
       setChat(prev => [...prev, { role: 'coach', text: body.response }]);
-      triggerBackgroundUpdate();
     } catch (err: any) {
       setChat(prev => [...prev, { role: 'coach', text: `Sorry, I couldn't respond. ${err.message}` }]);
     } finally {
@@ -474,13 +494,23 @@ const AICoachPage: React.FC = () => {
                   <Typography variant="caption" display="block">{String(dailyBrief.challenge?.terms)}</Typography>
                 </Box>
               </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="overline" sx={{ color: '#A78BFA', fontWeight: 800 }}>Daily Routine (9-5 Friendly)</Typography>
-                <Box sx={{ mt: 1, maxHeight: 300, overflowY: 'auto', pr: 1 }}>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="overline" sx={{ color: '#A78BFA', fontWeight: 800 }}>Daily Routine</Typography>
+                <Box sx={{
+                  display: 'flex', gap: 1.5, mt: 1, overflowX: 'auto', pb: 2,
+                  '&::-webkit-scrollbar': { height: 4 },
+                  '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(139,92,246,0.3)', borderRadius: 2 },
+                }}>
                   {Array.isArray(dailyBrief.routine) && dailyBrief.routine.map((step, i) => (
-                    <Box key={i} sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
-                      <Typography variant="caption" sx={{ minWidth: 55, fontWeight: 800, color: 'primary.main' }}>{String(step.time)}</Typography>
-                      <Box><Typography variant="body2" sx={{ fontWeight: 600 }}>{String(step.task)}</Typography><Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25 }}>{String(step.alignment)}</Typography></Box>
+                    <Box key={i} sx={{
+                      minWidth: 180, maxWidth: 200, flexShrink: 0,
+                      p: 1.5, borderRadius: '12px',
+                      bgcolor: 'rgba(167,139,250,0.06)',
+                      border: '1px solid rgba(167,139,250,0.15)',
+                    }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', display: 'block', mb: 0.5 }}>{String(step.time)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{String(step.task)}</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.5 }}>{String(step.alignment)}</Typography>
                     </Box>
                   ))}
                 </Box>
@@ -556,32 +586,18 @@ const AICoachPage: React.FC = () => {
             <div ref={chatEndRef} />
           </Stack>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField fullWidth multiline maxRows={4} placeholder="Ask Axiom…" value={question} onChange={e => setQuestion(e.target.value)} size="small" />
-            <IconButton onClick={() => handleAsk(false)} disabled={!question.trim() || asking} sx={{ bgcolor: 'primary.main', color: '#0A0B14', borderRadius: '12px' }}>
+            <TextField
+              fullWidth multiline maxRows={4}
+              placeholder="Ask Axiom about goals, people, places, events, notes…"
+              value={question}
+              onChange={e => setQuestion(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(); } }}
+              size="small"
+            />
+            <IconButton onClick={handleAsk} disabled={!question.trim() || asking} sx={{ bgcolor: 'primary.main', color: '#0A0B14', borderRadius: '12px' }}>
               {asking ? <CircularProgress size={18} color="inherit" /> : <SendIcon fontSize="small" />}
             </IconButton>
           </Box>
-          {!isFree && (
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<PsychologyIcon />}
-              disabled={!question.trim() || asking}
-              onClick={() => handleAsk(true)}
-              sx={{
-                mt: 1,
-                borderRadius: '8px',
-                fontWeight: 700,
-                fontSize: '0.75rem',
-                borderColor: 'rgba(167,139,250,0.5)',
-                color: '#A78BFA',
-                background: 'rgba(139,92,246,0.06)',
-                '&:hover': { background: 'rgba(139,92,246,0.14)', borderColor: '#A78BFA' },
-              }}
-            >
-              🔮 Axiom Boost — full LLM response
-            </Button>
-          )}
         </Box>
       </Stack>
       

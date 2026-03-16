@@ -32,6 +32,9 @@ export interface CoachingContext {
   };
   trackerTrends?: Array<{ trackerName: string; direction: string; weekOverWeekChange: number }>;
   recentNotes?: Array<{ title?: string; content: string; mood?: string; date: string; goalName?: string }>;
+  recentPlaces?: Array<{ id: string; name: string; description?: string; city?: string; domain?: string }>;
+  upcomingEvents?: Array<{ id: string; title: string; description?: string; date: string; city?: string }>;
+  axiomChatHistory?: Array<{ content: string; is_ai: boolean; created_at: string }>;
 }
 
 export interface CoachingReport {
@@ -451,7 +454,34 @@ export class AICoachingService {
     // Premium - real LLM call
     logger.info('[AICoachingService] Using LLM for premium coaching response');
     const identity = await this.getIdentity();
-    const prompt = `${identity}\nContext: ${JSON.stringify(context)}\nUser Notes: ${JSON.stringify(context.recentNotes || [])}\nUser: ${userPrompt}\nReply concisely in ${context.language}.`;
+
+    const knowledgeBase = `
+You have access to the following knowledge about this user and the Praxis ecosystem. Reference them naturally when relevant:
+
+- **Notebook / Notes**: The user's personal reflections and journal entries. Use these to understand their mindset, struggles, and wins.
+${context.recentNotes && context.recentNotes.length > 0 ? context.recentNotes.map(n => `  - "${n.title || 'Note'}" (${n.date}): ${(n.content || '').slice(0, 120)}`).join('\n') : '  (No recent notes)'}
+
+- **People / Network**: Accountability partners and matches the user is connected with. Suggest reaching out when relevant.
+${context.network && context.network.length > 0 ? context.network.map(n => `  - ${n.name} (domains: ${(n.domains || []).join(', ') || 'general'})`).join('\n') : '  (No connections yet)'}
+
+- **Places Nearby**: Physical locations relevant to the user's goals or city.
+${context.recentPlaces && context.recentPlaces.length > 0 ? context.recentPlaces.map(p => `  - ${p.name}${p.city ? ' (' + p.city + ')' : ''}${p.domain ? ' [' + p.domain + ']' : ''}`).join('\n') : '  (No places available)'}
+
+- **Upcoming Events**: Events the user might want to attend or participate in.
+${context.upcomingEvents && context.upcomingEvents.length > 0 ? context.upcomingEvents.map(e => `  - "${e.title}" on ${e.date}${e.city ? ' in ' + e.city : ''}`).join('\n') : '  (No upcoming events)'}
+
+- **Community Boards**: Groups the user has joined for accountability and discussion.
+${context.boards && context.boards.length > 0 ? context.boards.map(b => `  - ${b.name}${b.domain ? ' [' + b.domain + ']' : ''}`).join('\n') : '  (No boards joined)'}
+
+- **Goal Tree**: The user's structured goals with progress tracking.
+${context.goals && context.goals.length > 0 ? context.goals.map(g => `  - "${g.name}" (${g.domain}) — ${g.progress}% complete`).join('\n') : '  (No goals set)'}
+
+- **Recent Axiom Conversation**: Previous messages between you (Axiom) and this user. Use for continuity.
+${context.axiomChatHistory && context.axiomChatHistory.length > 0 ? context.axiomChatHistory.slice(0, 5).map(m => `  - [${m.is_ai ? 'Axiom' : 'User'}]: ${(m.content || '').slice(0, 100)}`).join('\n') : '  (No prior conversation)'}
+
+When answering, naturally weave in references to their notes, goals, network, places, events, or boards when it adds value. Do not list everything — pick what is most relevant to their question.`;
+
+    const prompt = `${identity}\n${knowledgeBase}\nUser: ${userPrompt}\nReply concisely in ${context.language}.`;
     try { 
       return await this.runWithFallback(prompt); 
     } catch (error: any) { 
