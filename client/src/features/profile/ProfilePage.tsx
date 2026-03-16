@@ -48,6 +48,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import SecurityIcon from '@mui/icons-material/Security';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import DescriptionIcon from '@mui/icons-material/Description';
 import DuelDialog from '../duels/components/DuelDialog';
 import { DOMAIN_COLORS } from '../../types/goal';
 import toast from 'react-hot-toast';
