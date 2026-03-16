@@ -573,15 +573,42 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
             <Box>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
                 <Typography variant="caption" color="text.secondary" fontWeight={600}>Location (optional)</Typography>
-                <Button size="small" startIcon={<MyLocationIcon />} onClick={() => {
-                  if (userGeo) {
-                    setBookmarkLat(userGeo.lat.toFixed(5));
-                    setBookmarkLng(userGeo.lng.toFixed(5));
-                    toast.success('Location detected!');
-                  } else {
-                    toast.error('Enable location access first');
-                  }
-                }}>Detect</Button>
+                <Button 
+                  size="small" 
+                  startIcon={geoLoading ? <CircularProgress size={14} /> : <MyLocationIcon />} 
+                  onClick={() => {
+                    if (!navigator.geolocation) {
+                      toast.error('Geolocation not supported by your browser');
+                      return;
+                    }
+                    setGeoLoading(true);
+                    navigator.geolocation.getCurrentPosition(
+                      (pos) => {
+                        const lat = pos.coords.latitude.toFixed(5);
+                        const lng = pos.coords.longitude.toFixed(5);
+                        setBookmarkLat(lat);
+                        setBookmarkLng(lng);
+                        setUserGeo({ lat: parseFloat(lat), lng: parseFloat(lng) });
+                        setGeoLoading(false);
+                        toast.success('Location detected!');
+                      },
+                      (err) => {
+                        setGeoLoading(false);
+                        if (err.code === 1) {
+                          toast.error('Location permission denied. Please enable location access in your browser settings.');
+                        } else if (err.code === 2) {
+                          toast.error('Location unavailable. Make sure GPS is enabled.');
+                        } else {
+                          toast.error('Location timed out. Please try again.');
+                        }
+                      },
+                      { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 }
+                    );
+                  }}
+                  disabled={geoLoading}
+                >
+                  {geoLoading ? 'Detecting...' : 'Detect'}
+                </Button>
               </Stack>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6 }}><TextField fullWidth size="small" label="Latitude" value={bookmarkLat} onChange={e => setBookmarkLat(e.target.value)} /></Grid>

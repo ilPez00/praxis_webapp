@@ -424,3 +424,19 @@ Session 70: Goal Node PP Economy — Edit/Create/Delete Pricing
 - Note: changes committed in 0d690f7 (bundled with Qwen's Axiom changes)
 - Next: Fix AxiomDailyProtocol.tsx JSX syntax error, run SQL migrations
 - Sign: Claude
+
+Session 71: Axiom Chat Overhaul — History, Context Search, Horizontal Routine
+- Made routine horizontally scrollable in AxiomMorningBrief.tsx (was vertical Stack, now flex row with overflowX: auto, 200px cards)
+- Made routine horizontally scrollable in AICoachPage.tsx (same card-based layout, full-width grid)
+- Axiom chat now loads per-user history from DB on mount (queries `messages` table for is_ai=true + user questions)
+- Removed "Axiom Boost" button — all sends go directly to Axiom with useBoost: true
+- Added Enter-to-send keyboard shortcut in chat TextField
+- Removed triggerBackgroundUpdate, PsychologyIcon, LockIcon (unused after boost removal)
+- Backend: buildContext enhanced with places (limit 5), upcoming events (limit 5), and Axiom chat history (limit 20)
+- Backend: CoachingContext interface extended with recentPlaces, upcomingEvents, axiomChatHistory fields
+- Backend: generateCoachingResponse LLM prompt now includes full knowledge base section (notes, people, places, events, boards, goals, chat history)
+- Backend: AxiomScanService auto-saves daily briefs to notebook_entries (entry_type: 'axiom_brief') after generation
+- Files modified: client/src/features/coaching/AICoachPage.tsx, client/src/features/dashboard/components/AxiomMorningBrief.tsx, src/controllers/aiCoachingController.ts, src/services/AICoachingService.ts, src/services/AxiomScanService.ts
+- Verification: 0 TypeScript errors (both backend + frontend)
+- Next: Run SQL migrations, test Axiom chat with real data, verify notebook_entries persistence
+- Sign: Claude
