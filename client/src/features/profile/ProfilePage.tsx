@@ -113,6 +113,8 @@ interface Profile {
   current_streak?: number;
   last_activity_date?: string | null;
   karma_score?: number;
+  latest_axiom_report?: any;
+  latest_ai_narrative?: string;
 }
 
 function activityChip(profile: Profile): { label: string; color: string; bg: string; border: string } | null {
@@ -990,6 +992,72 @@ const ProfilePage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Latest Reports (Own profile only) */}
+      {isOwnProfile && (profile.latest_axiom_report || profile.latest_ai_narrative) && (
+        <GlassCard glowColor="rgba(167,139,250,0.12)" sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+            <AutoAwesomeIcon sx={{ color: '#A78BFA' }} />
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>Latest Axiom Reports</Typography>
+              <Typography variant="body2" color="text.secondary">Your most recent AI-generated insights and notebook exports.</Typography>
+            </Box>
+          </Box>
+          <Stack spacing={2}>
+            {profile.latest_ai_narrative && (
+              <Box sx={{ p: 2, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <ArticleIcon fontSize="small" sx={{ color: '#A78BFA' }} />
+                  Latest AI Narrative
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ 
+                  display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', 
+                  overflow: 'hidden', mb: 1.5, fontStyle: 'italic' 
+                }}>
+                  {profile.latest_ai_narrative}
+                </Typography>
+                <Button 
+                  size="small" variant="text" 
+                  onClick={() => {
+                    const blob = new Blob([profile.latest_ai_narrative!], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'latest-axiom-narrative.txt';
+                    a.click();
+                  }}
+                  sx={{ color: '#A78BFA', fontWeight: 700, p: 0 }}
+                >
+                  Download Full Narrative
+                </Button>
+              </Box>
+            )}
+            {profile.latest_axiom_report && (
+              <Box sx={{ p: 2, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <DescriptionIcon fontSize="small" sx={{ color: '#F59E0B' }} />
+                  {profile.latest_axiom_report.type === 'notebook_export' ? 'Latest Notebook Export' : 'Latest Coaching Report'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Generated on {new Date(profile.latest_axiom_report.timestamp || Date.now()).toLocaleDateString()}
+                </Typography>
+                {profile.latest_axiom_report.summary && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    {profile.latest_axiom_report.summary}
+                  </Typography>
+                )}
+                <Button 
+                  size="small" variant="text" 
+                  onClick={() => navigate('/notes')}
+                  sx={{ color: '#F59E0B', fontWeight: 700, p: 0 }}
+                >
+                  Go to Notebook
+                </Button>
+              </Box>
+            )}
+          </Stack>
+        </GlassCard>
+      )}
 
       {/* Goal Tree shortcut */}
       <GlassCard glowColor="rgba(139,92,246,0.12)" sx={{ p: 3 }}>
