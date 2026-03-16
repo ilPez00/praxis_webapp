@@ -157,14 +157,19 @@ const ChatRoom: React.FC = () => {
   }, [user2Id]);
 
   useEffect(() => {
-    if (!user1Id || !user2Id) return;
+    if (!user1Id || !user2Id || !currentUserId) {
+      setLoading(false);
+      return;
+    }
 
     const fetchMessages = async () => {
       try {
+        setLoading(true);
         const response = await axios.get(`${API_URL}/messages/${user1Id}/${user2Id}`);
         setMessages(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Fetch messages error:', error);
+        toast.error('Failed to load messages');
       } finally {
         setLoading(false);
       }
@@ -228,7 +233,7 @@ const ChatRoom: React.FC = () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user1Id, user2Id]);
+  }, [user1Id, user2Id, currentUserId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
