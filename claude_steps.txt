@@ -266,3 +266,31 @@ Session 64: LLM Fix + Source Tags + Force Refresh + Global FAB + Quick Log
 - Verification: TypeScript check 0 source errors
 - Next: Commit + push, test Quick Log flow on deployed app, verify LLM briefs generate with force refresh
 - Sign: Claude
+
+Session 65: DiaryFeed Sort/Filter + GoalActivityGraph
+- DiaryFeed.tsx: added sort modes (time/goal/emoji) and type filter
+  - Sort by goal: groups entries by goalName with 🎯 prefix headers
+  - Sort by emoji: groups entries by icon, sorted by count descending
+  - Filter by type: tracker/journal/checkin/bet/verification/etc.
+  - Active sort/filter shown as dismissible chips above the feed
+  - Pre-fetches goal_trees nodes for name mapping across all data sources
+  - Extended FeedItem with goalId/goalName fields for journal, bet, verification, goal entries
+- NEW GoalActivityGraph.tsx: git-style SVG timeline for per-goal activity
+  - Vertical trunk line with branch nodes for each event
+  - Event types: tracker logs, journals, bets (placed/won/lost), verifications, check-ins
+  - Stars (⭐) rendered as SVG star paths for won bets and approved verifications
+  - Day boundary labels on left side, time labels on right
+  - Color-coded by event type, domain-themed header
+  - Legend at bottom showing node types
+  - 90-day lookback, max 50 events
+- NoteGoalDetail.tsx: integrated GoalActivityGraph below tracker widgets in GlassCard
+- QuickLogDialog.tsx: added "Free diary entry" (uncategorized, saves to journal_entries without node_id)
+  - Purple card with MenuBookIcon at top of goal selector
+  - Three-state ViewMode: 'selector' | 'goal' | 'free'
+- aiCoachingController.ts: daily briefs always try LLM (removed minimal_ai_mode gate)
+- PostFeed.tsx: "New Post" SpeedDial action now scrolls to + focuses compose input
+- Files: DiaryFeed.tsx, GoalActivityGraph.tsx (NEW), NoteGoalDetail.tsx, QuickLogDialog.tsx, QuickActionFAB.tsx, PostFeed.tsx, aiCoachingController.ts
+- Verification: TypeScript check 0 source errors
+- Commits: 2e0c938 (GoalActivityGraph integration)
+- Next: Test activity graph rendering on deployed app, verify sort/filter UX in Notes page
+- Sign: Claude
