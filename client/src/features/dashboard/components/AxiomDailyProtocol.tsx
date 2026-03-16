@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { API_URL } from '../../../lib/api';
 import GlassCard from '../../../components/common/GlassCard';
+import AxiomReply from '../../../components/common/AxiomReply';
 import {
   Box,
   Typography,
@@ -245,28 +246,55 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
         </Box>
 
         <Grid container spacing={2}>
-          {/* Quick Hits */}
+          {/* Quick Hits with Reply */}
           <Grid size={{ xs: 12, sm: 4 }}>
-            <GlassCard sx={{ p: 1.5, height: '100%', cursor: 'pointer', border: '1px solid rgba(139,92,246,0.1)' }} onClick={() => navigate(`/profile/${data?.match?.id || 'null'}`)}>
-              <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 800, display: 'block', mb: 0.5 }}>BEST MATCH</Typography>
+            <GlassCard sx={{ p: 1.5, height: '100%', border: '1px solid rgba(139,92,246,0.1)' }}>
+              <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 800, display: 'block', mb: 0.5 }}>🤝 BEST MATCH</Typography>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{String(data?.match?.name || 'None found')}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{String(data?.match?.reason || 'Update goals to find matches')}</Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mb: 1 }}>{String(data?.match?.reason || 'Update goals to find matches')}</Typography>
+              {data?.match && (
+                <AxiomReply
+                  type="match"
+                  title={data.match.name}
+                  description={data.match.reason}
+                  userId={userId}
+                  metadata={{ matchId: data.match.id }}
+                />
+              )}
             </GlassCard>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 4 }}>
-            <GlassCard sx={{ p: 1.5, height: '100%', cursor: 'pointer', border: '1px solid rgba(236,72,153,0.1)' }} onClick={() => navigate(`/discover?tab=events`)}>
-              <Typography variant="caption" sx={{ color: '#EC4899', fontWeight: 800, display: 'block', mb: 0.5 }}>EVENT</Typography>
+            <GlassCard sx={{ p: 1.5, height: '100%', border: '1px solid rgba(236,72,153,0.1)' }}>
+              <Typography variant="caption" sx={{ color: '#EC4899', fontWeight: 800, display: 'block', mb: 0.5 }}>📅 EVENT</Typography>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{String(data?.event?.title || 'None found')}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{String(data?.event?.reason || 'Check back tomorrow')}</Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mb: 1 }}>{String(data?.event?.reason || 'Check back tomorrow')}</Typography>
+              {data?.event && (
+                <AxiomReply
+                  type="event"
+                  title={data.event.title}
+                  description={data.event.reason}
+                  userId={userId}
+                  metadata={{ eventId: data.event.id }}
+                />
+              )}
             </GlassCard>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 4 }}>
-            <GlassCard sx={{ p: 1.5, height: '100%', cursor: 'pointer', border: '1px solid rgba(99,102,241,0.1)' }} onClick={() => navigate(`/discover?tab=places`)}>
-              <Typography variant="caption" sx={{ color: '#6366F1', fontWeight: 800, display: 'block', mb: 0.5 }}>PLACE</Typography>
+            <GlassCard sx={{ p: 1.5, height: '100%', border: '1px solid rgba(99,102,241,0.1)' }}>
+              <Typography variant="caption" sx={{ color: '#6366F1', fontWeight: 800, display: 'block', mb: 0.5 }}>📍 PLACE</Typography>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{String(data?.place?.name || 'None found')}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{String(data?.place?.reason || 'Explore your city')}</Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mb: 1 }}>{String(data?.place?.reason || 'Explore your city')}</Typography>
+              {data?.place && (
+                <AxiomReply
+                  type="place"
+                  title={data.place.name}
+                  description={data.place.reason}
+                  userId={userId}
+                  metadata={{ placeId: data.place.id }}
+                />
+              )}
             </GlassCard>
           </Grid>
 
@@ -335,48 +363,34 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
             </Box>
           </Grid>
 
-          {/* Simplified Dashboard View - Just Match, Event, Place */}
-          <Grid size={{ xs: 12 }}>
-            <Box sx={{ mt: 2, p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
-              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 2 }}>
-                📋 TODAY'S HIGHLIGHTS
-              </Typography>
-              <Stack spacing={2}>
-                {/* Match */}
-                {data?.match && (
-                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.2)' }}>
-                    <Typography variant="caption" sx={{ color: '#EC4899', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                      🤝 BEST MATCH
-                    </Typography>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{data.match.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">{data.match.reason}</Typography>
-                  </Box>
+          {/* Challenge/Bet with Reply */}
+          {data?.challenge && (
+            <Grid size={{ xs: 12 }}>
+              <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(245,158,11,0.06)', border: '2px dashed rgba(245,158,11,0.3)' }}>
+                <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 800, display: 'block', mb: 1 }}>
+                  ⚡ DAILY CHALLENGE
+                </Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                  {data.challenge.target}
+                </Typography>
+                {data.challenge.terms && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    {data.challenge.terms}
+                  </Typography>
                 )}
-
-                {/* Event */}
-                {data?.event && (
-                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.2)' }}>
-                    <Typography variant="caption" sx={{ color: '#EC4899', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                      📅 UPCOMING EVENT
-                    </Typography>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{data.event.title}</Typography>
-                    <Typography variant="caption" color="text.secondary">{data.event.reason}</Typography>
-                  </Box>
-                )}
-
-                {/* Place */}
-                {data?.place && (
-                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                    <Typography variant="caption" sx={{ color: '#6366F1', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                      📍 RECOMMENDED PLACE
-                    </Typography>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{data.place.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">{data.place.reason}</Typography>
-                  </Box>
-                )}
-              </Stack>
-            </Box>
-          </Grid>
+                <AxiomReply
+                  type="bet"
+                  title={data.challenge.target}
+                  description={data.challenge.terms}
+                  userId={userId}
+                  metadata={{ challengeType: data.challenge.type }}
+                />
+              </Box>
+            </Grid>
+          )}
+        </Grid>
+      </Box>
+    </Box>
   );
 };
 

@@ -411,3 +411,16 @@ Session 69: Rework Intro Sheets + Share-to-Diary for People/Places/Events
 - Verification: 0 source TypeScript errors (pre-existing i18next + AxiomDailyProtocol JSX errors only)
 - Next: Fix AxiomDailyProtocol.tsx JSX syntax error, run SQL migrations, seed demo users
 - Sign: Claude
+
+Session 70: Goal Node PP Economy — Edit/Create/Delete Pricing
+- Removed `goal_tree_edit` marketplace item (100 PP to reset edit counter) from backend catalogue + purchase handler + frontend sections/icons
+- Backend: NODE_CREATE_COST = 150 PP (new node or sub-goal), NODE_EDIT_COST = 50 PP (modify existing), NODE_DELETE_COST = 150 PP (delete + cascade children)
+- Added PP balance check + deduction to deleteGoalNode endpoint (previously free)
+- Frontend GoalTreePage: updated all button labels to match (150 PP create, 50 PP edit, 150 PP delete)
+- Added delete goal dialog with confirmation + PP display + tree refresh after deletion
+- GoalWorkspaceSheet: replaced Suspend action with Delete (150), moved Edit (50) to first position, added PP cost to "Add sub-goal" label
+- Files modified: src/controllers/goalController.ts, src/controllers/marketplaceController.ts, client/src/features/goals/GoalTreePage.tsx, client/src/features/goals/components/GoalWorkspaceSheet.tsx, client/src/features/marketplace/MarketplacePage.tsx
+- Verification: 0 new TypeScript errors (both backend + frontend)
+- Note: changes committed in 0d690f7 (bundled with Qwen's Axiom changes)
+- Next: Fix AxiomDailyProtocol.tsx JSX syntax error, run SQL migrations
+- Sign: Claude
