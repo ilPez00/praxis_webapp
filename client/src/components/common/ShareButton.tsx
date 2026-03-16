@@ -115,20 +115,30 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         metadata.tagged_users = taggedUsers.map(u => ({ id: u.id, name: u.name }));
       }
 
-      const { data, error } = await supabase
+      const insertPayload: any = {
+        user_id: userId,
+        entry_type: category.value,
+        title: title || 'Shared Item',
+        content: fullContent,
+        source_table: sourceTable,
+        source_id: sourceId,
+        is_private: isPrivate,
+      };
+
+      // Try with metadata first, fall back without if column doesn't exist yet
+      let { data, error } = await supabase
         .from('notebook_entries')
-        .insert({
-          user_id: userId,
-          entry_type: category.value,
-          title: title || 'Shared Item',
-          content: fullContent,
-          source_table: sourceTable,
-          source_id: sourceId,
-          metadata,
-          is_private: isPrivate,
-        })
+        .insert({ ...insertPayload, metadata })
         .select()
         .single();
+
+      if (error && error.message?.includes('metadata')) {
+        ({ data, error } = await supabase
+          .from('notebook_entries')
+          .insert(insertPayload)
+          .select()
+          .single());
+      }
 
       if (error) throw error;
 

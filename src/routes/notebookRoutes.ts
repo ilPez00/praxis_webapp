@@ -85,26 +85,38 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
 
   if (!content) throw new BadRequestError('content is required');
 
-  const { data, error } = await supabase
+  const insertPayload: any = {
+    user_id: userId,
+    entry_type,
+    title: title || null,
+    content,
+    mood: mood || null,
+    tags: tags || null,
+    goal_id: goal_id || null,
+    domain: domain || null,
+    source_table: source_table || null,
+    source_id: source_id || null,
+    attachments: attachments || [],
+    is_private,
+    occurred_at: new Date().toISOString(),
+  };
+  if (metadata) insertPayload.metadata = metadata;
+
+  let { data, error } = await supabase
     .from('notebook_entries')
-    .insert({
-      user_id: userId,
-      entry_type,
-      title: title || null,
-      content,
-      mood: mood || null,
-      tags: tags || null,
-      goal_id: goal_id || null,
-      domain: domain || null,
-      source_table: source_table || null,
-      source_id: source_id || null,
-      attachments: attachments || [],
-      is_private,
-      metadata: metadata || null,
-      occurred_at: new Date().toISOString(),
-    })
+    .insert(insertPayload)
     .select()
     .single();
+
+  // If metadata column doesn't exist yet, retry without it
+  if (error && metadata && error.message?.includes('metadata')) {
+    delete insertPayload.metadata;
+    ({ data, error } = await supabase
+      .from('notebook_entries')
+      .insert(insertPayload)
+      .select()
+      .single());
+  }
 
   if (error) throw error;
   res.status(201).json(data);
