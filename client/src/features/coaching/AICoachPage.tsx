@@ -216,6 +216,25 @@ const AICoachPage: React.FC = () => {
         if (!cancelled) setLoadingReport(false);
       }
     })();
+    
+    // Send 3 automatic algorithmic messages from Axiom on chat open
+    setTimeout(() => {
+      setChat([
+        { 
+          role: 'coach', 
+          text: "👋 I'm Axiom, your accountability coach. I'm here to help you stay consistent and achieve your goals." 
+        },
+        { 
+          role: 'coach', 
+          text: "📊 I've been analyzing your progress patterns. Your consistency is key to long-term success." 
+        },
+        { 
+          role: 'coach', 
+          text: "💬 Ask me anything about your goals, routine, or accountability strategy. I'm here to help!" 
+        },
+      ]);
+    }, 500);
+    
     return () => { cancelled = true; };
   }, [loadCachedBrief, loadDailyBrief]);
 
@@ -223,18 +242,18 @@ const AICoachPage: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat]);
 
-  const handleAsk = async (boost = false) => {
+  const handleAsk = async () => {
     const q = question.trim();
     if (!q || asking) return;
     setQuestion('');
     setAsking(true);
-    setChat(prev => [...prev, { role: 'user', text: boost ? `🔮 [Axiom Boost] ${q}` : q }]);
+    setChat(prev => [...prev, { role: 'user', text: q }]);
     try {
       const headers = await getAuthHeaders();
       const res = await fetch(`${API_URL}/ai-coaching/request`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ userPrompt: q, useBoost: boost }),
+        body: JSON.stringify({ userPrompt: q, useBoost: true }), // Always use AI
       });
       const body = await res.json().catch(() => ({}));
       if (res.status === 402) {
