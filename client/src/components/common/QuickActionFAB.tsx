@@ -10,6 +10,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import MessageIcon from '@mui/icons-material/Message';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import QuickLogDialog from './QuickLogDialog';
 
 interface Props {
@@ -39,8 +41,18 @@ const QuickActionFAB: React.FC<Props> = ({ onPostClick }) => {
     }
   };
 
+  const handleNewMessage = () => {
+    navigate('/chat');
+  };
+
+  const handleBookmarkPlace = () => {
+    navigate('/discover?tab=places&action=bookmark');
+  };
+
   const actions = [
     { icon: <EditIcon />, name: 'New Post', onClick: handleNewPost },
+    { icon: <MessageIcon />, name: 'New Message', onClick: handleNewMessage },
+    { icon: <BookmarkIcon />, name: 'Bookmark Place', onClick: handleBookmarkPlace },
     { icon: <NoteAddIcon />, name: 'Quick Log', onClick: () => setQuickLogOpen(true) },
   ];
 

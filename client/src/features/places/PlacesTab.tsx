@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box, Typography, Button, Stack, Chip, Grid, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Select, MenuItem, FormControl, InputLabel,
+  Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel,
   IconButton, Tooltip, Avatar, Container,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
@@ -15,6 +16,9 @@ import PeopleIcon from '@mui/icons-material/People';
 import DeleteIcon from '@mui/icons-material/Delete';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import EditIcon from '@mui/icons-material/Edit';
+import LockIcon from '@mui/icons-material/Lock';
+import PublicIcon from '@mui/icons-material/Public';
+import ShareIcon from '@mui/icons-material/Share';
 import GlassCard from '../../components/common/GlassCard';
 import LocationMap from '../../components/common/LocationMap';
 import { supabase } from '../../lib/supabase';
@@ -82,6 +86,7 @@ interface PlacesTabProps {
 }
 
 const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, hideMap = false }) => {
+  const [searchParams] = useSearchParams();
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');
@@ -89,6 +94,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [bookmarkDialogOpen, setBookmarkDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -101,6 +107,15 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
   const [formDesc, setFormDesc] = useState('');
   const [formWebsite, setFormWebsite] = useState('');
   const [formSchedule, setFormSchedule] = useState('');
+  
+  // Bookmark place state
+  const [bookmarkName, setBookmarkName] = useState('');
+  const [bookmarkType, setBookmarkType] = useState('personal');
+  const [bookmarkDesc, setBookmarkDesc] = useState('');
+  const [bookmarkCity, setBookmarkCity] = useState('');
+  const [bookmarkLat, setBookmarkLat] = useState('');
+  const [bookmarkLng, setBookmarkLng] = useState('');
+  const [bookmarkPrivate, setBookmarkPrivate] = useState(true);
 
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -112,6 +127,19 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
     };
     checkAdmin();
   }, [currentUserId]);
+
+  // Detect bookmark action from URL
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'bookmark') {
+      setBookmarkDialogOpen(true);
+      // Auto-fill location if available
+      if (userGeo) {
+        setBookmarkLat(userGeo.lat.toFixed(5));
+        setBookmarkLng(userGeo.lng.toFixed(5));
+      }
+    }
+  }, [searchParams, userGeo]);
 
   const getAuthHeader = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -180,6 +208,44 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
     setEditingId(null);
     setFormName(''); setFormType(''); setFormAddress(''); setFormCity('');
     setFormLat(''); setFormLng(''); setFormDesc(''); setFormWebsite(''); setFormSchedule('');
+  };
+
+  const resetBookmarkForm = () => {
+    setBookmarkName('');
+    setBookmarkType('personal');
+    setBookmarkDesc('');
+    setBookmarkCity('');
+    setBookmarkLat('');
+    setBookmarkLng('');
+    setBookmarkPrivate(true);
+  };
+
+  const handleBookmarkSave = async () => {
+    if (!bookmarkName.trim()) { toast.error('Name is required.'); return; }
+    setSaving(true);
+    try {
+      const headers = await getAuthHeader();
+      const payload = {
+        name: bookmarkName.trim(),
+        type: bookmarkType || 'personal',
+        description: bookmarkDesc.trim() || null,
+        city: bookmarkCity.trim() || null,
+        latitude: bookmarkLat ? parseFloat(bookmarkLat) : null,
+        longitude: bookmarkLng ? parseFloat(bookmarkLng) : null,
+        is_private: bookmarkPrivate,
+        owner_id: currentUserId,
+      };
+
+      await axios.post(`${API_URL}/places`, payload, { headers });
+      toast.success('Place bookmarked!');
+      setBookmarkDialogOpen(false);
+      resetBookmarkForm();
+      fetchPlaces();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to bookmark place');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSave = async () => {
@@ -436,6 +502,112 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
           <Button onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
           <Button variant="contained" onClick={handleSave} disabled={saving} startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <PlaceIcon />}>
             {editingId ? 'Save' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bookmark Place Dialog */}
+      <Dialog open={bookmarkDialogOpen} onClose={() => { setBookmarkDialogOpen(false); resetBookmarkForm(); }} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <PlaceIcon sx={{ color: 'primary.main' }} /> Bookmark Place
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            Save a personal place you can keep private or share
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField 
+              fullWidth 
+              label="Place Name *" 
+              value={bookmarkName} 
+              onChange={e => setBookmarkName(e.target.value)} 
+              placeholder="e.g., My Favorite Cafe, Home Gym, Study Spot"
+            />
+            <FormControl fullWidth>
+              <InputLabel>Type</InputLabel>
+              <Select value={bookmarkType} label="Type" onChange={e => setBookmarkType(e.target.value)}>
+                <MenuItem value="personal">📍 Personal</MenuItem>
+                <MenuItem value="cafe">☕ Cafe</MenuItem>
+                <MenuItem value="gym">💪 Gym</MenuItem>
+                <MenuItem value="park">🌳 Park</MenuItem>
+                <MenuItem value="library">📚 Library</MenuItem>
+                <MenuItem value="coworking">💼 Coworking</MenuItem>
+                <MenuItem value="restaurant">🍽️ Restaurant</MenuItem>
+                <MenuItem value="other">🏷️ Other</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField 
+              fullWidth 
+              label="Description" 
+              value={bookmarkDesc} 
+              onChange={e => setBookmarkDesc(e.target.value)} 
+              multiline 
+              rows={2}
+              placeholder="What makes this place special?"
+            />
+            <TextField 
+              fullWidth 
+              label="City" 
+              value={bookmarkCity} 
+              onChange={e => setBookmarkCity(e.target.value)} 
+            />
+            <Box>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>Location (optional)</Typography>
+                <Button size="small" startIcon={<MyLocationIcon />} onClick={() => {
+                  if (userGeo) {
+                    setBookmarkLat(userGeo.lat.toFixed(5));
+                    setBookmarkLng(userGeo.lng.toFixed(5));
+                    toast.success('Location detected!');
+                  } else {
+                    toast.error('Enable location access first');
+                  }
+                }}>Detect</Button>
+              </Stack>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 6 }}><TextField fullWidth size="small" label="Latitude" value={bookmarkLat} onChange={e => setBookmarkLat(e.target.value)} /></Grid>
+                <Grid size={{ xs: 6 }}><TextField fullWidth size="small" label="Longitude" value={bookmarkLng} onChange={e => setBookmarkLng(e.target.value)} /></Grid>
+              </Grid>
+            </Box>
+            <FormControlLabel
+              control={
+                <Switch 
+                  checked={bookmarkPrivate} 
+                  onChange={(e) => setBookmarkPrivate(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {bookmarkPrivate ? <LockIcon fontSize="small" /> : <PublicIcon fontSize="small" />}
+                  <Typography variant="body2" fontWeight={600}>
+                    {bookmarkPrivate ? 'Private (only I can see)' : 'Public (visible to everyone)'}
+                  </Typography>
+                </Box>
+              }
+            />
+            <Box sx={{ p: 2, bgcolor: 'rgba(139,92,246,0.08)', borderRadius: 2, border: '1px solid rgba(139,92,246,0.2)' }}>
+              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 1 }}>
+                💡 What can you do with bookmarked places?
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                • Keep personal spots private (home gym, favorite study spot)
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                • Share with your accountability partner
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                • Make public to help the community
+              </Typography>
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => { setBookmarkDialogOpen(false); resetBookmarkForm(); }}>Cancel</Button>
+          <Button variant="contained" onClick={handleBookmarkSave} disabled={saving || !bookmarkName.trim()} startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <PlaceIcon />}>
+            {saving ? 'Saving...' : 'Bookmark Place'}
           </Button>
         </DialogActions>
       </Dialog>
