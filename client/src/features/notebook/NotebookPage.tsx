@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container, Box, Typography, TextField, InputAdornment,
   Chip, IconButton, Menu, MenuItem, Button, Dialog,
@@ -20,6 +21,7 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import PeopleIcon from '@mui/icons-material/People';
 import ChatIcon from '@mui/icons-material/Chat';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PinIcon from '@mui/icons-material/PushPin';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -43,6 +45,7 @@ const ENTRY_TYPE_ICONS: Record<string, React.ReactNode> = {
   match: <PeopleIcon />,
   verification: <VerifiedIcon />,
   comment: <ChatIcon />,
+  axiom_brief: <SmartToyIcon />,
 };
 
 const ENTRY_TYPE_COLORS: Record<string, string> = {
@@ -58,6 +61,7 @@ const ENTRY_TYPE_COLORS: Record<string, string> = {
   match: '#EC4899',
   verification: '#06B6D4',
   comment: '#6B7280',
+  axiom_brief: '#A78BFA',
 };
 
 interface NotebookEntry {
@@ -78,6 +82,7 @@ interface NotebookEntry {
 
 const NotebookPage: React.FC = () => {
   const { user } = useUser();
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<NotebookEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -368,12 +373,18 @@ const NotebookPage: React.FC = () => {
               {grouped[date].map(entry => (
                 <Paper
                   key={entry.id}
+                  onClick={() => {
+                    if (entry.entry_type === 'axiom_brief') {
+                      navigate('/coaching', { state: { axiomBrief: { title: entry.title, content: entry.content, date: entry.occurred_at } } });
+                    }
+                  }}
                   sx={{
                     p: 2,
                     bgcolor: 'rgba(255,255,255,0.03)',
                     border: `1px solid ${ENTRY_TYPE_COLORS[entry.entry_type] || 'rgba(255,255,255,0.1)'}`,
                     transition: 'all 0.2s ease',
                     position: 'relative',
+                    cursor: entry.entry_type === 'axiom_brief' ? 'pointer' : 'default',
                     '&:hover': {
                       bgcolor: 'rgba(255,255,255,0.05)',
                       transform: 'translateY(-2px)',
@@ -440,10 +451,23 @@ const NotebookPage: React.FC = () => {
                         fontSize: '0.8rem',
                         lineHeight: 1.5,
                         color: 'text.secondary',
-                        mb: entry.tags?.length ? 1 : 0,
+                        mb: entry.tags?.length || entry.entry_type === 'axiom_brief' ? 1 : 0,
                       }}>
                         {entry.content}
                       </Typography>
+
+                      {entry.entry_type === 'axiom_brief' && (
+                        <Chip
+                          label="Open in Axiom"
+                          size="small"
+                          sx={{
+                            height: 20, fontSize: '0.6rem', fontWeight: 700,
+                            bgcolor: 'rgba(167,139,250,0.15)',
+                            color: '#A78BFA',
+                            border: '1px solid rgba(167,139,250,0.3)',
+                          }}
+                        />
+                      )}
                       
                       {entry.tags && entry.tags.length > 0 && (
                         <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>

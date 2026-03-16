@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -81,6 +81,7 @@ interface ChatMessage {
 
 const AICoachPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useUser();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [report, setReport] = useState<CoachingReport | null>(null);
@@ -277,6 +278,21 @@ const AICoachPage: React.FC = () => {
       setChatLoaded(true);
     }
   };
+
+  // When navigated from Notebook with an axiom_brief, inject it into chat
+  useEffect(() => {
+    const state = location.state as { axiomBrief?: { title: string; content: string; date: string } } | null;
+    if (chatLoaded && state?.axiomBrief) {
+      const brief = state.axiomBrief;
+      const briefDate = new Date(brief.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      setChat(prev => [
+        ...prev,
+        { role: 'coach', text: `📋 **${brief.title}**\n\n${brief.content}\n\n_From ${briefDate}. Ask me anything about this brief._` },
+      ]);
+      // Clear location state so refresh doesn't re-inject
+      window.history.replaceState({}, '');
+    }
+  }, [chatLoaded, location.state]);
 
   const loadSavedNarratives = async () => {
     setLoadingNarratives(true);

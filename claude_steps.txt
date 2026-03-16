@@ -440,3 +440,13 @@ Session 71: Axiom Chat Overhaul — History, Context Search, Horizontal Routine
 - Verification: 0 TypeScript errors (both backend + frontend)
 - Next: Run SQL migrations, test Axiom chat with real data, verify notebook_entries persistence
 - Sign: Claude
+
+Session 72: Click-to-Open Axiom Briefs from Notebook
+- NotebookPage.tsx: added `axiom_brief` to ENTRY_TYPE_ICONS (SmartToyIcon) and ENTRY_TYPE_COLORS (#A78BFA)
+- NotebookPage.tsx: axiom_brief entries are now clickable — navigate to /coaching with brief context in route state
+- NotebookPage.tsx: added "Open in Axiom" chip on axiom_brief entries as visual affordance
+- AICoachPage.tsx: added useLocation; new useEffect watches for axiomBrief in location state, appends brief as coach message with date, clears state to prevent re-injection on refresh
+- Files modified: client/src/features/notebook/NotebookPage.tsx, client/src/features/coaching/AICoachPage.tsx
+- Verification: 0 TypeScript errors
+- Next: Test with real axiom_brief notebook entries, verify navigation flow end-to-end
+- Sign: Claude
