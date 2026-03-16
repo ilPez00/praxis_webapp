@@ -12,30 +12,44 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
     throw new BadRequestError('Both user IDs are required.');
   }
 
-  // Fetch messages where sender is user1 and receiver is user2 OR sender is user2 and receiver is user1
-  let query = supabase
-    .from('messages')
-    .select('id, sender_id, receiver_id, room_id, content, media_url, media_type, metadata, timestamp, created_at')
-    .or(`and(sender_id.eq.${user1Id},receiver_id.eq.${user2Id}),and(sender_id.eq.${user2Id},receiver_id.eq.${user1Id})`)
-    .order('timestamp', { ascending: true });
+  // Fetch messages between two users (bidirectional)
+  // Split into two queries and combine results (more reliable than .or() with and())
+  const [result1, result2] = await Promise.all([
+    // Messages from user1 to user2
+    supabase
+      .from('messages')
+      .select('id, sender_id, receiver_id, room_id, content, media_url, media_type, metadata, timestamp, created_at')
+      .eq('sender_id', user1Id)
+      .eq('receiver_id', user2Id)
+      .order('timestamp', { ascending: true }),
+    // Messages from user2 to user1
+    supabase
+      .from('messages')
+      .select('id, sender_id, receiver_id, room_id, content, media_url, media_type, metadata, timestamp, created_at')
+      .eq('sender_id', user2Id)
+      .eq('receiver_id', user1Id)
+      .order('timestamp', { ascending: true }),
+  ]);
 
-  // Optionally scope to a specific shared goal node
-  if (req.query.goalNodeId) {
-    query = query.eq('goal_node_id', req.query.goalNodeId as string);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    if (error.message?.includes('schema cache') || error.message?.includes('not found')) {
+  if (result1.error) {
+    if (result1.error.message?.includes('schema cache') || result1.error.message?.includes('not found')) {
       logger.warn('messages table not found — returning empty list. Run migrations/setup.sql.');
       return res.status(200).json([]);
     }
-    logger.error('Supabase error fetching messages:', error.message);
+    logger.error('Supabase error fetching messages (direction 1):', result1.error.message);
     throw new InternalServerError('Failed to fetch messages.');
   }
 
-  res.status(200).json(data ?? []);
+  if (result2.error) {
+    logger.error('Supabase error fetching messages (direction 2):', result2.error.message);
+    throw new InternalServerError('Failed to fetch messages.');
+  }
+
+  // Combine and sort all messages by timestamp
+  const allMessages = [...(result1.data ?? []), ...(result2.data ?? [])]
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  res.status(200).json(allMessages);
 });
 
 export const sendMessage = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
