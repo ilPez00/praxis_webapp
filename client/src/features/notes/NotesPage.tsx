@@ -31,6 +31,9 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ShareIcon from '@mui/icons-material/Share';
+import DownloadIcon from '@mui/icons-material/Download';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   const nodeMap = new Map<string, FrontendGoalNode>();
@@ -132,7 +135,70 @@ const NotesPage: React.FC = () => {
   // Calendar day detail
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
 
+  // Diary export
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exporting, setExporting] = useState<'plain' | 'axiom' | null>(null);
+  const [axiomNarrative, setAxiomNarrative] = useState<string | null>(null);
+
   const currentUserId = user?.id;
+
+  // ── Diary export handlers ─────────────────────────────────────
+  const handleExportPlain = async () => {
+    if (!currentUserId) return;
+    setExporting('plain');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API_URL}/diary/export/plain`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const text = await res.text();
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `praxis-diary-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Diary downloaded!');
+      setExportDialogOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to export diary');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportAxiom = async () => {
+    if (!currentUserId) return;
+    setExporting('axiom');
+    setAxiomNarrative(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await axios.post(`${API_URL}/diary/export/axiom`, {}, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      setAxiomNarrative(res.data.narrative);
+      setPraxisPoints(prev => (prev ?? 0) - 500);
+      toast.success(`Axiom diary created! (${res.data.entryCount} entries)`);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to generate';
+      toast.error(msg);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const downloadAxiomNarrative = () => {
+    if (!axiomNarrative) return;
+    const blob = new Blob([axiomNarrative], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `praxis-axiom-diary-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // ── Data fetching ──────────────────────────────────────────────
   const refreshTree = async () => {
@@ -697,6 +763,24 @@ const NotesPage: React.FC = () => {
             </Box>
           )}
 
+          {/* Download Diary button */}
+          {currentUserId && (
+            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+              <Button
+                startIcon={<DownloadIcon />}
+                onClick={() => { setExportDialogOpen(true); setAxiomNarrative(null); }}
+                sx={{
+                  borderRadius: '12px', fontWeight: 700, fontSize: '0.78rem',
+                  color: '#A78BFA', border: '1px solid rgba(167,139,250,0.25)',
+                  bgcolor: 'rgba(167,139,250,0.06)',
+                  '&:hover': { bgcolor: 'rgba(167,139,250,0.12)' },
+                }}
+              >
+                Download Diary
+              </Button>
+            </Box>
+          )}
+
           {/* Diary Feed - Infinite Scroll */}
           {currentUserId && (
             <Box sx={{ width: '100%' }}>
@@ -1022,6 +1106,131 @@ const NotesPage: React.FC = () => {
 
         {/* Node Journal Drawer */}
         <NodeJournalDrawer open={!!journalNode} node={journalNode} onClose={() => setJournalNode(null)} />
+
+        {/* Diary Export Dialog */}
+        <Dialog
+          open={exportDialogOpen}
+          onClose={() => !exporting && setExportDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: '24px', bgcolor: '#111827' } }}
+        >
+          <DialogTitle sx={{ fontWeight: 900, pb: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DownloadIcon sx={{ color: '#A78BFA' }} />
+              Download Your Diary
+            </Box>
+          </DialogTitle>
+          <DialogContent sx={{ pt: 2 }}>
+            {!axiomNarrative ? (
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                {/* Plain text option */}
+                <Box
+                  onClick={exporting ? undefined : handleExportPlain}
+                  sx={{
+                    p: 2.5, borderRadius: '16px', cursor: exporting ? 'default' : 'pointer',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    bgcolor: 'rgba(255,255,255,0.03)',
+                    transition: 'all 0.2s',
+                    '&:hover': exporting ? {} : { bgcolor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.2)' },
+                    opacity: exporting === 'axiom' ? 0.4 : 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <DescriptionIcon sx={{ color: '#9CA3AF', fontSize: 28 }} />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.95rem' }}>
+                        Plain Text
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Raw chronological export of all entries, check-ins, bets, and achievements
+                      </Typography>
+                    </Box>
+                    <Chip label="Free" size="small" sx={{ height: 22, fontWeight: 800, fontSize: '0.65rem', bgcolor: 'rgba(16,185,129,0.15)', color: '#10B981' }} />
+                  </Box>
+                  {exporting === 'plain' && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5 }}>
+                      <CircularProgress size={16} sx={{ color: '#9CA3AF' }} />
+                      <Typography variant="caption" color="text.secondary">Preparing download...</Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                {/* Axiom refined option */}
+                <Box
+                  onClick={exporting ? undefined : handleExportAxiom}
+                  sx={{
+                    p: 2.5, borderRadius: '16px', cursor: exporting ? 'default' : 'pointer',
+                    border: '1px solid rgba(167,139,250,0.25)',
+                    background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(245,158,11,0.04))',
+                    transition: 'all 0.2s',
+                    '&:hover': exporting ? {} : {
+                      background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(245,158,11,0.08))',
+                      borderColor: 'rgba(167,139,250,0.4)',
+                      boxShadow: '0 4px 20px rgba(139,92,246,0.15)',
+                    },
+                    opacity: exporting === 'plain' ? 0.4 : 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <AutoAwesomeIcon sx={{ color: '#A78BFA', fontSize: 28 }} />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.95rem' }}>
+                        Axiom Diary
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        AI transforms your entries into a beautifully written personal narrative — reads like a memoir
+                      </Typography>
+                    </Box>
+                    <Chip label="500 PP" size="small" sx={{ height: 22, fontWeight: 800, fontSize: '0.65rem', bgcolor: 'rgba(167,139,250,0.15)', color: '#A78BFA' }} />
+                  </Box>
+                  {exporting === 'axiom' && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5 }}>
+                      <CircularProgress size={16} sx={{ color: '#A78BFA' }} />
+                      <Typography variant="caption" sx={{ color: '#A78BFA' }}>Axiom is crafting your story... (30-60s)</Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Stack>
+            ) : (
+              /* Axiom narrative result */
+              <Box sx={{ mt: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <AutoAwesomeIcon sx={{ color: '#A78BFA' }} />
+                  <Typography sx={{ fontWeight: 800, color: '#A78BFA' }}>Your Axiom Diary is ready</Typography>
+                </Box>
+                <Box sx={{
+                  p: 2, borderRadius: '14px', bgcolor: 'rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(167,139,250,0.15)',
+                  maxHeight: 300, overflowY: 'auto',
+                  fontFamily: 'Georgia, serif',
+                }}>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: '0.85rem' }}>
+                    {axiomNarrative.slice(0, 2000)}{axiomNarrative.length > 2000 ? '\n\n[... download to read full diary]' : ''}
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  startIcon={<DownloadIcon />}
+                  onClick={downloadAxiomNarrative}
+                  sx={{
+                    mt: 2, borderRadius: '14px', fontWeight: 800, py: 1.5,
+                    background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)',
+                    '&:hover': { background: 'linear-gradient(135deg, #7C3AED, #8B5CF6)' },
+                  }}
+                >
+                  Download Axiom Diary (.txt)
+                </Button>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setExportDialogOpen(false)} disabled={!!exporting} sx={{ borderRadius: '10px' }}>
+              {axiomNarrative ? 'Done' : 'Cancel'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </ErrorBoundary>
   );

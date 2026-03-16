@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError, BadRequestError, NotFoundError } from '../utils/appErrors';
 import { authenticateToken } from '../middleware/authenticateToken';
+import { AICoachingService } from '../services/AICoachingService';
+import logger from '../utils/logger';
 
 const router = Router();
 
@@ -367,6 +369,249 @@ router.get('/tags', authenticateToken, catchAsync(async (req: Request, res: Resp
   const uniqueTags = [...new Set(allTags)].sort();
 
   res.json(uniqueTags);
+}));
+
+/**
+ * GET /diary/export/plain
+ * Export all diary entries as plain text (free)
+ */
+router.get('/export/plain', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  const { data: profile } = await supabase
+    .from('profiles').select('name').eq('id', userId).single();
+  const userName = profile?.name || 'User';
+
+  // Fetch all data sources in parallel
+  const [journalsRes, nodeJournalsRes, checkinsRes, goalsRes, betsRes, achievementsRes] = await Promise.all([
+    supabase.from('journal_entries').select('note, mood, created_at')
+      .eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('node_journal_entries').select('node_id, note, mood, logged_at')
+      .eq('user_id', userId).order('logged_at', { ascending: true }),
+    supabase.from('checkins').select('mood, win_of_the_day, checked_in_at, streak_day')
+      .eq('user_id', userId).order('checked_in_at', { ascending: true }),
+    supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
+    supabase.from('bets').select('goal_name, stake_points, status, created_at')
+      .eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('achievements').select('title, domain, created_at')
+      .eq('user_id', userId).order('created_at', { ascending: true }),
+  ]);
+
+  const journals = journalsRes.data || [];
+  const nodeJournals = nodeJournalsRes.data || [];
+  const checkins = checkinsRes.data || [];
+  const nodes: any[] = goalsRes.data?.nodes || [];
+  const bets = betsRes.data || [];
+  const achievements = achievementsRes.data || [];
+
+  // Build node name map
+  const nodeNameMap: Record<string, string> = {};
+  for (const n of nodes) nodeNameMap[n.id] = n.name || 'Goal';
+
+  // Merge all entries into timeline
+  const timeline: Array<{ date: string; text: string }> = [];
+
+  for (const e of journals) {
+    timeline.push({
+      date: e.created_at,
+      text: `${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim(),
+    });
+  }
+  for (const e of nodeJournals) {
+    const goalName = nodeNameMap[e.node_id] || 'a goal';
+    timeline.push({
+      date: e.logged_at,
+      text: `[${goalName}] ${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim(),
+    });
+  }
+  for (const e of checkins) {
+    timeline.push({
+      date: e.checked_in_at,
+      text: `Check-in Day ${e.streak_day}${e.mood ? ' · ' + e.mood : ''}${e.win_of_the_day ? ' — Win: ' + e.win_of_the_day : ''}`,
+    });
+  }
+  for (const e of bets) {
+    const status = e.status === 'won' ? '🏆 Won' : e.status === 'lost' ? '💸 Lost' : '🎰 Placed';
+    timeline.push({
+      date: e.created_at,
+      text: `${status} bet on "${e.goal_name}" (${e.stake_points} PP)`,
+    });
+  }
+  for (const e of achievements) {
+    timeline.push({
+      date: e.created_at,
+      text: `🏆 Achievement: "${e.title}" (${e.domain})`,
+    });
+  }
+
+  // Sort chronologically
+  timeline.sort((a, b) => a.date.localeCompare(b.date));
+
+  // Format as plain text diary
+  let output = `${userName}'s Praxis Diary\n`;
+  output += `${'='.repeat(40)}\n`;
+  output += `Exported: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`;
+  output += `Total entries: ${timeline.length}\n\n`;
+
+  let currentDate = '';
+  for (const entry of timeline) {
+    const day = entry.date.slice(0, 10);
+    if (day !== currentDate) {
+      currentDate = day;
+      const d = new Date(day + 'T00:00:00');
+      output += `\n--- ${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} ---\n\n`;
+    }
+    const time = new Date(entry.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    output += `  ${time}  ${entry.text}\n`;
+  }
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="praxis-diary-${new Date().toISOString().slice(0, 10)}.txt"`);
+  res.send(output);
+}));
+
+/**
+ * POST /diary/export/axiom
+ * Generate Axiom-refined diary narrative (costs 500 PP)
+ */
+router.post('/export/axiom', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  // Check PP balance
+  const { data: profile } = await supabase
+    .from('profiles').select('name, praxis_points').eq('id', userId).single();
+
+  const balance = profile?.praxis_points ?? 0;
+  if (balance < 500) {
+    throw new BadRequestError(`Not enough PP. You have ${balance}, need 500.`);
+  }
+
+  const userName = profile?.name || 'User';
+
+  // Deduct 500 PP
+  const { error: ppErr } = await supabase
+    .from('profiles')
+    .update({ praxis_points: balance - 500 })
+    .eq('id', userId);
+  if (ppErr) throw ppErr;
+
+  logger.info(`[DiaryExport] Deducted 500 PP from ${userName} for Axiom diary`);
+
+  // Fetch all data (same as plain export)
+  const [journalsRes, nodeJournalsRes, checkinsRes, goalsRes, betsRes, achievementsRes] = await Promise.all([
+    supabase.from('journal_entries').select('note, mood, created_at')
+      .eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('node_journal_entries').select('node_id, note, mood, logged_at')
+      .eq('user_id', userId).order('logged_at', { ascending: true }),
+    supabase.from('checkins').select('mood, win_of_the_day, checked_in_at, streak_day')
+      .eq('user_id', userId).order('checked_in_at', { ascending: true }),
+    supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
+    supabase.from('bets').select('goal_name, stake_points, status, created_at')
+      .eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('achievements').select('title, domain, created_at')
+      .eq('user_id', userId).order('created_at', { ascending: true }),
+  ]);
+
+  const journals = journalsRes.data || [];
+  const nodeJournals = nodeJournalsRes.data || [];
+  const checkins = checkinsRes.data || [];
+  const nodes: any[] = goalsRes.data?.nodes || [];
+  const bets = betsRes.data || [];
+  const achievements = achievementsRes.data || [];
+
+  const nodeNameMap: Record<string, string> = {};
+  for (const n of nodes) nodeNameMap[n.id] = n.name || 'Goal';
+
+  // Build raw timeline text for the LLM
+  const timeline: Array<{ date: string; text: string }> = [];
+  for (const e of journals) {
+    timeline.push({ date: e.created_at, text: `${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim() });
+  }
+  for (const e of nodeJournals) {
+    const goalName = nodeNameMap[e.node_id] || 'a goal';
+    timeline.push({ date: e.logged_at, text: `[Goal: ${goalName}] ${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim() });
+  }
+  for (const e of checkins) {
+    timeline.push({ date: e.checked_in_at, text: `Check-in Day ${e.streak_day}${e.mood ? ' · ' + e.mood : ''}${e.win_of_the_day ? ' — Win: ' + e.win_of_the_day : ''}` });
+  }
+  for (const e of bets) {
+    const status = e.status === 'won' ? 'Won' : e.status === 'lost' ? 'Lost' : 'Placed';
+    timeline.push({ date: e.created_at, text: `${status} bet on "${e.goal_name}" (${e.stake_points} PP)` });
+  }
+  for (const e of achievements) {
+    timeline.push({ date: e.created_at, text: `Achievement unlocked: "${e.title}" (${e.domain})` });
+  }
+  timeline.sort((a, b) => a.date.localeCompare(b.date));
+
+  // Group by date for the prompt
+  const rawDiary = timeline.map(e => {
+    const d = new Date(e.date);
+    return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — ${e.text}`;
+  }).join('\n');
+
+  // Goal summary for context
+  const goalSummary = nodes
+    .filter((n: any) => !n.parentId)
+    .map((n: any) => `"${n.name}" (${n.domain}, ${Math.round((n.progress || 0) * 100)}%)`)
+    .join(', ');
+
+  // Truncate if too long (LLM context limits)
+  const maxChars = 15000;
+  const truncatedDiary = rawDiary.length > maxChars
+    ? rawDiary.slice(0, maxChars) + '\n\n[... diary continues ...]'
+    : rawDiary;
+
+  const prompt = `You are Axiom, a warm and wise life coach. Transform these raw diary entries into a beautifully written personal narrative — a real diary that reads like a memoir.
+
+AUTHOR: ${userName}
+GOALS: ${goalSummary || 'Various personal goals'}
+
+RAW DIARY ENTRIES:
+${truncatedDiary}
+
+INSTRUCTIONS:
+1. Write this as a coherent, chronological personal diary/memoir
+2. Group entries into chapters by week or theme (whichever flows better)
+3. Keep the person's authentic voice — don't sanitize or genericize their words
+4. Weave check-ins, journal notes, bets, and achievements into the narrative
+5. Highlight turning points, breakthroughs, and moments of struggle
+6. Add chapter titles that capture the emotional arc
+7. Include their actual moods and reflections — these are precious
+8. End with a reflection on their growth arc and what's emerging
+9. Write in first person from ${userName}'s perspective
+10. Be specific — use their actual goal names, dates, and data
+11. Make it feel like a real published diary, not a report
+
+OUTPUT FORMAT:
+- Title page with name and date range
+- Chapters with evocative titles
+- Clean prose, no bullet points or formatting artifacts
+- 2000-4000 words depending on how much material there is
+
+Write the complete diary now.`;
+
+  try {
+    const aiCoaching = new AICoachingService();
+    const narrative = await aiCoaching.runWithFallback(prompt);
+
+    logger.info(`[DiaryExport] Axiom narrative generated for ${userName} (${narrative.length} chars)`);
+
+    res.json({
+      narrative,
+      entryCount: timeline.length,
+      dateRange: timeline.length > 0
+        ? { from: timeline[0].date.slice(0, 10), to: timeline[timeline.length - 1].date.slice(0, 10) }
+        : null,
+      ppSpent: 500,
+    });
+  } catch (err: any) {
+    // Refund PP on failure
+    await supabase.from('profiles').update({ praxis_points: balance }).eq('id', userId);
+    logger.error(`[DiaryExport] Axiom generation failed, refunded 500 PP: ${err.message}`);
+    throw new Error('Failed to generate diary narrative. Your 500 PP have been refunded.');
+  }
 }));
 
 export default router;
