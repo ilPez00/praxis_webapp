@@ -562,7 +562,7 @@ const NotesPage: React.FC = () => {
                   Your notebook is empty.
                 </Typography>
                 <Button fullWidth variant="contained" onClick={handleAddNewGoal} startIcon={<AddIcon />}>
-                  Add Goal
+                  New Topic
                 </Button>
               </Box>
             ) : (
@@ -630,17 +630,7 @@ const NotesPage: React.FC = () => {
                   </Button>
                 )}
 
-                {/* Goal Detail & Trackers */}
-                <NoteGoalDetail
-                  node={selectedNode}
-                  allNodes={backendNodes}
-                  userId={currentUserId || ''}
-                  activeBets={activeBets}
-                  onProgressUpdate={handleProgressUpdate}
-                  focusedTrackerType={activeLogType}
-                />
-
-                {/* Workspace Sheet (integrated actions) */}
+                {/* 1. Management Actions (Workspace Sheet actions) */}
                 <Box sx={{
                   p: 3, borderRadius: '24px',
                   bgcolor: 'rgba(255,255,255,0.02)',
@@ -668,11 +658,21 @@ const NotesPage: React.FC = () => {
                   </Box>
                 </Box>
 
-                {/* Notes Panel for Goal */}
+                {/* 2. Notes Panel for Goal */}
                 <GoalNotesPanel
                   nodeId={selectedNode.id}
                   nodeTitle={selectedNode.title}
                   userId={currentUserId || ''}
+                />
+
+                {/* 3. Goal Detail, Trackers (Widgets) & Activity Graph */}
+                <NoteGoalDetail
+                  node={selectedNode}
+                  allNodes={backendNodes}
+                  userId={currentUserId || ''}
+                  activeBets={activeBets}
+                  onProgressUpdate={handleProgressUpdate}
+                  focusedTrackerType={activeLogType}
                 />
               </Stack>
             ) : null}
@@ -708,8 +708,8 @@ const NotesPage: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {isBranching ? <AddCircleOutlineIcon sx={{ color: 'primary.main' }} /> : <EditNoteIcon sx={{ color: 'primary.main' }} />}
               {isBranching
-                ? (editingNode ? `Add Sub-goal to: ${editingNode.title}` : 'Add New Goal')
-                : 'Goal Details'}
+                ? (editingNode ? `New Chapter under: ${editingNode.title}` : 'New Topic')
+                : 'Edit Topic'}
             </Box>
           </DialogTitle>
           <DialogContent>
@@ -719,7 +719,7 @@ const NotesPage: React.FC = () => {
                   {Object.values(Domain).map(dom => <MenuItem key={dom} value={dom}>{dom}</MenuItem>)}
                 </TextField>
               )}
-              <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} placeholder={isBranching ? "What is the new goal?" : "Goal name"} />
+              <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} placeholder={isBranching ? "What is the new topic?" : "Topic name"} />
               <TextField fullWidth label="Description" multiline rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Why is this important?" />
               <TextField fullWidth label="Success Metric" multiline rows={2} value={editMetric} onChange={e => setEditMetric(e.target.value)} placeholder="How will you know it's done?" />
               <TextField fullWidth label="Target Date" type="date" InputLabelProps={{ shrink: true }} value={editTargetDate} onChange={e => setEditTargetDate(e.target.value)} inputProps={{ min: new Date().toISOString().slice(0, 10) }} />
