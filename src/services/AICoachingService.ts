@@ -31,6 +31,7 @@ export interface CoachingContext {
     stagnationRisk: number;
   };
   trackerTrends?: Array<{ trackerName: string; direction: string; weekOverWeekChange: number }>;
+  recentNotes?: Array<{ title?: string; content: string; mood?: string; date: string; goalName?: string }>;
 }
 
 export interface CoachingReport {
@@ -393,7 +394,7 @@ export class AICoachingService {
     // Premium "Axiom Boost" - real LLM call
     logger.info('[AICoachingService] Using LLM for premium report (Axiom Boost)');
     const identity = await this.getIdentity();
-    const prompt = `${identity}\nStudent: ${context.userName}\nLanguage: ${context.language}\nGoals: ${JSON.stringify(context.goals)}\nActionable JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}. Respond concise in ${context.language}.`;
+    const prompt = `${identity}\nStudent: ${context.userName}\nLanguage: ${context.language}\nGoals: ${JSON.stringify(context.goals)}\nRecent Notes: ${JSON.stringify(context.recentNotes || [])}\nActionable JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}. Respond concise in ${context.language}.`;
     try {
       const text = await this.runWithFallback(prompt);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -450,7 +451,7 @@ export class AICoachingService {
     // Premium - real LLM call
     logger.info('[AICoachingService] Using LLM for premium coaching response');
     const identity = await this.getIdentity();
-    const prompt = `${identity}\nContext: ${JSON.stringify(context)}\nUser: ${userPrompt}\nReply concisely in ${context.language}.`;
+    const prompt = `${identity}\nContext: ${JSON.stringify(context)}\nUser Notes: ${JSON.stringify(context.recentNotes || [])}\nUser: ${userPrompt}\nReply concisely in ${context.language}.`;
     try { 
       return await this.runWithFallback(prompt); 
     } catch (error: any) { 

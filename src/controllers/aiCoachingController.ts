@@ -101,7 +101,7 @@ async function generateAndStoreBrief(userId: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function buildContext(userId: string): Promise<CoachingContext> {
-  const [profileRes, goalTreeRes, feedbackRes, achievementsRes, boardMembershipsRes, dmPartnersRes] =
+  const [profileRes, goalTreeRes, feedbackRes, achievementsRes, boardMembershipsRes, dmPartnersRes, notebookRes] =
     await Promise.allSettled([
       // 1. Profile
       supabase
@@ -146,6 +146,15 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
         .is('room_id', null)
         .limit(50),
+
+      // 7. Recent notebook entries (notes/reflections) - limit 10
+      supabase
+        .from('notebook_entries')
+        .select('title, content, mood, occurred_at, goal_id')
+        .eq('user_id', userId)
+        .eq('entry_type', 'note')
+        .order('occurred_at', { ascending: false })
+        .limit(10),
     ]);
 
   // --- Profile ---
@@ -171,6 +180,11 @@ async function buildContext(userId: string): Promise<CoachingContext> {
       description: n.customDetails ? n.customDetails.slice(0, 100) : undefined,
     }));
 
+  const nodeNameMap: Record<string, string> = {};
+  for (const n of rawNodes) {
+    nodeNameMap[n.id] = n.name || n.title || 'Goal';
+  }
+
   // --- Feedback ---
   const rawFeedback: any[] = feedbackRes.status === 'fulfilled' ? (feedbackRes.value.data ?? []) : [];
   const recentFeedback = rawFeedback.map((fb: any) => ({
@@ -186,6 +200,16 @@ async function buildContext(userId: string): Promise<CoachingContext> {
   const achievements = rawAchievements.map((a: any) => ({
     goalName: (a.title || 'Achievement').slice(0, 60),
     date: a.created_at ? new Date(a.created_at).toISOString().slice(0, 10) : 'recently',
+  }));
+
+  // --- Notebook Entries ---
+  const rawNotebook: any[] = notebookRes.status === 'fulfilled' ? (notebookRes.value.data ?? []) : [];
+  const recentNotes = rawNotebook.map((n: any) => ({
+    title: n.title,
+    content: n.content,
+    mood: n.mood,
+    date: n.occurred_at ? new Date(n.occurred_at).toISOString().slice(0, 10) : 'recently',
+    goalName: n.goal_id ? nodeNameMap[n.goal_id] : undefined,
   }));
 
   // --- Boards ---
@@ -273,6 +297,7 @@ async function buildContext(userId: string): Promise<CoachingContext> {
     network, 
     boards,
     engagementMetrics,
+    recentNotes,
   };
 }
 
@@ -407,6 +432,7 @@ export const getWeeklyNarrative = catchAsync(async (req: Request, res: Response,
     checkinsThisWeek: checkins.length,
     goalsUpdatedThisWeek: nodes.filter((n: any) => n.updated_at && new Date(n.updated_at) >= sevenDaysAgo).length,
     journalEntries: entries.length,
+    journalText,
   };
 
   try {

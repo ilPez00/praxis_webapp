@@ -271,7 +271,7 @@ export class AxiomScanService {
     }
 
     // --- Phase 2: Fetch all data for LLM context ---
-    const [goalTreeRes, checkinsRes, trackersRes, notesRes, matchesRes, eventsRes, placesRes, diaryEntriesRes] = await Promise.all([
+    const [goalTreeRes, checkinsRes, trackersRes, notesRes, matchesRes, eventsRes, placesRes, diaryEntriesRes, notebookEntriesRes] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
       supabase.from('checkins').select('checked_in_at,streak_day,mood,win_of_the_day').eq('user_id', userId).order('checked_in_at', { ascending: false }).limit(7),
       supabase.from('trackers').select('id,type,goal').eq('user_id', userId),
@@ -280,6 +280,7 @@ export class AxiomScanService {
       supabase.from('events').select('id, title, event_date, city, description').gte('event_date', today).limit(10),
       supabase.from('places').select('id, name, city, tags, description').limit(10),
       supabase.from('diary_entries').select('title,content,entry_type,mood,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
+      supabase.from('notebook_entries').select('title,content,mood,occurred_at,goal_id').eq('user_id', userId).eq('entry_type', 'note').order('occurred_at', { ascending: false }).limit(10),
     ]);
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
@@ -343,6 +344,15 @@ export class AxiomScanService {
       logger.warn('[AxiomScan] Recap generation failed (non-fatal):', err);
     }
 
+    // Process recent notebook entries
+    const recentNotebookNotes = (notebookEntriesRes.data || []).map((n: any) => ({
+      title: n.title,
+      content: n.content,
+      mood: n.mood,
+      date: n.occurred_at ? new Date(n.occurred_at).toISOString().slice(0, 10) : 'recently',
+      goalName: n.goal_id ? Object.fromEntries(nodes.map((gn: any) => [gn.id, gn.name]))[n.goal_id] : undefined,
+    }));
+
     // --- Phase 3: Generate FULL LLM-powered protocol ---
     const aiCoaching = new AICoachingService();
 
@@ -375,6 +385,7 @@ CONTEXT:
 - Goals: ${JSON.stringify(goalsSlice)}
 - Recent check-ins: ${JSON.stringify((checkinsRes.data || []).slice(0, 3).map((c: any) => ({ mood: c.mood, win: c.win_of_the_day, streak: c.streak_day })))}
 - Tracker trends: ${metrics.trackerTrends?.map((t: any) => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
+- Recent Notebook Notes: ${JSON.stringify(recentNotebookNotes)}
 ${recapText ? `- Yesterday's activity: ${recapText}` : '- Yesterday: No activity logged'}
 
 Respond ONLY with valid JSON (no markdown, no backticks) matching this exact shape:
