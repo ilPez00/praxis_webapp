@@ -170,9 +170,24 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   // Shared journal form (mood + note + save)
   const renderJournalForm = (accentColor: string) => (
     <Box sx={{ px: 2.5, mt: viewMode === 'free' ? 0 : 1 }}>
-      <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', mb: 1, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-        {viewMode === 'free' ? 'How are you feeling?' : 'Quick journal'}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          {viewMode === 'free' ? 'How are you feeling?' : 'Quick journal'}
+        </Typography>
+        {viewMode === 'goal' && selectedGoal && (
+          <Chip
+            label={selectedGoal.name}
+            size="small"
+            sx={{
+              fontSize: '0.65rem', fontWeight: 700,
+              bgcolor: `${accentColor}20`,
+              color: accentColor,
+              border: `1px solid ${accentColor}30`,
+              height: 20,
+            }}
+          />
+        )}
+      </Box>
 
       {/* Mood picker */}
       <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1.5 }}>
@@ -405,14 +420,22 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
         ) : selectedGoal ? (
           /* ── Goal detail + widgets + journal ──── */
           <Box sx={{ pb: 2 }}>
-            <NoteGoalDetail
-              node={toFrontendNode(selectedGoal)}
-              allNodes={rawNodes}
-              userId={user?.id || ''}
-              activeBets={activeBets}
-              onProgressUpdate={handleProgressUpdate}
-            />
+            {/* Quick journal at top */}
             {renderJournalForm(domainColor(selectedGoal.domain))}
+            
+            {/* Goal detail and widgets below */}
+            <Box sx={{ mt: 2 }}>
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', mb: 1, letterSpacing: '0.05em', textTransform: 'uppercase', px: 2.5 }}>
+                Goal Details
+              </Typography>
+              <NoteGoalDetail
+                node={toFrontendNode(selectedGoal)}
+                allNodes={rawNodes}
+                userId={user?.id || ''}
+                activeBets={activeBets}
+                onProgressUpdate={handleProgressUpdate}
+              />
+            </Box>
           </Box>
         ) : null}
       </DialogContent>

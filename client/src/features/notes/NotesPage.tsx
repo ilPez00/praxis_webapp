@@ -562,7 +562,7 @@ const NotesPage: React.FC = () => {
                   Your notebook is empty.
                 </Typography>
                 <Button fullWidth variant="contained" onClick={handleAddNewGoal} startIcon={<AddIcon />}>
-                  New Topic
+                  New Topic (Goal)
                 </Button>
               </Box>
             ) : (
@@ -701,11 +701,16 @@ const NotesPage: React.FC = () => {
           </Box>
         </Box>
 
-        {/* ── Dialogs ── */}
+        {/* ── Edit/Branch dialog ── */}
         <Dialog open={isBranching || !!editingNode} onClose={() => { setEditingNode(null); setIsBranching(false); }} maxWidth="sm" fullWidth
           PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}>
           <DialogTitle sx={{ fontWeight: 700 }}>
-            {isBranching ? (editingNode ? `Add Chapter to: ${editingNode.title}` : 'Add New Topic') : 'Edit Details'}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {isBranching ? <AddCircleOutlineIcon sx={{ color: 'primary.main' }} /> : <EditNoteIcon sx={{ color: 'primary.main' }} />}
+              {isBranching 
+                ? (editingNode ? `Add Chapter to: ${editingNode.title}` : 'Add New Topic (Goal)') 
+                : 'Goal Details'}
+            </Box>
           </DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -714,20 +719,34 @@ const NotesPage: React.FC = () => {
                   {Object.values(Domain).map(dom => <MenuItem key={dom} value={dom}>{dom}</MenuItem>)}
                 </TextField>
               )}
-              <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} />
-              <TextField fullWidth label="Description" multiline rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
+              <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} placeholder={isBranching ? "What is the new topic?" : "Topic name"} />
+              <TextField fullWidth label="Description" multiline rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Why is this important?" />
+              <TextField fullWidth label="Success Metric" multiline rows={2} value={editMetric} onChange={e => setEditMetric(e.target.value)} placeholder="How will you know it's done?" />
+              <TextField fullWidth label="Target Date" type="date" InputLabelProps={{ shrink: true }} value={editTargetDate} onChange={e => setEditTargetDate(e.target.value)} inputProps={{ min: new Date().toISOString().slice(0, 10) }} />
+              
               {!isBranching && editingNode && (
                 <Box sx={{ mt: 1 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Progress: {editProgress}%</Typography>
-                  <Slider value={editProgress} onChange={(_, v) => setEditProgress(v as number)} min={0} max={100} step={5} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="body2" color="text.secondary">Progress</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: editProgress === 100 ? '#10B981' : '#F59E0B' }}>
+                      {editProgress}%
+                    </Typography>
+                  </Box>
+                  <Slider value={editProgress} onChange={(_, v) => setEditProgress(v as number)} min={0} max={100} step={5} sx={{ color: editProgress === 100 ? '#10B981' : '#F59E0B' }} />
                 </Box>
               )}
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
-            <Button onClick={() => { setEditingNode(null); setIsBranching(false); }}>Cancel</Button>
-            <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim()}>
-              {savingEdit ? 'Saving...' : 'Save'}
+            <Button onClick={() => { setEditingNode(null); setIsBranching(false); }} sx={{ color: 'text.secondary' }}>Cancel</Button>
+            <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim()} sx={{ borderRadius: '10px' }}>
+              {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Chapter (150 PP)' : 'Add Topic (150 PP)') : (
+                (editingNode && (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') ||
+                 editDesc.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.customDetails || '') ||
+                 editMetric.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.completionMetric || '') ||
+                 editTargetDate !== (backendNodes.find(n => n.id === editingNode?.id)?.targetDate || '')
+                )) ? 'Save Details (50 PP)' : 'Save Progress'
+              ))}
             </Button>
           </DialogActions>
         </Dialog>
