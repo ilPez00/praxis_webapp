@@ -14,7 +14,7 @@ interface GoalNote {
   node_id: string;
   note: string;
   mood: string | null;
-  created_at: string;
+  logged_at: string;
 }
 
 interface GoalNotesPanelProps {
@@ -46,21 +46,18 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
   };
 
   const fetchNotes = async () => {
-    // Validate nodeId is a proper UUID
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!nodeId || !uuidRegex.test(nodeId)) {
-      console.warn('Invalid node ID for notes:', nodeId);
+    if (!nodeId || nodeId.length < 4) {
       setLoading(false);
       return;
     }
 
     try {
       const { data, error } = await supabase
-        .from('journal_entries')
-        .select('*')
+        .from('node_journal_entries')
+        .select('id, node_id, note, mood, logged_at')
         .eq('node_id', nodeId)
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('logged_at', { ascending: false });
 
       if (error) throw error;
       setNotes(data || []);
@@ -82,11 +79,12 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
 
     setAdding(true);
     try {
-      const { error } = await supabase.from('journal_entries').insert({
+      const { error } = await supabase.from('node_journal_entries').insert({
         node_id: nodeId,
         user_id: userId,
         note: newNote,
         mood: selectedMood,
+        logged_at: new Date().toISOString(),
       });
 
       if (error) throw error;
@@ -104,7 +102,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
 
   const handleDeleteNote = async (noteId: string) => {
     try {
-      const { error } = await supabase.from('journal_entries').delete().eq('id', noteId);
+      const { error } = await supabase.from('node_journal_entries').delete().eq('id', noteId);
       if (error) throw error;
       toast.success('Note deleted');
       await fetchNotes();
@@ -258,7 +256,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
                     />
                   )}
                   <Typography variant="caption" color="text.secondary">
-                    {formatDate(note.created_at)}
+                    {formatDate(note.logged_at)}
                   </Typography>
                 </Box>
                 <IconButton

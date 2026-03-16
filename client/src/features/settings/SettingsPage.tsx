@@ -14,7 +14,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import PsychologyIcon from '@mui/icons-material/Psychology';
+
 import LanguageIcon from '@mui/icons-material/Language';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
@@ -77,10 +77,6 @@ const SettingsPage: React.FC = () => {
     localStorage.getItem(ANALYTICS_OPT_KEY) !== 'off'
   );
 
-  // Minimal AI Mode
-  const [minimalAiMode, setMinimalAiMode] = useState(true);
-  const [minimalAiSaving, setMinimalAiSaving] = useState(false);
-
   // Language
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || 'en');
 
@@ -96,14 +92,13 @@ const SettingsPage: React.FC = () => {
     const loadProfile = async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('city, is_public, match_visibility, minimal_ai_mode')
+        .select('city, is_public, match_visibility')
         .eq('id', user.id)
         .single();
       if (data) {
         setGeoCity(data.city || '');
         setProfilePublic(data.is_public !== false);
         setMatchVisibility(data.match_visibility || 'all');
-        setMinimalAiMode(data.minimal_ai_mode !== false); // default to true (Minimal AI)
       }
     };
     loadProfile();
@@ -168,20 +163,6 @@ const SettingsPage: React.FC = () => {
       toast.success('Privacy settings saved.');
     } catch { toast.error('Failed to save settings.'); }
     finally { setPrivacySaving(false); }
-  };
-
-  const saveMinimalAiMode = async () => {
-    if (!user) return;
-    setMinimalAiSaving(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.put(`${API_URL}/users/${user.id}`,
-        { minimal_ai_mode: minimalAiMode },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } }
-      );
-      toast.success(minimalAiMode ? 'Minimal AI Mode enabled. AI features disabled.' : 'AI features enabled.');
-    } catch { toast.error('Failed to save AI settings.'); }
-    finally { setMinimalAiSaving(false); }
   };
 
   const handleResetGoals = async () => {
@@ -349,42 +330,6 @@ const SettingsPage: React.FC = () => {
           sx={{ justifyContent: 'space-between', ml: 0, mr: 0 }}
           labelPlacement="start"
         />
-      </Section>
-
-      {/* AI Settings */}
-      <Section icon={<PsychologyIcon sx={{ color: '#A78BFA' }} />} title="AI Features">
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Praxis works great without AI. Enable Minimal AI Mode for template-based guidance, or disable it for full AI coaching (premium).
-        </Typography>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={minimalAiMode}
-              onChange={e => setMinimalAiMode(e.target.checked)}
-              disabled={minimalAiSaving}
-            />
-          }
-          label={
-            <Box>
-              <Typography variant="body2" fontWeight={600}>Minimal AI Mode</Typography>
-              <Typography variant="caption" color="text.secondary">
-                {minimalAiMode 
-                  ? 'AI features disabled. Using smart templates instead.' 
-                  : 'AI features enabled. Premium "Axiom Boost" available.'}
-              </Typography>
-            </Box>
-          }
-          sx={{ justifyContent: 'space-between', ml: 0, mr: 0 }}
-          labelPlacement="start"
-        />
-        <Button
-          variant="contained"
-          onClick={saveMinimalAiMode}
-          disabled={minimalAiSaving}
-          sx={{ borderRadius: '10px', alignSelf: 'flex-start', mt: 2 }}
-        >
-          {minimalAiSaving ? <CircularProgress size={16} color="inherit" /> : 'Save AI settings'}
-        </Button>
       </Section>
 
       {/* Language */}

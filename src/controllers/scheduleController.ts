@@ -327,7 +327,7 @@ export const getShareableSlot = catchAsync(async (req: Request, res: Response) =
 async function generateScheduleForUser(userId: string, date: string) {
   // Get user context
   const [profile, metrics, goalTree] = await Promise.all([
-    supabase.from('profiles').select('name, city, minimal_ai_mode').eq('id', userId).single(),
+    supabase.from('profiles').select('name, city').eq('id', userId).single(),
     engagementMetricService.getCachedMetrics(userId),
     supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
   ]);

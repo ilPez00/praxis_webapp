@@ -31,11 +31,11 @@ This project is developed by three CLI agents: **Claude Code**, **Gemini CLI**, 
 - **Set iteration:** use `Array.from(set)` not `for...of set` (TS target doesn't support downlevel iteration)
 - **Array safety:** always guard `.map()` calls with `Array.isArray()` when data comes from API/DB
 
-## Minimal AI Policy
-- **Default: no LLM calls.** Matching = pure rule-based (domain overlap + progress similarity). Grading, streaks, weights, analytics = local math / simple backend functions.
-- **AI is opt-in:** template-based coaching by default. Real LLM calls (Gemini/DeepSeek) only when user clicks "Axiom Boost" (premium feature).
-- **`minimal_ai_mode`** toggle in settings (default TRUE). Respect it in all AI-related code paths.
-- Betting, streaks, leaderboard, goal tree visualization = 100% AI-free, always.
+## AI Policy
+- **Axiom daily briefs always use LLM** (once-daily generation, falls back to algorithm on failure)
+- **Matching = pure rule-based** (domain overlap + progress similarity). No LLM calls.
+- **Grading, streaks, weights, analytics** = local math / simple backend functions
+- Betting, streaks, leaderboard, goal tree visualization = 100% AI-free, always
 
 ## Build & Run
 ```bash
