@@ -166,21 +166,43 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
             </GlassCard>
           </Grid>
 
-          {/* Daily Routine - Expanded */}
+          {/* Daily Routine - Horizontal Scroll */}
           <Grid size={{ xs: 12 }}>
             <Box sx={{ mt: 1 }}>
               <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 2 }}>📅 YOUR PERSONALIZED ROUTINE</Typography>
-              <Stack spacing={2}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 2,
+                  overflowX: 'auto',
+                  pb: 2,
+                  '&::-webkit-scrollbar': {
+                    height: 8,
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    bgcolor: 'rgba(255,255,255,0.03)',
+                    borderRadius: '4px',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    bgcolor: 'rgba(167,139,250,0.3)',
+                    borderRadius: '4px',
+                    '&:hover': { bgcolor: 'rgba(167,139,250,0.5)' },
+                  },
+                }}
+              >
                 {Array.isArray(data?.routine) && data.routine.length > 0 ? data.routine.map((item, i) => (
-                  <Box 
-                    key={i} 
-                    sx={{ 
-                      p: 2.5, 
-                      borderRadius: 3, 
-                      bgcolor: 'rgba(167,139,250,0.06)', 
+                  <Box
+                    key={i}
+                    sx={{
+                      minWidth: 280,
+                      maxWidth: 320,
+                      p: 2.5,
+                      borderRadius: 3,
+                      bgcolor: 'rgba(167,139,250,0.06)',
                       border: '1px solid rgba(167,139,250,0.2)',
                       position: 'relative',
                       overflow: 'hidden',
+                      flexShrink: 0,
                     }}
                   >
                     {/* Time badge */}
@@ -253,13 +275,16 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
                     </Box>
                   </Box>
                 )) : (
-                  <Box sx={{ p: 3, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 3 }}>
+                  <Box sx={{ p: 3, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 3, minWidth: 280 }}>
                     <Typography variant="body2" color="text.secondary">
                       No routine generated. Check back after your next daily brief.
                     </Typography>
                   </Box>
                 )}
-              </Stack>
+              </Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
+                ← Swipe to see all time blocks →
+              </Typography>
             </Box>
           </Grid>
 
