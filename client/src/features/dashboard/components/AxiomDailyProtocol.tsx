@@ -166,125 +166,68 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
             </GlassCard>
           </Grid>
 
-          {/* Daily Routine - Horizontal Scroll */}
+          {/* Daily Routine - Horizontal Scroll (Compact) */}
           <Grid size={{ xs: 12 }}>
             <Box sx={{ mt: 1 }}>
-              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 2 }}>📅 YOUR PERSONALIZED ROUTINE</Typography>
+              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 2 }}>📅 ROUTINE</Typography>
               <Box
                 sx={{
                   display: 'flex',
-                  gap: 2,
+                  gap: 1,
                   overflowX: 'auto',
                   pb: 2,
-                  '&::-webkit-scrollbar': {
-                    height: 8,
-                  },
-                  '&::-webkit-scrollbar-track': {
-                    bgcolor: 'rgba(255,255,255,0.03)',
-                    borderRadius: '4px',
-                  },
-                  '&::-webkit-scrollbar-thumb': {
-                    bgcolor: 'rgba(167,139,250,0.3)',
-                    borderRadius: '4px',
-                    '&:hover': { bgcolor: 'rgba(167,139,250,0.5)' },
-                  },
+                  '&::-webkit-scrollbar': { height: 6 },
+                  '&::-webkit-scrollbar-track': { bgcolor: 'rgba(255,255,255,0.03)', borderRadius: '3px' },
+                  '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(167,139,250,0.3)', borderRadius: '3px' },
                 }}
               >
                 {Array.isArray(data?.routine) && data.routine.length > 0 ? data.routine.map((item, i) => (
                   <Box
                     key={i}
                     sx={{
-                      minWidth: 280,
-                      maxWidth: 320,
-                      p: 2.5,
-                      borderRadius: 3,
+                      minWidth: 200,
+                      maxWidth: 220,
+                      p: 1.5,
+                      borderRadius: 2,
                       bgcolor: 'rgba(167,139,250,0.06)',
                       border: '1px solid rgba(167,139,250,0.2)',
                       position: 'relative',
-                      overflow: 'hidden',
                       flexShrink: 0,
                     }}
                   >
                     {/* Time badge */}
-                    <Box sx={{ 
-                      position: 'absolute', 
-                      top: 0, 
-                      right: 0, 
-                      bgcolor: 'rgba(167,139,250,0.15)', 
-                      px: 1.5, 
-                      py: 0.5,
-                      borderBottomLeftRadius: '12px',
-                    }}>
-                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, fontSize: '0.6rem' }}>
-                        {item.time || `Block ${i + 1}`}
+                    <Box sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(167,139,250,0.15)', px: 1, py: 0.3, borderRadius: '8px' }}>
+                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, fontSize: '0.55rem' }}>
+                        {item.time?.split(' ')[0] || `Block ${i + 1}`}
                       </Typography>
                     </Box>
-                    
-                    {/* Duration chip */}
-                    {item.duration && (
-                      <Chip 
-                        label={item.duration} 
-                        size="small" 
-                        sx={{ 
-                          mb: 1.5, 
-                          height: 20, 
-                          fontSize: '0.55rem', 
-                          bgcolor: 'rgba(16,185,129,0.15)', 
-                          color: '#10B981',
-                          border: '1px solid rgba(16,185,129,0.3)',
-                        }} 
+
+                    {/* Task */}
+                    <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.7rem', mb: 1, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {item.task || 'Focus on goal'}
+                    </Typography>
+
+                    {/* Category badge */}
+                    {item.category && CATEGORY_COLORS[item.category] && (
+                      <Chip
+                        label={`${CATEGORY_COLORS[item.category].emoji} ${item.category.replace('_', ' ')}`}
+                        size="small"
+                        sx={{
+                          height: 18,
+                          fontSize: '0.5rem',
+                          bgcolor: CATEGORY_COLORS[item.category].bg,
+                          color: CATEGORY_COLORS[item.category].text,
+                          border: `1px solid ${CATEGORY_COLORS[item.category].border}`,
+                        }}
                       />
                     )}
-                    
-                    {/* Task */}
-                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.85rem', mb: 1.5, lineHeight: 1.5 }}>
-                      {item.task || 'Focus on your most important goal'}
-                    </Typography>
-                    
-                    {/* Preparation */}
-                    {item.preparation && (
-                      <Box sx={{ 
-                        mb: 1.5, 
-                        p: 1.5, 
-                        bgcolor: 'rgba(255,255,255,0.03)', 
-                        borderRadius: 2,
-                        border: '1px dashed rgba(255,255,255,0.1)',
-                      }}>
-                        <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                          🎯 PREPARE
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>
-                          {item.preparation}
-                        </Typography>
-                      </Box>
-                    )}
-                    
-                    {/* Alignment - Why this matters */}
-                    <Box sx={{ 
-                      p: 1.5, 
-                      bgcolor: 'rgba(139,92,246,0.08)', 
-                      borderRadius: 2,
-                      border: '1px solid rgba(139,92,246,0.15)',
-                    }}>
-                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                        💡 WHY THIS MATTERS FOR YOU
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
-                        {item.alignment || 'This builds momentum toward your most important goals.'}
-                      </Typography>
-                    </Box>
                   </Box>
                 )) : (
-                  <Box sx={{ p: 3, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 3, minWidth: 280 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No routine generated. Check back after your next daily brief.
-                    </Typography>
+                  <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 2, minWidth: 200 }}>
+                    <Typography variant="caption" color="text.secondary">No routine yet</Typography>
                   </Box>
                 )}
               </Box>
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
-                ← Swipe to see all time blocks →
-              </Typography>
             </Box>
           </Grid>
 
