@@ -401,3 +401,13 @@ Session 68: Axiom Brief Fixes + Diary Export Tracker Data
 - Verification: 0 TypeScript errors (both backend + frontend)
 - Next: Run SQL migrations in Supabase, test Axiom brief generation, consider splitting ChatRoom.tsx
 - Sign: Claude
+
+Session 69: Rework Intro Sheets + Share-to-Diary for People/Places/Events
+- Rewrote GettingStartedPage.tsx: 6 steps matching current features (Home base, Notebook, Trackers, Axiom Protocol, Discover, Diary export); updated icons (MenuBookIcon, FitnessCenterIcon, AutoAwesomeIcon, ExploreIcon, ShareIcon); updated subtitle
+- Rewrote SiteTour.tsx: 7 dialog steps (Welcome, Notebook, Daily Trackers, Axiom Protocol, Discover & Connect, Your Diary, PP & Marketplace); replaced outdated steps (Goal Tree, Chat, Community Feed, Coaching Marketplace)
+- Added share-to-diary (BookmarkAddIcon → ShareDialog) to: EventsPage.tsx, PlacesTab.tsx, MatchesPage.tsx, ProfilePage.tsx
+- ShareDialog already supported profiles/places/events source types; backend POST /diary/entries/share already handled all types
+- Files modified: client/src/features/onboarding/GettingStartedPage.tsx, client/src/components/common/SiteTour.tsx, client/src/features/events/EventsPage.tsx, client/src/features/places/PlacesTab.tsx, client/src/features/matches/MatchesPage.tsx, client/src/features/profile/ProfilePage.tsx
+- Verification: 0 source TypeScript errors (pre-existing i18next + AxiomDailyProtocol JSX errors only)
+- Next: Fix AxiomDailyProtocol.tsx JSX syntax error, run SQL migrations, seed demo users
+- Sign: Claude
