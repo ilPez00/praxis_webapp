@@ -19,7 +19,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import LockIcon from '@mui/icons-material/Lock';
 import PublicIcon from '@mui/icons-material/Public';
 import ShareIcon from '@mui/icons-material/Share';
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 import GlassCard from '../../components/common/GlassCard';
+import ShareDialog from '../../components/common/ShareDialog';
 import LocationMap from '../../components/common/LocationMap';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
@@ -98,6 +100,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
   const [saving, setSaving] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [sharePlace, setSharePlace] = useState<Place | null>(null);
   const [formName, setFormName] = useState('');
   const [formType, setFormType] = useState('');
   const [formAddress, setFormAddress] = useState('');
@@ -451,6 +454,11 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
                         >
                           {isMember ? 'Joined' : 'Join'}
                         </Button>
+                        <Tooltip title="Save to Diary">
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSharePlace(place); }} sx={{ color: '#A78BFA' }}>
+                            <BookmarkAddIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </Box>
                     </Box>
                   </GlassCard>
@@ -459,6 +467,15 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
             })}
           </Grid>
         )}
+
+        <ShareDialog
+          open={!!sharePlace}
+          onClose={() => setSharePlace(null)}
+          sourceTable="places"
+          sourceId={sharePlace?.id || ''}
+          title={sharePlace?.name}
+          content={sharePlace?.description || ''}
+        />
       </Container>
 
       <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); resetForm(); }} maxWidth="sm" fullWidth>

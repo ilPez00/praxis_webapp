@@ -20,8 +20,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import PeopleIcon from '@mui/icons-material/People';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 
 import { supabase } from '../../lib/supabase';
+import ShareDialog from '../../components/common/ShareDialog';
 import api from '../../lib/api';
 import { useEvents } from '../../hooks/useFetch';
 import GlassCard from '../../components/common/GlassCard';
@@ -117,6 +119,7 @@ const EventsPage: React.FC<{ compact?: boolean; hideMap?: boolean }> = ({ compac
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [shareEvent, setShareEvent] = useState<CalendarEvent | null>(null);
   
   const [nearbyMode, setNearbyMode] = useState(false);
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null);
@@ -400,6 +403,13 @@ const EventsPage: React.FC<{ compact?: boolean; hideMap?: boolean }> = ({ compac
                           );
                         })}
                       </Stack>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                        <Tooltip title="Save to Diary">
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setShareEvent(event); }} sx={{ color: '#A78BFA' }}>
+                            <BookmarkAddIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </Box>
                   </GlassCard>
                 </Grid>
@@ -407,6 +417,15 @@ const EventsPage: React.FC<{ compact?: boolean; hideMap?: boolean }> = ({ compac
             })}
           </Grid>
         )}
+
+        <ShareDialog
+          open={!!shareEvent}
+          onClose={() => setShareEvent(null)}
+          sourceTable="events"
+          sourceId={shareEvent?.id || ''}
+          title={shareEvent?.title}
+          content={shareEvent?.description || ''}
+        />
       </Container>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>

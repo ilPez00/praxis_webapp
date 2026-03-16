@@ -671,6 +671,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                     sourceId={post.id}
                     title={post.title || 'Post'}
                     content={post.content}
+                    userId={user?.id}
                     tooltip="Share to diary"
                   />
                 </Box>

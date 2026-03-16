@@ -19,6 +19,7 @@ import {
   Collapse,
   IconButton,
   CardContent,
+  Tooltip,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -26,8 +27,10 @@ import ChatIcon from '@mui/icons-material/Chat';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 import toast from 'react-hot-toast';
 import SparringBadge from '../../components/common/SparringBadge';
+import ShareDialog from '../../components/common/ShareDialog';
 import { PRAXIS_DOMAINS, getDomainConfig } from '../../types/Domain';
 import SportsKabaddiIcon from '@mui/icons-material/SportsKabaddi';
 
@@ -60,6 +63,7 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const [selectedDomainsFilter, setSelectedDomainsFilter] = useState<string[]>([]);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_PAGE_SIZE);
+  const [shareMatch, setShareMatch] = useState<MatchProfile | null>(null);
 
   useEffect(() => {
     if (userLoading || !user) return;
@@ -249,6 +253,11 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
                       <SportsKabaddiIcon fontSize="small" />
                     </IconButton>
                     <IconButton onClick={() => handleViewProfile(match)} sx={{ borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.05)' }}><AccountCircleIcon fontSize="small" /></IconButton>
+                    <Tooltip title="Save to Diary">
+                      <IconButton size="small" onClick={() => setShareMatch(match)} sx={{ borderRadius: '10px', color: '#A78BFA' }}>
+                        <BookmarkAddIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 </GlassCard>
               </Grid>
@@ -269,6 +278,15 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
           </Box>
         )}
       </Container>
+
+      <ShareDialog
+        open={!!shareMatch}
+        onClose={() => setShareMatch(null)}
+        sourceTable="profiles"
+        sourceId={shareMatch?.userId || ''}
+        title={shareMatch?.name}
+        content={shareMatch?.bio || ''}
+      />
     </Box>
   );
 };

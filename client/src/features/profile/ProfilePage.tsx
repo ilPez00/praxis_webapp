@@ -47,6 +47,8 @@ import ArticleIcon from '@mui/icons-material/Article';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import SecurityIcon from '@mui/icons-material/Security';
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
+import ShareDialog from '../../components/common/ShareDialog';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DuelDialog from '../duels/components/DuelDialog';
@@ -260,6 +262,7 @@ const ProfilePage: React.FC = () => {
 
   // Duel
   const [duelDialogOpen, setDuelDialogOpen] = useState(false);
+  const [shareDiaryOpen, setShareDiaryOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -713,6 +716,13 @@ const ProfilePage: React.FC = () => {
                   >
                     Duel
                   </Button>
+                )}
+                {paramId && paramId !== user?.id && (
+                  <Tooltip title="Save to Diary">
+                    <IconButton size="small" onClick={() => setShareDiaryOpen(true)} sx={{ color: '#A78BFA' }}>
+                      <BookmarkAddIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 )}
               </Stack>
             )}
@@ -1169,6 +1179,16 @@ const ProfilePage: React.FC = () => {
           onClose={() => setDuelDialogOpen(false)}
           opponentId={paramId}
           opponentName={profile.name}
+        />
+      )}
+      {paramId && (
+        <ShareDialog
+          open={shareDiaryOpen}
+          onClose={() => setShareDiaryOpen(false)}
+          sourceTable="profiles"
+          sourceId={paramId}
+          title={profile?.name || 'User'}
+          content={profile?.bio || ''}
         />
       )}
     </Container>
