@@ -136,7 +136,7 @@ const NotesPage: React.FC = () => {
 
   // Diary export
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exporting, setExporting] = useState<'plain' | 'axiom' | null>(null);
+  const [exporting, setExporting] = useState<'plain' | 'axiom' | 'notes' | null>(null);
   const [axiomNarrative, setAxiomNarrative] = useState<string | null>(null);
 
   const currentUserId = user?.id;
@@ -163,6 +163,36 @@ const NotesPage: React.FC = () => {
       setExportDialogOpen(false);
     } catch (err: any) {
       toast.error(err.message || 'Failed to export diary');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportNotes = async () => {
+    if (!currentUserId) return;
+    setExporting('notes');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API_URL}/diary/export/notes`, {
+        method: 'POST',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Export failed');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `praxis-notes-${new Date().toISOString().slice(0, 10)}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Complete Notes Export downloaded!');
+      if (!user?.is_premium) setPraxisPoints(prev => (prev ?? 0) - 500);
+      setExportDialogOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to export notes');
     } finally {
       setExporting(null);
     }
@@ -784,7 +814,7 @@ const NotesPage: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <MenuBookIcon sx={{ color: '#A78BFA' }} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Complete Notes Export</Typography>
-                  {userProfile?.is_premium ? (
+                  {user?.is_premium ? (
                     <Chip label="PRO" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B' }} />
                   ) : (
                     <Chip label="500 PP" size="small" sx={{ height: 18, bgcolor: 'rgba(167,139,250,0.2)', color: '#A78BFA' }} />
