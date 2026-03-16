@@ -43,6 +43,7 @@ import notebookRoutes from './routes/notebookRoutes';
 import diaryRoutes from './routes/diaryRoutes';
 import sparringRoutes from './routes/sparringRoutes';
 import scheduleRoutes from './routes/scheduleRoutes';
+import narrativeRoutes from './routes/narrativeRoutes';
 import publicWidgetRoutes from './routes/publicWidgetRoutes';
 
 import { supabase } from './lib/supabaseClient';
@@ -152,6 +153,7 @@ apiRouter.use('/journal', generalLimiter, journalRoutes);
 apiRouter.use('/notebook', generalLimiter, notebookRoutes);
 apiRouter.use('/diary', generalLimiter, diaryRoutes);
 apiRouter.use('/schedule', generalLimiter, scheduleRoutes);
+apiRouter.use('/narratives', generalLimiter, narrativeRoutes);
 apiRouter.use('/sparring', generalLimiter, sparringRoutes);
 
 app.use('/api', apiRouter);

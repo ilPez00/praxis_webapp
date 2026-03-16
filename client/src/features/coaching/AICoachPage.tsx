@@ -36,6 +36,9 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import LockIcon from '@mui/icons-material/Lock';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import PsychologyIcon from '@mui/icons-material/Psychology';
+import DownloadIcon from '@mui/icons-material/Download';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import HistoryIcon from '@mui/icons-material/History';
 
 interface StrategyItem {
   goal: string;
@@ -90,6 +93,11 @@ const AICoachPage: React.FC = () => {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
+  
+  // Saved narratives
+  const [savedNarratives, setSavedNarratives] = useState<any[]>([]);
+  const [loadingNarratives, setLoadingNarratives] = useState(false);
+  const [narrativesOpen, setNarrativesOpen] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -217,6 +225,9 @@ const AICoachPage: React.FC = () => {
       }
     })();
     
+    // Load saved narratives
+    loadSavedNarratives();
+    
     // Send 3 automatic algorithmic messages from Axiom on chat open
     setTimeout(() => {
       setChat([
@@ -237,6 +248,41 @@ const AICoachPage: React.FC = () => {
     
     return () => { cancelled = true; };
   }, [loadCachedBrief, loadDailyBrief]);
+  
+  const loadSavedNarratives = async () => {
+    setLoadingNarratives(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/narratives?limit=20`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setSavedNarratives(data);
+      }
+    } catch (err) {
+      console.error('Failed to load narratives:', err);
+    } finally {
+      setLoadingNarratives(false);
+    }
+  };
+  
+  const handleDownloadNarrative = async (id: string, title: string) => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/narratives/${id}/download`, { headers });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${title || 'axiom-narrative'}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Narrative downloaded!');
+      }
+    } catch (err: any) {
+      toast.error('Failed to download: ' + err.message);
+    }
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -301,9 +347,21 @@ const AICoachPage: React.FC = () => {
             {generatedAt && <Typography variant="caption" color="text.disabled">Updated {formatAge(generatedAt)}</Typography>}
           </Box>
         </Box>
-        <Button size="small" variant="outlined" startIcon={refreshing ? <CircularProgress size={14} /> : <RefreshIcon />} onClick={handleRefresh} disabled={refreshing} sx={{ borderRadius: '10px' }}>
-          {refreshing ? 'Generating...' : 'Refresh Brief'}
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button 
+            size="small" 
+            variant="outlined" 
+            startIcon={<HistoryIcon />} 
+            onClick={() => setNarrativesOpen(true)}
+            disabled={loadingNarratives}
+            sx={{ borderRadius: '10px' }}
+          >
+            {loadingNarratives ? 'Loading...' : `History (${savedNarratives.length})`}
+          </Button>
+          <Button size="small" variant="outlined" startIcon={refreshing ? <CircularProgress size={14} /> : <RefreshIcon />} onClick={handleRefresh} disabled={refreshing} sx={{ borderRadius: '10px' }}>
+            {refreshing ? 'Generating...' : 'Refresh Brief'}
+          </Button>
+        </Stack>
       </Box>
       
       {/* Last Axiom Message Display */}
@@ -518,6 +576,91 @@ const AICoachPage: React.FC = () => {
           )}
         </Box>
       </Stack>
+      
+      {/* Narratives History Dialog */}
+      <Dialog 
+        open={narrativesOpen} 
+        onClose={() => setNarrativesOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <MenuBookIcon sx={{ color: '#A78BFA' }} />
+            Axiom Narratives History
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            All your saved daily briefs and AI narratives - auto-saved and ready to download
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          {loadingNarratives ? (
+            <Box sx={{ py: 4, textAlign: 'center' }}>
+              <CircularProgress />
+              <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>Loading narratives...</Typography>
+            </Box>
+          ) : savedNarratives.length === 0 ? (
+            <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
+              <MenuBookIcon sx={{ fontSize: 48, mb: 2, opacity: 0.3 }} />
+              <Typography variant="body2">No narratives yet</Typography>
+              <Typography variant="caption">Your daily briefs and AI responses will be auto-saved here</Typography>
+            </Box>
+          ) : (
+            <List sx={{ maxHeight: 500, overflow: 'auto' }}>
+              {savedNarratives.map((narrative, i) => (
+                <ListItem
+                  key={narrative.id}
+                  secondaryAction={
+                    <IconButton 
+                      edge="end" 
+                      onClick={() => handleDownloadNarrative(narrative.id, narrative.title)}
+                      size="small"
+                    >
+                      <DownloadIcon />
+                    </IconButton>
+                  }
+                  sx={{
+                    borderBottom: i < savedNarratives.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                  }}
+                >
+                  <ListItemAvatar>
+                    <Avatar sx={{ bgcolor: narrative.narrative_type === 'daily_brief' ? 'rgba(167,139,250,0.2)' : 'rgba(245,158,11,0.2)' }}>
+                      {narrative.narrative_type === 'daily_brief' ? '📅' : '💬'}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          {narrative.title || 'Untitled Narrative'}
+                        </Typography>
+                        {narrative.source === 'llm' && (
+                          <Chip label="AI" size="small" sx={{ height: 16, fontSize: '0.5rem', bgcolor: 'rgba(167,139,250,0.2)', color: '#A78BFA' }} />
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      <>
+                        <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                          {new Date(narrative.created_at).toLocaleString()}
+                        </Typography>
+                        {narrative.pp_cost > 0 && (
+                          <Typography variant="caption" sx={{ color: '#F59E0B' }}>
+                            Cost: {narrative.pp_cost} PP
+                          </Typography>
+                        )}
+                      </>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setNarrativesOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
