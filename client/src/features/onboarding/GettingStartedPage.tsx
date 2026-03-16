@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Container, Typography, Button, Stack, TextField, CircularProgress, IconButton } from '@mui/material';
-import TrackChangesIcon from '@mui/icons-material/TrackChanges';
-import TodayIcon from '@mui/icons-material/Today';
-import BarChartIcon from '@mui/icons-material/BarChart';
 import PlaceIcon from '@mui/icons-material/Place';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ExploreIcon from '@mui/icons-material/Explore';
+import ShareIcon from '@mui/icons-material/Share';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -33,12 +35,12 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           stated_location: statedLocation.trim(),
           city: statedLocation.split(',')[0].trim()
         })
         .eq('id', userId);
-      
+
       if (error) throw error;
       setLocationSaved(true);
       toast.success('Location set!');
@@ -63,7 +65,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
             .from('profiles')
             .update({ latitude, longitude })
             .eq('id', userId);
-          toast.success('GPS position locked! 📍');
+          toast.success('GPS position locked!');
         } catch (err) {
           console.error(err);
         }
@@ -78,7 +80,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
       num: 1,
       icon: <PlaceIcon sx={{ fontSize: 32 }} />,
       title: 'Set your home base',
-      description: "Tell us where you're building from. This helps us find nearby users, study spots, and events in your city.",
+      description: "Tell us where you're building from. This helps find nearby users, study spots, and events in your city.",
       color: '#6366F1',
       component: (
         <Box sx={{ mt: 2 }}>
@@ -91,9 +93,9 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
                 onChange={(e) => setStatedLocation(e.target.value)}
                 sx={{ bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 1 }}
               />
-              <Button 
-                variant="contained" 
-                onClick={handleSaveLocation} 
+              <Button
+                variant="contained"
+                onClick={handleSaveLocation}
                 disabled={savingLocation || !statedLocation.trim()}
                 sx={{ borderRadius: '10px' }}
               >
@@ -105,7 +107,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
             </Stack>
           ) : (
             <Typography variant="body2" sx={{ color: '#10B981', fontWeight: 700 }}>
-              ✓ Home base set to {statedLocation || 'detected position'}
+              Home base set to {statedLocation || 'detected position'}
             </Typography>
           )}
         </Box>
@@ -113,48 +115,48 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
     },
     {
       num: 2,
-      icon: <TrackChangesIcon sx={{ fontSize: 32 }} />,
-      title: 'Build your hierarchical notebook',
-      description: "Map out what you're working toward in your personal notebook. Break big topics into chapters — the more specific, the better Praxis works for you. Your notebook is the foundation of everything — it's how Praxis understands what you're building and helps you stay accountable.",
-      cta: 'Open Notebook →',
+      icon: <MenuBookIcon sx={{ fontSize: 32 }} />,
+      title: 'Build your Notebook',
+      description: "Your Notebook is the foundation of Praxis. Create topics, break them into chapters, and write notes inside each. The more you map out, the smarter Praxis gets at helping you stay on track.",
+      cta: 'Open Notebook',
       to: '/notes',
       color: '#F59E0B',
     },
     {
       num: 3,
-      icon: <TodayIcon sx={{ fontSize: 32 }} />,
-      title: 'Log your progress every day',
-      description: "Each goal gets a daily tracker widget. Take 30 seconds after each session to log what you did. Use the mood selector to capture how you felt. Over time, you'll see which conditions lead to your best work. The streak is real — so is the momentum.",
-      cta: 'See how it works →',
+      icon: <FitnessCenterIcon sx={{ fontSize: 32 }} />,
+      title: 'Track your daily progress',
+      description: "Each domain comes with built-in trackers — lifts, cardio, meals, study hours, expenses, sleep, and more. Log what you did in 30 seconds. Your streak, mood, and consistency data build over time into a clear picture of your habits.",
+      cta: 'Start tracking',
       to: '/notes',
       color: '#10B981',
     },
     {
       num: 4,
-      icon: <BarChartIcon sx={{ fontSize: 32 }} />,
-      title: 'Watch your habits form',
-      description: 'Your activity calendar fills in as you log. After a week you\'ll see patterns. After a month, you\'ll have proof of what you\'re capable of. Share your progress with your accountability partner or keep it private — either way, you\'re building the most valuable skill: consistency.',
-      cta: 'View analytics →',
-      to: '/analytics',
-      color: '#8B5CF6',
+      icon: <AutoAwesomeIcon sx={{ fontSize: 32 }} />,
+      title: 'Get your Axiom Protocol',
+      description: "Every day, Axiom — your AI coach — analyzes your progress and generates a personalized daily protocol. Morning routine, afternoon deep work, evening reflection, and a challenge to push you forward. All based on your actual goals.",
+      cta: 'Meet Axiom',
+      to: '/coaching',
+      color: '#A78BFA',
     },
     {
       num: 5,
-      icon: <PlaceIcon sx={{ fontSize: 32 }} />,
-      title: 'Discover places & events',
-      description: "Praxis isn't just about solo work. Find study spots, co-working spaces, and events in your city. Meet other builders who are serious about growth. Your next accountability partner, co-founder, or friend might be one introduction away.",
-      cta: 'Explore →',
+      icon: <ExploreIcon sx={{ fontSize: 32 }} />,
+      title: 'Discover people, places & events',
+      description: "Find accountability partners matched by goal compatibility. Browse study spots, co-working spaces, and local events. Save any person, place, or event to your Diary for later. Your next co-founder or training partner might be one tap away.",
+      cta: 'Explore',
       to: '/discover',
       color: '#EC4899',
     },
     {
       num: 6,
-      icon: <MyLocationIcon sx={{ fontSize: 32 }} />,
-      title: 'Get your daily protocol',
-      description: "Every morning at midnight, Axiom — your AI coach — analyzes your progress and generates a personalized daily protocol. You'll get a morning routine, afternoon deep work block, evening reflection, and one challenge to push you just outside your comfort zone. All based on YOUR actual goals and progress.",
-      cta: 'Meet Axiom →',
-      to: '/coaching',
-      color: '#A78BFA',
+      icon: <ShareIcon sx={{ fontSize: 32 }} />,
+      title: 'Download & share your journey',
+      description: "Your Diary collects everything you save — people, places, events, and personal entries. Export your progress as a plain-text journal anytime. Share your streak on social media, or keep it private — either way, you're building proof of what you're capable of.",
+      cta: 'Open Diary',
+      to: '/diary',
+      color: '#8B5CF6',
     },
   ];
 
@@ -171,8 +173,8 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
               Praxis
             </Box>
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 480, mx: 'auto', lineHeight: 1.6 }}>
-            Build the tracking habit in four steps. No followers needed — just you and your goals.
+          <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 520, mx: 'auto', lineHeight: 1.6 }}>
+            Your daily goal journal + accountability buddy. Here's how to get the most out of it.
           </Typography>
         </Box>
 

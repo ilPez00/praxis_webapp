@@ -10,12 +10,11 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import GroupsIcon from '@mui/icons-material/Groups';
-import ChatIcon from '@mui/icons-material/Chat';
-import DynamicFeedIcon from '@mui/icons-material/DynamicFeed';
-import SchoolIcon from '@mui/icons-material/School';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import ExploreIcon from '@mui/icons-material/Explore';
+import BookIcon from '@mui/icons-material/Book';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 
 interface TourStep {
@@ -29,56 +28,49 @@ const TOUR_STEPS: TourStep[] = [
   {
     title: 'Welcome to Praxis!',
     description:
-      'Your personal achievement platform — set goals, track progress, connect with partners, and grow every day.',
+      'Your daily goal journal and accountability buddy. Track progress, get AI coaching, and connect with people who share your ambitions.',
     icon: <AutoAwesomeIcon sx={{ fontSize: 40 }} />,
     color: '#7C3AED',
   },
   {
-    title: 'Your Dashboard',
+    title: 'Your Notebook',
     description:
-      'See your stats, streaks, and quick actions all in one place. This is your home base.',
-    icon: <DashboardIcon sx={{ fontSize: 40 }} />,
-    color: '#2563EB',
+      'The foundation of Praxis. Create topics, break them into chapters, and fill them with notes. Everything else — coaching, matching, analytics — builds on what you write here.',
+    icon: <MenuBookIcon sx={{ fontSize: 40 }} />,
+    color: '#F59E0B',
   },
   {
-    title: 'Goal Tree',
+    title: 'Daily Trackers',
     description:
-      'Set and track structured goals across every area of your life. Break big ambitions into actionable steps.',
-    icon: <AccountTreeIcon sx={{ fontSize: 40 }} />,
-    color: '#059669',
+      'Log lifts, cardio, meals, study hours, sleep, expenses, and more in 30 seconds. Your streak, mood, and consistency data paint a clear picture of your habits over time.',
+    icon: <TrackChangesIcon sx={{ fontSize: 40 }} />,
+    color: '#10B981',
   },
   {
-    title: 'Find Your Match',
+    title: 'Axiom Protocol',
     description:
-      'Discover accountability partners based on goal compatibility. Better matches mean better results.',
-    icon: <GroupsIcon sx={{ fontSize: 40 }} />,
-    color: '#D97706',
+      'Your AI coach analyzes your progress daily and generates a personalized protocol — morning routine, deep work block, evening reflection, and a challenge to push you forward.',
+    icon: <SmartToyIcon sx={{ fontSize: 40 }} />,
+    color: '#A78BFA',
   },
   {
-    title: 'Chat',
+    title: 'Discover & Connect',
     description:
-      'Message your accountability partners directly. Stay connected and keep each other on track.',
-    icon: <ChatIcon sx={{ fontSize: 40 }} />,
-    color: '#0891B2',
+      'Find accountability partners matched by goal compatibility. Browse nearby study spots, co-working spaces, and events. Save anyone or anything to your Diary.',
+    icon: <ExploreIcon sx={{ fontSize: 40 }} />,
+    color: '#EC4899',
   },
   {
-    title: 'Community Feed',
+    title: 'Your Diary',
     description:
-      'Share updates, celebrate wins, and cheer on others. Your progress inspires the whole community.',
-    icon: <DynamicFeedIcon sx={{ fontSize: 40 }} />,
-    color: '#DC2626',
+      'A private collection of everything you save — people, places, events, and personal entries. Export your journey as a plain-text journal anytime.',
+    icon: <BookIcon sx={{ fontSize: 40 }} />,
+    color: '#6366F1',
   },
   {
-    title: 'Coaching Marketplace',
+    title: 'PP & Marketplace',
     description:
-      'Book sessions with expert coaches who specialize in your goals. Get personalized guidance when you need it.',
-    icon: <SchoolIcon sx={{ fontSize: 40 }} />,
-    color: '#7C3AED',
-  },
-  {
-    title: 'Praxis Marketplace',
-    description:
-      'Spend the points you earn on boosts, badges, and premium perks. Achievement has its rewards.',
+      'Earn Praxis Points through streaks, check-ins, and goal completions. Spend them on boosts, extra goal slots, coaching sessions, and more in the Marketplace.',
     icon: <StorefrontIcon sx={{ fontSize: 40 }} />,
     color: '#B45309',
   },
@@ -122,7 +114,6 @@ const SiteTour: React.FC<SiteTourProps> = ({ open, onClose }) => {
       }}
     >
       <DialogContent sx={{ pt: 5, pb: 4, px: 4, textAlign: 'center', position: 'relative' }}>
-        {/* Close button */}
         <IconButton
           onClick={handleClose}
           size="small"
@@ -132,7 +123,6 @@ const SiteTour: React.FC<SiteTourProps> = ({ open, onClose }) => {
           <CloseIcon fontSize="small" />
         </IconButton>
 
-        {/* Icon circle */}
         <Box
           sx={{
             width: 80,
@@ -150,7 +140,6 @@ const SiteTour: React.FC<SiteTourProps> = ({ open, onClose }) => {
           {current.icon}
         </Box>
 
-        {/* Step dots */}
         <Stack direction="row" spacing={0.75} justifyContent="center" sx={{ mb: 2.5 }}>
           {TOUR_STEPS.map((_, i) => (
             <Box
@@ -168,17 +157,14 @@ const SiteTour: React.FC<SiteTourProps> = ({ open, onClose }) => {
           ))}
         </Stack>
 
-        {/* Title */}
         <Typography variant="h6" fontWeight={800} gutterBottom>
           {current.title}
         </Typography>
 
-        {/* Description */}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
           {current.description}
         </Typography>
 
-        {/* Actions */}
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Button
             variant="text"
@@ -200,7 +186,7 @@ const SiteTour: React.FC<SiteTourProps> = ({ open, onClose }) => {
               px: 3,
             }}
           >
-            {isLast ? 'Done ✓' : 'Next →'}
+            {isLast ? 'Get Started' : 'Next'}
           </Button>
         </Stack>
       </DialogContent>
