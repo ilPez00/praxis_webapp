@@ -16,6 +16,7 @@ import FlagIcon from '@mui/icons-material/Flag';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import HistoryIcon from '@mui/icons-material/History';
 import GlassCard from '../../components/common/GlassCard';
+import GoalActivityGraph from './GoalActivityGraph';
 import { GoalNode as FrontendGoalNode, DOMAIN_COLORS, Domain } from '../../types/goal';
 import { DOMAIN_TRACKER_MAP, TRACKER_TYPES } from '../trackers/trackerTypes';
 import { supabase } from '../../lib/supabase';
@@ -895,6 +896,16 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
           focused={focusedTrackerType === dt.config.id}
         />
       ))}
+
+      {/* ── Activity graph (git-style timeline) ── */}
+      <GlassCard sx={{ mt: 2, p: 2 }}>
+        <GoalActivityGraph
+          goalId={node.id}
+          goalName={node.title}
+          domain={domain}
+          userId={userId}
+        />
+      </GlassCard>
     </Box>
   );
 };
