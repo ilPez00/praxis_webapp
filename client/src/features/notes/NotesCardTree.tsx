@@ -215,7 +215,7 @@ const GoalPill: React.FC<{
           </Typography>
           {depth === 0 && (
             <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {hasChildren ? `${node.children.length} Sub-goals` : 'Main Goal'}
+              {hasChildren ? `${node.children.length} Chapters` : 'Main Topic (Goal)'}
             </Typography>
           )}
         </Box>
@@ -229,14 +229,14 @@ const GoalPill: React.FC<{
             '.MuiBox-root:hover &': { opacity: 1 }
           }}>
             {onEdit && (
-              <Tooltip title="Edit Goal">
+              <Tooltip title="Edit Goal Details">
                 <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(node); }} sx={{ color: 'text.secondary', p: 0.5 }}>
                   <EditIcon sx={{ fontSize: '1rem' }} />
                 </IconButton>
               </Tooltip>
             )}
             {onAddSubgoal && isActive && (
-              <Tooltip title="Add Sub-goal">
+              <Tooltip title="Add Chapter (Sub-goal)">
                 <IconButton size="small" onClick={(e) => { e.stopPropagation(); onAddSubgoal(node.id); }} sx={{ color: 'text.secondary', p: 0.5 }}>
                   <AddIcon sx={{ fontSize: '1.1rem' }} />
                 </IconButton>
@@ -324,7 +324,7 @@ const GoalPill: React.FC<{
                 borderBottomLeftRadius: '12px',
               }} />
               <AddPill
-                label="Add Sub-goal"
+                label="New Chapter (Sub-goal)"
                 color={domainColor}
                 onClick={() => onAddSubgoal(node.id)}
                 size="sub"
@@ -434,7 +434,7 @@ const NotesCardTree: React.FC<NotesCardTreeProps> = ({
                     borderBottomLeftRadius: '12px',
                   }} />
                   <AddPill
-                    label="Add Goal"
+                    label="New Topic (Goal)"
                     color={color}
                     onClick={() => onAddGoalInDomain(domain)}
                     size="domain"
