@@ -260,7 +260,63 @@ export class AxiomScanService {
    * @param useLLM - Always true (deprecated parameter kept for compatibility)
    */
   public static async generateDailyBrief(userId: string, userName: string, userCity: string, useLLM: boolean = true) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+    
+    // Check if user is premium
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_premium, praxis_points')
+      .eq('id', userId)
+      .single();
+    
+    const isPremium = profile?.is_premium || false;
+    const userPoints = profile?.praxis_points || 0;
+    
+    // Free users: Only Mon(1), Wed(3), Fri(5)
+    const freeDays = [1, 3, 5];
+    const isFreeDay = freeDays.includes(dayOfWeek);
+    
+    // Check if brief already exists for today
+    const { data: existingBrief } = await supabase
+      .from('axiom_daily_briefs')
+      .select('brief')
+      .eq('user_id', userId)
+      .eq('date', todayStr)
+      .maybeSingle();
+    
+    if (existingBrief) {
+      logger.info(`[AxiomScan] Brief already exists for ${userId} on ${todayStr}`);
+      return;
+    }
+    
+    // Free user on non-free day: Skip generation (they can pay 500 PP in frontend)
+    if (!isPremium && !isFreeDay) {
+      logger.info(`[AxiomScan] Free user ${userId} on non-free day (${dayOfWeek}) - skipping auto-generation`);
+      
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const nextFreeDay = dayOfWeek === 0 ? 'Monday' : dayOfWeek === 2 ? 'Wednesday' : dayOfWeek === 4 ? 'Friday' : dayOfWeek === 6 ? 'Monday' : 'Wednesday';
+      
+      // Create a placeholder brief indicating they can purchase
+      const placeholderBrief = {
+        message: `🔒 **Daily Brief Locked**\n\nHey ${userName}! As a free member, you get Axiom wisdom on **Mondays, Wednesdays, and Fridays**.\n\n**Next free brief:** ${nextFreeDay}\n\nWant today's brief? **500 PP** unlocks it instantly! ✨`,
+        isLocked: true,
+        unlockCost: 500,
+        freeDays: ['Monday', 'Wednesday', 'Friday'],
+        nextFreeDay,
+        source: 'locked' as const,
+      };
+      
+      await supabase.from('axiom_daily_briefs').upsert({
+        user_id: userId,
+        date: todayStr,
+        brief: placeholderBrief,
+        generated_at: new Date().toISOString(),
+      });
+      
+      return;
+    }
 
     // --- Phase 1: Calculate engagement metrics ---
     let metrics = await engagementMetricService.getCachedMetrics(userId);
@@ -277,7 +333,7 @@ export class AxiomScanService {
       supabase.from('trackers').select('id,type,goal').eq('user_id', userId),
       supabase.from('journal_entries').select('note,mood,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
       supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
-      supabase.from('events').select('id, title, event_date, city, description').gte('event_date', today).limit(10),
+      supabase.from('events').select('id, title, event_date, city, description').gte('event_date', todayStr).limit(10),
       supabase.from('places').select('id, name, city, tags, description').limit(10),
       supabase.from('diary_entries').select('title,content,entry_type,mood,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
       supabase.from('notebook_entries').select('title,content,mood,occurred_at,goal_id').eq('user_id', userId).eq('entry_type', 'note').order('occurred_at', { ascending: false }).limit(10),

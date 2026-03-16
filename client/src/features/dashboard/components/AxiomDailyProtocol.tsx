@@ -71,6 +71,9 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
   const navigate = useNavigate();
   const [data, setData] = useState<DailyRecommendation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unlocking, setUnlocking] = useState(false);
+  const [userPoints, setUserPoints] = useState<number>(0);
+  const [isPremium, setIsPremium] = useState(false);
 
   const fetchProtocol = async () => {
     setLoading(true);
@@ -80,14 +83,56 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
         .select('brief')
         .eq('user_id', userId)
         .maybeSingle();
-      
+
       if (row?.brief) {
         setData(row.brief as any);
+      }
+      
+      // Fetch user points and premium status
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('praxis_points, is_premium')
+        .eq('id', userId)
+        .single();
+      
+      if (profile) {
+        setUserPoints(profile.praxis_points || 0);
+        setIsPremium(profile.is_premium || false);
       }
     } catch (err) {
       console.error('Failed to fetch Axiom protocol:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUnlock = async () => {
+    if (!confirm(`Unlock today's Axiom brief for 500 PP?`)) return;
+    
+    setUnlocking(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API_URL}/axiom-unlock/unlock-daily`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+      
+      const result = await res.json();
+      
+      if (res.ok) {
+        setData(result.brief);
+        setUserPoints(result.newBalance);
+        toast.success('Daily brief unlocked! ✨');
+      } else {
+        toast.error(result.message || 'Failed to unlock');
+      }
+    } catch (err: any) {
+      toast.error('Failed to unlock: ' + err.message);
+    } finally {
+      setUnlocking(false);
     }
   };
 
@@ -105,6 +150,65 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
   }
 
   if (!data) return null;
+
+  // Show locked state for free users on non-free days
+  if ((data as any).isLocked) {
+    return (
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{
+          p: 3,
+          borderRadius: 4,
+          background: 'linear-gradient(135deg, rgba(75,85,99,0.15) 0%, rgba(55,65,81,0.1) 100%)',
+          border: '2px dashed rgba(107,114,128,0.4)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+          textAlign: 'center',
+        }}>
+          <Box sx={{ fontSize: '3rem', mb: 1 }}>🔒</Box>
+          <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>Daily Brief Locked</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 400, mx: 'auto' }}>
+            Free members get Axiom wisdom on **Mondays, Wednesdays, and Fridays**.
+          </Typography>
+          <Typography variant="caption" sx={{ color: '#9CA3AF', display: 'block', mb: 2 }}>
+            Next free brief: **{(data as any).nextFreeDay}**
+          </Typography>
+          <Box sx={{
+            p: 2,
+            bgcolor: 'rgba(139,92,246,0.1)',
+            borderRadius: 2,
+            border: '1px solid rgba(139,92,246,0.3)',
+            mb: 2,
+          }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: '#A78BFA', mb: 0.5 }}>
+              ✨ Unlock Today's Brief
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Get full Axiom coaching now for **500 PP**
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            onClick={handleUnlock}
+            disabled={unlocking || userPoints < 500 || isPremium}
+            startIcon={unlocking ? <CircularProgress size={16} /> : null}
+            sx={{
+              bgcolor: userPoints >= 500 && !isPremium ? 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)' : 'rgba(107,114,128,0.3)',
+              color: userPoints >= 500 && !isPremium ? '#fff' : '#6B7280',
+              fontWeight: 700,
+              px: 3,
+              py: 1,
+            }}
+          >
+            {isPremium ? 'Premium Active' : unlocking ? 'Unlocking...' : `Unlock for 500 PP (${userPoints} available)`}
+          </Button>
+          {userPoints < 500 && !isPremium && (
+            <Typography variant="caption" sx={{ color: '#EF4444', display: 'block', mt: 1 }}>
+              You need {500 - userPoints} more PP
+            </Typography>
+          )}
+        </Box>
+      </Box>
+    );
+  }
 
   const SectionHeader: React.FC<{ icon: React.ReactNode; label: string; color?: string }> = ({ icon, label, color = 'primary.main' }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
