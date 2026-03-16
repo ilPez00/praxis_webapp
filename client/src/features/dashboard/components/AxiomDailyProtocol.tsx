@@ -12,9 +12,30 @@ import {
   IconButton,
   Tooltip,
   Avatar,
+  Chip,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import PeopleIcon from '@mui/icons-material/People';
+import EventIcon from '@mui/icons-material/Event';
+import PlaceIcon from '@mui/icons-material/LocationOn';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+
+interface GoalStrategyItem {
+  goal: string;
+  currentProgress: string;
+  bottleneck: string;
+  nextMilestone: string;
+  tacticalAdvice: string;
+  weeklyTarget: string;
+}
+
+interface NetworkLeverage {
+  outreach: string;
+  askFor: string;
+  offer: string;
+  communityAction: string;
+}
 
 interface DailyRecommendation {
   message: string;
@@ -23,8 +44,28 @@ interface DailyRecommendation {
   place: { id: string; name: string; reason: string };
   challenge: { type: 'bet' | 'duel'; target: string; terms: string };
   resources: Array<{ goal: string; suggestion: string; details: string }>;
-  routine: Array<{ time: string; task: string; alignment: string }>;
+  routine: Array<{ time: string; task: string; alignment: string; category?: string }>;
+  goalStrategy?: GoalStrategyItem[];
+  networkLeverage?: NetworkLeverage;
+  schedule?: {
+    focusTheme: string;
+    energyCurve: string;
+    timeSlotCount: number;
+    highPrioritySlots: number;
+  };
+  source?: 'llm' | 'algorithm';
 }
+
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string; emoji: string }> = {
+  deep_work:  { bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.25)', text: '#A78BFA', emoji: '🧠' },
+  admin:      { bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.25)', text: '#9CA3AF', emoji: '📋' },
+  rest:       { bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)', text: '#60A5FA', emoji: '😴' },
+  exercise:   { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)', text: '#F87171', emoji: '💪' },
+  social:     { bg: 'rgba(236,72,153,0.08)', border: 'rgba(236,72,153,0.25)', text: '#F472B6', emoji: '👥' },
+  learning:   { bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.25)', text: '#34D399', emoji: '📚' },
+  planning:   { bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', text: '#FBBF24', emoji: '🎯' },
+  reflection: { bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.25)', text: '#C084FC', emoji: '🪷' },
+};
 
 const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
   const navigate = useNavigate();
@@ -271,6 +312,96 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
               </Stack>
             </Box>
           </Grid>
+
+          {/* Goal Strategy Section */}
+          {data?.goalStrategy && data.goalStrategy.length > 0 && (
+            <Grid size={{ xs: 12 }}>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 2 }}>
+                  🎯 GOAL STRATEGY
+                </Typography>
+                <Stack spacing={1.5}>
+                  {data.goalStrategy.map((item, i) => (
+                    <Box
+                      key={i}
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        bgcolor: 'rgba(167,139,250,0.06)',
+                        border: '1px solid rgba(167,139,250,0.2)'
+                      }}
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                        {item.goal} ({item.currentProgress})
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                        <strong>Bottleneck:</strong> {item.bottleneck}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                        <strong>Next Milestone:</strong> {item.nextMilestone}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        <strong>Advice:</strong> {item.tacticalAdvice}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
+            </Grid>
+          )}
+
+          {/* Network Leverage Section */}
+          {data?.networkLeverage && (
+            <Grid size={{ xs: 12 }}>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="caption" sx={{ color: '#8B5CF6', fontWeight: 800, display: 'block', mb: 2 }}>
+                  🤝 NETWORK LEVERAGE
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 1 }}>
+                        📤 OUTREACH
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {data.networkLeverage.outreach}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 1 }}>
+                        🙏 ASK FOR
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {data.networkLeverage.askFor}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 1 }}>
+                        🎁 OFFER
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {data.networkLeverage.offer}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                      <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 1 }}>
+                        🌟 COMMUNITY
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {data.networkLeverage.communityAction}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+            </Grid>
+          )}
 
           {/* Competitive Challenge - Expanded */}
           <Grid size={{ xs: 12, md: 5 }}>
