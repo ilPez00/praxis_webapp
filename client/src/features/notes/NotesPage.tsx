@@ -680,7 +680,7 @@ const NotesPage: React.FC = () => {
                 <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 450, mx: 'auto', mb: 4 }}>
                   Select a topic from the left sidebar to view its chapters, track daily progress, and write reflections.
                 </Typography>
-              </Stack>
+              </Box>
             )}
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', my: 6 }} />
