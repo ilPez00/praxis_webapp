@@ -51,26 +51,8 @@ async function generateMetricBasededBrief(metrics: any, userName: string): Promi
     burnout_risk: `${userName}, you have been giving a lot. ${trackerTrends?.some((t: any) => t.direction === 'declining') ? `Some things feel harder lately - what would support look like?` : 'What would feel restorative today?'}`,
   };
 
-  // Full 17-slot hourly routine (06:00-22:00)
-  const routine = [
-    { time: '06:00', task: 'Morning intention setting and day review', alignment: 'Starting with clarity sets the tone', category: 'planning' },
-    { time: '07:00', task: 'Movement routine — walk, stretch, or workout', alignment: 'Exercise boosts energy and mood', category: 'exercise' },
-    { time: '08:00', task: 'Deep work on your #1 goal', alignment: 'Peak morning focus — your best energy goes here', category: 'deep_work' },
-    { time: '09:00', task: 'Continue focused goal work', alignment: 'Sustained focus compounds results', category: 'deep_work' },
-    { time: '10:00', task: 'Second priority goal work', alignment: 'Diversify effort across goals', category: 'deep_work' },
-    { time: '11:00', task: 'Skill building or learning session', alignment: 'Continuous learning compounds daily', category: 'learning' },
-    { time: '12:00', task: 'Lunch break and mental reset', alignment: 'Your brain consolidates during rest', category: 'rest' },
-    { time: '13:00', task: 'Light review or journaling', alignment: 'Midday reflection anchors the morning', category: 'rest' },
-    { time: '14:00', task: 'Admin — email, messages, logistics', alignment: 'Afternoon dip suits lower-cognitive tasks', category: 'admin' },
-    { time: '15:00', task: 'Creative or exploratory work', alignment: 'Relaxed attention opens creativity', category: 'learning' },
-    { time: '16:00', task: 'Deep work block #2', alignment: 'Second wind — push one goal forward', category: 'deep_work' },
-    { time: '17:00', task: 'Wrap up deep work and review progress', alignment: 'Track what moved today', category: 'deep_work' },
-    { time: '18:00', task: 'Connect with an accountability partner', alignment: 'Social support multiplies commitment', category: 'social' },
-    { time: '19:00', task: 'Personal project or hobby time', alignment: 'Balance fuels sustainable growth', category: 'rest' },
-    { time: '20:00', task: 'Evening goal session', alignment: 'One more push on what matters', category: 'deep_work' },
-    { time: '21:00', task: 'Evening review — what went well? what did you learn?', alignment: 'Reflection turns experience into wisdom', category: 'reflection' },
-    { time: '22:00', task: 'Wind down — prepare for restful sleep', alignment: 'Sleep consolidates today\'s gains', category: 'rest' },
-  ];
+  // Full 17-slot hourly routine (06:00-22:00) — concise tasks
+  const routine = generateRoutineFromArchetype(archetype, motivationStyle);
 
   // Challenge suggestions based on risk factors
   // TONE: Inviting, not demanding - frame as opportunities
@@ -402,18 +384,18 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
   "routine": [
     {
       "time": "06:00",
-      "task": "Specific task tied to their goals. Reference goal BY NAME. Be concrete.",
-      "alignment": "Why this matters for THEM specifically.",
+      "task": "Set intentions — review 'Goal Name' targets",
+      "alignment": "Clarity before action = better focus",
       "category": "planning"
     },
     {
       "time": "07:00",
-      "task": "...",
-      "alignment": "...",
+      "task": "30min walk or stretch routine",
+      "alignment": "Movement primes the brain for work",
       "category": "exercise"
     }
   ],
-  "ROUTINE_NOTE": "Generate EXACTLY 17 entries from 06:00 to 22:00 (one per hour). Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection. Mix 4-6 deep_work, 2-3 rest, 1-2 exercise, 1-2 admin, 1-2 learning, 1 social, 1 planning, 1 reflection.",
+  "ROUTINE_NOTE": "Generate EXACTLY 17 entries from 06:00 to 22:00 (one per hour). TASKS: max 12 words, specific + concise. ALIGNMENT: max 10 words. Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection.",
   
   "challenge": {
     "type": "bet",
@@ -464,6 +446,8 @@ RULES:
    - One entry per hour: "06:00", "07:00", ..., "22:00"
    - Reference their actual goals BY NAME in tasks
    - Each entry needs: time, task, alignment, category
+   - KEEP EACH TASK UNDER 12 WORDS. Be specific but concise. Example: "Deep work: 'Learn Piano' — practice scales 25min"
+   - KEEP EACH ALIGNMENT UNDER 10 WORDS. Example: "Morning focus = peak retention for music"
    - Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection
    - Spread: 4-6 deep_work, 2-3 rest, 1-2 exercise, 1-2 admin, 1 social, 1 planning/reflection
 
@@ -531,7 +515,7 @@ RULES:
     }
 
     // --- Phase 4: Algorithmic picks for match/event/place ---
-    // Pick best match
+    // Pick best match — ALWAYS suggest someone
     let match = null;
     if (matchesRes.data?.[0]) {
       match = {
@@ -539,6 +523,27 @@ RULES:
         name: matchesRes.data[0].name,
         reason: 'Aligned goals in your active domains',
       };
+    } else {
+      // Fallback: pick a random active user as a match suggestion
+      try {
+        const { data: fallbackUsers } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .neq('id', userId)
+          .not('name', 'is', null)
+          .order('last_activity_date', { ascending: false, nullsFirst: false })
+          .limit(10);
+        if (fallbackUsers && fallbackUsers.length > 0) {
+          const pick = fallbackUsers[Math.floor(Math.random() * fallbackUsers.length)];
+          match = {
+            id: pick.id,
+            name: pick.name,
+            reason: 'Active community member — say hello!',
+          };
+        }
+      } catch (err) {
+        logger.warn('[AxiomScan] Fallback match query failed (non-fatal):', err);
+      }
     }
 
     // Pick best event
@@ -672,27 +677,25 @@ RULES:
 
 // Helper functions for fallback generation
 function generateRoutineFromArchetype(archetype: string, motivationStyle: string): any[] {
-  // Full 17-slot hourly routine (06:00-22:00)
-  const hourlySlots = [
-    { time: '06:00', task: 'Morning intention setting and day review', alignment: 'Starting with clarity sets the tone', category: 'planning' },
-    { time: '07:00', task: 'Movement routine — walk, stretch, or workout', alignment: 'Exercise boosts energy and mood', category: 'exercise' },
-    { time: '08:00', task: 'Deep work on your #1 goal', alignment: 'Peak morning focus — your best energy goes here', category: 'deep_work' },
-    { time: '09:00', task: 'Continue focused goal work', alignment: 'Sustained focus compounds results', category: 'deep_work' },
-    { time: '10:00', task: 'Second priority goal work', alignment: 'Diversify effort across goals', category: 'deep_work' },
-    { time: '11:00', task: 'Skill building or learning session', alignment: 'Continuous learning compounds daily', category: 'learning' },
-    { time: '12:00', task: 'Lunch break and mental reset', alignment: 'Your brain consolidates during rest', category: 'rest' },
-    { time: '13:00', task: 'Light review or journaling', alignment: 'Midday reflection anchors the morning', category: 'rest' },
-    { time: '14:00', task: 'Admin — email, messages, logistics', alignment: 'Afternoon dip suits lower-cognitive tasks', category: 'admin' },
-    { time: '15:00', task: 'Creative or exploratory work', alignment: 'Relaxed attention opens creativity', category: 'learning' },
-    { time: '16:00', task: 'Deep work block #2', alignment: 'Second wind — push one goal forward', category: 'deep_work' },
-    { time: '17:00', task: 'Wrap up deep work and review progress', alignment: 'Track what moved today', category: 'deep_work' },
-    { time: '18:00', task: 'Connect with an accountability partner', alignment: 'Social support multiplies commitment', category: 'social' },
-    { time: '19:00', task: 'Personal project or hobby time', alignment: 'Balance fuels sustainable growth', category: 'rest' },
-    { time: '20:00', task: 'Evening goal session', alignment: 'One more push on what matters', category: 'deep_work' },
-    { time: '21:00', task: 'Evening review — what went well? what did you learn?', alignment: 'Reflection turns experience into wisdom', category: 'reflection' },
-    { time: '22:00', task: 'Wind down — prepare for restful sleep', alignment: 'Sleep consolidates today\'s gains', category: 'rest' },
+  return [
+    { time: '06:00', task: 'Set intentions — review today\'s targets', alignment: 'Clarity before action', category: 'planning' },
+    { time: '07:00', task: '30min movement — walk, stretch, or workout', alignment: 'Movement primes the brain', category: 'exercise' },
+    { time: '08:00', task: 'Deep work on #1 goal (25min sprint)', alignment: 'Peak focus window', category: 'deep_work' },
+    { time: '09:00', task: 'Continue #1 goal — push past resistance', alignment: 'Sustained effort compounds', category: 'deep_work' },
+    { time: '10:00', task: 'Switch to #2 goal — fresh perspective', alignment: 'Diversify daily effort', category: 'deep_work' },
+    { time: '11:00', task: 'Learn something new — read or practice', alignment: 'Daily learning adds up', category: 'learning' },
+    { time: '12:00', task: 'Lunch + mental reset', alignment: 'Rest consolidates morning gains', category: 'rest' },
+    { time: '13:00', task: 'Journal or light review', alignment: 'Midday reflection anchors progress', category: 'rest' },
+    { time: '14:00', task: 'Admin — email, messages, logistics', alignment: 'Low-energy tasks fit afternoon dip', category: 'admin' },
+    { time: '15:00', task: 'Creative or exploratory work', alignment: 'Relaxed attention opens ideas', category: 'learning' },
+    { time: '16:00', task: 'Deep work block #2 — #1 or #3 goal', alignment: 'Second wind energy spike', category: 'deep_work' },
+    { time: '17:00', task: 'Wrap up + log progress in trackers', alignment: 'Track what moved today', category: 'deep_work' },
+    { time: '18:00', task: 'Connect with accountability partner', alignment: 'Social support multiplies grit', category: 'social' },
+    { time: '19:00', task: 'Personal project or hobby time', alignment: 'Balance fuels sustainability', category: 'rest' },
+    { time: '20:00', task: 'Evening goal sprint — one last push', alignment: 'End the day with momentum', category: 'deep_work' },
+    { time: '21:00', task: 'Evening review — wins + lessons', alignment: 'Reflection = compound growth', category: 'reflection' },
+    { time: '22:00', task: 'Wind down — prep for restful sleep', alignment: 'Sleep consolidates gains', category: 'rest' },
   ];
-  return hourlySlots;
 }
 
 function generateChallengeFromRiskFactors(riskFactors: string[]): any {

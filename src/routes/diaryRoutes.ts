@@ -384,7 +384,7 @@ router.get('/export/plain', authenticateToken, catchAsync(async (req: Request, r
   const userName = profile?.name || 'User';
 
   // Fetch all data sources in parallel
-  const [journalsRes, nodeJournalsRes, checkinsRes, goalsRes, betsRes, achievementsRes] = await Promise.all([
+  const [journalsRes, nodeJournalsRes, checkinsRes, goalsRes, betsRes, achievementsRes, trackersRes] = await Promise.all([
     supabase.from('journal_entries').select('note, mood, created_at')
       .eq('user_id', userId).order('created_at', { ascending: true }),
     supabase.from('node_journal_entries').select('node_id, note, mood, logged_at')
@@ -396,6 +396,8 @@ router.get('/export/plain', authenticateToken, catchAsync(async (req: Request, r
       .eq('user_id', userId).order('created_at', { ascending: true }),
     supabase.from('achievements').select('title, domain, created_at')
       .eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('trackers').select('id, type, goal')
+      .eq('user_id', userId),
   ]);
 
   const journals = journalsRes.data || [];
@@ -404,6 +406,20 @@ router.get('/export/plain', authenticateToken, catchAsync(async (req: Request, r
   const nodes: any[] = goalsRes.data?.nodes || [];
   const bets = betsRes.data || [];
   const achievements = achievementsRes.data || [];
+  const trackers = trackersRes.data || [];
+
+  // Fetch tracker entries if user has trackers
+  let trackerEntries: any[] = [];
+  if (trackers.length > 0) {
+    const trackerIds = trackers.map((t: any) => t.id);
+    const { data } = await supabase.from('tracker_entries')
+      .select('tracker_id, data, logged_at')
+      .in('tracker_id', trackerIds)
+      .order('logged_at', { ascending: true });
+    trackerEntries = data || [];
+  }
+  const trackerTypeMap: Record<string, string> = {};
+  for (const t of trackers) trackerTypeMap[t.id] = t.type;
 
   // Build node name map
   const nodeNameMap: Record<string, string> = {};
@@ -443,6 +459,23 @@ router.get('/export/plain', authenticateToken, catchAsync(async (req: Request, r
       date: e.created_at,
       text: `🏆 Achievement: "${e.title}" (${e.domain})`,
     });
+  }
+  // Tracker entries — format by type
+  for (const e of trackerEntries) {
+    const tType = trackerTypeMap[e.tracker_id] || 'log';
+    const d = e.data || {};
+    let text = `[Tracker: ${tType}] `;
+    if (tType === 'lift') text += `${d.exercise || '?'} ${d.sets}x${d.reps} @ ${d.weight}kg`;
+    else if (tType === 'cardio') text += `${d.activity || '?'} ${d.duration || '?'}min${d.distance ? ' ' + d.distance + 'km' : ''}`;
+    else if (tType === 'meal') text += `${d.food || '?'}${d.calories ? ' ' + d.calories + ' kcal' : ''}${d.protein ? ' P:' + d.protein + 'g' : ''}`;
+    else if (tType === 'steps') text += `${d.steps || 0} steps (goal: ${d.goal || '?'})`;
+    else if (tType === 'sleep') text += `${d.hours || '?'}h sleep${d.quality ? ' (' + d.quality + ')' : ''}`;
+    else if (tType === 'study') text += `${d.subject || '?'} ${d.duration || '?'}min`;
+    else if (tType === 'books') text += `"${d.title || '?'}" ${d.pages || '?'} pages`;
+    else if (tType === 'music') text += `${d.instrument || '?'} ${d.duration || '?'}min`;
+    else if (tType === 'expenses') text += `${d.description || '?'} ${d.amount || '?'} ${d.currency || ''}`;
+    else text += JSON.stringify(d);
+    timeline.push({ date: e.logged_at, text: text.trim() });
   }
 
   // Sort chronologically

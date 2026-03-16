@@ -401,11 +401,11 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
                     </Typography>
                     <Box sx={{ fontSize: '1rem' }}>{item.icon}</Box>
                   </Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5, lineHeight: 1.2 }}>
-                    {item.title || 'Scanning...'}
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5, lineHeight: 1.2, opacity: item.title ? 1 : 0.4 }}>
+                    {item.title || 'None available'}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4, mt: 'auto' }}>
-                    {item.reason || 'Identifying best fit'}
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4, mt: 'auto', opacity: item.title ? 1 : 0.4 }}>
+                    {item.reason || 'Check back tomorrow'}
                   </Typography>
                 </Box>
               </Grid>

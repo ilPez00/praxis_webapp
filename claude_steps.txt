@@ -389,3 +389,15 @@ Progress:
 - Files deleted: src/services/EmbeddingService.ts
 - Verification: 0 source TypeScript errors (both frontend and backend)
 - Sign: Claude
+
+Session 68: Axiom Brief Fixes + Diary Export Tracker Data
+- Fixed Axiom matching to ALWAYS suggest someone — fallback queries active profiles when match_users_by_goals() RPC returns empty
+- Tightened LLM prompt: task descriptions max 12 words, alignment max 10 words (concise hourly schedule)
+- Made algorithmic fallback routine concise and consistent with LLM style
+- Frontend: replaced "Scanning..." fallback text with "None available" (dimmed) for empty match/event/place
+- Added tracker entries to GET /diary/export/plain — lifts, cardio, meals, steps, sleep, study, books, music, expenses all formatted
+- Per-goal strategy already present in backend (goalStrategy) + frontend renders it; ensured algorithmic fallback always generates it
+- Files modified: src/services/AxiomScanService.ts, client/src/features/dashboard/components/AxiomMorningBrief.tsx, src/routes/diaryRoutes.ts
+- Verification: 0 TypeScript errors (both backend + frontend)
+- Next: Run SQL migrations in Supabase, test Axiom brief generation, consider splitting ChatRoom.tsx
+- Sign: Claude
