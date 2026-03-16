@@ -11,6 +11,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import SchoolIcon from '@mui/icons-material/School';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import PublicIcon from '@mui/icons-material/Public';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
@@ -26,6 +27,7 @@ import ChallengesTab from './tabs/ChallengesTab';
 import ServicesTab from './tabs/ServicesTab';
 import CoachesTab from './tabs/CoachesTab';
 import AxiomTab from './tabs/AxiomTab';
+import PlacesImportTab from './tabs/PlacesImportTab';
 
 // ── Tab panel ─────────────────────────────────────────────────────────────────
 
@@ -202,6 +204,7 @@ const AdminPage: React.FC = () => {
         <Tab icon={<HandshakeIcon fontSize="small" />} iconPosition="start" label="Services" />
         <Tab icon={<SchoolIcon fontSize="small" />} iconPosition="start" label="Coaches" />
         <Tab icon={<SmartToyIcon fontSize="small" />} iconPosition="start" label="Axiom" />
+        <Tab icon={<PublicIcon fontSize="small" />} iconPosition="start" label="Places" />
       </Tabs>
 
       <TabPanel value={tab} index={0}>
@@ -240,6 +243,10 @@ const AdminPage: React.FC = () => {
 
       <TabPanel value={tab} index={7}>
         <AxiomTab users={users} />
+      </TabPanel>
+
+      <TabPanel value={tab} index={8}>
+        <PlacesImportTab />
       </TabPanel>
     </Container>
   );
