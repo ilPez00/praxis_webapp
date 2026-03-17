@@ -630,10 +630,6 @@ const AICoachPage: React.FC = () => {
           </Box>
         ) : report ? (
           <>
-            <Box sx={{ p: 3, borderRadius: 3, background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(139,92,246,0.06) 100%)', border: '1px solid rgba(245,158,11,0.2)' }}>
-              <SectionHeader icon={<Box sx={{ fontSize: '1.1rem' }}>🥋</Box>} label="Axiom's Take" />
-              <Typography variant="body1" sx={{ lineHeight: 1.9, color: 'text.primary' }}>{report.motivation}</Typography>
-            </Box>
             <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <SectionHeader icon={<FlagIcon />} label="Goal Strategy" color="#10B981" />
               <Stack spacing={1.5}>
