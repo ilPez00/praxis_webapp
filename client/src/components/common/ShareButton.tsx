@@ -4,6 +4,7 @@ import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import PersonIcon from '@mui/icons-material/Person';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import TagIcon from '@mui/icons-material/LocalOffer';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -338,273 +339,294 @@ const ShareButton: React.FC<ShareButtonProps> = ({
           handleShare();
         }}
         title={tooltip}
-        sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+        sx={{ 
+          color: 'text.secondary', 
+          '&:hover': { 
+            color: 'primary.main',
+            bgcolor: 'rgba(139,92,246,0.1)',
+          } 
+        }}
       >
         <NoteAddIcon fontSize="small" />
       </IconButton>
 
       <Dialog
-        open={shareDialogOpen} 
-        onClose={() => setShareDialogOpen(false)} 
-        maxWidth="md" 
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: {
-            bgcolor: 'rgba(30,30,40,0.95)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            bgcolor: 'linear-gradient(145deg, rgba(30,30,40,0.98) 0%, rgba(20,20,30,0.98) 100%)',
+            border: '1px solid rgba(139,92,246,0.2)',
+            borderRadius: 3,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 40px rgba(139,92,246,0.1)',
           }
         }}
       >
-        <DialogTitle sx={{ fontWeight: 800, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <NoteAddIcon sx={{ color: '#A78BFA' }} />
-            Share to Notebook
+        <DialogTitle sx={{ 
+          fontWeight: 800, 
+          py: 2.5, 
+          px: 3,
+          borderBottom: '1px solid rgba(139,92,246,0.15)',
+          bgcolor: 'rgba(139,92,246,0.03)',
+          borderRadius: '12px 12px 0 0',
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ 
+              width: 36, 
+              height: 36, 
+              borderRadius: '10px', 
+              bgcolor: 'rgba(139,92,246,0.15)',
+              border: '1px solid rgba(139,92,246,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#A78BFA',
+            }}>
+              <NoteAddIcon />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
+                Share to Notebook
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: -0.5 }}>
+                Add your thoughts and context
+              </Typography>
+            </Box>
           </Box>
         </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          {/* Original Content Preview */}
-          <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.08)' }}>
-            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
-              SHARING FROM {sourceTable.replace('_', ' ').toUpperCase()}
-            </Typography>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#fff' }}>
+        <DialogContent sx={{ pt: 3, px: 3, pb: 2 }}>
+          {/* Original Content Preview - Compact */}
+          <Box sx={{ 
+            mb: 2.5, 
+            p: 2, 
+            bgcolor: 'rgba(255,255,255,0.02)', 
+            borderRadius: 2, 
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: '#fff', fontSize: '0.9rem' }}>
               {title}
             </Typography>
             {content && (
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                {content.slice(0, 300)}{content.length > 300 ? '...' : ''}
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', lineHeight: 1.5 }}>
+                {content.slice(0, 150)}{content.length > 150 ? '...' : ''}
               </Typography>
             )}
           </Box>
 
-          {/* Reply/Comment - This is the main action for sharing to notebook */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 1 }}>
-              📝 ADD YOUR NOTE
-            </Typography>
+          {/* Your Note - Main Input */}
+          <Box sx={{ mb: 2.5 }}>
             <TextField
               fullWidth
               multiline
-              rows={4}
-              placeholder="What are your thoughts on this? Add a note, reply, or reflection..."
+              rows={3}
+              placeholder="✨ What are your thoughts on this?"
               value={reply}
               onChange={(e) => setReply(e.target.value)}
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  bgcolor: 'rgba(167,139,250,0.05)',
-                  border: '1px solid rgba(167,139,250,0.2)',
+                  bgcolor: 'rgba(139,92,246,0.03)',
+                  border: '1px solid rgba(139,92,246,0.2)',
+                  borderRadius: 2,
                   '& fieldset': { borderColor: 'transparent' },
-                  '&:hover fieldset': { borderColor: 'rgba(167,139,250,0.4)' },
+                  '&:hover fieldset': { borderColor: 'rgba(139,92,246,0.4)' },
                   '&.Mui-focused fieldset': { borderColor: '#A78BFA' },
                 },
               }}
             />
           </Box>
 
-          {/* Goal Selection */}
+          {/* Quick Options - Collapsible */}
           <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block' }}>
-                🎯 LINK TO GOAL (OPTIONAL)
-              </Typography>
-              {selectedGoal && (
-                <Chip
-                  label={`${selectedGoal.name} (${Math.round(selectedGoal.progress * 100)}%)`}
-                  size="small"
-                  onDelete={() => setSelectedGoal(null)}
-                  sx={{
-                    bgcolor: 'rgba(139,92,246,0.2)',
-                    color: '#A78BFA',
-                    border: '1px solid rgba(139,92,246,0.3)',
-                    fontWeight: 700,
-                  }}
-                />
-              )}
-            </Box>
-            
             <Button
-              variant="outlined"
+              variant="text"
               size="small"
               onClick={() => setShowGoalPicker(!showGoalPicker)}
               startIcon={showGoalPicker ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               sx={{
-                mb: 1,
-                border: '1px solid rgba(139,92,246,0.3)',
                 color: '#A78BFA',
-                '&:hover': { border: '1px solid rgba(139,92,246,0.6)', bgcolor: 'rgba(139,92,246,0.1)' },
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                mb: showGoalPicker ? 1 : 0,
+                '&:hover': { bgcolor: 'rgba(139,92,246,0.1)' },
               }}
             >
-              {showGoalPicker ? 'Hide Goals' : `Select from ${goals.length} Goals`}
+              {showGoalPicker ? 'Hide options' : 'Add details (optional)'}
             </Button>
 
             <Collapse in={showGoalPicker}>
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 1, 
-                flexWrap: 'wrap', 
-                mt: 1, 
-                p: 2, 
-                bgcolor: 'rgba(139,92,246,0.05)',
-                borderRadius: 2,
-                border: '1px solid rgba(139,92,246,0.1)',
-              }}>
-                {goals.length === 0 ? (
-                  <Typography variant="caption" color="text.secondary">
-                    No goals yet. Create a goal first to link notes to it.
-                  </Typography>
-                ) : (
-                  goals.map((goal) => (
-                    <Chip
-                      key={goal.id}
-                      label={`${goal.name} (${Math.round(goal.progress * 100)}%)`}
-                      onClick={() => {
-                        setSelectedGoal(goal);
-                        setShowGoalPicker(false);
-                      }}
-                      sx={{
-                        bgcolor: selectedGoal?.id === goal.id ? 'rgba(139,92,246,0.3)' : 'rgba(139,92,246,0.1)',
-                        color: selectedGoal?.id === goal.id ? '#fff' : '#A78BFA',
-                        border: selectedGoal?.id === goal.id ? '2px solid #A78BFA' : '1px solid rgba(139,92,246,0.2)',
-                        fontWeight: selectedGoal?.id === goal.id ? 700 : 400,
-                        '&:hover': {
+              <Box sx={{ mt: 1 }}>
+                {/* Goal Selection */}
+                {goals.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1, fontSize: '0.7rem', letterSpacing: '0.05em' }}>
+                      🎯 LINK TO GOAL
+                    </Typography>
+                    {selectedGoal ? (
+                      <Chip
+                        label={`${selectedGoal.name} (${Math.round(selectedGoal.progress * 100)}%)`}
+                        onDelete={() => setSelectedGoal(null)}
+                        sx={{
                           bgcolor: 'rgba(139,92,246,0.2)',
+                          color: '#A78BFA',
+                          border: '1px solid rgba(139,92,246,0.3)',
+                          fontWeight: 600,
+                          fontSize: '0.8rem',
+                        }}
+                      />
+                    ) : (
+                      <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+                        {goals.slice(0, 5).map((goal) => (
+                          <Chip
+                            key={goal.id}
+                            label={`${goal.name.slice(0, 25)}${goal.name.length > 25 ? '...' : ''}`}
+                            onClick={() => {
+                              setSelectedGoal(goal);
+                            }}
+                            size="small"
+                            sx={{
+                              bgcolor: 'rgba(139,92,246,0.1)',
+                              color: '#A78BFA',
+                              border: '1px solid rgba(139,92,246,0.2)',
+                              fontSize: '0.75rem',
+                              '&:hover': { bgcolor: 'rgba(139,92,246,0.2)' },
+                            }}
+                          />
+                        ))}
+                        {goals.length > 5 && (
+                          <Chip
+                            label={`+${goals.length - 5} more`}
+                            size="small"
+                            sx={{ bgcolor: 'rgba(255,255,255,0.05)', color: 'text.secondary' }}
+                          />
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                )}
+
+                {/* Domain & Mood - Side by Side */}
+                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1, fontSize: '0.7rem', letterSpacing: '0.05em' }}>
+                      🏷️ DOMAIN
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      {GOAL_DOMAINS.slice(0, 4).map((domain) => (
+                        <Chip
+                          key={domain.value}
+                          label={`${domain.icon}`}
+                          onClick={() => setSelectedDomain(selectedDomain === domain.value ? null : domain.value)}
+                          size="small"
+                          sx={{
+                            bgcolor: selectedDomain === domain.value ? domain.color : 'rgba(255,255,255,0.05)',
+                            color: selectedDomain === domain.value ? '#fff' : 'text.secondary',
+                            fontSize: '0.85rem',
+                            width: 32,
+                            height: 32,
+                            minWidth: 'auto',
+                            padding: 0,
+                            border: selectedDomain === domain.value ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1, fontSize: '0.7rem', letterSpacing: '0.05em' }}>
+                      😊 MOOD
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      {MOODS.slice(0, 4).map((mood) => (
+                        <Chip
+                          key={mood.emoji}
+                          label={mood.emoji}
+                          onClick={() => setSelectedMood(selectedMood === mood.emoji ? null : mood.emoji)}
+                          size="small"
+                          sx={{
+                            bgcolor: selectedMood === mood.emoji ? mood.color : 'rgba(255,255,255,0.05)',
+                            color: selectedMood === mood.emoji ? '#fff' : 'text.secondary',
+                            fontSize: '1rem',
+                            width: 32,
+                            height: 32,
+                            minWidth: 'auto',
+                            padding: 0,
+                            border: selectedMood === mood.emoji ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Tags */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1, fontSize: '0.7rem', letterSpacing: '0.05em' }}>
+                    🏷️ TAGS
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <TextField
+                      size="small"
+                      placeholder="Add tag..."
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagKeyDown}
+                      fullWidth
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: 'rgba(255,255,255,0.03)',
+                          fontSize: '0.85rem',
+                          '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+                          '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
+                          '&.Mui-focused fieldset': { borderColor: '#A78BFA' },
                         },
                       }}
                     />
-                  ))
-                )}
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleAddTag}
+                      disabled={!tagInput.trim()}
+                      sx={{
+                        bgcolor: '#A78BFA',
+                        color: '#0A0B14',
+                        fontWeight: 700,
+                        minWidth: 'auto',
+                        px: 2,
+                        '&:hover': { bgcolor: '#8B5CF6' },
+                        '&:disabled': { bgcolor: 'rgba(255,255,255,0.1)', color: 'text.disabled' },
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </Box>
+                  {tags.length > 0 && (
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
+                      {tags.map((tag) => (
+                        <Chip
+                          key={tag}
+                          label={`#${tag}`}
+                          onDelete={() => handleRemoveTag(tag)}
+                          size="small"
+                          sx={{
+                            bgcolor: 'rgba(139,92,246,0.15)',
+                            color: '#A78BFA',
+                            border: '1px solid rgba(139,92,246,0.3)',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </Box>
               </Box>
             </Collapse>
           </Box>
 
-          {/* Domain & Mood Selection - Side by Side */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
-              🏷️ CATEGORY & VIBE (OPTIONAL)
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              {/* Domain Chips */}
-              <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
-                <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                  DOMAIN
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                  {GOAL_DOMAINS.map((domain) => (
-                    <Chip
-                      key={domain.value}
-                      label={`${domain.icon} ${domain.label}`}
-                      onClick={() => setSelectedDomain(selectedDomain === domain.value ? null : domain.value)}
-                      size="small"
-                      sx={{
-                        bgcolor: selectedDomain === domain.value ? domain.color : 'rgba(255,255,255,0.05)',
-                        color: selectedDomain === domain.value ? '#fff' : 'text.secondary',
-                        fontWeight: selectedDomain === domain.value ? 700 : 400,
-                        border: selectedDomain === domain.value ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                        '&:hover': {
-                          bgcolor: `${domain.color}40`,
-                        },
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Box>
-
-              {/* Mood Chips */}
-              <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
-                <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                  MOOD
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                  {MOODS.map((mood) => (
-                    <Chip
-                      key={mood.emoji}
-                      label={`${mood.emoji} ${mood.label}`}
-                      onClick={() => setSelectedMood(selectedMood === mood.emoji ? null : mood.emoji)}
-                      size="small"
-                      sx={{
-                        bgcolor: selectedMood === mood.emoji ? mood.color : 'rgba(255,255,255,0.05)',
-                        color: selectedMood === mood.emoji ? '#fff' : 'text.secondary',
-                        fontWeight: selectedMood === mood.emoji ? 700 : 400,
-                        border: selectedMood === mood.emoji ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                        '&:hover': {
-                          bgcolor: `${mood.color}30`,
-                        },
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            </Box>
-          </Box>
-
-          {/* Tags Input */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
-              🏷️ TAGS
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <TextField
-                size="small"
-                placeholder="Add tag..."
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                sx={{
-                  flex: '1 1 200px',
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: 'rgba(255,255,255,0.05)',
-                    '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-                    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
-                    '&.Mui-focused fieldset': { borderColor: '#A78BFA' },
-                  },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <TagIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={handleAddTag}
-                disabled={!tagInput.trim()}
-                sx={{
-                  border: '1px solid rgba(139,92,246,0.3)',
-                  color: '#A78BFA',
-                  '&:hover': { border: '1px solid rgba(139,92,246,0.6)', bgcolor: 'rgba(139,92,246,0.1)' },
-                }}
-              >
-                Add Tag
-              </Button>
-            </Box>
-            {tags.length > 0 && (
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
-                {tags.map((tag) => (
-                  <Chip
-                    key={tag}
-                    label={tag}
-                    onDelete={() => handleRemoveTag(tag)}
-                    size="small"
-                    sx={{
-                      bgcolor: 'rgba(139,92,246,0.2)',
-                      color: '#A78BFA',
-                      border: '1px solid rgba(139,92,246,0.3)',
-                      fontWeight: 600,
-                    }}
-                  />
-                ))}
-              </Box>
-            )}
-          </Box>
-
-          {/* File Upload */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
-              📎 ATTACH MEDIA (OPTIONAL)
-            </Typography>
+          {/* File Upload - Simplified */}
+          <Box sx={{ mb: 2.5 }}>
             <input
               ref={fileInputRef}
               type="file"
@@ -613,37 +635,47 @@ const ShareButton: React.FC<ShareButtonProps> = ({
               style={{ display: 'none' }}
             />
             <Button
+              fullWidth
               variant="outlined"
-              size="small"
               onClick={() => fileInputRef.current?.click()}
               startIcon={<AttachFileIcon />}
               disabled={uploading}
               sx={{
-                border: '1px solid rgba(255,255,255,0.2)',
+                border: '1px dashed rgba(139,92,246,0.3)',
                 color: 'text.secondary',
-                '&:hover': { border: '1px solid rgba(255,255,255,0.4)', bgcolor: 'rgba(255,255,255,0.05)' },
+                py: 1.5,
+                '&:hover': { 
+                  border: '1px dashed rgba(139,92,246,0.6)', 
+                  bgcolor: 'rgba(139,92,246,0.05)',
+                },
               }}
             >
-              {uploading ? 'Uploading...' : 'Choose File'}
+              {uploading ? (
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+              ) : selectedFile ? (
+                <CheckCircleIcon sx={{ mr: 1, color: '#10B981' }} />
+              ) : (
+                <AttachFileIcon sx={{ mr: 1 }} />
+              )}
+              {uploading ? 'Uploading...' : selectedFile ? `📎 ${selectedFile.name}` : 'Attach file (optional)'}
             </Button>
-            {selectedFile && (
-              <Chip
-                label={selectedFile.name}
-                onDelete={handleRemoveFile}
-                sx={{ ml: 1, bgcolor: 'rgba(139,92,246,0.2)', color: '#A78BFA', border: '1px solid rgba(139,92,246,0.3)' }}
-              />
-            )}
             {filePreview && (
               <Box sx={{ mt: 2, position: 'relative' }}>
                 <img
                   src={filePreview}
                   alt="Preview"
-                  style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }}
+                  style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 12 }}
                 />
                 <IconButton
                   size="small"
                   onClick={handleRemoveFile}
-                  sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'rgba(0,0,0,0.6)', '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' } }}
+                  sx={{ 
+                    position: 'absolute', 
+                    top: 8, 
+                    right: 8, 
+                    bgcolor: 'rgba(0,0,0,0.7)',
+                    '&:hover': { bgcolor: 'rgba(0,0,0,0.9)' },
+                  }}
                 >
                   <CloseIcon />
                 </IconButton>
@@ -651,80 +683,55 @@ const ShareButton: React.FC<ShareButtonProps> = ({
             )}
           </Box>
 
-          {/* Tag Users */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
-              👥 TAG PEOPLE (OPTIONAL)
-            </Typography>
-            <Autocomplete
-              multiple
-              options={availableUsers}
-              getOptionLabel={(option) => option.name}
-              value={taggedUsers}
-              onChange={(_, newValue) => setTaggedUsers(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Search and tag accountability partners..."
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PersonIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255,255,255,0.05)',
-                      '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-                      '&.Mui-focused fieldset': { borderColor: 'primary.main' },
-                    },
-                  }}
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    key={option.id}
-                    label={option.name}
-                    avatar={
-                      option.avatar_url ? (
-                        <img src={option.avatar_url} alt={option.name} style={{ width: 24, height: 24, borderRadius: '50%' }} />
-                      ) : undefined
-                    }
-                    {...getTagProps({ index })}
-                    sx={{
-                      bgcolor: 'rgba(139,92,246,0.2)',
-                      color: '#A78BFA',
-                      border: '1px solid rgba(139,92,246,0.3)',
-                    }}
-                  />
-                ))
-              }
-            />
-          </Box>
-
-          {/* Privacy Toggle */}
-          <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.08)' }}>
+          {/* Privacy Toggle - Simple */}
+          <Box sx={{ 
+            p: 2, 
+            bgcolor: 'rgba(255,255,255,0.02)', 
+            borderRadius: 2, 
+            border: '1px solid rgba(255,255,255,0.06)',
+            mb: 2,
+          }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block' }}>
-                  {isPrivate ? '🔒 PRIVATE' : '🌍 PUBLIC'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {isPrivate ? 'Only you can see this' : 'Everyone can see this'}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {isPrivate ? (
+                  <Box sx={{ 
+                    width: 24, height: 24, 
+                    borderRadius: '6px', 
+                    bgcolor: 'rgba(139,92,246,0.2)',
+                    border: '1px solid rgba(139,92,246,0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Typography sx={{ fontSize: '0.8rem' }}>🔒</Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ 
+                    width: 24, height: 24, 
+                    borderRadius: '6px', 
+                    bgcolor: 'rgba(59,130,246,0.2)',
+                    border: '1px solid rgba(59,130,246,0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Typography sx={{ fontSize: '0.8rem' }}>🌍</Typography>
+                  </Box>
+                )}
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  {isPrivate ? 'Private note' : 'Public note'}
                 </Typography>
               </Box>
               <Button
-                variant={isPrivate ? 'contained' : 'outlined'}
                 size="small"
                 onClick={() => setIsPrivate(!isPrivate)}
                 sx={{
-                  bgcolor: isPrivate ? 'primary.main' : 'transparent',
-                  color: isPrivate ? '#0A0B14' : 'primary.main',
+                  bgcolor: isPrivate ? 'rgba(139,92,246,0.2)' : 'rgba(59,130,246,0.2)',
+                  color: isPrivate ? '#A78BFA' : '#3B82F6',
                   fontWeight: 700,
+                  fontSize: '0.7rem',
+                  px: 2,
+                  py: 0.5,
+                  border: `1px solid ${isPrivate ? 'rgba(139,92,246,0.3)' : 'rgba(59,130,246,0.3)'}`,
+                  '&:hover': { 
+                    bgcolor: isPrivate ? 'rgba(139,92,246,0.3)' : 'rgba(59,130,246,0.3)',
+                  },
                 }}
               >
                 {isPrivate ? 'Private' : 'Public'}
@@ -732,26 +739,36 @@ const ShareButton: React.FC<ShareButtonProps> = ({
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, borderTop: '1px solid rgba(139,92,246,0.15)' }}>
           <Button
             onClick={() => setShareDialogOpen(false)}
-            sx={{ color: 'text.secondary' }}
+            sx={{ 
+              color: 'text.secondary',
+              fontWeight: 600,
+              px: 2,
+              '&:hover': { color: 'text.primary' },
+            }}
           >
             Cancel
           </Button>
           <Button
             onClick={saveToDiary}
             variant="contained"
-            disabled={uploading}
+            disabled={uploading || (!reply.trim() && !selectedFile)}
             sx={{
-              bgcolor: 'primary.main',
+              bgcolor: '#A78BFA',
               color: '#0A0B14',
-              fontWeight: 700,
-              px: 3,
-              '&:hover': { bgcolor: 'primary.light' },
+              fontWeight: 800,
+              px: 4,
+              py: 1.2,
+              borderRadius: 2,
+              fontSize: '0.9rem',
+              '&:hover': { bgcolor: '#8B5CF6' },
+              '&:disabled': { bgcolor: 'rgba(255,255,255,0.1)', color: 'text.disabled' },
+              boxShadow: '0 4px 14px rgba(139,92,246,0.4)',
             }}
           >
-            {uploading ? 'Uploading...' : 'Share to Notebook'}
+            {uploading ? 'Sharing...' : 'Share Note'}
           </Button>
         </DialogActions>
       </Dialog>
