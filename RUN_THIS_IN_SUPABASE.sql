@@ -73,7 +73,10 @@ CREATE POLICY "Users can send messages" ON public.messages
   FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
 -- 3. Goal trees table - use snake_case to match backend
-CREATE TABLE IF NOT EXISTS public.goal_trees (
+-- Drop existing table if it has wrong schema
+DROP TABLE IF EXISTS public.goal_trees CASCADE;
+
+CREATE TABLE public.goal_trees (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
   nodes JSONB NOT NULL DEFAULT '[]',
@@ -269,7 +272,7 @@ CREATE POLICY "Users can insert own axiom briefs" ON public.axiom_daily_briefs
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver ON public.messages(sender_id, receiver_id);
 CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON public.messages(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_goal_trees_user ON public.goal_trees("userId");
+CREATE INDEX IF NOT EXISTS idx_goal_trees_user ON public.goal_trees(user_id);
 CREATE INDEX IF NOT EXISTS idx_check_ins_user ON public.check_ins(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_trackers_user ON public.trackers(user_id);
 CREATE INDEX IF NOT EXISTS idx_tracker_entries_tracker ON public.tracker_entries(tracker_id);
