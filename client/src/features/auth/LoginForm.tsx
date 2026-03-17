@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { nuclearReset } from '../../utils/versionControl';
@@ -70,7 +71,7 @@ const LoginForm: React.FC = () => {
 
       setIsError(false);
       setMessage('Login successful!');
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     } catch (error: any) {
       setIsError(true);
       setMessage(error.message || 'Login failed.');
