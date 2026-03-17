@@ -203,12 +203,20 @@ const GoalProgressWidget: React.FC<Props> = ({ userId, nodes, onProgressUpdate }
               <Slider
                 value={sliderVal}
                 onChange={(_, v) => setSliderVal(v as number)}
+                onChangeCommitted={(_, v) => setSliderVal(v as number)}
                 min={0} max={100} step={5}
                 valueLabelDisplay="auto"
                 valueLabelFormat={(v) => `${v}%`}
                 sx={{
-                  color: DOMAIN_COLORS[activeNode.domain as Domain] ?? '#8B5CF6',
-                  '& .MuiSlider-thumb': { width: 20, height: 20 },
+                  color,
+                  height: 8,
+                  '& .MuiSlider-thumb': { 
+                    width: 24, 
+                    height: 24,
+                    '&:hover': { boxShadow: `0 0 0 8px ${color}30` },
+                  },
+                  '& .MuiSlider-track': { height: 8 },
+                  '& .MuiSlider-rail': { height: 8, opacity: 0.3 },
                 }}
               />
             </Box>

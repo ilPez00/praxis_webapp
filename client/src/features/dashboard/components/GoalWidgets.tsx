@@ -448,10 +448,25 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
         <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>Update: {node.name}</Typography>
         <Box sx={{ px: 1, mb: 1 }}>
           <Slider
-            value={sliderVal} onChange={(_, v) => setSliderVal(v as number)}
-            min={0} max={100} step={5} valueLabelDisplay="auto"
+            value={sliderVal} 
+            onChange={(_, v) => setSliderVal(v as number)}
+            onChangeCommitted={(_, v) => setSliderVal(v as number)}
+            min={0} 
+            max={100} 
+            step={5} 
+            valueLabelDisplay="auto"
             valueLabelFormat={v => `${v}%`}
-            sx={{ color: domainColor, '& .MuiSlider-thumb': { width: 20, height: 20 } }}
+            sx={{ 
+              color: domainColor, 
+              height: 8,
+              '& .MuiSlider-thumb': { 
+                width: 24, 
+                height: 24,
+                '&:hover': { boxShadow: `0 0 0 8px ${domainColor}30` },
+              },
+              '& .MuiSlider-track': { height: 8 },
+              '& .MuiSlider-rail': { height: 8, opacity: 0.3 },
+            }}
           />
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>

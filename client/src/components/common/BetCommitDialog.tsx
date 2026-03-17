@@ -140,11 +140,24 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
           <Slider
             value={stake}
             onChange={(_, val) => setStake(val as number)}
+            onChangeCommitted={(_, val) => setStake(val as number)}
             min={50}
             max={maxStake > 50 ? maxStake : 100}
             step={10}
             disabled={!canAfford}
-            sx={{ color: 'primary.main' }}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(v) => `${v} PP`}
+            sx={{ 
+              color: 'primary.main',
+              height: 8,
+              '& .MuiSlider-thumb': { 
+                width: 24, 
+                height: 24,
+                '&:hover': { boxShadow: '0 0 0 8px rgba(245,158,11,0.2)' },
+              },
+              '& .MuiSlider-track': { height: 8 },
+              '& .MuiSlider-rail': { height: 8, opacity: 0.3 },
+            }}
           />
           {!canAfford && (
             <Typography variant="caption" color="error">
