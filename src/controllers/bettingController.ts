@@ -177,9 +177,8 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
           await pushNotification({
             userId: opponentId,
             title: '🎯 Duel Challenge!',
-            message: `${profile?.name || 'Someone'} challenged you to "${goalName}" for ${stakePoints} PP!`,
+            body: `${profile?.name || 'Someone'} challenged you to "${goalName}" for ${stakePoints} PP!`,
             type: 'duel_challenge',
-            metadata: { duel_id: newDuel.id, stake: stakePoints },
           });
         } catch (err) {
           logger.error('Failed to send duel notification:', err);
