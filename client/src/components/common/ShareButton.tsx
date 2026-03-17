@@ -9,6 +9,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { API_URL } from '../../lib/api';
 
 // Goal domain categories
 const GOAL_DOMAINS = [
@@ -202,6 +203,11 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error('Not authenticated');
 
+      const headers = {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      };
+
       // Build content with reply
       let fullContent = reply ? `${reply}\n\n---\n\n` : '';
       fullContent += `**${title}**\n`;
@@ -264,8 +270,8 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         metadata.media_url = mediaUrl;
       }
 
+      // Build the payload for API
       const insertPayload: any = {
-        user_id: userId,
         entry_type: 'note', // Always save as note
         title: title || 'Shared Item',
         content: fullContent,
@@ -283,23 +289,19 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         insertPayload.domain = selectedDomain;
       }
 
-      // Try with metadata first, fall back without if column doesn't exist yet
-      let { data, error } = await supabase
-        .from('notebook_entries')
-        .insert(insertPayload)
-        .select()
-        .single();
+      // Use the API endpoint instead of direct Supabase insert
+      const res = await fetch(`${API_URL}/notebook/entries`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(insertPayload),
+      });
 
-      if (error && error.message?.includes('metadata')) {
-        delete insertPayload.metadata;
-        ({ data, error } = await supabase
-          .from('notebook_entries')
-          .insert(insertPayload)
-          .select()
-          .single());
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to save entry');
       }
 
-      if (error) throw error;
+      const savedEntry = await res.json();
 
       // Notify tagged users (optional - could add notification system)
       if (taggedUsers.length > 0) {
