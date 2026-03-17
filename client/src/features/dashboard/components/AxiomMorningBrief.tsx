@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
 import { API_URL } from '../../../lib/api';
 import GlassCard from '../../../components/common/GlassCard';
+import ContributionGraph from '../../../components/common/ContributionGraph';
 import {
   Box,
   Typography,
@@ -69,6 +70,54 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
   const [checkedIn, setCheckedIn] = useState(initialCheckedIn ?? false);
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [isBetDialogOpen, setIsBetDialogOpen] = useState(false);
+  const [weekStats, setWeekStats] = useState({ total: 0, streak: 0 });
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchWeekStats = async () => {
+      try {
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const { data: entries } = await supabase
+          .from('notebook_entries')
+          .select('occurred_at')
+          .eq('user_id', userId)
+          .gte('occurred_at', startOfWeek.toISOString());
+
+        const total = entries?.length || 0;
+
+        // Calculate streak (consecutive days with entries)
+        let streakCount = 0;
+        if (entries && entries.length > 0) {
+          const uniqueDays = [...new Set(entries.map(e => e.occurred_at.slice(0, 10)))].sort().reverse();
+          const today = new Date().toISOString().slice(0, 10);
+          let expectedDate = new Date(today);
+
+          for (const day of uniqueDays) {
+            const dayDate = new Date(day + 'T00:00:00');
+            const diffDays = Math.floor((expectedDate.getTime() - dayDate.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 1) {
+              streakCount++;
+              expectedDate = dayDate;
+              expectedDate.setDate(expectedDate.getDate() - 1);
+            } else {
+              break;
+            }
+          }
+        }
+
+        setWeekStats({ total, streak: streakCount });
+      } catch (error) {
+        console.error('Failed to fetch week stats:', error);
+      }
+    };
+
+    fetchWeekStats();
+  }, [userId]);
 
   useEffect(() => {
     if (initialBriefs !== undefined) return;
@@ -165,7 +214,7 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
           <Typography variant="h4" sx={{ fontWeight: 900, letterSpacing: '-0.03em', mb: 0.5 }}>
             Hey, <Box component="span" sx={{ color: 'primary.main' }}>{userName}</Box>
           </Typography>
-          <Stack direction="row" spacing={2} alignItems="center">
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <LocalFireDepartmentIcon sx={{ color: streak > 0 ? '#F97316' : 'text.disabled', fontSize: 22 }} />
               <Typography sx={{ fontWeight: 900, fontSize: '1.1rem', color: streak > 0 ? '#F97316' : 'text.disabled' }}>{streak}d</Typography>
@@ -173,6 +222,13 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <ElectricBoltIcon sx={{ color: '#A78BFA', fontSize: 18 }} />
               <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#A78BFA' }}>{points.toLocaleString()} PP</Typography>
+            </Box>
+            <Box sx={{ width: '1px', height: 24, bgcolor: 'rgba(255,255,255,0.1)', mx: 1 }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.7rem', fontWeight: 700 }}>
+                THIS WEEK: {weekStats.total} entries · {weekStats.streak}d streak
+              </Typography>
+              <ContributionGraph userId={userId} height={60} />
             </Box>
           </Stack>
         </Box>
