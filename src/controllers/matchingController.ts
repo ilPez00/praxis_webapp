@@ -60,12 +60,29 @@ export const getMatchesForUser = catchAsync(async (req: Request, res: Response, 
   const matches = [];
   for (const other of (others || [])) {
     const score = await matchingEngine.calculateCompatibilityScore(userGoalTree as GoalTree, other as GoalTree);
-    if (score > 0.1) {
-      matches.push({ userId: (other as any).user_id, score });
+    // Lower threshold to 0.0 to ensure results in sparse environments
+    if (score >= 0.0) {
+      matches.push({ userId: (other as any).user_id, score: Math.max(score, 0.01) });
+    }
+  }
+
+  // If still no matches from trees, fallback to showing all other profiles directly
+  if (matches.length === 0) {
+    const { data: allProfiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .neq('id', userId)
+      .limit(20);
+    
+    if (allProfiles) {
+      allProfiles.forEach(p => {
+        matches.push({ userId: p.id, score: 0.01 });
+      });
     }
   }
 
   matches.sort((a, b) => b.score - a.score);
+
   const enriched = await enrichMatches(matches);
   
   let finalResults = enriched;
