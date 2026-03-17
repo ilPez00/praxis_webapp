@@ -55,12 +55,16 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
   }, [open, challenge, user]);
 
   const handleCommit = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      toast.error("Not authenticated");
+      return;
+    }
     if (!deadline) {
       toast.error("Please set a deadline.");
       return;
     }
 
+    console.log('Committing bet:', { userId: user.id, goalName: challenge.target, deadline, stake });
     setSaving(true);
     try {
       // If deadline is just a date string, set it to end of day
@@ -71,12 +75,11 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
         goalName: challenge.target,
         deadline: finalDeadline,
         stakePoints: stake,
-        // Optional: link to a goal if we can find one with similar name?
-        // For now, Axiom bets are standalone.
       });
 
+      console.log('Bet created:', res.data);
       toast.success(`Commitment made! ${stake} PP pledged. 🎯`);
-      
+
       // Post to community feed
       try {
         await api.post('/posts', {
@@ -94,6 +97,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
       if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err: any) {
+      console.error('Bet commit error:', err.response?.data || err.message);
       toast.error(err.response?.data?.message || "Failed to create bet.");
     } finally {
       setSaving(false);
@@ -104,7 +108,21 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
   const canAfford = userPoints !== null && userPoints >= 50;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="xs" 
+      fullWidth 
+      disableRestoreFocus
+      PaperProps={{ 
+        sx: { 
+          borderRadius: '20px',
+          bgcolor: 'rgba(30,30,40,0.98)',
+          border: '1px solid rgba(245,158,11,0.2)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(245,158,11,0.1)',
+        } 
+      }}
+    >
       <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
         <TrophyIcon sx={{ color: '#F59E0B' }} />
         Commit to Bet
