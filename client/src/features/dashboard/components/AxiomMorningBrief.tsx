@@ -28,6 +28,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ShareButton from '../../../components/common/ShareButton';
+import BetCommitDialog from '../../../components/common/BetCommitDialog';
 
 interface MorningBriefProps {
   userName: string;
@@ -102,6 +103,7 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
   const [loading, setLoading] = useState(!initialBriefs);
   const [checkedIn, setCheckedIn] = useState(initialCheckedIn ?? false);
   const [checkinLoading, setCheckinLoading] = useState(false);
+  const [isBetDialogOpen, setIsBetDialogOpen] = useState(false);
 
   useEffect(() => {
     // If pre-fetched data was provided, skip the redundant fetch.
@@ -479,7 +481,7 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => navigate(`/profile/${data.match?.id}`)}
+                onClick={() => setIsBetDialogOpen(true)}
                 sx={{
                   borderRadius: '10px',
                   fontSize: '0.75rem',
@@ -593,6 +595,14 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
 
         </Box>
       </GlassCard>
+
+      {data?.challenge && (
+        <BetCommitDialog
+          open={isBetDialogOpen}
+          onClose={() => setIsBetDialogOpen(false)}
+          challenge={data.challenge}
+        />
+      )}
     </Box>
   );
 };

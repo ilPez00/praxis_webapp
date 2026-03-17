@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase';
 import { API_URL } from '../../../lib/api';
 import GlassCard from '../../../components/common/GlassCard';
 import AxiomReply from '../../../components/common/AxiomReply';
+import BetCommitDialog from '../../../components/common/BetCommitDialog';
 import {
   Box,
   Typography,
@@ -14,6 +15,7 @@ import {
   Tooltip,
   Avatar,
   Chip,
+  Button,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -75,6 +77,7 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
   const [unlocking, setUnlocking] = useState(false);
   const [userPoints, setUserPoints] = useState<number>(0);
   const [isPremium, setIsPremium] = useState(false);
+  const [isBetDialogOpen, setIsBetDialogOpen] = useState(false);
 
   const fetchProtocol = async () => {
     setLoading(true);
@@ -374,22 +377,46 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
                   {data.challenge.target}
                 </Typography>
                 {data.challenge.terms && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
                     {data.challenge.terms}
                   </Typography>
                 )}
-                <AxiomReply
-                  type="bet"
-                  title={data.challenge.target}
-                  description={data.challenge.terms}
-                  userId={userId}
-                  metadata={{ challengeType: data.challenge.type }}
-                />
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => setIsBetDialogOpen(true)}
+                    startIcon={<EmojiEventsIcon />}
+                    sx={{
+                      borderRadius: '8px',
+                      fontWeight: 800,
+                      background: 'linear-gradient(135deg, #F59E0B, #EF4444)',
+                      boxShadow: '0 4px 12px rgba(245,158,11,0.2)',
+                    }}
+                  >
+                    Commit
+                  </Button>
+                  <AxiomReply
+                    type="bet"
+                    title={data.challenge.target}
+                    description={data.challenge.terms}
+                    userId={userId}
+                    metadata={{ challengeType: data.challenge.type }}
+                  />
+                </Stack>
               </Box>
             </Grid>
           )}
         </Grid>
       </Box>
+
+      {data?.challenge && (
+        <BetCommitDialog
+          open={isBetDialogOpen}
+          onClose={() => setIsBetDialogOpen(false)}
+          challenge={data.challenge}
+        />
+      )}
     </Box>
   );
 };

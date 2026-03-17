@@ -45,6 +45,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DownloadIcon from '@mui/icons-material/Download';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import HistoryIcon from '@mui/icons-material/History';
+import BetCommitDialog from '../../components/common/BetCommitDialog';
 
 interface StrategyItem {
   goal: string;
@@ -107,8 +108,8 @@ const AICoachPage: React.FC = () => {
   const [loadingNarratives, setLoadingNarratives] = useState(false);
   const [narrativesOpen, setNarrativesOpen] = useState(false);
 
-  // Creating bet state
-  const [creatingBet, setCreatingBet] = useState(false);
+  // Bet dialog state
+  const [isBetDialogOpen, setIsBetDialogOpen] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -185,52 +186,8 @@ const AICoachPage: React.FC = () => {
     }
   }, []);
 
-  const handleCreateChallenge = async () => {
-    if (!dailyBrief?.challenge || !user?.id) return;
-    
-    setCreatingBet(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        toast.error('Please sign in to create a bet');
-        return;
-      }
-
-      // Parse the challenge target to extract goal name and deadline
-      const challengeTarget = dailyBrief.challenge.target;
-      const deadlineDate = new Date();
-      deadlineDate.setDate(deadlineDate.getDate() + 7); // 7 days from now
-
-      const betPayload = {
-        user_id: user.id,
-        goal_name: challengeTarget,
-        goal_node_id: null, // No specific goal node linked
-        stake_points: 50, // Default stake
-        deadline: deadlineDate.toISOString(),
-        terms: dailyBrief.challenge.terms,
-      };
-
-      const response = await fetch(`${API_URL}/bets`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(betPayload),
-      });
-
-      if (response.ok) {
-        toast.success(`Bet created! "${challengeTarget}" - Good luck! 🎯`);
-        navigate('/betting');
-      } else {
-        const error = await response.json().catch(() => ({ message: 'Failed to create bet' }));
-        toast.error(error.message || 'Failed to create bet');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create bet');
-    } finally {
-      setCreatingBet(false);
-    }
+  const handleCreateChallenge = () => {
+    setIsBetDialogOpen(true);
   };
 
   const handleRefresh = async () => {
@@ -583,7 +540,6 @@ const AICoachPage: React.FC = () => {
                   <Button
                     size="small"
                     variant="contained"
-                    disabled={creatingBet}
                     sx={{
                       mt: 1,
                       bgcolor: '#F59E0B',
@@ -594,7 +550,7 @@ const AICoachPage: React.FC = () => {
                       '&:hover': { bgcolor: '#D97706' },
                     }}
                   >
-                    {creatingBet ? 'Creating...' : 'Accept Challenge'}
+                    Accept Challenge
                   </Button>
                 </Box>
               </Grid>
@@ -700,6 +656,15 @@ const AICoachPage: React.FC = () => {
           </Box>
         </Box>
       </Stack>
+
+      {dailyBrief?.challenge && (
+        <BetCommitDialog
+          open={isBetDialogOpen}
+          onClose={() => setIsBetDialogOpen(false)}
+          challenge={dailyBrief.challenge}
+          onSuccess={() => navigate('/betting')}
+        />
+      )}
       
       {/* Narratives History Dialog */}
       <Dialog 

@@ -12,22 +12,22 @@ import { pushNotification } from './notificationController';
 export const createBet = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId, goalNodeId, goalName, deadline, stakePoints } = req.body;
 
-  if (!userId || !goalNodeId || !goalName || !deadline || !stakePoints) {
-    throw new BadRequestError('userId, goalNodeId, goalName, deadline, and stakePoints are required.');
+  if (!userId || !goalName || !deadline || !stakePoints) {
+    throw new BadRequestError('userId, goalName, deadline, and stakePoints are required.');
   }
   if (typeof stakePoints !== 'number' || stakePoints < 1) {
     throw new BadRequestError('stakePoints must be a positive integer.');
   }
 
-  // Minimum 7-day deadline — prevents trivial same-day bets for easy PP gains
+  // Axiom challenges often have same-day or next-day deadlines.
+  // We'll allow any future deadline now, but warn if it's too short for standard goal nodes.
   const deadlineDate = new Date(deadline);
-  const minDeadline = new Date();
-  minDeadline.setDate(minDeadline.getDate() + 7);
-  if (isNaN(deadlineDate.getTime()) || deadlineDate < minDeadline) {
-    throw new BadRequestError('Bet deadline must be at least 7 days from today.');
+  const now = new Date();
+  if (isNaN(deadlineDate.getTime()) || deadlineDate <= now) {
+    throw new BadRequestError('Bet deadline must be in the future.');
   }
 
-  // Check user has enough points (best-effort — column may not exist yet)
+  // Check user has enough points
   const { data: profile } = await supabase
     .from('profiles')
     .select('praxis_points')
@@ -39,7 +39,7 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     throw new BadRequestError(`Insufficient Praxis Points (have ${currentPoints}, need ${stakePoints}).`);
   }
 
-  // Max stake: 500 PP or 50% of balance, whichever is lower — prevents outsized bet wins
+  // Max stake: 500 PP or 50% of balance, whichever is lower
   const maxStake = Math.min(500, Math.floor(currentPoints * 0.5));
   if (stakePoints > maxStake) {
     throw new BadRequestError(`Maximum stake is ${maxStake} PP (500 PP cap or 50% of your balance).`);
@@ -56,7 +56,7 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     throw new BadRequestError('You can have at most 3 active bets at a time. Complete or cancel one first.');
   }
 
-  // Deduct points (best-effort)
+  // Deduct points
   await supabase
     .from('profiles')
     .update({ praxis_points: currentPoints - stakePoints })
@@ -66,7 +66,7 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     .from('bets')
     .insert({
       user_id: userId,
-      goal_node_id: goalNodeId,
+      goal_node_id: goalNodeId || null,
       goal_name: goalName,
       deadline,
       stake_points: stakePoints,
