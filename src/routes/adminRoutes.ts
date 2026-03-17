@@ -2,13 +2,14 @@ import { Router } from 'express';
 import {
   seedDemoUsers, deleteDemoUsers,
   listAllUsers, adminDeleteUser, adminDeletePost, adminDeleteGroup,
-  banUser, unbanUser, grantPoints, resetTreeEdits, getUserDetail,
+  banUser, unbanUser, grantPoints, grantPointsToAll, resetTreeEdits, getUserDetail,
   listGroups, getAdminStats, getNetworkData, createChallenge, listChallenges,
   listAllServices, adminDeleteService, listAllCoaches, decayPoints, promoteUser,
   leaderboardBonus,
   streakAlerts,
   getSystemConfig, updateSystemConfig, triggerAxiomScan, togglePremium,
   importOSMPlacesEndpoint,
+  clearSeenMessages
 } from '../controllers/adminController';
 import adminAxiomRoutes from './adminAxiomRoutes';
 import { authenticateToken } from '../middleware/authenticateToken';
@@ -30,6 +31,7 @@ router.delete('/users/:id', authenticateToken, requireAdmin, adminDeleteUser);
 router.post('/users/:id/ban', authenticateToken, requireAdmin, banUser);
 router.post('/users/:id/unban', authenticateToken, requireAdmin, unbanUser);
 router.post('/users/:id/grant-points', authenticateToken, requireAdmin, grantPoints);
+router.post('/users/grant-points-all', authenticateToken, requireAdmin, grantPointsToAll);
 router.post('/users/:id/reset-tree-edits', authenticateToken, requireAdmin, resetTreeEdits);
 router.get('/users/:id/detail', authenticateToken, requireAdmin, getUserDetail);
 router.delete('/posts/:id', authenticateToken, requireAdmin, adminDeletePost);
@@ -54,6 +56,7 @@ router.put('/users/:id/premium', authenticateToken, requireAdmin, togglePremium)
 // Axiom & Config
 router.get('/config', authenticateToken, requireAdmin, getSystemConfig);
 router.put('/config/:key', authenticateToken, requireAdmin, updateSystemConfig);
+router.post('/config/clear-seen-messages', authenticateToken, requireAdmin, clearSeenMessages);
 router.post('/axiom/trigger-scan', authenticateToken, requireAdmin, triggerAxiomScan);
 router.post('/axiom/generate-all-briefs', authenticateToken, requireAdmin, generateAllBriefs);
 // OSM place import

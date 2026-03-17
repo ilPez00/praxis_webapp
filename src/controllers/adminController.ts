@@ -531,6 +531,63 @@ export const grantPoints = catchAsync(async (req: Request, res: Response, next: 
 });
 
 /**
+ * POST /admin/users/grant-points-all
+ * Adjusts ALL users' praxis_points by a delta.
+ * Body: { delta: number }
+ */
+export const grantPointsToAll = catchAsync(async (req: Request, res: Response) => {
+  const delta = Math.round(Number(req.body?.delta || 0));
+  if (!delta) throw new BadRequestError('delta is required and must be non-zero.');
+
+  const adminId = req.user?.id;
+  logger.info(`Admin ${adminId} granting ${delta} PP to ALL users`);
+
+  // We can't do a relative update like "SET praxis_points = praxis_points + delta" 
+  // in a single Supabase query easily for ALL rows.
+  // We'll fetch them and update them in batches or use a direct SQL if possible.
+  // Since we are in an admin context, we'll do it safely.
+  
+  const { data: profiles, error: fetchErr } = await supabase
+    .from('profiles')
+    .select('id, praxis_points');
+
+  if (fetchErr) throw new InternalServerError('Failed to fetch profiles.');
+
+  // We can use RPC for efficiency or manual batching. 
+  // For simplicity here, we'll use profile count and do it.
+  
+  let updated = 0;
+  for (const p of (profiles || [])) {
+    const current = p.praxis_points ?? 0;
+    const { error: updateErr } = await supabase
+      .from('profiles')
+      .update({ praxis_points: Math.max(0, current + delta) })
+      .eq('id', p.id);
+    
+    if (!updateErr) updated++;
+  }
+
+  res.json({ success: true, message: `Points granted to ${updated} users.`, delta });
+});
+
+/**
+ * POST /admin/config/clear-seen-messages
+ * Resets last_seen_message_id for all users so they see the current global message.
+ */
+export const clearSeenMessages = catchAsync(async (req: Request, res: Response) => {
+  const adminId = req.user?.id;
+  logger.info(`Admin ${adminId} clearing seen message status for all users`);
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ last_seen_message_id: null });
+
+  if (error) throw new InternalServerError('Failed to clear seen messages.');
+
+  res.json({ success: true, message: 'All users will see the current global message on next login.' });
+});
+
+/**
  * POST /admin/users/:id/reset-tree-edits
  * Resets goal_tree_edit_count to 0, giving the user a free goal tree re-edit.
  */
