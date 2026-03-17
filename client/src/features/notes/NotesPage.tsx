@@ -35,6 +35,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
+import { TRACKER_MAP } from '../trackers/trackerTypes';
+import EditableTrackerForm from '../trackers/EditableTrackerForm';
 
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   const nodeMap = new Map<string, FrontendGoalNode>();
@@ -95,6 +97,9 @@ const NotesPage: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<FrontendGoalNode | null>(null);
   const [activeLogType, setActiveLogType] = useState<string | null>(null);
   const [activeBets, setActiveBets] = useState<any[]>([]);
+  const [logTrackerOpen, setLogTrackerOpen] = useState(false);
+  const [logTrackerData, setLogTrackerData] = useState<{ id: string; type: string; def: any } | null>(null);
+  const [logSaving, setLogSaving] = useState(false);
 
   // Journal drawer
   const [journalNode, setJournalNode] = useState<FrontendGoalNode | null>(null);
@@ -366,10 +371,51 @@ const NotesPage: React.FC = () => {
   const handleLogTracker = (trackerType: string, goalNode: FrontendGoalNode) => {
     setSelectedNode(goalNode);
     setActiveLogType(trackerType);
+    
+    // Open editable tracker form
+    const trackerDef = TRACKER_MAP[trackerType];
+    if (trackerDef) {
+      setLogTrackerData({ id: trackerType, type: trackerType, def: trackerDef });
+      setLogTrackerOpen(true);
+    }
+    
     if (isMobile) {
       setTimeout(() => {
         mobileDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
+    }
+  };
+
+  const handleSaveTrackerLog = async (data: any) => {
+    if (!currentUserId || !logTrackerData) return;
+    
+    setLogSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { Authorization: `Bearer ${session?.access_token}` };
+      
+      await axios.post(`${API_URL}/trackers/log`, {
+        type: logTrackerData.type,
+        data: data.items ? { items: data.items } : data,
+        goalNodeId: selectedNode?.id,
+      }, { headers });
+      
+      toast.success('Logged! +1⚡');
+      setLogTrackerOpen(false);
+      setLogTrackerData(null);
+      
+      // Refresh to show updated tracker
+      if (selectedNode) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers = { Authorization: `Bearer ${session?.access_token}` };
+        const res = await axios.get(`${API_URL}/goals/${currentUserId}/nodes`, { headers });
+        setBackendNodes(res.data);
+      }
+    } catch (err: any) {
+      toast.error('Failed to log. Try again.');
+      console.error('Tracker error:', err);
+    } finally {
+      setLogSaving(false);
     }
   };
 
@@ -785,6 +831,15 @@ const NotesPage: React.FC = () => {
         </Dialog>
 
         <NodeJournalDrawer open={!!journalNode} node={journalNode} onClose={() => setJournalNode(null)} />
+
+        {/* Editable Tracker Form Dialog */}
+        <EditableTrackerForm
+          open={logTrackerOpen}
+          onClose={() => { setLogTrackerOpen(false); setLogTrackerData(null); }}
+          tracker={logTrackerData}
+          onSave={handleSaveTrackerLog}
+          saving={logSaving}
+        />
 
         {/* Export Dialog */}
         <Dialog open={exportDialogOpen} onClose={() => !exporting && setExportDialogOpen(false)} maxWidth="sm" fullWidth>
