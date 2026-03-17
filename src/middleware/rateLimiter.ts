@@ -1,13 +1,13 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { Request, Response } from 'express';
 
 // Custom key generator for rate limiting
 const keyGenerator = (req: Request): string => {
-  // Use user ID if authenticated, otherwise IP
+  // Use user ID if authenticated, otherwise IP (with IPv6 support)
   if (req.user?.id) {
     return `user:${req.user.id}`;
   }
-  return `ip:${req.ip}`;
+  return `ip:${ipKeyGenerator(req.ip)}`;
 };
 
 // ============================================================================
