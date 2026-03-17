@@ -8,33 +8,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { db } from '../../lib/db';
 import { TRACKER_MAP, DOMAIN_TRACKER_MAP, TrackerType } from './trackerTypes';
-import { searchExercises } from './exerciseLibrary';
-import { searchFoods, fetchCaloriesFromOFF } from './foodLibrary';
-import { searchBooks } from './booksLibrary';
-import { searchCategories, searchMerchants } from './expensesLibrary';
-import { searchAssets } from './investmentsLibrary';
-import { searchCompanies } from './companiesLibrary';
-import { searchSubjects } from './subjectsLibrary';
-import { searchInstruments } from './musicLibrary';
+import EditableTrackerForm from './EditableTrackerForm';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
-import Autocomplete from '@mui/material/Autocomplete';
 import {
   Box,
   Typography,
   Button,
   Stack,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
   CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../../lib/api';
@@ -55,104 +39,6 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
   const [logTracker, setLogTracker] = useState<(Tracker & { def: TrackerType }) | null>(null);
   const [logFields, setLogFields] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-
-  // Autocomplete suggestions
-  const [exerciseSuggestions, setExerciseSuggestions] = useState<string[]>([]);
-  const [foodSuggestions, setFoodSuggestions] = useState<string[]>([]);
-  const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
-  const [merchantSuggestions, setMerchantSuggestions] = useState<string[]>([]);
-  const [assetSuggestions, setAssetSuggestions] = useState<string[]>([]);
-  const [companySuggestions, setCompanySuggestions] = useState<string[]>([]);
-  const [subjectSuggestions, setSubjectSuggestions] = useState<string[]>([]);
-  const [instrumentSuggestions, setInstrumentSuggestions] = useState<string[]>([]);
-  const [bookSuggestions, setBookSuggestions] = useState<{ title: string; author: string }[]>([]);
-
-  // Update suggestions based on input
-  useEffect(() => {
-    const exerciseQuery = logTracker?.type === 'lift' ? (logFields['exercise'] ?? '') : '';
-    setExerciseSuggestions(exerciseQuery ? searchExercises(exerciseQuery) : []);
-  }, [logTracker?.type, logFields['exercise']]);
-
-  useEffect(() => {
-    const foodQuery = logTracker?.type === 'meal' ? (logFields['food'] ?? '') : '';
-    if (foodQuery.length >= 2) {
-      const results = searchFoods(foodQuery);
-      setFoodSuggestions(results);
-      // If exactly one match, auto-fetch calories
-      if (results.length === 1 && !logFields['calories']) {
-        fetchCaloriesFromOFF(results[0]).then(cal => {
-          if (cal) setLogFields(f => ({ ...f, calories: String(cal) }));
-        });
-      }
-    } else {
-      setFoodSuggestions([]);
-    }
-  }, [logTracker?.type, logFields['food']]);
-
-  useEffect(() => {
-    const bookQuery = logTracker?.type === 'books' ? (logFields['title'] ?? '') : '';
-    if (bookQuery.length >= 2) {
-      searchBooks(bookQuery).then(setBookSuggestions);
-    } else {
-      setBookSuggestions([]);
-    }
-  }, [logTracker?.type, logFields['title']]);
-
-  useEffect(() => {
-    if (logTracker?.type === 'expenses') {
-      setCategorySuggestions(searchCategories());
-      const merchantQuery = logFields['merchant'] ?? '';
-      if (merchantQuery.length >= 2) {
-        setMerchantSuggestions(searchMerchants(merchantQuery));
-      } else {
-        setMerchantSuggestions([]);
-      }
-    }
-  }, [logTracker?.type, logFields['merchant']]);
-
-  useEffect(() => {
-    if (logTracker?.type === 'investments') {
-      const assetQuery = logFields['asset'] ?? '';
-      if (assetQuery.length >= 2) {
-        setAssetSuggestions(searchAssets(assetQuery));
-      } else {
-        setAssetSuggestions([]);
-      }
-    }
-  }, [logTracker?.type, logFields['asset']]);
-
-  useEffect(() => {
-    if (logTracker?.type === 'job-apps') {
-      const companyQuery = logFields['company'] ?? '';
-      if (companyQuery.length >= 2) {
-        setCompanySuggestions(searchCompanies(companyQuery));
-      } else {
-        setCompanySuggestions([]);
-      }
-    }
-  }, [logTracker?.type, logFields['company']]);
-
-  useEffect(() => {
-    if (logTracker?.type === 'study') {
-      const subjectQuery = logFields['subject'] ?? '';
-      if (subjectQuery.length >= 2) {
-        setSubjectSuggestions(searchSubjects(subjectQuery));
-      } else {
-        setSubjectSuggestions([]);
-      }
-    }
-  }, [logTracker?.type, logFields['subject']]);
-
-  useEffect(() => {
-    if (logTracker?.type === 'music') {
-      const instrumentQuery = logFields['instrument'] ?? '';
-      if (instrumentQuery.length >= 2) {
-        setInstrumentSuggestions(searchInstruments(instrumentQuery));
-      } else {
-        setInstrumentSuggestions([]);
-      }
-    }
-  }, [logTracker?.type, logFields['instrument']]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -245,32 +131,29 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
     setLogFields({});
   };
 
-  const saveEntry = async () => {
+  const saveEntry = async (data?: any) => {
     if (!logTracker) return;
-    const missing = logTracker.def.fields
-      .filter(f => !f.optional && !logFields[f.key]?.trim())
-      .map(f => f.label);
-    if (missing.length > 0) { toast.error(`Fill in: ${missing.join(', ')}`); return; }
     
-    setSaving(true);
-    
-    const entryData = {
+    // Use provided data or build from logFields
+    const entryData = data || {
       tracker_id: logTracker.id,
       tracker_type: logTracker.type,
       data: logFields,
       logged_at: new Date().toISOString(),
     };
 
+    setSaving(true);
+
     try {
       // Try online first
       const { data: { session } } = await supabase.auth.getSession();
       const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-      
+
       await axios.post(`${API_URL}/trackers/log`, {
         type: logTracker.type,
-        data: logFields,
+        data: data?.items ? { items: data.items } : logFields,
       }, { headers });
-      
+
       toast.success('Logged!');
     } catch (err: any) {
       // If network error, save offline
@@ -278,7 +161,7 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
         await db.trackerEntries.add({
           tracker_id: logTracker.id,
           tracker_type: logTracker.type,
-          data: logFields,
+          data: data?.items ? { items: data.items } : logFields,
           logged_at: new Date().toISOString(),
           sync_status: 'pending'
         });
@@ -288,7 +171,7 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
         console.error('Tracker error:', err);
       }
     }
-    
+
     setSaving(false);
     setLogTracker(null);
     loadData();
@@ -379,133 +262,14 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
         </Stack>
       )}
 
-      {/* Log Dialog */}
-      <Dialog open={!!logTracker} onClose={() => setLogTracker(null)} maxWidth="xs" fullWidth>
-        {logTracker && (
-          <>
-            <DialogTitle sx={{ pb: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography sx={{ fontSize: '1.2rem' }}>{logTracker.def.icon}</Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>{logTracker.def.label}</Typography>
-                </Box>
-                <IconButton size="small" onClick={() => setLogTracker(null)}><CloseIcon /></IconButton>
-              </Box>
-            </DialogTitle>
-            <DialogContent sx={{ pt: 2 }}>
-              <Stack spacing={2}>
-                {logTracker.def.fields.map(field => (
-                  field.key === 'category' && logTracker?.type === 'expenses' ? (
-                    <TextField
-                      key={field.key}
-                      select
-                      label={field.label}
-                      value={logFields[field.key] ?? ''}
-                      onChange={(e) => setLogFields({ ...logFields, [field.key]: e.target.value })}
-                      fullWidth
-                    >
-                      {categorySuggestions.map(cat => (
-                        <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                      ))}
-                    </TextField>
-                  ) : field.key === 'merchant' && logTracker?.type === 'expenses' ? (
-                    <Autocomplete
-                      key={field.key}
-                      options={merchantSuggestions}
-                      inputValue={logFields[field.key] ?? ''}
-                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
-                      renderInput={(params) => <TextField {...params} label={field.label} />}
-                    />
-                  ) : field.key === 'asset' && logTracker?.type === 'investments' ? (
-                    <Autocomplete
-                      key={field.key}
-                      options={assetSuggestions}
-                      inputValue={logFields[field.key] ?? ''}
-                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
-                      renderInput={(params) => <TextField {...params} label={field.label} />}
-                    />
-                  ) : field.key === 'company' && logTracker?.type === 'job-apps' ? (
-                    <Autocomplete
-                      key={field.key}
-                      options={companySuggestions}
-                      inputValue={logFields[field.key] ?? ''}
-                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
-                      renderInput={(params) => <TextField {...params} label={field.label} />}
-                    />
-                  ) : field.key === 'title' && logTracker?.type === 'books' ? (
-                    <Autocomplete
-                      key={field.key}
-                      options={bookSuggestions.map(b => b.title)}
-                      inputValue={logFields[field.key] ?? ''}
-                      onInputChange={(_, val) => {
-                        setLogFields({ ...logFields, [field.key]: val });
-                        const book = bookSuggestions.find(b => b.title === val);
-                        if (book) {
-                          setLogFields({ ...logFields, author: book.author });
-                        }
-                      }}
-                      renderInput={(params) => <TextField {...params} label={field.label} />}
-                    />
-                  ) : field.key === 'subject' && logTracker?.type === 'study' ? (
-                    <Autocomplete
-                      key={field.key}
-                      options={subjectSuggestions}
-                      inputValue={logFields[field.key] ?? ''}
-                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
-                      renderInput={(params) => <TextField {...params} label={field.label} />}
-                    />
-                  ) : field.key === 'instrument' && logTracker?.type === 'music' ? (
-                    <Autocomplete
-                      key={field.key}
-                      options={instrumentSuggestions}
-                      inputValue={logFields[field.key] ?? ''}
-                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
-                      renderInput={(params) => <TextField {...params} label={field.label} />}
-                    />
-                  ) : field.key === 'exercise' && logTracker?.type === 'lift' ? (
-                    <Autocomplete
-                      key={field.key}
-                      options={exerciseSuggestions}
-                      inputValue={logFields[field.key] ?? ''}
-                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
-                      renderInput={(params) => <TextField {...params} label={field.label} />}
-                    />
-                  ) : field.key === 'food' && logTracker?.type === 'meal' ? (
-                    <Autocomplete
-                      key={field.key}
-                      options={foodSuggestions}
-                      inputValue={logFields[field.key] ?? ''}
-                      onInputChange={(_, val) => setLogFields({ ...logFields, [field.key]: val })}
-                      renderInput={(params) => <TextField {...params} label={field.label} />}
-                    />
-                  ) : (
-                    <TextField
-                      key={field.key}
-                      label={field.label}
-                      type={field.type === 'number' ? 'number' : 'text'}
-                      value={logFields[field.key] ?? ''}
-                      onChange={(e) => setLogFields({ ...logFields, [field.key]: e.target.value })}
-                      fullWidth
-                      required={!field.optional}
-                    />
-                  )
-                ))}
-              </Stack>
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button onClick={() => setLogTracker(null)}>Cancel</Button>
-              <Button
-                onClick={saveEntry}
-                variant="contained"
-                disabled={saving}
-                sx={{ bgcolor: '#F59E0B', color: '#0D0E1A', fontWeight: 700 }}
-              >
-                {saving ? <CircularProgress size={20} /> : 'Save'}
-              </Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
+      {/* Editable Tracker Form Dialog */}
+      <EditableTrackerForm
+        open={!!logTracker}
+        onClose={() => setLogTracker(null)}
+        tracker={logTracker}
+        onSave={saveEntry}
+        saving={saving}
+      />
     </GlassCard>
   );
 };
