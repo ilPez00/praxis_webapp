@@ -11,7 +11,21 @@
 -- 1. Update notebook_entries check constraint to include new entry types
 -- =============================================================================
 
+-- First, drop the old constraint
 ALTER TABLE public.notebook_entries DROP CONSTRAINT IF EXISTS notebook_entries_entry_type_check;
+
+-- Update any existing invalid entry_type values to 'note' as default
+-- This handles any legacy data that might not match our new constraint
+UPDATE public.notebook_entries 
+SET entry_type = 'note' 
+WHERE entry_type NOT IN (
+  'note', 'tracker', 'goal_progress', 'post', 'event', 'message',
+  'checkin', 'achievement', 'bet', 'match', 'verification', 'comment', 
+  'place', 'friendship', 'group', 'honor'
+)
+OR entry_type IS NULL;
+
+-- Now add the new constraint with all valid entry types
 ALTER TABLE public.notebook_entries ADD CONSTRAINT notebook_entries_entry_type_check
   CHECK (entry_type IN (
     'note', 'tracker', 'goal_progress', 'post', 'event', 'message',
