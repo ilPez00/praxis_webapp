@@ -12,6 +12,11 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
     throw new BadRequestError('Both user IDs are required.');
   }
 
+  // Log Supabase client configuration (for debugging)
+  const supabaseUrl = process.env.SUPABASE_URL || 'NOT_SET';
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'NOT_SET';
+  logger.info(`[getMessages] Supabase URL set: ${supabaseUrl !== 'NOT_SET'}, Key set: ${supabaseKey !== 'NOT_SET'}, Key starts with: ${supabaseKey.slice(0, 10)}...`);
+
   // Fetch messages between two users (bidirectional)
   // Split into two queries and combine results (more reliable than .or() with and())
   const [result1, result2] = await Promise.all([
@@ -36,12 +41,22 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
       logger.warn('messages table not found — returning empty list. Run migrations/setup.sql.');
       return res.status(200).json([]);
     }
-    logger.error('Supabase error fetching messages (direction 1):', result1.error.message);
+    logger.error('Supabase error fetching messages (direction 1):', JSON.stringify({
+      message: result1.error.message,
+      details: result1.error.details,
+      hint: result1.error.hint,
+      code: result1.error.code,
+    }));
     throw new InternalServerError('Failed to fetch messages.');
   }
 
   if (result2.error) {
-    logger.error('Supabase error fetching messages (direction 2):', result2.error.message);
+    logger.error('Supabase error fetching messages (direction 2):', JSON.stringify({
+      message: result2.error.message,
+      details: result2.error.details,
+      hint: result2.error.hint,
+      code: result2.error.code,
+    }));
     throw new InternalServerError('Failed to fetch messages.');
   }
 
