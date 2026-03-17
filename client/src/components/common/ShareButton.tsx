@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, Typography, Chip, Autocomplete, InputAdornment } from '@mui/material';
-import ShareIcon from '@mui/icons-material/Share';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, Typography, Chip, Autocomplete, InputAdornment, IconButton } from '@mui/material';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import PersonIcon from '@mui/icons-material/Person';
 import toast from 'react-hot-toast';
@@ -33,40 +32,39 @@ interface ShareButtonProps {
   tooltip?: string;
 }
 
-const ShareButton: React.FC<ShareButtonProps> = ({ 
-  sourceTable, 
-  sourceId, 
-  title, 
-  content = '', 
+const ShareButton: React.FC<ShareButtonProps> = ({
+  sourceTable,
+  sourceId,
+  title,
+  content = '',
   userId,
-  tooltip = 'Share',
+  tooltip = 'Share to Notebook',
 }) => {
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [category, setCategory] = useState(DIARY_CATEGORIES[0]);
   const [reply, setReply] = useState('');
   const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
   const [saving, setSaving] = useState(false);
   const [isPrivate, setIsPrivate] = useState(true);
-  
+
   // Fetch user's matches/friends for tagging
   const [availableUsers, setAvailableUsers] = useState<TaggedUser[]>([]);
-  
+
   useEffect(() => {
     if (userId && shareDialogOpen) {
       fetchAvailableUsers();
     }
   }, [userId, shareDialogOpen]);
-  
+
   const fetchAvailableUsers = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
-      
+
       // Fetch matches
       const { data: matches } = await supabase
         .rpc('match_users_by_goals', { query_user_id: userId, match_limit: 50 });
-      
+
       if (matches) {
         setAvailableUsers(matches.map((m: any) => ({
           id: m.id,
@@ -80,7 +78,6 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   };
 
   const handleShare = () => {
-    setAnchorEl(null);
     setShareDialogOpen(true);
   };
 
@@ -144,9 +141,9 @@ const ShareButton: React.FC<ShareButtonProps> = ({
 
       // Notify tagged users (optional - could add notification system)
       if (taggedUsers.length > 0) {
-        toast.success(`Shared to diary & tagged ${taggedUsers.length} user(s)!`);
+        toast.success(`Shared to notebook & tagged ${taggedUsers.length} user(s)!`);
       } else {
-        toast.success('Shared to diary!');
+        toast.success('Shared to notebook!');
       }
       
       setShareDialogOpen(false);
@@ -166,32 +163,15 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         size="small"
         onClick={(e) => {
           e.stopPropagation();
-          setAnchorEl(e.currentTarget);
+          handleShare();
         }}
+        title={tooltip}
         sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
       >
-        <ShareIcon fontSize="small" />
+        <NoteAddIcon fontSize="small" />
       </IconButton>
 
-      <Menu 
-        anchorEl={anchorEl} 
-        open={!!anchorEl} 
-        onClose={() => setAnchorEl(null)}
-        PaperProps={{
-          sx: {
-            bgcolor: 'rgba(30,30,40,0.95)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            minWidth: '200px',
-          }
-        }}
-      >
-        <MenuItem onClick={handleShare}>
-          <NoteAddIcon sx={{ mr: 1, fontSize: 18 }} />
-          Share to Diary
-        </MenuItem>
-      </Menu>
-
-      <Dialog 
+      <Dialog
         open={shareDialogOpen} 
         onClose={() => setShareDialogOpen(false)} 
         maxWidth="md" 
@@ -206,7 +186,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         <DialogTitle sx={{ fontWeight: 800, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <NoteAddIcon sx={{ color: '#A78BFA' }} />
-            Share to Diary
+            Share to Notebook
           </Box>
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
@@ -247,24 +227,25 @@ const ShareButton: React.FC<ShareButtonProps> = ({
             </Box>
           </Box>
 
-          {/* Reply/Comment */}
+          {/* Reply/Comment - This is the main action for sharing to notebook */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
-              💬 YOUR REPLY (OPTIONAL)
+            <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 1 }}>
+              📝 ADD YOUR NOTE
             </Typography>
             <TextField
               fullWidth
               multiline
-              rows={3}
-              placeholder="Add your thoughts, reply, or comment..."
+              rows={4}
+              placeholder="What are your thoughts on this? Add a note, reply, or reflection..."
               value={reply}
               onChange={(e) => setReply(e.target.value)}
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  bgcolor: 'rgba(255,255,255,0.05)',
-                  '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-                  '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+                  bgcolor: 'rgba(167,139,250,0.05)',
+                  border: '1px solid rgba(167,139,250,0.2)',
+                  '& fieldset': { borderColor: 'transparent' },
+                  '&:hover fieldset': { borderColor: 'rgba(167,139,250,0.4)' },
+                  '&.Mui-focused fieldset': { borderColor: '#A78BFA' },
                 },
               }}
             />
@@ -352,15 +333,15 @@ const ShareButton: React.FC<ShareButtonProps> = ({
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <Button 
-            onClick={() => setShareDialogOpen(false)} 
+          <Button
+            onClick={() => setShareDialogOpen(false)}
             sx={{ color: 'text.secondary' }}
           >
             Cancel
           </Button>
-          <Button 
-            onClick={saveToDiary} 
-            variant="contained" 
+          <Button
+            onClick={saveToDiary}
+            variant="contained"
             disabled={saving}
             sx={{
               bgcolor: 'primary.main',
@@ -370,7 +351,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
               '&:hover': { bgcolor: 'primary.light' },
             }}
           >
-            {saving ? 'Sharing...' : 'Share to Diary'}
+            {saving ? 'Sharing...' : 'Share to Notebook'}
           </Button>
         </DialogActions>
       </Dialog>
