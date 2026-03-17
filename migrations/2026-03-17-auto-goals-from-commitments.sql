@@ -57,14 +57,14 @@ BEGIN
   );
 
   -- Get user's existing goal tree
-  SELECT gt.nodes, gt."rootNodes"
+  SELECT gt.nodes, gt.root_nodes
   INTO existing_goals, root_goals
   FROM public.goal_trees gt
-  WHERE gt."userId" = NEW.user_id;
+  WHERE gt.user_id = NEW.user_id;
 
   -- If no goal tree exists, create one
   IF existing_goals IS NULL THEN
-    INSERT INTO public.goal_trees ("userId", nodes, "rootNodes")
+    INSERT INTO public.goal_trees (user_id, nodes, root_nodes)
     VALUES (
       NEW.user_id,
       jsonb_build_array(goal_node),
@@ -77,9 +77,9 @@ BEGIN
       UPDATE public.goal_trees
       SET 
         nodes = nodes || jsonb_build_array(goal_node),
-        "rootNodes" = "rootNodes" || jsonb_build_array(goal_node_id),
+        root_nodes = root_nodes || jsonb_build_array(goal_node_id),
         updated_at = NOW()
-      WHERE "userId" = NEW.user_id;
+      WHERE user_id = NEW.user_id;
     END IF;
   END IF;
 
@@ -135,16 +135,16 @@ BEGIN
     );
 
     -- Insert or update goal tree for creator
-    INSERT INTO public.goal_trees ("userId", nodes, "rootNodes")
+    INSERT INTO public.goal_trees (user_id, nodes, root_nodes)
     VALUES (
       user_id_val,
       jsonb_build_array(goal_node),
       jsonb_build_array(goal_node_id)
     )
-    ON CONFLICT ("userId") DO UPDATE
+    ON CONFLICT (user_id) DO UPDATE
     SET 
       nodes = public.goal_trees.nodes || jsonb_build_array(goal_node),
-      "rootNodes" = public.goal_trees."rootNodes" || jsonb_build_array(goal_node_id),
+      root_nodes = public.goal_trees.root_nodes || jsonb_build_array(goal_node_id),
       updated_at = NOW()
     WHERE NOT (public.goal_trees.nodes @> jsonb_build_array(goal_node));
 
@@ -177,16 +177,16 @@ BEGIN
         )
       );
 
-      INSERT INTO public.goal_trees ("userId", nodes, "rootNodes")
+      INSERT INTO public.goal_trees (user_id, nodes, root_nodes)
       VALUES (
         user_id_val,
         jsonb_build_array(goal_node),
         jsonb_build_array(goal_node_id)
       )
-      ON CONFLICT ("userId") DO UPDATE
+      ON CONFLICT (user_id) DO UPDATE
       SET 
         nodes = public.goal_trees.nodes || jsonb_build_array(goal_node),
-        "rootNodes" = public.goal_trees."rootNodes" || jsonb_build_array(goal_node_id),
+        root_nodes = public.goal_trees.root_nodes || jsonb_build_array(goal_node_id),
         updated_at = NOW()
       WHERE NOT (public.goal_trees.nodes @> jsonb_build_array(goal_node));
     END IF;
@@ -251,16 +251,16 @@ BEGIN
       );
 
       -- Insert or update goal tree
-      INSERT INTO public.goal_trees ("userId", nodes, "rootNodes")
+      INSERT INTO public.goal_trees (user_id, nodes, root_nodes)
       VALUES (
         NEW.user_id,
         jsonb_build_array(goal_node),
         jsonb_build_array(goal_node_id)
       )
-      ON CONFLICT ("userId") DO UPDATE
+      ON CONFLICT (user_id) DO UPDATE
       SET 
         nodes = public.goal_trees.nodes || jsonb_build_array(goal_node),
-        "rootNodes" = public.goal_trees."rootNodes" || jsonb_build_array(goal_node_id),
+        root_nodes = public.goal_trees.root_nodes || jsonb_build_array(goal_node_id),
         updated_at = NOW()
       WHERE NOT (public.goal_trees.nodes @> jsonb_build_array(goal_node));
     END IF;
@@ -290,10 +290,10 @@ DECLARE
   node_index INT;
 BEGIN
   -- Get the parent goal node from user's goal tree
-  SELECT gt.nodes, gt."rootNodes"
+  SELECT gt.nodes, gt.root_nodes
   INTO goal_tree_record
   FROM public.goal_trees gt
-  WHERE gt."userId" = NEW.user_id;
+  WHERE gt.user_id = NEW.user_id;
 
   -- Find the parent goal node by ID (goal_node_id from bet)
   -- The goal_node_id is stored as text, we need to find it in the nodes array
@@ -303,7 +303,7 @@ BEGIN
   INTO parent_node, node_index
   FROM public.goal_trees,
        LATERAL jsonb_array_elements(nodes) WITH ORDINALITY AS elem(node, node_idx)
-  WHERE "userId" = NEW.user_id
+  WHERE user_id = NEW.user_id
     AND (elem.node->>'id')::text = NEW.goal_node_id;
 
   -- If parent goal exists, add bet as a subgoal/commitment
@@ -353,7 +353,7 @@ BEGIN
     SET 
       nodes = updated_nodes,
       updated_at = NOW()
-    WHERE "userId" = NEW.user_id;
+    WHERE user_id = NEW.user_id;
   ELSE
     -- If no parent goal exists, create a standalone goal for the bet
     subgoal_id := 'bet_' || NEW.id::text;
@@ -375,16 +375,16 @@ BEGIN
       )
     );
 
-    INSERT INTO public.goal_trees ("userId", nodes, "rootNodes")
+    INSERT INTO public.goal_trees (user_id, nodes, root_nodes)
     VALUES (
       NEW.user_id,
       jsonb_build_array(subgoal_node),
       jsonb_build_array(subgoal_id)
     )
-    ON CONFLICT ("userId") DO UPDATE
+    ON CONFLICT (user_id) DO UPDATE
     SET 
       nodes = public.goal_trees.nodes || jsonb_build_array(subgoal_node),
-      "rootNodes" = public.goal_trees."rootNodes" || jsonb_build_array(subgoal_id),
+      root_nodes = public.goal_trees.root_nodes || jsonb_build_array(subgoal_id),
       updated_at = NOW()
     WHERE NOT (public.goal_trees.nodes @> jsonb_build_array(subgoal_node));
   END IF;
@@ -413,7 +413,7 @@ DECLARE
   is_expired BOOLEAN;
 BEGIN
   -- Iterate through all goal trees
-  FOR goal_record IN SELECT "userId", nodes FROM public.goal_trees LOOP
+  FOR goal_record IN SELECT user_id, nodes FROM public.goal_trees LOOP
     updated_nodes := jsonb_build_array();
     
     FOR i IN 0..(jsonb_array_length(goal_record.nodes) - 1) LOOP
@@ -468,7 +468,7 @@ BEGIN
     IF updated_nodes != goal_record.nodes THEN
       UPDATE public.goal_trees
       SET nodes = updated_nodes, updated_at = NOW()
-      WHERE "userId" = goal_record."userId";
+      WHERE user_id = goal_record.user_id;
     END IF;
   END LOOP;
 END;
@@ -484,7 +484,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Create a view for quick access to expiring goals
 CREATE OR REPLACE VIEW public.user_expiring_goals AS
 SELECT 
-  gt."userId" as user_id,
+  gt.user_id as user_id,
   elem.node->>'id' as goal_id,
   elem.node->>'name' as goal_name,
   elem.node->>'domain' as domain,
