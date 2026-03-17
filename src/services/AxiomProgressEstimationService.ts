@@ -6,7 +6,7 @@
 
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
-import AICoachingService from './AICoachingService';
+import { AICoachingService } from './AICoachingService';
 
 interface ProgressEstimate {
   goalId: string;
@@ -252,7 +252,7 @@ ESTIMATION GUIDELINES:
 
 Respond with ONLY a number between 0 and 100:`;
 
-      const response = await aiCoaching.generateWithLLM(prompt);
+      const response = await aiCoaching.runWithFallback(prompt);
       const estimatedProgress = parseInt(response.trim(), 10);
       
       // Validate and clamp
@@ -378,21 +378,14 @@ Respond with ONLY a number between 0 and 100:`;
 
       for (const update of updates) {
         const change = update.newProgress - update.oldProgress;
-        
+
         await pushNotification({
           userId,
           title: change > 0 ? '🎯 Progress Updated!' : '⚠️ Progress Check',
-          message: change > 0 
+          body: change > 0
             ? `"${update.goalId.slice(0, 30)}..." increased to ${update.newProgress}% (${change > 0 ? '+' : ''}${change}%)`
             : `"${update.goalId.slice(0, 30)}..." needs attention`,
           type: 'goal_progress_update',
-          metadata: {
-            goalId: update.goalId,
-            oldProgress: update.oldProgress,
-            newProgress: update.newProgress,
-            reasoning: update.reasoning,
-            updated_by: 'axiom_auto',
-          },
         });
       }
     } catch (error: any) {

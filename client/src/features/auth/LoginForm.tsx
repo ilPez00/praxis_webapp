@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { API_URL } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { nuclearReset } from '../../utils/versionControl';
+import ContributionGraph from '../../components/common/ContributionGraph';
 import {
   Box,
   Typography,
@@ -16,6 +17,7 @@ import {
   Divider,
   MenuItem,
   Menu,
+  LinearProgress,
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import GoogleIcon from '@mui/icons-material/Google';
@@ -33,11 +35,75 @@ const LANGUAGES = [
 const LoginForm: React.FC = () => {
   const { t, i18n } = useTranslation();
   const [email, setEmail] = useState('');
-
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
   const [langAnchor, setLangAnchor] = useState<null | HTMLElement>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [weekStats, setWeekStats] = useState({ total: 0, streak: 0 });
+
+  useEffect(() => {
+    // Check if user is already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        fetchWeekStats(session.user.id);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        fetchWeekStats(session.user.id);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchWeekStats = async (userId: string) => {
+    try {
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const { data: entries } = await supabase
+        .from('notebook_entries')
+        .select('occurred_at')
+        .eq('user_id', userId)
+        .gte('occurred_at', startOfWeek.toISOString());
+
+      const total = entries?.length || 0;
+
+      // Calculate streak (consecutive days with entries)
+      let streak = 0;
+      if (entries && entries.length > 0) {
+        const uniqueDays = [...new Set(entries.map(e => e.occurred_at.slice(0, 10)))].sort().reverse();
+        const today = new Date().toISOString().slice(0, 10);
+        let expectedDate = new Date(today);
+
+        for (const day of uniqueDays) {
+          const dayDate = new Date(day + 'T00:00:00');
+          const diffDays = Math.floor((expectedDate.getTime() - dayDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (diffDays <= 1) {
+            streak++;
+            expectedDate = dayDate;
+            expectedDate.setDate(expectedDate.getDate() - 1);
+          } else {
+            break;
+          }
+        }
+      }
+
+      setWeekStats({ total, streak });
+    } catch (error) {
+      console.error('Failed to fetch week stats:', error);
+    }
+  };
 
   const handleLanguageOpen = (event: React.MouseEvent<HTMLElement>) => {
     setLangAnchor(event.currentTarget);
@@ -113,6 +179,58 @@ const LoginForm: React.FC = () => {
         <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 320, lineHeight: 1.7 }}>
           Your goals. Your connections. Your growth.
         </Typography>
+
+        {/* Activity Graph - shown when logged in */}
+        {currentUser && (
+          <Box sx={{
+            mt: 5, p: 3, borderRadius: '20px',
+            bgcolor: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            width: '100%', maxWidth: 340,
+          }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2, color: 'text.secondary', fontSize: '0.7rem', letterSpacing: '0.08em' }}>
+              THIS WEEK'S ACTIVITY
+            </Typography>
+
+            {/* Stats row */}
+            <Stack direction="row" spacing={3} justifyContent="center" sx={{ mb: 2.5 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', lineHeight: 1 }}>
+                  {weekStats.total}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem' }}>
+                  Entries
+                </Typography>
+              </Box>
+              <Box sx={{ width: '1px', bgcolor: 'rgba(255,255,255,0.1)' }} />
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" sx={{ fontWeight: 900, color: '#F97316', lineHeight: 1 }}>
+                  {weekStats.streak}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem' }}>
+                  Day Streak
+                </Typography>
+              </Box>
+            </Stack>
+
+            {/* Contribution graph */}
+            <Box sx={{ mb: 1.5 }}>
+              <ContributionGraph userId={currentUser.id} height={80} />
+            </Box>
+
+            {/* Legend */}
+            <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center">
+              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled' }}>Less</Typography>
+              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: 'rgba(255,255,255,0.05)' }} />
+              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: '#B45309' }} />
+              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: '#D97706' }} />
+              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: '#FBBF24' }} />
+              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: '#F59E0B' }} />
+              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled' }}>More</Typography>
+            </Stack>
+          </Box>
+        )}
+
         <Box sx={{ mt: 6, display: 'flex', flexDirection: 'column', gap: 3, width: '100%', maxWidth: 300 }}>
           {['AI-powered goal matching', 'Peer accountability network', 'Structured progress tracking'].map((feat) => (
             <Box key={feat} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
