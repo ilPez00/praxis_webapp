@@ -735,30 +735,55 @@ CRITICAL RULES:
       resources = generateResourcesFromGoals(nodes, metrics);
     }
 
-    // Generate goal strategy if LLM didn't provide one
+    // Generate goal strategy if LLM didn't provide one (make it more AI-like)
     if (goalStrategy.length === 0) {
-      goalStrategy = nodes
-        .filter((n: any) => !n.parentId && (n.progress || 0) < 1)
-        .slice(0, 5)
-        .map((g: any) => ({
-          goal: g.name,
-          currentProgress: `${Math.round((g.progress || 0) * 100)}%`,
-          bottleneck: (g.progress || 0) < 0.1 ? 'Getting started — break into first micro-step' :
-                      (g.progress || 0) < 0.5 ? 'Building momentum — maintain daily touchpoints' :
-                      'Final push — focus on completion criteria',
-          nextMilestone: `Reach ${Math.min(100, Math.round((g.progress || 0) * 100) + 15)}% this week`,
-          tacticalAdvice: `Spend 25 minutes today on "${g.name}". Set a timer, eliminate distractions, and focus on the smallest next action.`,
-          weeklyTarget: `Move "${g.name}" forward by at least 10% by end of week`,
-        }));
+      // Try to generate with mini AI call for each goal
+      goalStrategy = await Promise.all(
+        nodes
+          .filter((n: any) => !n.parentId && (n.progress || 0) < 1)
+          .slice(0, 5)
+          .map(async (g: any) => {
+            try {
+              const goalPrompt = `For goal "${g.name}" at ${Math.round((g.progress || 0) * 100)}% progress, provide:
+1. One specific bottleneck
+2. One milestone for this week
+3. One tactical action for today
+
+Respond in 3 short sentences max.`;
+              const aiResponse = await aiCoachingService.generateWithLLM(goalPrompt);
+              return {
+                goal: g.name,
+                currentProgress: `${Math.round((g.progress || 0) * 100)}%`,
+                bottleneck: aiResponse.split('\n')[0] || 'Building momentum',
+                nextMilestone: aiResponse.split('\n')[1] || `Reach ${Math.min(100, Math.round((g.progress || 0) * 100) + 15)}% this week`,
+                tacticalAdvice: aiResponse.split('\n')[2] || `Spend 25 minutes today on "${g.name}"`,
+                weeklyTarget: `Move "${g.name}" forward by at least 10%`,
+              };
+            } catch {
+              // Fallback to basic version
+              return {
+                goal: g.name,
+                currentProgress: `${Math.round((g.progress || 0) * 100)}%`,
+                bottleneck: (g.progress || 0) < 0.1 ? 'Getting started — break into first micro-step' :
+                            (g.progress || 0) < 0.5 ? 'Building momentum — maintain daily touchpoints' :
+                            'Final push — focus on completion criteria',
+                nextMilestone: `Reach ${Math.min(100, Math.round((g.progress || 0) * 100) + 15)}% this week`,
+                tacticalAdvice: `Spend 25 minutes today on "${g.name}". Set a timer, eliminate distractions.`,
+                weeklyTarget: `Move "${g.name}" forward by at least 10% by end of week`,
+              };
+            }
+          })
+      );
     }
 
-    // Generate network leverage if LLM didn't provide one
+    // Generate network leverage if LLM didn't provide one (make it more personalized)
     if (!networkLeverage) {
+      const topMatchName = match?.name || 'an accountability partner';
       networkLeverage = {
-        outreach: match ? `Reach out to ${match.name} — share your progress and ask about theirs` : 'Find an accountability partner in your groups',
-        askFor: 'Ask for honest feedback on your approach to your top goal',
-        offer: 'Share one lesson from your recent progress that could help someone else',
-        communityAction: 'Post a short update in a group board about what you learned today',
+        outreach: `Reach out to ${topMatchName} — share your progress on "${nodes[0]?.name || 'your top goal'}" and ask about theirs`,
+        askFor: 'Ask for honest feedback on your approach to your current biggest challenge',
+        offer: `Share one lesson from your recent progress${notebookEntriesRes.data?.[0]?.title ? ` (like "${notebookEntriesRes.data[0].title}")` : ''} that could help someone else`,
+        communityAction: 'Post a short update in a group board about what you learned today — vulnerability builds connection',
       };
     }
 
