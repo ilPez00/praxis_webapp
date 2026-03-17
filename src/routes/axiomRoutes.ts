@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { AxiomScanService } from '../services/AxiomScanService';
 import { AxiomDailySummaryService } from '../services/AxiomDailySummaryService';
+import { AxiomProgressEstimationService } from '../services/AxiomProgressEstimationService';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
 
 const router = Router();
@@ -60,6 +61,21 @@ router.post('/generate-daily-summaries', catchAsync(async (req: Request, res: Re
   res.json({
     success: true,
     message: 'Daily summaries generated',
+  });
+}));
+
+/**
+ * POST /axiom/estimate-progress
+ * Automatically estimate and update goal progress based on activity
+ * Admin/cron only
+ */
+router.post('/estimate-progress', catchAsync(async (req: Request, res: Response) => {
+  const progressService = new AxiomProgressEstimationService();
+  await progressService.estimateAllUsersProgress();
+
+  res.json({
+    success: true,
+    message: 'Goal progress estimated',
   });
 }));
 
