@@ -7,7 +7,7 @@ const keyGenerator = (req: Request): string => {
   if (req.user?.id) {
     return `user:${req.user.id}`;
   }
-  return `ip:${ipKeyGenerator(req.ip)}`;
+  return `ip:${ipKeyGenerator(req.ip || '0.0.0.0')}`;
 };
 
 // ============================================================================
