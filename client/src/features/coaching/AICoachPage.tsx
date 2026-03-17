@@ -107,6 +107,9 @@ const AICoachPage: React.FC = () => {
   const [loadingNarratives, setLoadingNarratives] = useState(false);
   const [narrativesOpen, setNarrativesOpen] = useState(false);
 
+  // Creating bet state
+  const [creatingBet, setCreatingBet] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const getAuthHeaders = async () => {
@@ -181,6 +184,54 @@ const AICoachPage: React.FC = () => {
       setLoadingReport(false);
     }
   }, []);
+
+  const handleCreateChallenge = async () => {
+    if (!dailyBrief?.challenge || !user?.id) return;
+    
+    setCreatingBet(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error('Please sign in to create a bet');
+        return;
+      }
+
+      // Parse the challenge target to extract goal name and deadline
+      const challengeTarget = dailyBrief.challenge.target;
+      const deadlineDate = new Date();
+      deadlineDate.setDate(deadlineDate.getDate() + 7); // 7 days from now
+
+      const betPayload = {
+        user_id: user.id,
+        goal_name: challengeTarget,
+        goal_node_id: null, // No specific goal node linked
+        stake_points: 50, // Default stake
+        deadline: deadlineDate.toISOString(),
+        terms: dailyBrief.challenge.terms,
+      };
+
+      const response = await fetch(`${API_URL}/bets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(betPayload),
+      });
+
+      if (response.ok) {
+        toast.success(`Bet created! "${challengeTarget}" - Good luck! 🎯`);
+        navigate('/betting');
+      } else {
+        const error = await response.json().catch(() => ({ message: 'Failed to create bet' }));
+        toast.error(error.message || 'Failed to create bet');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create bet');
+    } finally {
+      setCreatingBet(false);
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -504,10 +555,47 @@ const AICoachPage: React.FC = () => {
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
                 <Typography variant="overline" sx={{ color: '#F59E0B', fontWeight: 800 }}>Suggested Competition</Typography>
-                <Box sx={{ p: 2, mt: 1, bgcolor: 'rgba(245,158,11,0.05)', borderRadius: 2, border: '1px dashed #F59E0B' }}>
-                  <Typography variant="subtitle2" sx={{ color: '#F59E0B', fontWeight: 800, textTransform: 'uppercase' }}>{String(dailyBrief.challenge?.type)}</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{String(dailyBrief.challenge?.target)}</Typography>
-                  <Typography variant="caption" display="block">{String(dailyBrief.challenge?.terms)}</Typography>
+                <Box 
+                  sx={{ 
+                    p: 2, 
+                    mt: 1, 
+                    bgcolor: 'rgba(245,158,11,0.05)', 
+                    borderRadius: 2, 
+                    border: '1px dashed #F59E0B',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      bgcolor: 'rgba(245,158,11,0.08)',
+                      borderColor: '#F59E0B',
+                    }
+                  }} 
+                  onClick={handleCreateChallenge}
+                >
+                  <Typography variant="subtitle2" sx={{ color: '#F59E0B', fontWeight: 800, textTransform: 'uppercase' }}>
+                    {String(dailyBrief.challenge?.type)}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    {String(dailyBrief.challenge?.target)}
+                  </Typography>
+                  <Typography variant="caption" display="block" sx={{ mb: 1, color: 'text.secondary' }}>
+                    {String(dailyBrief.challenge?.terms)}
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    disabled={creatingBet}
+                    sx={{
+                      mt: 1,
+                      bgcolor: '#F59E0B',
+                      color: '#000',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      px: 2,
+                      '&:hover': { bgcolor: '#D97706' },
+                    }}
+                  >
+                    {creatingBet ? 'Creating...' : 'Accept Challenge'}
+                  </Button>
                 </Box>
               </Grid>
               <Grid size={{ xs: 12 }}>
