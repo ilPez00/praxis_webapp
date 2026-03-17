@@ -31,6 +31,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
   const [deadline, setDeadline] = useState('');
   const [saving, setSaving] = useState(false);
   const [userPoints, setUserPoints] = useState<number | null>(null);
+  const [createDuel, setCreateDuel] = useState(true); // Default to creating duel
 
   // Default deadline to tonight 10pm if not provided
   useEffect(() => {
@@ -44,7 +45,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
         const today = new Date();
         setDeadline(today.toISOString().split('T')[0]);
       }
-      
+
       // Fetch user points
       if (user?.id) {
         api.get(`/users/${user.id}`).then(res => {
@@ -75,6 +76,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
         goalName: challenge.target,
         deadline: finalDeadline,
         stakePoints: stake,
+        opponentType: createDuel ? 'duel' : 'self',
       });
 
       console.log('Bet created:', res.data);
@@ -198,6 +200,55 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
             InputLabelProps={{ shrink: true }}
             inputProps={{ min: new Date().toISOString().split('T')[0] }}
           />
+        </Box>
+
+        {/* Duel Toggle */}
+        <Box sx={{ 
+          p: 2, 
+          bgcolor: createDuel ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)', 
+          borderRadius: 2, 
+          border: `1px solid ${createDuel ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.06)'}`,
+          mb: 2,
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ 
+                width: 24, height: 24, 
+                borderRadius: '6px', 
+                bgcolor: createDuel ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.1)',
+                border: `1px solid ${createDuel ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.2)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Typography sx={{ fontSize: '0.8rem' }}>⚔️</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: createDuel ? '#A78BFA' : 'text.secondary', fontWeight: 700, display: 'block' }}>
+                  Challenge a Friend
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem' }}>
+                  {createDuel ? 'Auto-match with someone who has similar goals' : 'Solo commitment'}
+                </Typography>
+              </Box>
+            </Box>
+            <Button
+              size="small"
+              onClick={() => setCreateDuel(!createDuel)}
+              sx={{
+                bgcolor: createDuel ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.1)',
+                color: createDuel ? '#A78BFA' : 'text.secondary',
+                fontWeight: 700,
+                fontSize: '0.7rem',
+                px: 2,
+                py: 0.5,
+                border: `1px solid ${createDuel ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.2)'}`,
+                '&:hover': { 
+                  bgcolor: createDuel ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.15)',
+                },
+              }}
+            >
+              {createDuel ? 'Duel ON' : 'Duel OFF'}
+            </Button>
+          </Box>
         </Box>
 
         <Divider sx={{ my: 2, borderStyle: 'dashed' }} />

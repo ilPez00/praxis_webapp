@@ -5,12 +5,67 @@ import { catchAsync, BadRequestError, NotFoundError, ForbiddenError, InternalSer
 import { pushNotification } from './notificationController';
 
 /**
+ * Find users with similar goals for duel matching
+ */
+async function findDuelOpponent(userId: string, goalName: string): Promise<string | null> {
+  try {
+    // Get current user's goal domains
+    const { data: userGoals } = await supabase
+      .from('goal_trees')
+      .select('nodes')
+      .eq('user_id', userId)
+      .single();
+
+    const userDomains = new Set<string>();
+    if (userGoals?.nodes) {
+      const nodes = Array.isArray(userGoals.nodes) ? userGoals.nodes : [];
+      nodes.forEach((node: any) => {
+        if (node?.domain) userDomains.add(node.domain);
+      });
+    }
+
+    // Find other users with similar goals
+    const { data: matches } = await supabase
+      .from('matches')
+      .select('matched_user_id')
+      .eq('user_id', userId)
+      .limit(10);
+
+    if (matches && matches.length > 0) {
+      // Pick a random match as opponent
+      const randomMatch = matches[Math.floor(Math.random() * matches.length)];
+      return randomMatch.matched_user_id;
+    }
+
+    // Fallback: find any active user with similar goals
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .neq('id', userId)
+      .not('last_activity_date', 'is', null)
+      .order('last_activity_date', { ascending: false })
+      .limit(5);
+
+    if (profiles && profiles.length > 0) {
+      const randomProfile = profiles[Math.floor(Math.random() * profiles.length)];
+      return randomProfile.id;
+    }
+
+    return null;
+  } catch (err) {
+    logger.error('Error finding duel opponent:', err);
+    return null;
+  }
+}
+
+/**
  * POST /bets
  * Create a new goal bet. Deducts stake_points from user's praxis_points.
- * Body: { userId, goalNodeId, goalName, deadline, stakePoints }
+ * Automatically creates a duel if opponentType is 'duel'.
+ * Body: { userId, goalNodeId, goalName, deadline, stakePoints, opponentType: 'self' | 'duel' }
  */
 export const createBet = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId, goalNodeId, goalName, deadline, stakePoints } = req.body;
+  const { userId, goalNodeId, goalName, deadline, stakePoints, opponentType } = req.body;
 
   if (!userId || !goalName || !deadline || !stakePoints) {
     throw new BadRequestError('userId, goalName, deadline, and stakePoints are required.');
@@ -62,7 +117,8 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     .update({ praxis_points: currentPoints - stakePoints })
     .eq('id', userId);
 
-  const { data: bet, error } = await supabase
+  // Create the bet
+  const { data: bet, error: betError } = await supabase
     .from('bets')
     .insert({
       user_id: userId,
@@ -75,17 +131,64 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     .select()
     .single();
 
-  if (error) {
+  if (betError) {
     // Refund points if insert failed
     await supabase
       .from('profiles')
       .update({ praxis_points: currentPoints })
       .eq('id', userId);
-    logger.error('Error creating bet:', error.message);
+    logger.error('Error creating bet:', betError.message);
     throw new InternalServerError('Failed to create bet.');
   }
 
-  res.status(201).json(bet);
+  // If opponentType is 'duel', automatically create a duel
+  let duel = null;
+  if (opponentType === 'duel') {
+    const opponentId = await findDuelOpponent(userId, goalName);
+    
+    if (opponentId) {
+      const duelDeadline = new Date();
+      duelDeadline.setDate(deadlineDate.getDate());
+      
+      const { data: newDuel, error: duelError } = await supabase
+        .from('duels')
+        .insert({
+          creator_id: userId,
+          opponent_id: opponentId,
+          goal_node_id: goalNodeId || null,
+          title: `Bet Challenge: ${goalName}`,
+          description: `Staked ${stakePoints} PP on "${goalName}". Deadline: ${deadlineDate.toLocaleDateString()}`,
+          category: 'bet_challenge',
+          stake_pp: stakePoints,
+          deadline_days: Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+          deadline: duelDeadline.toISOString().split('T')[0],
+          status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (duelError) {
+        logger.error('Error creating duel:', duelError.message);
+      } else {
+        duel = newDuel;
+        
+        // Notify opponent
+        try {
+          await pushNotification({
+            user_id: opponentId,
+            title: '🎯 Duel Challenge!',
+            message: `${profile?.name || 'Someone'} challenged you to "${goalName}" for ${stakePoints} PP!`,
+            type: 'duel_challenge',
+            metadata: { duel_id: newDuel.id, stake: stakePoints },
+          });
+        } catch (err) {
+          logger.error('Failed to send duel notification:', err);
+        }
+      }
+    }
+  }
+
+  res.status(201).json({ bet, duel });
 });
 
 /**

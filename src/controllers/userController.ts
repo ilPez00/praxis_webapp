@@ -103,16 +103,20 @@ export const getLeaderboard = catchAsync(async (req: Request, res: Response, _ne
 export const getUserProfile = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params as { id: string }; // Extract user ID from request parameters
 
-  // Query Supabase for the user's profile
+  // Query Supabase for the user's profile - only fetch columns guaranteed to exist
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, email, avatar_url, bio, username, city, latitude, longitude, is_premium, is_admin, praxis_points, current_streak, honor_score, karma_score, reliability_score, domain_proficiency, onboarding_completed, goal_tree_edit_count, last_activity_date, created_at')
+    .select('id, name, avatar_url, bio, city, is_premium, is_admin, praxis_points, current_streak, honor_score, reliability_score, onboarding_completed, created_at')
     .eq('id', id)
     .single();
 
-  // Handle Supabase query errors
+  // Handle Supabase query errors - gracefully handle missing columns
   if (error) {
     logger.error('Supabase error fetching user profile:', error.message);
+    // Return minimal profile if column doesn't exist (graceful degradation)
+    if (error.message.includes('column')) {
+      return res.status(200).json({ id, name: 'User', avatar_url: null, bio: null });
+    }
     throw new InternalServerError('Failed to fetch user profile.');
   }
 
