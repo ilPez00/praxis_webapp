@@ -57,6 +57,7 @@ interface ShareButtonProps {
   content?: string;
   userId?: string;
   tooltip?: string;
+  onSuccess?: () => void; // Callback after successful share
 }
 
 const ShareButton: React.FC<ShareButtonProps> = ({
@@ -66,6 +67,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   content = '',
   userId,
   tooltip = 'Share to Notebook',
+  onSuccess,
 }) => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [reply, setReply] = useState('');
@@ -291,6 +293,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       }
 
       // Use the API endpoint instead of direct Supabase insert
+      console.log('[ShareButton] Saving to notebook:', { userId, entry_type: 'note', title, sourceTable });
       const res = await fetch(`${API_URL}/notebook/entries`, {
         method: 'POST',
         headers,
@@ -299,10 +302,12 @@ const ShareButton: React.FC<ShareButtonProps> = ({
 
       if (!res.ok) {
         const errorData = await res.json();
+        console.error('[ShareButton] API error:', errorData);
         throw new Error(errorData.message || 'Failed to save entry');
       }
 
       const savedEntry = await res.json();
+      console.log('[ShareButton] Entry saved successfully:', savedEntry.id);
 
       // Notify tagged users (optional - could add notification system)
       if (taggedUsers.length > 0) {
@@ -311,6 +316,11 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         toast.success(`Shared to "${selectedGoal.name}"!`);
       } else {
         toast.success('Shared to notebook!');
+      }
+
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
       }
 
       setShareDialogOpen(false);

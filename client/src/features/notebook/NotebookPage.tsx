@@ -640,6 +640,9 @@ const NotebookPage: React.FC = () => {
           sourceId={shareEntry.id}
           title={shareEntry.title || shareEntry.entry_type}
           content={shareEntry.content}
+          onSuccess={() => {
+            fetchEntries(); // Refresh the list after sharing
+          }}
         />
       )}
     </Container>

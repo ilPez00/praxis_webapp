@@ -50,6 +50,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
   title = 'Shared item',
   content = '',
   metadata = {},
+  onSuccess,
 }) => {
   const [activeTab, setActiveTab] = useState<'diary' | 'social' | 'praxis'>('diary');
   const [diaryNote, setDiaryNote] = useState('');
@@ -115,12 +116,21 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
     setSharing(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
       const headers = {
         'Authorization': `Bearer ${session?.access_token}`,
         'Content-Type': 'application/json',
       };
 
       const tagArray = diaryTags.split(',').map(t => t.trim()).filter(Boolean);
+
+      // Build content with note
+      let fullContent = diaryNote ? `${diaryNote}\n\n---\n\n` : '';
+      fullContent += `**${title}**\n`;
+      if (content) {
+        fullContent += `${content}\n\n`;
+      }
+      fullContent += `*Shared from ${sourceTable.replace('_', ' ')}*`;
 
       // Get current location if available
       let latitude, longitude, location_name;
@@ -137,29 +147,33 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
         }
       }
 
-      const res = await fetch(`${API_URL}/diary/entries/share`, {
+      // Use notebook endpoint instead of diary
+      const res = await fetch(`${API_URL}/notebook/entries`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
+          entry_type: 'note',
+          title: title || 'Shared Item',
+          content: fullContent,
           source_table: sourceTable,
           source_id: sourceId,
-          content: diaryNote,
-          latitude,
-          longitude,
-          location_name,
           tags: tagArray.length > 0 ? tagArray : null,
+          metadata: location_name ? { latitude, longitude, location_name } : undefined,
         }),
       });
 
       if (res.ok) {
-        toast.success('Saved to diary!');
+        toast.success('Saved to notebook!');
+        if (onSuccess) {
+          onSuccess();
+        }
         handleClose();
       } else {
         const error = await res.json();
-        toast.error(error.message || 'Failed to save to diary');
+        toast.error(error.message || 'Failed to save to notebook');
       }
     } catch (err: any) {
-      toast.error('Failed to save to diary: ' + err.message);
+      toast.error('Failed to save to notebook: ' + err.message);
     } finally {
       setSharing(false);
     }
