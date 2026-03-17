@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, Typography, Chip, Autocomplete, InputAdornment, IconButton } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, Typography, Chip, Autocomplete, InputAdornment, IconButton, Collapse, Avatar } from '@mui/material';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import PersonIcon from '@mui/icons-material/Person';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import CloseIcon from '@mui/icons-material/Close';
+import TargetIcon from '@mui/icons-material/Target';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 
@@ -17,10 +22,30 @@ const DIARY_CATEGORIES = [
   { value: 'post', label: '📢 Post', icon: '📢' },
 ];
 
+// Mood/vibe options
+const MOODS = [
+  { emoji: '😊', label: 'Good', color: '#10B981' },
+  { emoji: '😐', label: 'Okay', color: '#F59E0B' },
+  { emoji: '😔', label: 'Low', color: '#6B7280' },
+  { emoji: '🔥', label: 'Great', color: '#EF4444' },
+  { emoji: '💪', label: 'Strong', color: '#8B5CF6' },
+  { emoji: '🎯', label: 'Focused', color: '#3B82F6' },
+  { emoji: '🧘', label: 'Calm', color: '#06B6D4' },
+  { emoji: '✨', label: 'Inspired', color: '#EC4899' },
+];
+
 interface TaggedUser {
   id: string;
   name: string;
   avatar_url?: string;
+}
+
+interface GoalNode {
+  id: string;
+  name: string;
+  domain: string;
+  progress: number;
+  weight: number;
 }
 
 interface ShareButtonProps {
@@ -46,13 +71,28 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
   const [saving, setSaving] = useState(false);
   const [isPrivate, setIsPrivate] = useState(true);
+  
+  // New: Goal selection
+  const [selectedGoal, setSelectedGoal] = useState<GoalNode | null>(null);
+  const [goals, setGoals] = useState<GoalNode[]>([]);
+  const [showGoalPicker, setShowGoalPicker] = useState(false);
+  
+  // New: Mood/vibe selection
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  
+  // New: File upload
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Fetch user's matches/friends for tagging
+  // Fetch user's matches/friends for tagging AND goals
   const [availableUsers, setAvailableUsers] = useState<TaggedUser[]>([]);
 
   useEffect(() => {
     if (userId && shareDialogOpen) {
       fetchAvailableUsers();
+      fetchUserGoals();
     }
   }, [userId, shareDialogOpen]);
 
@@ -77,6 +117,53 @@ const ShareButton: React.FC<ShareButtonProps> = ({
     }
   };
 
+  const fetchUserGoals = async () => {
+    try {
+      const { data: goalTree } = await supabase
+        .from('goal_trees')
+        .select('nodes')
+        .eq('user_id', userId)
+        .single();
+
+      if (goalTree?.nodes) {
+        const goalList = (goalTree.nodes as any[]).map((node: any) => ({
+          id: node.id,
+          name: node.name,
+          domain: node.domain,
+          progress: node.progress || 0,
+          weight: node.weight || 0.5,
+        }));
+        setGoals(goalList);
+      }
+    } catch (err) {
+      console.error('Failed to fetch goals:', err);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFilePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setFilePreview(null);
+      }
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleShare = () => {
     setShareDialogOpen(true);
   };
@@ -87,7 +174,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       return;
     }
 
-    setSaving(true);
+    setUploading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error('Not authenticated');
@@ -100,16 +187,50 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       }
       fullContent += `*Shared from ${sourceTable.replace('_', ' ')}*`;
 
-      // Build metadata with tags
+      // Build metadata with tags, goal, mood, and file
       const metadata: any = {
         reply,
         shared_at: new Date().toISOString(),
         source: sourceTable,
         source_id: sourceId,
       };
-      
+
       if (taggedUsers.length > 0) {
         metadata.tagged_users = taggedUsers.map(u => ({ id: u.id, name: u.name }));
+      }
+
+      if (selectedGoal) {
+        metadata.goal_id = selectedGoal.id;
+        metadata.goal_name = selectedGoal.name;
+        metadata.goal_domain = selectedGoal.domain;
+      }
+
+      if (selectedMood) {
+        metadata.mood = selectedMood;
+      }
+
+      // Upload file if selected
+      let mediaUrl: string | null = null;
+      let mediaType: string | null = null;
+
+      if (selectedFile) {
+        const ext = selectedFile.name.split('.').pop() ?? 'bin';
+        const path = `notebook/${userId}/${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('chat-media')
+          .upload(path, selectedFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-media')
+          .getPublicUrl(path);
+
+        mediaUrl = publicUrl;
+        mediaType = selectedFile.type.startsWith('image/') ? 'image' : 'file';
+        metadata.media_type = mediaType;
+        metadata.media_url = mediaUrl;
       }
 
       const insertPayload: any = {
@@ -120,16 +241,24 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         source_table: sourceTable,
         source_id: sourceId,
         is_private: isPrivate,
+        metadata,
       };
+
+      // Add goal_id for direct linking if selected
+      if (selectedGoal) {
+        insertPayload.goal_id = selectedGoal.id;
+        insertPayload.domain = selectedGoal.domain;
+      }
 
       // Try with metadata first, fall back without if column doesn't exist yet
       let { data, error } = await supabase
         .from('notebook_entries')
-        .insert({ ...insertPayload, metadata })
+        .insert(insertPayload)
         .select()
         .single();
 
       if (error && error.message?.includes('metadata')) {
+        delete insertPayload.metadata;
         ({ data, error } = await supabase
           .from('notebook_entries')
           .insert(insertPayload)
@@ -142,6 +271,8 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       // Notify tagged users (optional - could add notification system)
       if (taggedUsers.length > 0) {
         toast.success(`Shared to notebook & tagged ${taggedUsers.length} user(s)!`);
+      } else if (selectedGoal) {
+        toast.success(`Shared to "${selectedGoal.name}"!`);
       } else {
         toast.success('Shared to notebook!');
       }
@@ -149,10 +280,14 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       setShareDialogOpen(false);
       setReply('');
       setTaggedUsers([]);
+      setSelectedGoal(null);
+      setSelectedMood(null);
+      setSelectedFile(null);
+      setFilePreview(null);
     } catch (err: any) {
       toast.error('Failed to share: ' + err.message);
     } finally {
-      setSaving(false);
+      setUploading(false);
     }
   };
 
@@ -250,6 +385,159 @@ const ShareButton: React.FC<ShareButtonProps> = ({
             />
           </Box>
 
+          {/* Goal Selection */}
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block' }}>
+                🎯 LINK TO GOAL (OPTIONAL)
+              </Typography>
+              {selectedGoal && (
+                <Chip
+                  label={`${selectedGoal.name} (${Math.round(selectedGoal.progress * 100)}%)`}
+                  size="small"
+                  onDelete={() => setSelectedGoal(null)}
+                  sx={{
+                    bgcolor: 'rgba(139,92,246,0.2)',
+                    color: '#A78BFA',
+                    border: '1px solid rgba(139,92,246,0.3)',
+                    fontWeight: 700,
+                  }}
+                />
+              )}
+            </Box>
+            
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setShowGoalPicker(!showGoalPicker)}
+              startIcon={showGoalPicker ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              sx={{
+                mb: 1,
+                border: '1px solid rgba(139,92,246,0.3)',
+                color: '#A78BFA',
+                '&:hover': { border: '1px solid rgba(139,92,246,0.6)', bgcolor: 'rgba(139,92,246,0.1)' },
+              }}
+            >
+              {showGoalPicker ? 'Hide Goals' : `Select from ${goals.length} Goals`}
+            </Button>
+
+            <Collapse in={showGoalPicker}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 1, 
+                flexWrap: 'wrap', 
+                mt: 1, 
+                p: 2, 
+                bgcolor: 'rgba(139,92,246,0.05)',
+                borderRadius: 2,
+                border: '1px solid rgba(139,92,246,0.1)',
+              }}>
+                {goals.length === 0 ? (
+                  <Typography variant="caption" color="text.secondary">
+                    No goals yet. Create a goal first to link notes to it.
+                  </Typography>
+                ) : (
+                  goals.map((goal) => (
+                    <Chip
+                      key={goal.id}
+                      label={`${goal.name} (${Math.round(goal.progress * 100)}%)`}
+                      onClick={() => {
+                        setSelectedGoal(goal);
+                        setShowGoalPicker(false);
+                      }}
+                      sx={{
+                        bgcolor: selectedGoal?.id === goal.id ? 'rgba(139,92,246,0.3)' : 'rgba(139,92,246,0.1)',
+                        color: selectedGoal?.id === goal.id ? '#fff' : '#A78BFA',
+                        border: selectedGoal?.id === goal.id ? '2px solid #A78BFA' : '1px solid rgba(139,92,246,0.2)',
+                        fontWeight: selectedGoal?.id === goal.id ? 700 : 400,
+                        '&:hover': {
+                          bgcolor: 'rgba(139,92,246,0.2)',
+                        },
+                      }}
+                    />
+                  ))
+                )}
+              </Box>
+            </Collapse>
+          </Box>
+
+          {/* Mood/Vibe Selection */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
+              😊 HOW ARE YOU FEELING? (OPTIONAL)
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+              {MOODS.map((mood) => (
+                <Chip
+                  key={mood.emoji}
+                  label={`${mood.emoji} ${mood.label}`}
+                  onClick={() => setSelectedMood(selectedMood === mood.emoji ? null : mood.emoji)}
+                  size="small"
+                  sx={{
+                    bgcolor: selectedMood === mood.emoji ? mood.color : 'rgba(255,255,255,0.05)',
+                    color: selectedMood === mood.emoji ? '#fff' : 'text.secondary',
+                    fontWeight: selectedMood === mood.emoji ? 700 : 400,
+                    border: selectedMood === mood.emoji ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                    '&:hover': {
+                      bgcolor: `${mood.color}30`,
+                    },
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
+
+          {/* File Upload */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
+              📎 ATTACH MEDIA (OPTIONAL)
+            </Typography>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => fileInputRef.current?.click()}
+              startIcon={<AttachFileIcon />}
+              disabled={uploading}
+              sx={{
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: 'text.secondary',
+                '&:hover': { border: '1px solid rgba(255,255,255,0.4)', bgcolor: 'rgba(255,255,255,0.05)' },
+              }}
+            >
+              {uploading ? 'Uploading...' : 'Choose File'}
+            </Button>
+            {selectedFile && (
+              <Chip
+                label={selectedFile.name}
+                onDelete={handleRemoveFile}
+                sx={{ ml: 1, bgcolor: 'rgba(139,92,246,0.2)', color: '#A78BFA', border: '1px solid rgba(139,92,246,0.3)' }}
+              />
+            )}
+            {filePreview && (
+              <Box sx={{ mt: 2, position: 'relative' }}>
+                <img
+                  src={filePreview}
+                  alt="Preview"
+                  style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={handleRemoveFile}
+                  sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'rgba(0,0,0,0.6)', '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' } }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+            )}
+          </Box>
+
           {/* Tag Users */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
@@ -341,7 +629,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
           <Button
             onClick={saveToDiary}
             variant="contained"
-            disabled={saving}
+            disabled={uploading}
             sx={{
               bgcolor: 'primary.main',
               color: '#0A0B14',
@@ -350,7 +638,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
               '&:hover': { bgcolor: 'primary.light' },
             }}
           >
-            {saving ? 'Sharing...' : 'Share to Notebook'}
+            {uploading ? 'Uploading...' : 'Share to Notebook'}
           </Button>
         </DialogActions>
       </Dialog>
