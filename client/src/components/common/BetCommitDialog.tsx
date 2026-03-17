@@ -9,7 +9,7 @@ import {
   AccountBalanceWallet as WalletIcon,
   Timer as TimerIcon
 } from '@mui/icons-material';
-import { useAuth } from '../../hooks/useAuth';
+import { useUser } from '../../hooks/useUser';
 import api from '../../lib/api';
 import { toast } from 'react-hot-toast';
 
@@ -26,7 +26,7 @@ interface BetCommitDialogProps {
 }
 
 const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challenge, onSuccess }) => {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [stake, setStake] = useState(100);
   const [deadline, setDeadline] = useState('');
   const [saving, setSaving] = useState(false);
