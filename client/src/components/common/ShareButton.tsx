@@ -145,11 +145,10 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       } else {
         toast.success('Shared to notebook!');
       }
-      
+
       setShareDialogOpen(false);
       setReply('');
       setTaggedUsers([]);
-      setAnchorEl(null);
     } catch (err: any) {
       toast.error('Failed to share: ' + err.message);
     } finally {
