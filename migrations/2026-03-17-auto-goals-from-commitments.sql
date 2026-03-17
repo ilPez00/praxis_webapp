@@ -501,7 +501,10 @@ FROM public.goal_trees gt,
 WHERE elem.node->>'deadline_date' IS NOT NULL
   AND (elem.node->>'is_completed')::boolean IS NOT true;
 
-CREATE INDEX IF NOT EXISTS idx_expiring_goals_deadline ON public.user_expiring_goals (deadline_date ASC);
+-- Note: Cannot create index on view. Query the view directly or create a materialized view if needed.
+-- For materialized view with index, use:
+-- CREATE MATERIALIZED VIEW user_expiring_goals_mv AS SELECT ... WITH DATA;
+-- CREATE INDEX idx_expiring_goals_deadline_mv ON user_expiring_goals_mv (deadline_date ASC);
 
 -- =============================================================================
 -- End of Migration
