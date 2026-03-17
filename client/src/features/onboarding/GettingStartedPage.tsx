@@ -8,8 +8,11 @@ import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ExploreIcon from '@mui/icons-material/Explore';
 import ShareIcon from '@mui/icons-material/Share';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
+import { useUser } from '../../hooks/useUser';
+import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 interface Step {
@@ -25,9 +28,11 @@ interface Step {
 
 const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
   const navigate = useNavigate();
+  const { refetch } = useUser();
   const [statedLocation, setStatedLocation] = useState('');
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationSaved, setLocationSaved] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   const handleSaveLocation = async () => {
     if (!statedLocation.trim()) return;
@@ -73,6 +78,23 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
       () => toast.error('Location access denied.'),
       { enableHighAccuracy: true }
     );
+  };
+
+  const handleFinish = async () => {
+    setCompleting(true);
+    try {
+      await api.post('/users/complete-onboarding', { userId });
+      // Also update auth metadata for faster client-side resolution
+      await supabase.auth.updateUser({ data: { onboarding_completed: true } });
+      await refetch();
+      toast.success('Onboarding complete! Welcome to Praxis.');
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to complete onboarding.');
+    } finally {
+      setCompleting(false);
+    }
   };
 
   const steps: Step[] = [
@@ -226,6 +248,32 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
             </GlassCard>
           ))}
         </Stack>
+
+        <Box sx={{ mt: 8, textAlign: 'center', pb: 10 }}>
+          <Typography variant="h5" sx={{ fontWeight: 800, mb: 3 }}>
+            Ready to start your journey?
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleFinish}
+            disabled={completing}
+            startIcon={completing ? <CircularProgress size={20} color="inherit" /> : <CheckCircleOutlineIcon />}
+            sx={{
+              borderRadius: '16px',
+              px: 6,
+              py: 2,
+              fontSize: '1.1rem',
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)',
+              boxShadow: '0 8px 32px rgba(139,92,246,0.4)',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 12px 40px rgba(139,92,246,0.6)' },
+              transition: 'all 0.2s',
+            }}
+          >
+            {completing ? 'Completing...' : "Got it, let's go!"}
+          </Button>
+        </Box>
       </Container>
     </Box>
   );
