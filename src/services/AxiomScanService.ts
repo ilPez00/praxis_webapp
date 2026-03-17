@@ -327,16 +327,27 @@ export class AxiomScanService {
     }
 
     // --- Phase 2: Fetch all data for LLM context ---
-    const [goalTreeRes, checkinsRes, trackersRes, notesRes, matchesRes, eventsRes, placesRes, diaryEntriesRes, notebookEntriesRes] = await Promise.all([
+    // Calculate date 6 weeks ago for note filtering
+    const sixWeeksAgo = new Date();
+    sixWeeksAgo.setDate(sixWeeksAgo.getDate() - (6 * 7));
+    const sixWeeksAgoStr = sixWeeksAgo.toISOString();
+
+    const [goalTreeRes, checkinsRes, trackersRes, matchesRes, eventsRes, placesRes, diaryEntriesRes, notebookEntriesRes] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
       supabase.from('checkins').select('checked_in_at,streak_day,mood,win_of_the_day').eq('user_id', userId).order('checked_in_at', { ascending: false }).limit(7),
       supabase.from('trackers').select('id,type,goal').eq('user_id', userId),
-      supabase.from('journal_entries').select('note,mood,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
       supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
       supabase.from('events').select('id, title, event_date, city, description').gte('event_date', todayStr).limit(10),
       supabase.from('places').select('id, name, city, tags, description').limit(10),
       supabase.from('diary_entries').select('title,content,entry_type,mood,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
-      supabase.from('notebook_entries').select('title,content,mood,occurred_at,goal_id').eq('user_id', userId).eq('entry_type', 'note').order('occurred_at', { ascending: false }).limit(10),
+      // Fetch ALL notebook entries from last 6 weeks (not just 'note' type)
+      // This includes: notes, tracker logs, goal progress, achievements, etc.
+      supabase.from('notebook_entries')
+        .select('title,content,mood,occurred_at,goal_id,entry_type,source_table,source_id,domain')
+        .eq('user_id', userId)
+        .gte('occurred_at', sixWeeksAgoStr)
+        .order('occurred_at', { ascending: false })
+        .limit(100),
     ]);
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
@@ -400,14 +411,32 @@ export class AxiomScanService {
       logger.warn('[AxiomScan] Recap generation failed (non-fatal):', err);
     }
 
-    // Process recent notebook entries
-    const recentNotebookNotes = (notebookEntriesRes.data || []).map((n: any) => ({
+    // Process recent notebook entries (last 6 weeks)
+    // Separate by type for better context building
+    const allNotebookEntries = notebookEntriesRes.data || [];
+    
+    // All entries from notebook (notes, trackers, goals, etc.)
+    const recentNotebookNotes = allNotebookEntries.map((n: any) => ({
       title: n.title,
       content: n.content,
       mood: n.mood,
       date: n.occurred_at ? new Date(n.occurred_at).toISOString().slice(0, 10) : 'recently',
       goalName: n.goal_id ? Object.fromEntries(nodes.map((gn: any) => [gn.id, gn.name]))[n.goal_id] : undefined,
+      entryType: n.entry_type,
+      domain: n.domain,
+      sourceTable: n.source_table,
     }));
+
+    // Extract themes from ALL notebook entries (not just diary)
+    topNoteThemes = recentNotebookNotes
+      .slice(0, 10)
+      .map((n: any) => {
+        if (n.title && n.title !== 'Shared Item') return n.title;
+        if (n.content) return n.content.slice(0, 50);
+        if (n.entryType) return n.entryType;
+        return null;
+      })
+      .filter(Boolean) as string[];
 
     // --- Phase 3: Generate FULL LLM-powered protocol ---
     const aiCoaching = new AICoachingService();
@@ -432,9 +461,15 @@ export class AxiomScanService {
     logger.info(`[AxiomScan] Starting LLM generation for ${userName} (streak: ${metrics.checkinStreak}, archetype: ${metrics.archetype})`);
 
     try {
-      // Build notebook context for routine personalization
-      const notebookContext = recentNotebookNotes.length > 0 
-        ? `Recent Notebook Entries (use these to make routine RELEVANT to what they're working on):\n${recentNotebookNotes.map((n: any, i: number) => `${i + 1}. "${n.title}" — ${n.content?.slice(0, 100) || ''}`).join('\n')}`
+      // Build comprehensive notebook context for routine personalization
+      // Include ALL entry types: notes, trackers, goals, achievements, etc.
+      const notebookContext = recentNotebookNotes.length > 0
+        ? `Recent Activity (last 6 weeks from notebook - includes notes, trackers, goal commits, achievements):\n${recentNotebookNotes.map((n: any, i: number) => {
+            const typeInfo = n.entryType !== 'note' ? ` [${n.entryType}${n.sourceTable ? '/' + n.sourceTable : ''}]` : '';
+            const goalInfo = n.goalName ? ` → ${n.goalName}` : '';
+            const domainInfo = n.domain ? ` (${n.domain})` : '';
+            return `${i + 1}${typeInfo}${domainInfo}: "${n.title}" — ${n.content?.slice(0, 100) || ''}${goalInfo}`;
+          }).join('\n')}`
         : 'No recent notebook entries';
 
       const prompt = `You are Axiom, a wise warm and practical life coach inside the Praxis app. Generate a COMPLETE daily protocol for ${userName}.
@@ -448,6 +483,14 @@ CONTEXT:
 - Tracker trends: ${metrics.trackerTrends?.map((t: any) => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
 ${notebookContext}
 ${recapText ? `- Yesterday's activity: ${recapText}` : '- Yesterday: No activity logged'}
+
+IMPORTANT: The "Recent Activity" section includes ALL their commits from the last 6 weeks:
+- Personal notes and reflections
+- Tracker logs (workouts, meals, sleep, etc.)
+- Goal progress updates
+- Achievements and milestones
+- Shared content from Axiom recommendations
+Use THIS DATA to make the routine highly personalized and relevant to what they're actually doing.
 
 Respond ONLY with valid JSON (no markdown, no backticks) matching this exact shape:
 {
