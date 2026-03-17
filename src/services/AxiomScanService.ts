@@ -3,12 +3,15 @@ import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from './AICoachingService';
 import { EngagementMetricService } from './EngagementMetricService';
 import { AxiomScheduleService } from './AxiomScheduleService';
+import { AxiomDailySummaryService } from './AxiomDailySummaryService';
+import { AxiomProgressEstimationService } from './AxiomProgressEstimationService';
 import logger from '../utils/logger';
 
 const axiomScheduleService = new AxiomScheduleService();
-
 const aiCoachingService = new AICoachingService();
 const engagementMetricService = new EngagementMetricService();
+const dailySummaryService = new AxiomDailySummaryService();
+const progressEstimationService = new AxiomProgressEstimationService();
 
 // ---------------------------------------------------------------------------
 // Metric-based brief generation (no content scanning)
@@ -516,7 +519,7 @@ Use THIS DATA to make the routine highly personalized and relevant to what they'
 
 Respond ONLY with valid JSON (no markdown, no backticks) matching this exact shape:
 {
-  "message": "Warm personalized greeting (2-3 sentences) acknowledging their specific journey, recent wins, and current challenges. Reference their streak if > 0, mention a specific goal by name, and acknowledge something from their recent notebook entries or activity.",
+  "message": "Warm personalized greeting (2-3 sentences) acknowledging their specific journey, recent wins, and current challenges. Reference their streak if > 0, mention a specific goal by name, and acknowledge something from their recent notebook entries or activity. DO NOT mention matches, events, places, or bets in the message.",
 
   "routine": [
     {
@@ -579,13 +582,18 @@ Respond ONLY with valid JSON (no markdown, no backticks) matching this exact sha
 
 CRITICAL RULES:
 
-1. **Routine MUST Reference Notebook Entries**:
+1. **Message Personalization (NO match/event/place/bet mentions)**:
+   - Reference their streak, goals, and notebook entries ONLY
+   - Do NOT mention matches, events, places, or bets in the message
+   - These appear separately in the dashboard, not in the message
+
+2. **Routine MUST Reference Notebook Entries**:
    - If they wrote about "Career Certification" → Schedule "09:00 — Study for Career Certification (AWS Module 3) — 45min"
    - If they noted "feeling tired" → Add "14:00 — Rest block (nap or meditation) — 30min"
    - If they mentioned "Project X deadline" → Add "10:00 — Deep work on Project X — 90min"
    - MAKE IT OBVIOUS you read their notes by naming specific goals/projects from their notebook
 
-2. **Routine — EXACTLY 17 HOURLY SLOTS (06:00 to 22:00)**:
+3. **Routine — EXACTLY 17 HOURLY SLOTS (06:00 to 22:00)**:
    - One entry per hour: "06:00", "07:00", ..., "22:00"
    - Reference their actual goals BY NAME in tasks
    - Each entry needs: time, task, alignment, category
@@ -594,7 +602,7 @@ CRITICAL RULES:
    - Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection
    - Spread: 4-6 deep_work, 2-3 rest, 1-2 exercise, 1-2 admin, 1 social, 1 planning/reflection
 
-3. **Goal Strategy — ONE ENTRY PER ACTIVE GOAL (UP TO 5)**:
+4. **Goal Strategy — ONE ENTRY PER ACTIVE GOAL (UP TO 5)**:
    - This is NOT optional — you MUST generate goalStrategy array
    - For EACH goal in their goal tree (up to 5), provide:
      - goal: Exact name from their list
@@ -605,13 +613,13 @@ CRITICAL RULES:
      - weeklyTarget: Measurable outcome by week's end
    - Example: {"goal": "Career Certification", "currentProgress": "35%", "bottleneck": "Procrastinating on difficult modules", "nextMilestone": "Complete AWS Module 3 quiz", "tacticalAdvice": "Start with 25min Pomodoro on Module 3 video. Take notes. Do 5 practice questions immediately after.", "weeklyTarget": "Finish Module 3 and score 80%+ on quiz"}
 
-4. **Radical Personalization**:
+5. **Radical Personalization**:
    - Every sentence must reference something SPECIFIC about THIS user
    - Mention goals by NAME (not "your goal" but "Career Certification")
    - Reference notebook entries ("I saw your note about feeling overwhelmed")
    - Acknowledge streaks, patterns, recent wins
 
-5. **TONE**: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out. Speak as a wise mentor who knows them deeply.
+6. **TONE**: Warm, encouraging, curious — NEVER critical. Focus on what's working. Ask about struggles, don't point them out. Speak as a wise mentor who knows them deeply.
 
 6. **NO ARCHETYPE LABELS**: Do not mention archetypes, personality types, or psychological categories. Speak to the person directly without categorizing them.`;
 
@@ -808,21 +816,33 @@ CRITICAL RULES:
       generated_at: new Date().toISOString(),
     });
 
-    // Auto-save brief to notebook for history
+    // Run progress estimation during midnight brief generation
+    try {
+      logger.info(`[AxiomScan] Running progress estimation for ${userId}...`);
+      await progressEstimationService.estimateAllGoalProgress(userId);
+      logger.info(`[AxiomScan] Progress estimation complete for ${userId}`);
+    } catch (err: any) {
+      logger.warn(`[AxiomScan] Progress estimation failed: ${err.message}`);
+    }
+
+    // Auto-save brief to notebook for history (with full content)
     Promise.resolve(
       supabase.from('notebook_entries').insert({
         user_id: userId,
         entry_type: 'axiom_brief',
-        title: `Axiom Brief — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`,
+        title: `🌟 Axiom Daily Brief — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`,
         content: axiomMessage || 'Daily brief generated',
+        domain: 'Axiom',
         metadata: {
           source: source,
           routine_count: routine?.length || 0,
           has_challenge: !!challenge,
           brief_date: todayStr,
+          full_brief: recommendations,
         },
         mood: null,
         occurred_at: new Date().toISOString(),
+        is_private: false,
       })
     ).then(() => {}).catch((err: any) => logger.warn('Auto-save brief to notebook failed (non-fatal):', err));
 
