@@ -175,7 +175,7 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
         // Notify opponent
         try {
           await pushNotification({
-            user_id: opponentId,
+            userId: opponentId,
             title: '🎯 Duel Challenge!',
             message: `${profile?.name || 'Someone'} challenged you to "${goalName}" for ${stakePoints} PP!`,
             type: 'duel_challenge',
