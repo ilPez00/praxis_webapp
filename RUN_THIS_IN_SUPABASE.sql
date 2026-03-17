@@ -72,12 +72,12 @@ CREATE POLICY "Users can read own messages" ON public.messages
 CREATE POLICY "Users can send messages" ON public.messages
   FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
--- 3. Goal trees table
+-- 3. Goal trees table - use snake_case to match backend
 CREATE TABLE IF NOT EXISTS public.goal_trees (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
   nodes JSONB NOT NULL DEFAULT '[]',
-  "rootNodes" JSONB NOT NULL DEFAULT '[]',
+  root_nodes JSONB NOT NULL DEFAULT '[]',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
