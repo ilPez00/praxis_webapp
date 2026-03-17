@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { AxiomScanService } from '../services/AxiomScanService';
+import { AxiomDailySummaryService } from '../services/AxiomDailySummaryService';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
 
 const router = Router();
@@ -43,6 +44,22 @@ router.post('/regenerate', catchAsync(async (req: Request, res: Response) => {
     success: true,
     message: 'Axiom message regenerated with LLM',
     brief: brief?.brief,
+  });
+}));
+
+/**
+ * POST /axiom/generate-daily-summaries
+ * Generate daily notebook summaries for all active users
+ * Admin/cron only
+ */
+router.post('/generate-daily-summaries', catchAsync(async (req: Request, res: Response) => {
+  // Optional: Add admin check here if needed
+  const summaryService = new AxiomDailySummaryService();
+  await summaryService.generateAllSummaries();
+
+  res.json({
+    success: true,
+    message: 'Daily summaries generated',
   });
 }));
 

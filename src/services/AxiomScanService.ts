@@ -327,13 +327,19 @@ export class AxiomScanService {
     }
 
     // --- Phase 2: Fetch all data for LLM context ---
-    // Calculate date 6 weeks ago for note filtering
+    // Calculate date 1 month ago for comprehensive activity analysis
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+    const oneMonthAgoStr = oneMonthAgo.toISOString();
+    
+    // Calculate date 6 weeks ago for note filtering (keep existing)
     const sixWeeksAgo = new Date();
     sixWeeksAgo.setDate(sixWeeksAgo.getDate() - (6 * 7));
     const sixWeeksAgoStr = sixWeeksAgo.toISOString();
 
-    const [goalTreeRes, checkinsRes, trackersRes, matchesRes, eventsRes, placesRes, diaryEntriesRes, notebookEntriesRes] = await Promise.all([
+    const [goalTreeRes, checkinsRes, trackersRes, matchesRes, eventsRes, placesRes, diaryEntriesRes, notebookEntriesRes, monthCheckinsRes, monthTrackersRes] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
+      // Recent check-ins (7 days)
       supabase.from('checkins').select('checked_in_at,streak_day,mood,win_of_the_day').eq('user_id', userId).order('checked_in_at', { ascending: false }).limit(7),
       supabase.from('trackers').select('id,type,goal').eq('user_id', userId),
       supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
@@ -348,6 +354,19 @@ export class AxiomScanService {
         .gte('occurred_at', sixWeeksAgoStr)
         .order('occurred_at', { ascending: false })
         .limit(100),
+      // NEW: Fetch last month of check-ins for monthly context
+      supabase.from('checkins')
+        .select('checked_in_at,streak_day,mood,win_of_the_day')
+        .eq('user_id', userId)
+        .gte('checked_in_at', oneMonthAgoStr)
+        .order('checked_in_at', { ascending: false }),
+      // NEW: Fetch last month of tracker activity
+      supabase.from('tracker_entries')
+        .select('tracker_id,data,logged_at')
+        .in('tracker_id', ((await supabase.from('trackers').select('id').eq('user_id', userId)).data || []).map((t: any) => t.id))
+        .gte('logged_at', oneMonthAgoStr)
+        .order('logged_at', { ascending: false })
+        .limit(200),
     ]);
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
@@ -474,22 +493,25 @@ export class AxiomScanService {
 
       const prompt = `You are Axiom, a wise warm and practical life coach inside the Praxis app. Generate a COMPLETE daily protocol for ${userName}.
 
-CONTEXT:
+CONTEXT (LAST 30 DAYS OF ACTIVITY):
 - Streak: ${metrics.checkinStreak} days
 - Motivation style: ${metrics.motivationStyle}
 - Risk factors: ${metrics.riskFactors?.join(', ') || 'None'}
 - Goals: ${JSON.stringify(goalsSlice)}
+- Monthly check-ins: ${((monthCheckinsRes.data || []) as any[]).length} days logged in last month
+- Monthly tracker logs: ${((monthTrackersRes.data || []) as any[]).length} entries in last month
 - Recent check-ins: ${JSON.stringify((checkinsRes.data || []).slice(0, 3).map((c: any) => ({ mood: c.mood, win: c.win_of_the_day, streak: c.streak_day })))}
 - Tracker trends: ${metrics.trackerTrends?.map((t: any) => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
 ${notebookContext}
 ${recapText ? `- Yesterday's activity: ${recapText}` : '- Yesterday: No activity logged'}
 
-IMPORTANT: The "Recent Activity" section includes ALL their commits from the last 6 weeks:
-- Personal notes and reflections
-- Tracker logs (workouts, meals, sleep, etc.)
-- Goal progress updates
-- Achievements and milestones
-- Shared content from Axiom recommendations
+IMPORTANT: This brief is based on the LAST 30 DAYS of user activity, not just yesterday.
+- Consider long-term patterns and trends
+- Reference specific achievements from the past month
+- Acknowledge consistency (or lack thereof) in tracking
+- Make recommendations based on monthly progress, not just daily activity
+- The "Recent Activity" section includes ALL their commits from the last 6 weeks
+
 Use THIS DATA to make the routine highly personalized and relevant to what they're actually doing.
 
 Respond ONLY with valid JSON (no markdown, no backticks) matching this exact shape:
