@@ -4,22 +4,22 @@ import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import PersonIcon from '@mui/icons-material/Person';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CloseIcon from '@mui/icons-material/Close';
-import TargetIcon from '@mui/icons-material/Target';
+import TagIcon from '@mui/icons-material/LocalOffer';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 
-// Tracker categories for diary entries
-const DIARY_CATEGORIES = [
-  { value: 'note', label: '📝 Note', icon: '📝' },
-  { value: 'tracker', label: '📊 Tracker', icon: '📊' },
-  { value: 'goal', label: '🎯 Goal', icon: '🎯' },
-  { value: 'reflection', label: '💭 Reflection', icon: '💭' },
-  { value: 'achievement', label: '🏆 Achievement', icon: '🏆' },
-  { value: 'idea', label: '💡 Idea', icon: '💡' },
-  { value: 'quote', label: '📌 Quote', icon: '📌' },
-  { value: 'post', label: '📢 Post', icon: '📢' },
+// Goal domain categories
+const GOAL_DOMAINS = [
+  { value: 'Career', label: 'Career', icon: '💼', color: '#F59E0B' },
+  { value: 'Fitness', label: 'Fitness', icon: '💪', color: '#EF4444' },
+  { value: 'Investing / Financial Growth', label: 'Finance', icon: '📈', color: '#10B981' },
+  { value: 'Mental Health', label: 'Mental', icon: '🧠', color: '#8B5CF6' },
+  { value: 'Philosophical Development', label: 'Philosophy', icon: '📚', color: '#6366F1' },
+  { value: 'Friendship / Social Engagement', label: 'Social', icon: '👥', color: '#EC4899' },
+  { value: 'Culture / Hobbies / Creative Pursuits', label: 'Creative', icon: '🎨', color: '#F97316' },
+  { value: 'Academics', label: 'Academics', icon: '🎓', color: '#3B82F6' },
 ];
 
 // Mood/vibe options
@@ -66,10 +66,9 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   tooltip = 'Share to Notebook',
 }) => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [category, setCategory] = useState(DIARY_CATEGORIES[0]);
   const [reply, setReply] = useState('');
   const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(true);
   
   // New: Goal selection
@@ -80,10 +79,16 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   // New: Mood/vibe selection
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   
+  // New: Domain selection
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  
+  // New: Tags
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  
   // New: File upload
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Fetch user's matches/friends for tagging AND goals
@@ -164,6 +169,24 @@ const ShareButton: React.FC<ShareButtonProps> = ({
     }
   };
 
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
   const handleShare = () => {
     setShareDialogOpen(true);
   };
@@ -187,7 +210,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       }
       fullContent += `*Shared from ${sourceTable.replace('_', ' ')}*`;
 
-      // Build metadata with tags, goal, mood, and file
+      // Build metadata with tags, goal, mood, domain, and file
       const metadata: any = {
         reply,
         shared_at: new Date().toISOString(),
@@ -207,6 +230,14 @@ const ShareButton: React.FC<ShareButtonProps> = ({
 
       if (selectedMood) {
         metadata.mood = selectedMood;
+      }
+
+      if (selectedDomain) {
+        metadata.domain = selectedDomain;
+      }
+
+      if (tags.length > 0) {
+        metadata.tags = tags;
       }
 
       // Upload file if selected
@@ -235,7 +266,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
 
       const insertPayload: any = {
         user_id: userId,
-        entry_type: category.value,
+        entry_type: 'note', // Always save as note
         title: title || 'Shared Item',
         content: fullContent,
         source_table: sourceTable,
@@ -248,6 +279,8 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       if (selectedGoal) {
         insertPayload.goal_id = selectedGoal.id;
         insertPayload.domain = selectedGoal.domain;
+      } else if (selectedDomain) {
+        insertPayload.domain = selectedDomain;
       }
 
       // Try with metadata first, fall back without if column doesn't exist yet
@@ -282,6 +315,9 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       setTaggedUsers([]);
       setSelectedGoal(null);
       setSelectedMood(null);
+      setSelectedDomain(null);
+      setTags([]);
+      setTagInput('');
       setSelectedFile(null);
       setFilePreview(null);
     } catch (err: any) {
@@ -337,28 +373,6 @@ const ShareButton: React.FC<ShareButtonProps> = ({
                 {content.slice(0, 300)}{content.length > 300 ? '...' : ''}
               </Typography>
             )}
-          </Box>
-
-          {/* Category Selection */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
-              📂 CATEGORY
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {DIARY_CATEGORIES.map((cat) => (
-                <Chip
-                  key={cat.value}
-                  label={`${cat.icon} ${cat.label.split(' ')[1]}`}
-                  onClick={() => setCategory(cat)}
-                  sx={{
-                    bgcolor: category.value === cat.value ? 'primary.main' : 'rgba(255,255,255,0.05)',
-                    color: category.value === cat.value ? '#0A0B14' : 'text.secondary',
-                    fontWeight: category.value === cat.value ? 700 : 400,
-                    border: category.value === cat.value ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                  }}
-                />
-              ))}
-            </Box>
           </Box>
 
           {/* Reply/Comment - This is the main action for sharing to notebook */}
@@ -461,30 +475,127 @@ const ShareButton: React.FC<ShareButtonProps> = ({
             </Collapse>
           </Box>
 
-          {/* Mood/Vibe Selection */}
+          {/* Domain & Mood Selection - Side by Side */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
-              😊 HOW ARE YOU FEELING? (OPTIONAL)
+              🏷️ CATEGORY & VIBE (OPTIONAL)
             </Typography>
-            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-              {MOODS.map((mood) => (
-                <Chip
-                  key={mood.emoji}
-                  label={`${mood.emoji} ${mood.label}`}
-                  onClick={() => setSelectedMood(selectedMood === mood.emoji ? null : mood.emoji)}
-                  size="small"
-                  sx={{
-                    bgcolor: selectedMood === mood.emoji ? mood.color : 'rgba(255,255,255,0.05)',
-                    color: selectedMood === mood.emoji ? '#fff' : 'text.secondary',
-                    fontWeight: selectedMood === mood.emoji ? 700 : 400,
-                    border: selectedMood === mood.emoji ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                    '&:hover': {
-                      bgcolor: `${mood.color}30`,
-                    },
-                  }}
-                />
-              ))}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {/* Domain Chips */}
+              <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
+                <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                  DOMAIN
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {GOAL_DOMAINS.map((domain) => (
+                    <Chip
+                      key={domain.value}
+                      label={`${domain.icon} ${domain.label}`}
+                      onClick={() => setSelectedDomain(selectedDomain === domain.value ? null : domain.value)}
+                      size="small"
+                      sx={{
+                        bgcolor: selectedDomain === domain.value ? domain.color : 'rgba(255,255,255,0.05)',
+                        color: selectedDomain === domain.value ? '#fff' : 'text.secondary',
+                        fontWeight: selectedDomain === domain.value ? 700 : 400,
+                        border: selectedDomain === domain.value ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                        '&:hover': {
+                          bgcolor: `${domain.color}40`,
+                        },
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+
+              {/* Mood Chips */}
+              <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
+                <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                  MOOD
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {MOODS.map((mood) => (
+                    <Chip
+                      key={mood.emoji}
+                      label={`${mood.emoji} ${mood.label}`}
+                      onClick={() => setSelectedMood(selectedMood === mood.emoji ? null : mood.emoji)}
+                      size="small"
+                      sx={{
+                        bgcolor: selectedMood === mood.emoji ? mood.color : 'rgba(255,255,255,0.05)',
+                        color: selectedMood === mood.emoji ? '#fff' : 'text.secondary',
+                        fontWeight: selectedMood === mood.emoji ? 700 : 400,
+                        border: selectedMood === mood.emoji ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                        '&:hover': {
+                          bgcolor: `${mood.color}30`,
+                        },
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
             </Box>
+          </Box>
+
+          {/* Tags Input */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, display: 'block', mb: 1 }}>
+              🏷️ TAGS
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <TextField
+                size="small"
+                placeholder="Add tag..."
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                sx={{
+                  flex: '1 1 200px',
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'rgba(255,255,255,0.05)',
+                    '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
+                    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
+                    '&.Mui-focused fieldset': { borderColor: '#A78BFA' },
+                  },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <TagIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleAddTag}
+                disabled={!tagInput.trim()}
+                sx={{
+                  border: '1px solid rgba(139,92,246,0.3)',
+                  color: '#A78BFA',
+                  '&:hover': { border: '1px solid rgba(139,92,246,0.6)', bgcolor: 'rgba(139,92,246,0.1)' },
+                }}
+              >
+                Add Tag
+              </Button>
+            </Box>
+            {tags.length > 0 && (
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
+                {tags.map((tag) => (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    onDelete={() => handleRemoveTag(tag)}
+                    size="small"
+                    sx={{
+                      bgcolor: 'rgba(139,92,246,0.2)',
+                      color: '#A78BFA',
+                      border: '1px solid rgba(139,92,246,0.3)',
+                      fontWeight: 600,
+                    }}
+                  />
+                ))}
+              </Box>
+            )}
           </Box>
 
           {/* File Upload */}
