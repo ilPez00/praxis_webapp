@@ -29,6 +29,14 @@ router.get('/entries', authenticateToken, catchAsync(async (req: Request, res: R
     offset?: string;
   };
 
+  console.log('[notebookRoutes] Fetching entries:', {
+    userId,
+    entry_type,
+    domain,
+    tag,
+    search,
+  });
+
   // Use the database function for filtered queries
   const { data, error } = await supabase.rpc('get_notebook_entries', {
     p_user_id: userId,
@@ -40,7 +48,12 @@ router.get('/entries', authenticateToken, catchAsync(async (req: Request, res: R
     p_offset: parseInt(offset, 10) || 0,
   });
 
-  if (error) throw error;
+  if (error) {
+    console.error('[notebookRoutes] Error fetching entries:', error);
+    throw error;
+  }
+  
+  console.log('[notebookRoutes] Fetched entries:', data?.length || 0);
   res.json(data || []);
 }));
 
@@ -85,6 +98,15 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
 
   if (!content) throw new BadRequestError('content is required');
 
+  console.log('[notebookRoutes] Creating entry:', {
+    userId,
+    entry_type,
+    title,
+    source_table,
+    source_id,
+    contentLength: content.length,
+  });
+
   const insertPayload: any = {
     user_id: userId,
     entry_type,
@@ -110,6 +132,7 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
 
   // If metadata column doesn't exist yet, retry without it
   if (error && metadata && error.message?.includes('metadata')) {
+    console.log('[notebookRoutes] Retrying without metadata');
     delete insertPayload.metadata;
     ({ data, error } = await supabase
       .from('notebook_entries')
@@ -118,7 +141,12 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
       .single());
   }
 
-  if (error) throw error;
+  if (error) {
+    console.error('[notebookRoutes] Error creating entry:', error);
+    throw error;
+  }
+  
+  console.log('[notebookRoutes] Entry created successfully:', data.id);
   res.status(201).json(data);
 }));
 
