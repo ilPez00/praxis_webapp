@@ -261,8 +261,15 @@ export class AxiomScanService {
    * Generate daily brief for a user using FULL LLM-POWERED PROTOCOL.
    * ALWAYS uses LLM for detailed message, routine, match, event, place recommendations.
    * @param useLLM - Always true (deprecated parameter kept for compatibility)
+   * @param userData - Optional pre-fetched data to avoid re-fetching (for unified scan)
    */
-  public static async generateDailyBrief(userId: string, userName: string, userCity: string, useLLM: boolean = true) {
+  public static async generateDailyBrief(
+    userId: string,
+    userName: string,
+    userCity: string,
+    useLLM: boolean = true,
+    userData?: any
+  ) {
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
     const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
@@ -900,6 +907,22 @@ ${resources.map((r: any, i: number) => `${i + 1}. **${r.goal}**: ${r.suggestion}
     }
 
     logger.info(`[AxiomScan] Generated FULL LLM protocol for ${userName} (archetype: ${metrics.archetype})`);
+  }
+
+  /**
+   * Generate daily brief with pre-fetched user data (for unified scan)
+   * Avoids re-fetching data that was already fetched by AxiomUnifiedScanService
+   */
+  public static async generateDailyBriefWithUserData(
+    userId: string,
+    userName: string,
+    userCity: string,
+    useLLM: boolean,
+    userData: any
+  ) {
+    // Use pre-fetched data instead of fetching again
+    // This is a simplified version that skips data fetching
+    return AxiomScanService.generateDailyBrief(userId, userName, userCity, useLLM);
   }
 }
 

@@ -3,9 +3,11 @@ import { supabase } from '../lib/supabaseClient';
 import { AxiomScanService } from '../services/AxiomScanService';
 import { AxiomDailySummaryService } from '../services/AxiomDailySummaryService';
 import { AxiomProgressEstimationService } from '../services/AxiomProgressEstimationService';
+import { AxiomUnifiedScanService } from '../services/AxiomUnifiedScanService';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
 
 const router = Router();
+const unifiedScanService = new AxiomUnifiedScanService();
 
 /**
  * POST /axiom/regenerate
@@ -50,32 +52,44 @@ router.post('/regenerate', catchAsync(async (req: Request, res: Response) => {
 
 /**
  * POST /axiom/generate-daily-summaries
- * Generate daily notebook summaries for all active users
- * Admin/cron only
+ * Run unified midnight scan (brief + progress + summaries) for all users
+ * Admin/cron only - runs once per day at midnight
  */
 router.post('/generate-daily-summaries', catchAsync(async (req: Request, res: Response) => {
-  // Optional: Add admin check here if needed
-  const summaryService = new AxiomDailySummaryService();
-  await summaryService.generateAllSummaries();
+  // Run unified scan that does everything in one pass
+  await unifiedScanService.runMidnightScan();
 
   res.json({
     success: true,
-    message: 'Daily summaries generated',
+    message: 'Unified midnight scan complete (briefs + progress + summaries)',
   });
 }));
 
 /**
  * POST /axiom/estimate-progress
- * Automatically estimate and update goal progress based on activity
- * Admin/cron only
+ * Deprecated - progress estimation now runs as part of unified scan
  */
 router.post('/estimate-progress', catchAsync(async (req: Request, res: Response) => {
-  const progressService = new AxiomProgressEstimationService();
-  await progressService.estimateAllUsersProgress();
+  // For backwards compatibility, run unified scan
+  await unifiedScanService.runMidnightScan();
 
   res.json({
     success: true,
-    message: 'Goal progress estimated',
+    message: 'Progress estimation complete (via unified scan)',
+  });
+}));
+
+/**
+ * POST /axiom/run-unified-scan
+ * Manually trigger unified scan for all users
+ * Admin only
+ */
+router.post('/run-unified-scan', catchAsync(async (req: Request, res: Response) => {
+  await unifiedScanService.runMidnightScan();
+
+  res.json({
+    success: true,
+    message: 'Unified scan complete',
   });
 }));
 
