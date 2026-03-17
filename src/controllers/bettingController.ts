@@ -85,7 +85,7 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
   // Check user has enough points
   const { data: profile } = await supabase
     .from('profiles')
-    .select('praxis_points')
+    .select('praxis_points, name')
     .eq('id', userId)
     .single();
 
