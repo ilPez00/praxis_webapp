@@ -1,6 +1,6 @@
 # Praxis - Development Roadmap
 
-**Last Updated:** March 15, 2026
+**Last Updated:** March 17, 2026
 **Current Version:** 1.0.0 (MVP)
 **Next Milestone:** v1.1.0 (Integrations & Mobile)
 
@@ -14,6 +14,7 @@
 - [x] Domain-based goal categorization (9 domains)
 - [x] Progress tracking (0-100%)
 - [x] Goal deadlines and target dates
+- [x] Editable tracker form for speed dial trackers
 
 ### Social Features
 - [x] Matching algorithm (SAB compatibility scoring)
@@ -36,6 +37,8 @@
 - [x] Combined calendar view (trackers + notes + goals)
 - [x] Filter toggles for activity types
 - [x] Analytics dashboard
+- [x] GitHub-style contribution graph in dashboard header
+- [x] Line chart contribution graph (replaced heatmap)
 
 ### AI Features
 - [x] Axiom AI coach
@@ -43,6 +46,11 @@
 - [x] Weekly progress reports
 - [x] Mood-based recommendations
 - [x] Axiom quotes system
+- [x] Axiom automatic goal progress estimation and updates
+- [x] Axiom daily notebook summaries + monthly briefs
+- [x] Axiom message cleanup and progress integration
+- [x] Axiom brief notifications with AI goal strategy/network leverage
+- [x] Axiom unified midnight scan for all daily operations
 
 ### Platform Support
 - [x] Web app (React + TypeScript)
@@ -59,6 +67,28 @@
 - [x] Firebase (legacy, being phased out)
 - [x] Database migrations system
 - [x] RLS policies for data security
+
+---
+
+## 📝 Recent Changes (March 16-17, 2026)
+
+### Latest Commits
+- **6e09ee8** - fix: use correct AICoachingService method runWithFallback
+- **ab2d408** - feat: Axiom brief notifications + AI goal strategy/network leverage
+- **9cd77b9** - feat: replace heatmap with line chart contribution graph
+- **d903986** - feat: unify all Axiom daily operations into single midnight scan
+- **d02820b** - feat: show contribution graph in dashboard header
+
+### Key Improvements
+- **AxiomUnifiedScanService**: New centralized service for all daily Axiom operations (308 lines)
+  - Runs at midnight to process all users' daily data
+  - Generates daily briefs, notebook summaries, goal progress updates
+  - More efficient than scattered individual scans
+- **Contribution Graph**: Replaced heatmap with GitHub-style line chart
+  - Better visualization of user activity over 16 weeks
+  - Now displayed in dashboard header
+- **Axiom Brief Enhancements**: Added AI-powered goal strategy and network leverage insights
+- **Bug Fixes**: Fixed AICoachingService method naming issue (runWithFallback)
 
 ---
 

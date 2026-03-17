@@ -64,6 +64,10 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
       toast.error("Please set a deadline.");
       return;
     }
+    if (userPoints === null || stake > userPoints) {
+      toast.error(`Insufficient funds. You have ${userPoints ?? 0} PP but need ${stake} PP.`);
+      return;
+    }
 
     console.log('Committing bet:', { userId: user.id, goalName: challenge.target, deadline, stake });
     setSaving(true);
@@ -107,7 +111,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
   };
 
   const maxStake = userPoints ? Math.min(500, Math.floor(userPoints * 0.5)) : 100;
-  const canAfford = userPoints !== null && userPoints >= 50;
+  const canAfford = userPoints !== null && stake <= userPoints && stake <= maxStake;
 
   return (
     <Dialog 
@@ -181,7 +185,9 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
           />
           {!canAfford && (
             <Typography variant="caption" color="error">
-              You need at least 50 PP to place a bet.
+              {userPoints !== null && stake > userPoints
+                ? `Insufficient funds. You have ${userPoints} PP but selected ${stake} PP.`
+                : 'You need at least 50 PP to place a bet.'}
             </Typography>
           )}
         </Box>
