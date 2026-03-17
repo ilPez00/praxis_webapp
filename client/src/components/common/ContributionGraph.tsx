@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Box, Typography, Stack } from '@mui/material';
+import { Box } from '@mui/material';
 
 interface DayActivity {
   date: string;
   count: number;
-  dayOfWeek: number;
+  dayIndex: number;
 }
 
 interface ContributionGraphProps {
   userId?: string;
   height?: number;
+  width?: number;
 }
 
-const ContributionGraph: React.FC<ContributionGraphProps> = ({ userId, height = 80 }) => {
+const ContributionGraph: React.FC<ContributionGraphProps> = ({ userId, height = 40, width = 140 }) => {
   const [weekData, setWeekData] = useState<DayActivity[]>([]);
   const [maxCount, setMaxCount] = useState(1);
 
@@ -57,7 +58,7 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({ userId, height = 
           days.push({
             date: dateStr,
             count: 0,
-            dayOfWeek: i,
+            dayIndex: i,
           });
         }
 
@@ -84,84 +85,108 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({ userId, height = 
     fetchWeekActivity();
   }, [userId]);
 
-  const getColor = (count: number, isToday: boolean): string => {
-    if (count === 0) return 'rgba(255,255,255,0.05)';
-    const ratio = count / maxCount;
-    if (ratio >= 0.75) return isToday ? '#FCD34D' : '#F59E0B';
-    if (ratio >= 0.5) return isToday ? '#FBBF24' : '#FBBF24';
-    if (ratio >= 0.25) return isToday ? '#F59E0B' : '#D97706';
-    return isToday ? '#D97706' : '#B45309';
-  };
-
-  const getDayLabel = (dayOfWeek: number): string => {
-    const labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    return labels[dayOfWeek];
-  };
-
-  const getDateLabel = (date: string): string => {
-    const d = new Date(date + 'T00:00:00');
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  };
-
   const today = new Date().toISOString().slice(0, 10);
+  const todayIndex = weekData.findIndex((d) => d.date === today);
+
+  // Generate SVG path for the line chart
+  const generatePath = () => {
+    if (weekData.length === 0) return '';
+
+    const padding = 2;
+    const graphHeight = height - padding * 2;
+    const graphWidth = width - padding * 2;
+    const pointSpacing = graphWidth / 6; // 6 intervals for 7 points
+
+    const points = weekData.map((day, index) => {
+      const x = padding + index * pointSpacing;
+      const y = padding + graphHeight - (day.count / maxCount) * graphHeight;
+      return `${x},${y}`;
+    });
+
+    return points.join(' ');
+  };
+
+  // Generate area fill path (from line down to bottom)
+  const generateAreaPath = () => {
+    if (weekData.length === 0) return '';
+
+    const padding = 2;
+    const graphHeight = height - padding * 2;
+    const graphWidth = width - padding * 2;
+    const pointSpacing = graphWidth / 6;
+
+    const linePoints = weekData.map((day, index) => {
+      const x = padding + index * pointSpacing;
+      const y = padding + graphHeight - (day.count / maxCount) * graphHeight;
+      return `${x},${y}`;
+    });
+
+    const firstX = padding;
+    const lastX = padding + 6 * pointSpacing;
+    const bottomY = padding + graphHeight;
+
+    return `M ${firstX},${bottomY} L ${linePoints.join(' L ')} L ${lastX},${bottomY} Z`;
+  };
+
+  const isToday = (index: number) => index === todayIndex;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-      {/* Day labels */}
-      <Stack spacing={0.5} sx={{ display: { xs: 'none', sm: 'flex' } }}>
-        {weekData.map((day) => (
-          <Typography
-            key={`label-${day.date}`}
-            variant="caption"
-            sx={{
-              height: 12,
-              fontSize: '0.55rem',
-              color: 'text.disabled',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {getDayLabel(day.dayOfWeek)}
-          </Typography>
-        ))}
-      </Stack>
+    <Box
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        width: width,
+        height: height,
+      }}
+    >
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        {/* Gradient definition */}
+        <defs>
+          <linearGradient id="activityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.05" />
+          </linearGradient>
+        </defs>
 
-      {/* Contribution squares */}
-      <Stack
-        direction="row"
-        spacing={0.5}
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gridTemplateRows: 'repeat(1, 1fr)',
-          gap: 0.5,
-        }}
-      >
-        {weekData.map((day) => {
-          const isToday = day.date === today;
+        {/* Area fill under the line */}
+        <path
+          d={generateAreaPath()}
+          fill="url(#activityGradient)"
+          stroke="none"
+        />
+
+        {/* Line chart */}
+        <polyline
+          points={generatePath()}
+          fill="none"
+          stroke="#F59E0B"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Data points */}
+        {weekData.map((day, index) => {
+          const padding = 2;
+          const graphHeight = height - padding * 2;
+          const graphWidth = width - padding * 2;
+          const pointSpacing = graphWidth / 6;
+          const x = padding + index * pointSpacing;
+          const y = padding + graphHeight - (day.count / maxCount) * graphHeight;
+
           return (
-            <Box
+            <circle
               key={day.date}
-              sx={{
-                width: 12,
-                height: 12,
-                borderRadius: '2px',
-                bgcolor: getColor(day.count, isToday),
-                border: isToday ? '1px solid #FCD34D' : 'none',
-                cursor: 'pointer',
-                position: 'relative',
-                transition: 'all 0.15s ease',
-                '&:hover': {
-                  transform: 'scale(1.2)',
-                  zIndex: 1,
-                },
-              }}
-              title={`${day.count} entries on ${getDateLabel(day.date)}`}
+              cx={x}
+              cy={y}
+              r={isToday(index) ? 3 : 2}
+              fill={isToday(index) ? '#FCD34D' : '#1A1F2E'}
+              stroke="#F59E0B"
+              strokeWidth={isToday(index) ? 2 : 1.5}
             />
           );
         })}
-      </Stack>
+      </svg>
     </Box>
   );
 };

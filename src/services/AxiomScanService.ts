@@ -823,6 +823,20 @@ CRITICAL RULES:
       generated_at: new Date().toISOString(),
     });
 
+    // Send push notification for new daily brief
+    try {
+      const { pushNotification } = await import('../controllers/notificationController');
+      await pushNotification({
+        userId,
+        title: '🌟 Your Axiom Daily Brief is Ready!',
+        body: `Hey ${userName}, your personalized daily protocol is ready. Let's make today count!`,
+        type: 'axiom_daily_brief',
+      });
+      logger.info(`[AxiomScan] Brief notification sent to ${userId}`);
+    } catch (err: any) {
+      logger.warn(`[AxiomScan] Failed to send brief notification: ${err.message}`);
+    }
+
     // Run progress estimation during midnight brief generation
     try {
       logger.info(`[AxiomScan] Running progress estimation for ${userId}...`);

@@ -279,16 +279,16 @@ export class AxiomUnifiedScanService {
    * Estimate progress using pre-fetched data
    */
   private async estimateProgress(userId: string, userData: UserData): Promise<void> {
-    // Use the progress service with pre-fetched data
-    await this.progressService.estimateGoalProgressWithUserData(userId, userData);
+    // Use the progress service - TODO: implement withUserData method
+    await this.progressService.estimateAllGoalProgress(userId);
   }
 
   /**
    * Generate daily summary using pre-fetched data
    */
   private async generateSummary(userId: string, userData: UserData): Promise<void> {
-    // Use the summary service with pre-fetched data
-    await this.summaryService.generateSummaryWithUserData(userId, userData);
+    // Use the summary service - TODO: implement withUserData method
+    await this.summaryService.generateAndPostSummary(userId);
   }
 
   /**

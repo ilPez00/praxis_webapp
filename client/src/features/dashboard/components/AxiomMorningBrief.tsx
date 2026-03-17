@@ -223,13 +223,8 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
               <ElectricBoltIcon sx={{ color: '#A78BFA', fontSize: 18 }} />
               <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#A78BFA' }}>{points.toLocaleString()} PP</Typography>
             </Box>
-            <Box sx={{ width: '1px', height: 24, bgcolor: 'rgba(255,255,255,0.1)', mx: 1 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.7rem', fontWeight: 700 }}>
-                THIS WEEK: {weekStats.total} entries · {weekStats.streak}d streak
-              </Typography>
-              <ContributionGraph userId={userId} height={60} />
-            </Box>
+            <Box sx={{ width: '1px', height: 28, bgcolor: 'rgba(255,255,255,0.1)', mx: 1 }} />
+            <ContributionGraph userId={userId} height={40} width={120} />
           </Stack>
         </Box>
 

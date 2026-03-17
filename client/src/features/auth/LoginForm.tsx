@@ -213,21 +213,10 @@ const LoginForm: React.FC = () => {
               </Box>
             </Stack>
 
-            {/* Contribution graph */}
-            <Box sx={{ mb: 1.5 }}>
-              <ContributionGraph userId={currentUser.id} height={80} />
+            {/* Contribution graph - line chart */}
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+              <ContributionGraph userId={currentUser.id} height={60} width={200} />
             </Box>
-
-            {/* Legend */}
-            <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center">
-              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled' }}>Less</Typography>
-              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: 'rgba(255,255,255,0.05)' }} />
-              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: '#B45309' }} />
-              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: '#D97706' }} />
-              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: '#FBBF24' }} />
-              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: '#F59E0B' }} />
-              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled' }}>More</Typography>
-            </Stack>
           </Box>
         )}
 
