@@ -750,7 +750,7 @@ CRITICAL RULES:
 3. One tactical action for today
 
 Respond in 3 short sentences max.`;
-              const aiResponse = await aiCoachingService.generateWithLLM(goalPrompt);
+              const aiResponse = await aiCoachingService.runWithFallback(goalPrompt);
               return {
                 goal: g.name,
                 currentProgress: `${Math.round((g.progress || 0) * 100)}%`,
