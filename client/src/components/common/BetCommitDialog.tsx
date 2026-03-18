@@ -69,7 +69,13 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
       return;
     }
 
-    console.log('Committing bet:', { userId: user.id, goalName: challenge.target, deadline, stake });
+    console.log('[BetCommitDialog] Committing bet:', { 
+      userId: user.id, 
+      goalName: challenge.target, 
+      deadline, 
+      stake,
+      opponentType: createDuel ? 'duel' : 'self'
+    });
     setSaving(true);
     try {
       // If deadline is just a date string, set it to end of day
@@ -83,7 +89,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
         opponentType: createDuel ? 'duel' : 'self',
       });
 
-      console.log('Bet created:', res.data);
+      console.log('[BetCommitDialog] Bet created:', res.data);
       toast.success(`Commitment made! ${stake} PP pledged. 🎯`);
 
       // Post to community feed
