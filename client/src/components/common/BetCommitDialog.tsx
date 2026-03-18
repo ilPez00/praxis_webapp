@@ -11,6 +11,7 @@ import {
 } from '@mui/icons-material';
 import { useUser } from '../../hooks/useUser';
 import api from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 interface BetCommitDialogProps {
@@ -46,14 +47,35 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
         setDeadline(today.toISOString().split('T')[0]);
       }
 
-      // Fetch user points
-      if (user?.id) {
-        api.get(`/users/${user.id}`).then(res => {
-          setUserPoints(res.data.praxis_points ?? 0);
-        }).catch(() => setUserPoints(0));
-      }
+      // Fetch user points directly from Supabase
+      const fetchUserPoints = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.user?.id) return;
+
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('praxis_points')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error) {
+            console.error('[BetCommitDialog] Error fetching points:', error);
+            setUserPoints(0);
+          } else {
+            const points = profile?.praxis_points ?? 0;
+            console.log('[BetCommitDialog] User points:', points);
+            setUserPoints(points);
+          }
+        } catch (err) {
+          console.error('[BetCommitDialog] Fetch error:', err);
+          setUserPoints(0);
+        }
+      };
+
+      fetchUserPoints();
     }
-  }, [open, challenge, user]);
+  }, [open, challenge]);
 
   const handleCommit = async () => {
     if (!user?.id) {
