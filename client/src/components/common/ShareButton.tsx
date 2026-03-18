@@ -290,6 +290,9 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         insertPayload.domain = selectedGoal.domain;
       } else if (selectedDomain) {
         insertPayload.domain = selectedDomain;
+      } else {
+        // Default domain for free notes (no goal selected)
+        insertPayload.domain = 'Personal';
       }
 
       // Use the API endpoint instead of direct Supabase insert
