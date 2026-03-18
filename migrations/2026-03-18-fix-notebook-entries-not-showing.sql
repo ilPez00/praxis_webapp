@@ -12,7 +12,7 @@ DROP FUNCTION IF EXISTS public.get_notebook_entries(UUID, TEXT, TEXT, TEXT, TEXT
 CREATE OR REPLACE FUNCTION public.get_notebook_entries(
   p_user_id UUID,
   p_entry_type TEXT DEFAULT NULL,
-  p_goal_id UUID DEFAULT NULL,
+  p_goal_id TEXT DEFAULT NULL,
   p_domain TEXT DEFAULT NULL,
   p_tag TEXT DEFAULT NULL,
   p_search TEXT DEFAULT NULL,
@@ -26,10 +26,10 @@ RETURNS TABLE (
   content TEXT,
   mood TEXT,
   tags TEXT[],
-  goal_id UUID,
+  goal_id TEXT,
   domain TEXT,
   source_table TEXT,
-  source_id UUID,
+  source_id TEXT,
   occurred_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ,
   is_pinned BOOLEAN
@@ -43,17 +43,17 @@ BEGIN
     ne.content,
     ne.mood,
     ne.tags,
-    ne.goal_id,
+    ne.goal_id::TEXT,
     ne.domain,
     ne.source_table,
-    ne.source_id,
+    ne.source_id::TEXT,
     ne.occurred_at,
     ne.created_at,
     COALESCE(ne.is_pinned, false) as is_pinned
   FROM public.notebook_entries ne
   WHERE ne.user_id = p_user_id
     AND (p_entry_type IS NULL OR ne.entry_type = p_entry_type)
-    AND (p_goal_id IS NULL OR ne.goal_id = p_goal_id OR (p_goal_id IS NULL AND ne.goal_id IS NULL))
+    AND (p_goal_id IS NULL OR ne.goal_id::TEXT = p_goal_id)
     AND (p_domain IS NULL OR ne.domain = p_domain OR (p_domain IS NULL AND ne.domain IS NULL))
     AND (p_tag IS NULL OR ne.tags IS NULL OR p_tag = ANY(ne.tags))
     AND (p_search IS NULL OR ne.content ILIKE '%' || p_search || '%')
