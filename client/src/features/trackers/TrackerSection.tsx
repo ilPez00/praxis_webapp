@@ -374,5 +374,3 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes, in
 };
 
 export default TrackerSection;
-
-export default TrackerSection;

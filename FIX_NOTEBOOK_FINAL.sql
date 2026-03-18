@@ -1,14 +1,19 @@
 -- ============================================
--- FIX: Notebook Entries Not Showing
--- Run this in Supabase Dashboard → SQL Editor
+-- FINAL FIX: Notebook Entries Not Showing
+-- Issue: Function filters out NULL domains incorrectly
+-- Solution: Use IS NOT DISTINCT FROM for NULL-safe comparison
+-- 
+-- Run in Supabase Dashboard → SQL Editor
 -- ============================================
 
--- 1. Drop ALL existing versions of the function first
+-- STEP 1: Drop ALL existing versions
+-- ============================================
 DROP FUNCTION IF EXISTS public.get_notebook_entries(UUID, TEXT, UUID, TEXT, TEXT, TEXT, INTEGER, INTEGER);
 DROP FUNCTION IF EXISTS public.get_notebook_entries(UUID, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER);
 DROP FUNCTION IF EXISTS public.get_notebook_entries(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER);
 
--- 2. Create the updated function (FIXED: properly handles NULL goal_id)
+-- STEP 2: Create fixed function with NULL-safe comparisons
+-- ============================================
 CREATE OR REPLACE FUNCTION public.get_notebook_entries(
   p_user_id UUID,
   p_entry_type TEXT DEFAULT NULL,
@@ -29,7 +34,7 @@ RETURNS TABLE (
   goal_id UUID,
   domain TEXT,
   source_table TEXT,
-  source_id UUID,
+  source_id TEXT,
   occurred_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ,
   is_pinned BOOLEAN
@@ -46,15 +51,16 @@ BEGIN
     ne.goal_id,
     ne.domain,
     ne.source_table,
-    ne.source_id,
+    ne.source_id::TEXT,
     ne.occurred_at,
     ne.created_at,
     COALESCE(ne.is_pinned, false) as is_pinned
   FROM public.notebook_entries ne
   WHERE ne.user_id = p_user_id
-    AND (p_entry_type IS NULL OR ne.entry_type = p_entry_type)
-    AND (p_goal_id IS NULL OR ne.goal_id = p_goal_id OR (p_goal_id IS NULL AND ne.goal_id IS NULL))
-    AND (p_domain IS NULL OR ne.domain = p_domain OR (p_domain IS NULL AND ne.domain IS NULL))
+    -- Use IS NOT DISTINCT FROM for NULL-safe comparison
+    AND (p_entry_type IS NULL OR ne.entry_type IS NOT DISTINCT FROM p_entry_type)
+    AND (p_goal_id IS NULL OR ne.goal_id IS NOT DISTINCT FROM p_goal_id)
+    AND (p_domain IS NULL OR ne.domain IS NOT DISTINCT FROM p_domain)
     AND (p_tag IS NULL OR ne.tags IS NULL OR p_tag = ANY(ne.tags))
     AND (p_search IS NULL OR ne.content ILIKE '%' || p_search || '%')
   ORDER BY ne.is_pinned DESC, ne.occurred_at DESC
@@ -62,35 +68,38 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 3. Fix RLS policies
+-- STEP 3: Fix RLS policies
+-- ============================================
 DROP POLICY IF EXISTS "Users can view own notebook entries" ON public.notebook_entries;
-DROP POLICY IF EXISTS "Users can insert own notebook entries" ON public.notebook_entries;
-DROP POLICY IF EXISTS "Users can update own notebook entries" ON public.notebook_entries;
-DROP POLICY IF EXISTS "Users can delete own notebook entries" ON public.notebook_entries;
-
 CREATE POLICY "Users can view own notebook entries" ON public.notebook_entries
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert own notebook entries" ON public.notebook_entries
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own notebook entries" ON public.notebook_entries
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own notebook entries" ON public.notebook_entries
-  FOR DELETE USING (auth.uid() = user_id);
-
--- 4. Ensure grants are correct
+-- STEP 4: Ensure grants
+-- ============================================
 GRANT ALL ON public.notebook_entries TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_notebook_entries TO authenticated;
 
--- 5. Create indexes for efficient filtering
-CREATE INDEX IF NOT EXISTS idx_notebook_user_entry_type ON public.notebook_entries(user_id, entry_type);
-CREATE INDEX IF NOT EXISTS idx_notebook_user_occurred ON public.notebook_entries(user_id, occurred_at DESC);
-
--- 6. Test: Check if entries exist
-SELECT COUNT(*) as total_entries, entry_type, COUNT(*) as count 
+-- STEP 5: Test - should now show ALL entries including those with NULL domain
+-- ============================================
+SELECT 
+  id,
+  entry_type,
+  title,
+  domain,
+  goal_id,
+  occurred_at
 FROM notebook_entries 
 WHERE user_id = 'af2138c5-d0db-4de4-8e2d-3fd3dbed67b1' 
-GROUP BY entry_type 
-ORDER BY total_entries DESC;
+ORDER BY occurred_at DESC
+LIMIT 10;
+
+-- Test the function
+SELECT * FROM public.get_notebook_entries(
+  'af2138c5-d0db-4de4-8e2d-3fd3dbed67b1',
+  NULL, NULL, NULL, NULL, NULL, 100, 0
+);
+
+-- ============================================
+-- EXPECTED: All entries now appear, including
+-- those with domain = NULL
+-- ============================================

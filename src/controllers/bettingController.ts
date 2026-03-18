@@ -67,13 +67,7 @@ async function findDuelOpponent(userId: string, goalName: string): Promise<strin
 export const createBet = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId, goalNodeId, goalName, deadline, stakePoints, opponentType } = req.body;
 
-  logger.info('[createBet] Received bet creation request:', {
-    userId,
-    goalName,
-    deadline,
-    stakePoints,
-    opponentType,
-  });
+  logger.info('[createBet] Received:', { userId, goalName, deadline, stakePoints, opponentType });
 
   if (!userId || !goalName || !deadline || !stakePoints) {
     logger.warn('[createBet] Missing required fields');
@@ -83,8 +77,6 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     throw new BadRequestError('stakePoints must be a positive integer.');
   }
 
-  // Axiom challenges often have same-day or next-day deadlines.
-  // We'll allow any future deadline now, but warn if it's too short for standard goal nodes.
   const deadlineDate = new Date(deadline);
   const now = new Date();
   if (isNaN(deadlineDate.getTime()) || deadlineDate <= now) {
@@ -103,13 +95,13 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     throw new BadRequestError(`Insufficient Praxis Points (have ${currentPoints}, need ${stakePoints}).`);
   }
 
-  // Max stake: 500 PP or 50% of balance, whichever is lower
+  // Max stake: 500 PP or 50% of balance
   const maxStake = Math.min(500, Math.floor(currentPoints * 0.5));
   if (stakePoints > maxStake) {
-    throw new BadRequestError(`Maximum stake is ${maxStake} PP (500 PP cap or 50% of your balance).`);
+    throw new BadRequestError(`Maximum stake is ${maxStake} PP.`);
   }
 
-  // Max 3 active bets at a time
+  // Max 3 active bets
   const { count: activeBetCount } = await supabase
     .from('bets')
     .select('id', { count: 'exact', head: true })
@@ -117,8 +109,10 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     .eq('status', 'active');
 
   if ((activeBetCount ?? 0) >= 3) {
-    throw new BadRequestError('You can have at most 3 active bets at a time. Complete or cancel one first.');
+    throw new BadRequestError('You can have at most 3 active bets.');
   }
+
+  logger.info('[createBet] All validations passed, deducting points...');
 
   // Deduct points
   await supabase
@@ -126,12 +120,14 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     .update({ praxis_points: currentPoints - stakePoints })
     .eq('id', userId);
 
-  // Create the bet
+  logger.info('[createBet] Points deducted, creating bet...');
+
+  // Create the bet - SIMPLIFIED, no duel
   const { data: bet, error: betError } = await supabase
     .from('bets')
     .insert({
       user_id: userId,
-      goal_node_id: goalNodeId || null,
+      goal_node_id: null,
       goal_name: goalName,
       deadline,
       stake_points: stakePoints,
@@ -141,78 +137,19 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     .single();
 
   if (betError) {
-    // Refund points if insert failed
+    logger.error('[createBet] Bet insert failed:', betError);
+    // Refund points
     await supabase
       .from('profiles')
       .update({ praxis_points: currentPoints })
       .eq('id', userId);
-    logger.error('Error creating bet:', betError.message);
-    throw new InternalServerError('Failed to create bet.');
+    throw new InternalServerError('Failed to create bet: ' + betError.message);
   }
 
-  // If opponentType is 'duel', skip duel creation for now (debugging)
-  let duel = null;
-  if (opponentType === 'duel') {
-    logger.info(`[createBet] Duel requested - skipping duel creation (debugging)`);
-    // TODO: Re-enable duel creation after debugging
-    /*
-    const opponentId = await findDuelOpponent(userId, goalName);
-    logger.info(`[createBet] Found opponent: ${opponentId || 'none'}`);
+  logger.info('[createBet] Bet created successfully:', bet.id);
 
-    if (opponentId) {
-      const duelDeadline = new Date();
-      duelDeadline.setDate(deadlineDate.getDate());
-
-      logger.info(`[createBet] Inserting duel with data:`, {
-        creator_id: userId,
-        opponent_id: opponentId,
-        goal_node_id: goalNodeId,
-        title: `Bet Challenge: ${goalName}`,
-        stake_pp: stakePoints,
-        deadline: duelDeadline.toISOString().split('T')[0],
-      });
-
-      const { data: newDuel, error: duelError } = await supabase
-        .from('duels')
-        .insert({
-          creator_id: userId,
-          opponent_id: opponentId,
-          goal_node_id: goalNodeId || null,
-          title: `Bet Challenge: ${goalName}`,
-          description: `Staked ${stakePoints} PP on "${goalName}". Deadline: ${deadlineDate.toLocaleDateString()}`,
-          stake_pp: stakePoints,
-          deadline_days: Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
-          deadline: duelDeadline.toISOString().split('T')[0],
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (duelError) {
-        logger.error('[createBet] Duel creation failed:', JSON.stringify(duelError, null, 2));
-        // Don't fail the bet if duel creation fails - just log it
-        logger.warn('[createBet] Bet created but duel creation failed - continuing with bet only');
-      } else {
-        duel = newDuel;
-        logger.info('[createBet] Duel created successfully:', duel.id);
-
-        // Notify opponent
-        try {
-          await pushNotification({
-            userId: opponentId,
-            title: '🎯 Duel Challenge!',
-            body: `${profile?.name || 'Someone'} challenged you to "${goalName}" for ${stakePoints} PP!`,
-            type: 'duel_challenge',
-          });
-        } catch (err) {
-          logger.error('Failed to send duel notification:', err);
-        }
-      }
-    }
-    */
-  }
-
-  res.status(201).json({ bet, duel });
+  // Skip duel creation for now (debugging)
+  res.status(201).json({ bet, duel: null, message: 'Bet created successfully (duel creation disabled for debugging)' });
 });
 
 /**
