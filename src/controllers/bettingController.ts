@@ -145,11 +145,11 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
   let duel = null;
   if (opponentType === 'duel') {
     const opponentId = await findDuelOpponent(userId, goalName);
-    
+
     if (opponentId) {
       const duelDeadline = new Date();
       duelDeadline.setDate(deadlineDate.getDate());
-      
+
       const { data: newDuel, error: duelError } = await supabase
         .from('duels')
         .insert({
@@ -158,7 +158,6 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
           goal_node_id: goalNodeId || null,
           title: `Bet Challenge: ${goalName}`,
           description: `Staked ${stakePoints} PP on "${goalName}". Deadline: ${deadlineDate.toLocaleDateString()}`,
-          category: 'bet_challenge',
           stake_pp: stakePoints,
           deadline_days: Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
           deadline: duelDeadline.toISOString().split('T')[0],
@@ -169,9 +168,11 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
 
       if (duelError) {
         logger.error('Error creating duel:', duelError.message);
+        // Don't fail the bet if duel creation fails - just log it
+        logger.warn('Bet created but duel creation failed - continuing with bet only');
       } else {
         duel = newDuel;
-        
+
         // Notify opponent
         try {
           await pushNotification({
