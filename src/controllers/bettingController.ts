@@ -67,7 +67,16 @@ async function findDuelOpponent(userId: string, goalName: string): Promise<strin
 export const createBet = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { userId, goalNodeId, goalName, deadline, stakePoints, opponentType } = req.body;
 
+  logger.info('[createBet] Received bet creation request:', {
+    userId,
+    goalName,
+    deadline,
+    stakePoints,
+    opponentType,
+  });
+
   if (!userId || !goalName || !deadline || !stakePoints) {
+    logger.warn('[createBet] Missing required fields');
     throw new BadRequestError('userId, goalName, deadline, and stakePoints are required.');
   }
   if (typeof stakePoints !== 'number' || stakePoints < 1) {
@@ -144,11 +153,22 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
   // If opponentType is 'duel', automatically create a duel
   let duel = null;
   if (opponentType === 'duel') {
+    logger.info(`[createBet] Creating duel for user ${userId} with opponent ${opponentId || 'to be found'}`);
     const opponentId = await findDuelOpponent(userId, goalName);
+    logger.info(`[createBet] Found opponent: ${opponentId || 'none'}`);
 
     if (opponentId) {
       const duelDeadline = new Date();
       duelDeadline.setDate(deadlineDate.getDate());
+
+      logger.info(`[createBet] Inserting duel with data:`, {
+        creator_id: userId,
+        opponent_id: opponentId,
+        goal_node_id: goalNodeId,
+        title: `Bet Challenge: ${goalName}`,
+        stake_pp: stakePoints,
+        deadline: duelDeadline.toISOString().split('T')[0],
+      });
 
       const { data: newDuel, error: duelError } = await supabase
         .from('duels')
@@ -167,11 +187,12 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
         .single();
 
       if (duelError) {
-        logger.error('Error creating duel:', duelError.message);
+        logger.error('[createBet] Duel creation failed:', JSON.stringify(duelError, null, 2));
         // Don't fail the bet if duel creation fails - just log it
-        logger.warn('Bet created but duel creation failed - continuing with bet only');
+        logger.warn('[createBet] Bet created but duel creation failed - continuing with bet only');
       } else {
         duel = newDuel;
+        logger.info('[createBet] Duel created successfully:', duel.id);
 
         // Notify opponent
         try {
