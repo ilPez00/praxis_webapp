@@ -405,7 +405,6 @@ export const TRACKER_TYPES: TrackerType[] = [
     },
   },
 ];
-];
 
 export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
   TRACKER_TYPES.map(t => [t.id, t])
