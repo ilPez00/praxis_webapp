@@ -150,10 +150,12 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
     throw new InternalServerError('Failed to create bet.');
   }
 
-  // If opponentType is 'duel', automatically create a duel
+  // If opponentType is 'duel', skip duel creation for now (debugging)
   let duel = null;
   if (opponentType === 'duel') {
-    logger.info(`[createBet] Creating duel for user ${userId}`);
+    logger.info(`[createBet] Duel requested - skipping duel creation (debugging)`);
+    // TODO: Re-enable duel creation after debugging
+    /*
     const opponentId = await findDuelOpponent(userId, goalName);
     logger.info(`[createBet] Found opponent: ${opponentId || 'none'}`);
 
@@ -207,6 +209,7 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
         }
       }
     }
+    */
   }
 
   res.status(201).json({ bet, duel });
