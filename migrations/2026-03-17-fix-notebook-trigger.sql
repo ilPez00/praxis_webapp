@@ -23,7 +23,7 @@ DECLARE
   v_entry_type TEXT;
   v_content TEXT;
   v_title TEXT;
-  v_goal_id UUID;
+  v_goal_id TEXT; -- Changed from UUID to TEXT to match notebook_entries column flexibility
   v_mood TEXT;
   v_occurred_at TIMESTAMPTZ;
   v_new JSONB;
@@ -51,13 +51,18 @@ BEGIN
       v_content := v_new->>'note';
       v_title := 'Journal entry';
       v_mood := v_new->>'mood';
-      v_goal_id := (v_new->>'node_id')::UUID;
+      v_goal_id := v_new->>'node_id';
     WHEN 'node_journal_entries' THEN
       v_entry_type := 'note';
       v_content := v_new->>'note';
       v_title := 'Goal note';
       v_mood := v_new->>'mood';
-      v_goal_id := (v_new->>'node_id')::UUID;
+      v_goal_id := v_new->>'node_id';
+    WHEN 'bets' THEN
+      v_entry_type := 'bet';
+      v_content := 'Committed ' || (v_new->>'stake_points') || ' PP to goal: ' || (v_new->>'goal_name');
+      v_title := 'New Accountability Bet';
+      v_goal_id := v_new->>'goal_node_id';
     ELSE
       v_entry_type := 'note';
       v_content := 'Entry created';
@@ -69,6 +74,7 @@ BEGIN
     (v_new->>'logged_at')::TIMESTAMPTZ,
     (v_new->>'created_at')::TIMESTAMPTZ,
     (v_new->>'checked_in_at')::TIMESTAMPTZ,
+    (v_new->>'deadline')::TIMESTAMPTZ,
     NOW()
   );
 
@@ -91,3 +97,13 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Ensure tables have the trigger
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trig_notebook_bet') THEN
+    CREATE TRIGGER trig_notebook_bet
+    AFTER INSERT ON public.bets
+    FOR EACH ROW EXECUTE FUNCTION public.create_notebook_entry();
+  END IF;
+END $$;

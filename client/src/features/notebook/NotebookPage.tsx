@@ -135,9 +135,12 @@ const NotebookPage: React.FC = () => {
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats(statsData);
+      } else {
+        setStats({ total_entries: 0, streak_days: 0, recent_tags: [] });
       }
     } catch (err) {
       console.error('Failed to fetch notebook entries:', err);
+      setStats({ total_entries: 0, streak_days: 0, recent_tags: [] });
     } finally {
       setLoading(false);
     }
