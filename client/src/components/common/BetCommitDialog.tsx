@@ -27,7 +27,7 @@ interface BetCommitDialogProps {
 
 const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challenge, onSuccess }) => {
   const { user } = useUser();
-  const [stake, setStake] = useState(100);
+  const [stake, setStake] = useState(50); // Lower default from 100 to 50
   const [deadline, setDeadline] = useState('');
   const [saving, setSaving] = useState(false);
   const [userPoints, setUserPoints] = useState<number | null>(null);
@@ -171,17 +171,17 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
             value={stake}
             onChange={(_, val) => setStake(val as number)}
             onChangeCommitted={(_, val) => setStake(val as number)}
-            min={50}
-            max={maxStake > 50 ? maxStake : 100}
+            min={10}
+            max={maxStake > 10 ? maxStake : 50}
             step={10}
             disabled={!canAfford}
             valueLabelDisplay="auto"
             valueLabelFormat={(v) => `${v} PP`}
-            sx={{ 
+            sx={{
               color: 'primary.main',
               height: 8,
-              '& .MuiSlider-thumb': { 
-                width: 24, 
+              '& .MuiSlider-thumb': {
+                width: 24,
                 height: 24,
                 '&:hover': { boxShadow: '0 0 0 8px rgba(245,158,11,0.2)' },
               },
@@ -189,11 +189,19 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
               '& .MuiSlider-rail': { height: 8, opacity: 0.3 },
             }}
           />
-          {!canAfford && (
+          {!canAfford && userPoints === 0 && (
+            <Box sx={{ mt: 1, p: 1.5, bgcolor: 'rgba(245,158,11,0.1)', borderRadius: 1, border: '1px solid rgba(245,158,11,0.3)' }}>
+              <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                💡 Need Praxis Points?
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Earn PP by: Daily check-ins (+10), Completing goals (+50-200), Verification claims (+25), or receiving honor from others
+              </Typography>
+            </Box>
+          )}
+          {!canAfford && userPoints !== 0 && (
             <Typography variant="caption" color="error">
-              {userPoints !== null && stake > userPoints
-                ? `Insufficient funds. You have ${userPoints} PP but selected ${stake} PP.`
-                : 'You need at least 50 PP to place a bet.'}
+              Insufficient funds. You have {userPoints} PP but selected {stake} PP.
             </Typography>
           )}
         </Box>

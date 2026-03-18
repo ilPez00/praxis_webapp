@@ -7,26 +7,48 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, TextField, IconButton, Stack, Button,
   Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
-  Autocomplete, Chip,
+  Autocomplete, MenuItem, Select, FormControl, InputLabel,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
 import toast from 'react-hot-toast';
 import { TrackerType } from './trackerTypes';
 import { searchExercises } from './exerciseLibrary';
 import { searchFoods, fetchCaloriesFromOFF } from './foodLibrary';
+import { searchBooks } from './booksLibrary';
+import { searchCategories, searchMerchants } from './expensesLibrary';
+import { searchAssets } from './investmentsLibrary';
+import { searchCompanies } from './companiesLibrary';
+import { searchSubjects } from './subjectsLibrary';
+import { searchInstruments } from './musicLibrary';
 
 interface TrackerRow {
   id: string;
-  label: string;
+  label: string; // usually the "name" or "item"
   value: string | number;
   unit?: string;
   weight?: number;
   reps?: number;
   sets?: number;
+  // Specialized fields
+  category?: string;
+  merchant?: string;
+  amount?: number;
+  status?: string;
+  action?: string;
+  price?: number;
+  quantity?: number;
+  duration?: number;
+  distance?: number;
+  author?: string;
+  pages_read?: number;
+  total_pages?: number;
+  subject?: string;
+  instrument?: string;
+  person?: string;
+  type?: string;
 }
 
 interface EditableTrackerFormProps {
@@ -52,6 +74,15 @@ const DEFAULT_ROWS: Record<string, TrackerRow[]> = {
     { id: '3', label: 'Deadlift', value: 0, weight: 0, reps: 0, sets: 0 },
     { id: '4', label: 'Shoulder Press', value: 0, weight: 0, reps: 0, sets: 0 },
   ],
+  expenses: [
+    { id: '1', label: 'Groceries', category: 'Food', amount: 0, merchant: '' }
+  ],
+  cardio: [
+    { id: '1', label: 'Running', duration: 30, distance: 5 }
+  ],
+  study: [
+    { id: '1', label: 'Focus Session', subject: '', duration: 60 }
+  ]
 };
 
 const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
@@ -63,8 +94,10 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
 }) => {
   const [rows, setRows] = useState<TrackerRow[]>([]);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
-  const [foodSuggestions, setFoodSuggestions] = useState<string[]>([]);
-  const [exerciseSuggestions, setExerciseSuggestions] = useState<string[]>([]);
+  
+  // Library suggestions
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
 
   // Initialize rows when tracker opens
   useEffect(() => {
@@ -76,36 +109,63 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     }
   }, [open, tracker]);
 
-  // Update suggestions based on tracker type
+  // Handle autocomplete search
   useEffect(() => {
-    if (tracker?.type === 'meal') {
-      const foodQuery = rows.find(r => r.id === editingLabel)?.label || '';
-      if (foodQuery.length >= 2) {
-        const results = searchFoods(foodQuery);
-        setFoodSuggestions(results);
-        if (results.length === 1) {
-          fetchCaloriesFromOFF(results[0]).then(cal => {
-            if (cal && editingLabel) {
-              setRows(prev => prev.map(r => 
-                r.id === editingLabel ? { ...r, label: results[0] } : r
-              ));
-            }
-          });
-        }
-      } else {
-        setFoodSuggestions([]);
-      }
+    if (!editingLabel) return;
+    const row = rows.find(r => r.id === editingLabel);
+    const query = row?.label || '';
+    if (!query.trim()) { setSuggestions([]); return; }
+
+    let results: any[] = [];
+    setSearching(true);
+
+    switch(tracker?.type) {
+      case 'meal':
+        results = searchFoods(query);
+        break;
+      case 'lift':
+        results = searchExercises(query);
+        break;
+      case 'books':
+        searchBooks(query).then(res => setSuggestions(res)).finally(() => setSearching(false));
+        return;
+      case 'expenses':
+        results = searchCategories(query);
+        break;
+      case 'investments':
+        results = searchAssets(query);
+        break;
+      case 'job-apps':
+        results = searchCompanies(query);
+        break;
+      case 'study':
+        results = searchSubjects(query);
+        break;
+      case 'music':
+        results = searchInstruments(query);
+        break;
     }
-    if (tracker?.type === 'lift') {
-      const exerciseQuery = rows.find(r => r.id === editingLabel)?.label || '';
-      setExerciseSuggestions(exerciseQuery ? searchExercises(exerciseQuery) : []);
-    }
-  }, [tracker?.type, editingLabel, rows]);
+
+    setSuggestions(results);
+    setSearching(false);
+  }, [editingLabel, rows, tracker?.type]);
 
   const handleAddRow = () => {
-    const newRow: TrackerRow = tracker?.type === 'lift'
-      ? { id: Date.now().toString(), label: '', value: 0, weight: 0, reps: 0, sets: 0 }
-      : { id: Date.now().toString(), label: '', value: 0, unit: tracker?.type === 'meal' ? 'g' : 'pcs' };
+    const baseRow = { id: Date.now().toString(), label: '', value: 0 };
+    let newRow: TrackerRow = baseRow;
+
+    if (tracker?.type === 'lift') {
+      newRow = { ...baseRow, weight: 0, reps: 0, sets: 0 };
+    } else if (tracker?.type === 'meal') {
+      newRow = { ...baseRow, unit: 'g' };
+    } else if (tracker?.type === 'expenses') {
+      newRow = { ...baseRow, category: 'Food', amount: 0, merchant: '' };
+    } else if (tracker?.type === 'cardio') {
+      newRow = { ...baseRow, duration: 0, distance: 0 };
+    } else if (tracker?.type === 'study') {
+      newRow = { ...baseRow, subject: '', duration: 0 };
+    }
+
     setRows([...rows, newRow]);
   };
 
@@ -119,13 +179,30 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     setRows(rows.map(r => r.id === id ? { ...r, ...updates } : r));
   };
 
-  const handleLabelChange = (id: string, newLabel: string) => {
-    handleUpdateRow(id, { label: newLabel });
+  const handleSelectSuggestion = (id: string, val: any) => {
+    if (!val) return;
+    const name = typeof val === 'string' ? val : (val.name || val.title || val.ticker || val.label);
+    const updates: Partial<TrackerRow> = { label: name };
+
+    // Type-specific auto-fill
+    if (tracker?.type === 'meal' && val.kcalPer100g) {
+      updates.value = val.kcalPer100g;
+    } else if (tracker?.type === 'books') {
+      updates.author = val.author;
+      updates.total_pages = val.totalPages;
+    } else if (tracker?.type === 'expenses' && val.name) {
+      updates.category = val.name;
+    } else if (tracker?.type === 'investments' && val.ticker) {
+      updates.label = `${val.ticker} — ${val.name}`;
+    }
+
+    handleUpdateRow(id, updates);
+    setEditingLabel(null);
   };
 
   const handleSave = async () => {
     // Validate rows
-    const emptyLabels = rows.filter(r => !r.label.trim());
+    const emptyLabels = rows.filter(r => !r.label.trim() && !r.subject?.trim());
     if (emptyLabels.length > 0) {
       toast.error('Please fill in all item names');
       return;
@@ -134,12 +211,28 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     // Build data object
     const data: any = {
       items: rows.map(r => ({
-        name: r.label,
+        name: r.label || r.subject || 'Item',
         value: r.value,
         unit: r.unit,
         weight: r.weight,
         reps: r.reps,
         sets: r.sets,
+        category: r.category,
+        merchant: r.merchant,
+        amount: r.amount,
+        status: r.status,
+        action: r.action,
+        price: r.price,
+        quantity: r.quantity,
+        duration: r.duration,
+        distance: r.distance,
+        author: r.author,
+        pages_read: r.pages_read,
+        total_pages: r.total_pages,
+        subject: r.subject,
+        instrument: r.instrument,
+        person: r.person,
+        type: r.type
       })),
     };
 
@@ -148,55 +241,163 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     onClose();
   };
 
+  const renderRowFields = (row: TrackerRow) => {
+    switch(tracker?.type) {
+      case 'meal':
+        return (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField
+              type="number" label="Qty" size="small"
+              value={row.value}
+              onChange={(e) => handleUpdateRow(row.id, { value: parseFloat(e.target.value) || 0 })}
+              sx={{ width: 80 }}
+            />
+            <Select
+              size="small" value={row.unit || 'g'}
+              onChange={(e) => handleUpdateRow(row.id, { unit: e.target.value })}
+              sx={{ width: 80 }}
+            >
+              <MenuItem value="g">g</MenuItem>
+              <MenuItem value="ml">ml</MenuItem>
+              <MenuItem value="pcs">pcs</MenuItem>
+              <MenuItem value="kcal">kcal</MenuItem>
+            </Select>
+          </Box>
+        );
+      case 'lift':
+        return (
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <TextField
+              type="number" label="kg" size="small"
+              value={row.weight || ''}
+              onChange={(e) => handleUpdateRow(row.id, { weight: parseFloat(e.target.value) || 0 })}
+              sx={{ width: 70 }}
+            />
+            <TextField
+              type="number" label="Reps" size="small"
+              value={row.reps || ''}
+              onChange={(e) => handleUpdateRow(row.id, { reps: parseInt(e.target.value) || 0 })}
+              sx={{ width: 70 }}
+            />
+            <TextField
+              type="number" label="Sets" size="small"
+              value={row.sets || ''}
+              onChange={(e) => handleUpdateRow(row.id, { sets: parseInt(e.target.value) || 0 })}
+              sx={{ width: 70 }}
+            />
+          </Box>
+        );
+      case 'expenses':
+        return (
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <TextField
+              type="number" label="Amount (€)" size="small"
+              value={row.amount || ''}
+              onChange={(e) => handleUpdateRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
+              sx={{ width: 100 }}
+            />
+            <TextField
+              label="Merchant" size="small"
+              value={row.merchant || ''}
+              onChange={(e) => handleUpdateRow(row.id, { merchant: e.target.value })}
+              sx={{ flex: 1, minWidth: 120 }}
+            />
+          </Box>
+        );
+      case 'cardio':
+        return (
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              type="number" label="Min" size="small"
+              value={row.duration || ''}
+              onChange={(e) => handleUpdateRow(row.id, { duration: parseInt(e.target.value) || 0 })}
+              sx={{ width: 80 }}
+            />
+            <TextField
+              type="number" label="km" size="small"
+              value={row.distance || ''}
+              onChange={(e) => handleUpdateRow(row.id, { distance: parseFloat(e.target.value) || 0 })}
+              sx={{ width: 80 }}
+            />
+          </Box>
+        );
+      case 'books':
+        return (
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              type="number" label="Pages read" size="small"
+              value={row.pages_read || ''}
+              onChange={(e) => handleUpdateRow(row.id, { pages_read: parseInt(e.target.value) || 0 })}
+              sx={{ width: 100 }}
+            />
+            <Typography sx={{ alignSelf: 'center', color: 'text.disabled' }}>/</Typography>
+            <TextField
+              type="number" label="Total" size="small"
+              value={row.total_pages || ''}
+              onChange={(e) => handleUpdateRow(row.id, { total_pages: parseInt(e.target.value) || 0 })}
+              sx={{ width: 80 }}
+            />
+          </Box>
+        );
+      default:
+        return (
+          <TextField
+            type="number" label="Value" size="small"
+            value={row.value}
+            onChange={(e) => handleUpdateRow(row.id, { value: parseFloat(e.target.value) || 0 })}
+            sx={{ width: 100 }}
+          />
+        );
+    }
+  };
+
   if (!tracker) return null;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
       <DialogTitle sx={{ pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography sx={{ fontSize: '1.2rem' }}>{tracker.def.icon}</Typography>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>{tracker.def.label}</Typography>
+            <Typography sx={{ fontSize: '1.5rem' }}>{tracker.def.icon}</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>{tracker.def.label}</Typography>
           </Box>
           <IconButton size="small" onClick={onClose}><CloseIcon /></IconButton>
         </Box>
       </DialogTitle>
 
       <DialogContent sx={{ pt: 2 }}>
-        <Stack spacing={2}>
-          {/* Rows */}
-          {rows.map((row, index) => (
+        <Stack spacing={2.5}>
+          {rows.map((row) => (
             <Box
               key={row.id}
               sx={{
                 p: 2,
-                borderRadius: 2,
-                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '16px',
+                border: '1px solid rgba(255,255,255,0.08)',
                 bgcolor: 'rgba(255,255,255,0.02)',
+                position: 'relative'
               }}
             >
-              <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
-                {/* Label / Name Field */}
+              <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center' }}>
                 {editingLabel === row.id ? (
                   <Autocomplete
                     freeSolo
-                    options={tracker.type === 'meal' ? foodSuggestions : exerciseSuggestions}
+                    loading={searching}
+                    options={suggestions}
+                    getOptionLabel={o => typeof o === 'string' ? o : (o.name || o.title || o.ticker || o.label || '')}
                     value={row.label}
-                    onChange={(_, val) => handleLabelChange(row.id, val || '')}
-                    onInputChange={(_, val) => handleLabelChange(row.id, val || '')}
+                    onChange={(_, val) => handleSelectSuggestion(row.id, val)}
+                    onInputChange={(_, val) => handleUpdateRow(row.id, { label: val })}
                     renderInput={(params) => (
                       <TextField
                         {...params}
                         size="small"
-                        placeholder={tracker.type === 'meal' ? 'Food item...' : 'Exercise...'}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') setEditingLabel(null);
-                          if (e.key === 'Escape') setEditingLabel(null);
-                        }}
+                        placeholder="Search or type name..."
                         autoFocus
                         fullWidth
                       />
                     )}
+                    sx={{ flex: 1 }}
                   />
                 ) : (
                   <Box
@@ -204,8 +405,8 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
                     sx={{
                       flex: 1,
                       p: 1,
-                      borderRadius: 1,
-                      bgcolor: row.label ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
+                      borderRadius: '8px',
+                      bgcolor: 'rgba(255,255,255,0.04)',
                       border: '1px dashed rgba(255,255,255,0.2)',
                       cursor: 'pointer',
                       display: 'flex',
@@ -213,121 +414,61 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
                       gap: 1,
                     }}
                   >
-                    <Typography sx={{ fontSize: '0.9rem', color: row.label ? 'text.primary' : 'text.disabled' }}>
-                      {row.label || 'Click to add item...'}
+                    <Typography sx={{ fontSize: '0.9rem', fontWeight: 600 }}>
+                      {row.label || row.subject || 'Click to set item name...'}
                     </Typography>
                     <EditIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                   </Box>
                 )}
 
-                {/* Remove button */}
                 <IconButton
                   size="small"
                   onClick={() => handleRemoveRow(row.id)}
                   disabled={rows.length === 1}
-                  sx={{ color: 'text.secondary' }}
+                  sx={{ color: 'rgba(255,255,255,0.3)', '&:hover': { color: 'error.main' } }}
                 >
-                  <RemoveIcon />
+                  <RemoveIcon fontSize="small" />
                 </IconButton>
               </Box>
 
-              {/* Value Fields based on tracker type */}
-              {tracker.type === 'meal' ? (
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                  <TextField
-                    type="number"
-                    size="small"
-                    value={row.value}
-                    onChange={(e) => handleUpdateRow(row.id, { value: parseFloat(e.target.value) || 0 })}
-                    sx={{ width: 100 }}
-                    inputProps={{ min: 0, step: 0.5 }}
-                  />
-                  <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary', minWidth: 30 }}>
-                    {row.unit || 'g'}
-                  </Typography>
-                </Box>
-              ) : tracker.type === 'lift' ? (
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <TextField
-                    type="number"
-                    size="small"
-                    placeholder="kg"
-                    value={row.weight || ''}
-                    onChange={(e) => handleUpdateRow(row.id, { weight: parseFloat(e.target.value) || 0 })}
-                    sx={{ width: 80 }}
-                    inputProps={{ min: 0, step: 0.5 }}
-                  />
-                  <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', alignSelf: 'center' }}>kg</Typography>
-                  
-                  <TextField
-                    type="number"
-                    size="small"
-                    placeholder="Reps"
-                    value={row.reps || ''}
-                    onChange={(e) => handleUpdateRow(row.id, { reps: parseInt(e.target.value) || 0 })}
-                    sx={{ width: 70 }}
-                    inputProps={{ min: 0 }}
-                  />
-                  
-                  <TextField
-                    type="number"
-                    size="small"
-                    placeholder="Sets"
-                    value={row.sets || ''}
-                    onChange={(e) => handleUpdateRow(row.id, { sets: parseInt(e.target.value) || 0 })}
-                    sx={{ width: 70 }}
-                    inputProps={{ min: 0 }}
-                  />
-                </Box>
-              ) : (
-                <TextField
-                  type="number"
-                  size="small"
-                  value={row.value}
-                  onChange={(e) => handleUpdateRow(row.id, { value: parseFloat(e.target.value) || 0 })}
-                  sx={{ width: 100 }}
-                  inputProps={{ min: 0 }}
-                />
-              )}
+              {renderRowFields(row)}
             </Box>
           ))}
 
-          {/* Add Row Button */}
           <Button
             fullWidth
             variant="outlined"
             onClick={handleAddRow}
             startIcon={<AddIcon />}
             sx={{
-              border: '1px dashed rgba(255,255,255,0.3)',
+              borderRadius: '12px',
+              border: '1px dashed rgba(255,255,255,0.2)',
               color: 'text.secondary',
               py: 1.5,
-              '&:hover': {
-                border: '1px dashed rgba(255,255,255,0.5)',
-                bgcolor: 'rgba(255,255,255,0.02)',
-              },
+              '&:hover': { border: '1px dashed', borderColor: 'primary.main', bgcolor: 'rgba(139,92,246,0.05)' }
             }}
           >
-            Add Item
+            Add Another Line
           </Button>
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2.5 }}>
-        <Button onClick={onClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        <Button onClick={onClose} sx={{ color: 'text.secondary', borderRadius: '10px' }}>Cancel</Button>
         <Button
           onClick={handleSave}
           variant="contained"
           disabled={saving}
           sx={{
-            bgcolor: '#F59E0B',
+            borderRadius: '10px',
+            bgcolor: 'primary.main',
             color: '#0D0E1A',
-            fontWeight: 700,
-            px: 3,
-            '&:hover': { bgcolor: '#FBBF24' },
+            fontWeight: 800,
+            px: 4,
+            '&:hover': { bgcolor: 'primary.light' },
           }}
         >
-          {saving ? <CircularProgress size={20} /> : 'Save Log'}
+          {saving ? <CircularProgress size={20} color="inherit" /> : 'Log Entry'}
         </Button>
       </DialogActions>
     </Dialog>

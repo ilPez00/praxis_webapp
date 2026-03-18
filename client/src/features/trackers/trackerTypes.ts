@@ -39,7 +39,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'weight', label: 'Weight (kg)', type: 'number', placeholder: '80' },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'e.g. felt strong', optional: true },
     ],
-    entryLabel: d => `${d.exercise || '?'}: ${d.sets}×${d.reps} @ ${d.weight}kg`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name}: ${i.sets}×${i.reps} @ ${i.weight}kg`).join(', ');
+      }
+      return `${d.exercise || '?'}: ${d.sets}×${d.reps} @ ${d.weight}kg`;
+    },
   },
   {
     id: 'meal',
@@ -55,7 +60,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'calories', label: 'Calories (approx)', type: 'number', placeholder: '500', optional: true },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.meal || 'Meal'}: ${d.food || '?'}${d.calories ? ` · ${d.calories} kcal` : ''}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name} (${i.value}${i.unit || 'g'})`).join(', ');
+      }
+      return `${d.meal || 'Meal'}: ${d.food || '?'}${d.calories ? ` · ${d.calories} kcal` : ''}`;
+    },
   },
   {
     id: 'hangout',
@@ -71,7 +81,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'date', label: 'Date', type: 'date' },
       { key: 'status', label: 'Status', type: 'select', options: ['Planned', 'Done', 'Cancelled'] },
     ],
-    entryLabel: d => `${d.activity || '?'} with ${d.person || '?'} — ${d.status || 'Planned'}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name} with ${i.person}`).join(', ');
+      }
+      return `${d.activity || '?'} with ${d.person || '?'} — ${d.status || 'Planned'}`;
+    },
   },
   {
     id: 'cardio',
@@ -87,7 +102,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'distance', label: 'Distance (km)', type: 'number', placeholder: '5', optional: true },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.activity || '?'} · ${d.duration}min${d.distance ? ` / ${d.distance}km` : ''}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name}: ${i.duration}min`).join(', ');
+      }
+      return `${d.activity || '?'} · ${d.duration}min${d.distance ? ` / ${d.distance}km` : ''}`;
+    },
   },
   {
     id: 'steps',
@@ -102,7 +122,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'goal', label: 'Daily Goal', type: 'number', placeholder: '10000', optional: true },
       { key: 'source', label: 'Source', type: 'select', options: ['Manual', 'Apple Health', 'Garmin', 'Fitbit', 'Google Fit'], optional: true },
     ],
-    entryLabel: (d) => `${Number(d.steps).toLocaleString()} steps${d.goal ? ` / ${Number(d.goal).toLocaleString()} goal` : ''}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${Number(i.value).toLocaleString()} steps`).join(', ');
+      }
+      return `${Number(d.steps).toLocaleString()} steps${d.goal ? ` / ${Number(d.goal).toLocaleString()} goal` : ''}`;
+    },
   },
   {
     id: 'study',
@@ -118,7 +143,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'topic', label: 'Topic covered', type: 'text', placeholder: 'e.g. Chapter 3' },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.subject || '?'}: ${d.topic || '?'} (${d.duration}min)`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.subject || i.name}: ${i.duration}min`).join(', ');
+      }
+      return `${d.subject || '?'}: ${d.topic || '?'} (${d.duration}min)`;
+    },
   },
   {
     id: 'books',
@@ -136,7 +166,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'rating', label: 'Rating (1–5)', type: 'number', placeholder: '5', optional: true },
       { key: 'notes', label: 'Notes / Highlights', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: (d: Record<string,string>) => `"${d.title || '?'}" — ${d.pages_read}p read${d.total_pages ? ` (of ${d.total_pages})` : ''}`,
+    entryLabel: (d: Record<string,any>) => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `"${i.name}" (+${i.pages_read}p)`).join(', ');
+      }
+      return `"${d.title || '?'}" — ${d.pages_read}p read${d.total_pages ? ` (of ${d.total_pages})` : ''}`;
+    },
   },
   {
     id: 'sleep',
@@ -151,7 +186,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'quality', label: 'Quality', type: 'select', options: ['Excellent', 'Good', 'Fair', 'Poor'] },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.duration}h · ${d.quality || '?'}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.duration}h (${i.quality})`).join(', ');
+      }
+      return `${d.duration}h · ${d.quality || '?'}`;
+    },
   },
   {
     id: 'meditation',
@@ -167,7 +207,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'feeling', label: 'Feeling after', type: 'select', options: ['Calm', 'Energised', 'Focused', 'Neutral', 'Tired'] },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.duration}min ${d.type || '?'} · ${d.feeling || '?'}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.duration}min ${i.type}`).join(', ');
+      }
+      return `${d.duration}min ${d.type || '?'} · ${d.feeling || '?'}`;
+    },
   },
   {
     id: 'budget',
@@ -183,7 +228,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'amount', label: 'Amount (€)', type: 'number', placeholder: '50' },
       { key: 'description', label: 'Description', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.type || '?'}: ${d.category || '?'} · €${d.amount || '?'}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.category}: €${i.amount}`).join(', ');
+      }
+      return `${d.type || '?'}: ${d.category || '?'} · €${d.amount || '?'}`;
+    },
   },
   {
     id: 'expenses',
@@ -200,7 +250,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'amount', label: 'Amount (€)', type: 'number', placeholder: '45.00' },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.type || '?'}: ${d.category || '?'}${d.merchant ? ` @ ${d.merchant}` : ''} · €${d.amount || '?'}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name || i.category}: €${i.amount}`).join(', ');
+      }
+      return `${d.type || '?'}: ${d.category || '?'}${d.merchant ? ` @ ${d.merchant}` : ''} · €${d.amount || '?'}`;
+    },
   },
   {
     id: 'investments',
@@ -217,7 +272,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'price', label: 'Price per unit (€)', type: 'number', placeholder: '180.00' },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.action || '?'}: ${d.asset || '?'} · ${d.quantity} × €${d.price}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.action} ${i.name}`).join(', ');
+      }
+      return `${d.action || '?'}: ${d.asset || '?'} · ${d.quantity} × €${d.price}`;
+    },
   },
   {
     id: 'adventure',
@@ -234,7 +294,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'date', label: 'Target / Completed Date', type: 'date', optional: true },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'How did it feel?', optional: true },
     ],
-    entryLabel: d => `${d.goal || '?'} — ${d.status || 'Planned'}${d.location ? ` · ${d.location}` : ''}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name} (${i.status})`).join(', ');
+      }
+      return `${d.goal || '?'} — ${d.status || 'Planned'}${d.location ? ` · ${d.location}` : ''}`;
+    },
   },
   {
     id: 'journal',
@@ -249,7 +314,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'entry', label: 'What happened / how do you feel?', type: 'text', placeholder: 'Write anything…' },
       { key: 'gratitude', label: 'Grateful for…', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.mood || '?'}: ${(d.entry || '').slice(0, 40)}${(d.entry || '').length > 40 ? '…' : ''}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => i.name).join('; ');
+      }
+      return `${d.mood || '?'}: ${(d.entry || '').slice(0, 40)}${(d.entry || '').length > 40 ? '…' : ''}`;
+    },
   },
   {
     id: 'project',
@@ -265,7 +335,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'milestone', label: 'What did you accomplish?', type: 'text', placeholder: 'e.g. Finished underpainting' },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.project || '?'}: ${d.milestone || '?'} (${d.time_spent}min)`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name}: ${i.time_spent}min`).join(', ');
+      }
+      return `${d.project || '?'}: ${d.milestone || '?'} (${d.time_spent}min)`;
+    },
   },
   {
     id: 'music',
@@ -282,7 +357,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'focus', label: 'Focus area', type: 'select', options: ['Technique', 'Sight-reading', 'Memorisation', 'Expression', 'Repertoire', 'Improvisation', 'Theory'] },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: (d: Record<string,string>) => `${d.instrument || '?'}: "${d.piece || '?'}" · ${d.duration_min}min [${d.focus || '?'}]`,
+    entryLabel: (d: Record<string,any>) => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.instrument}: ${i.name}`).join(', ');
+      }
+      return `${d.instrument || '?'}: "${d.piece || '?'}" · ${d.duration_min}min [${d.focus || '?'}]`;
+    },
   },
   {
     id: 'job-apps',
@@ -298,7 +378,12 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'status', label: 'Status', type: 'select', options: ['Applied', 'Phone Screen', 'Interview', 'Offer', 'Rejected', 'Withdrawn'] },
       { key: 'notes', label: 'Notes', type: 'text', placeholder: 'optional', optional: true },
     ],
-    entryLabel: d => `${d.role || '?'} @ ${d.company || '?'} — ${d.status || '?'}`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name} @ ${i.company}`).join(', ');
+      }
+      return `${d.role || '?'} @ ${d.company || '?'} — ${d.status || '?'}`;
+    },
   },
   {
     id: 'progress',
@@ -312,8 +397,14 @@ export const TRACKER_TYPES: TrackerType[] = [
       { key: 'node_name', label: 'Goal', type: 'text' },
       { key: 'progress_pct', label: 'New Progress %', type: 'number' },
     ],
-    entryLabel: d => `${d.node_name || 'Goal'}: ${d.progress_pct}%`,
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name}: ${i.progress_pct}%`).join(', ');
+      }
+      return `${d.node_name || 'Goal'}: ${d.progress_pct}%`;
+    },
   },
+];
 ];
 
 export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
