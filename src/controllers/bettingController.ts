@@ -153,7 +153,7 @@ export const createBet = catchAsync(async (req: Request, res: Response, _next: N
   // If opponentType is 'duel', automatically create a duel
   let duel = null;
   if (opponentType === 'duel') {
-    logger.info(`[createBet] Creating duel for user ${userId} with opponent ${opponentId || 'to be found'}`);
+    logger.info(`[createBet] Creating duel for user ${userId}`);
     const opponentId = await findDuelOpponent(userId, goalName);
     logger.info(`[createBet] Found opponent: ${opponentId || 'none'}`);
 
