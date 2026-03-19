@@ -1,31 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
-  Box, Typography, CircularProgress, IconButton, TextField, Button, Stack, Divider, Chip,
+  Box, Typography, CircularProgress, IconButton, TextField, Button, Stack, Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
+import { API_URL } from '../../lib/api';
 
-interface GoalNote {
+interface NotebookNote {
   id: string;
-  node_id: string;
-  note: string;
+  goal_id: string | null;
+  content: string;
   mood: string | null;
-  logged_at: string;
+  domain: string | null;
+  occurred_at: string;
 }
 
 interface GoalNotesPanelProps {
-  nodeId: string;
+  nodeId: string | null;
   nodeTitle: string;
   userId: string;
   compact?: boolean;  // Mobile compact mode
 }
 
 const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, userId, compact = false }) => {
-  const [notes, setNotes] = useState<GoalNote[]>([]);
+  const [notes, setNotes] = useState<NotebookNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState('');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
@@ -46,27 +48,35 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
   };
 
   const fetchNotes = async () => {
-    if (!nodeId) {
+    if (!userId) {
       setLoading(false);
       return;
     }
 
     try {
-      let query = supabase
-        .from('node_journal_entries')
-        .select('id, node_id, note, mood, logged_at')
-        .eq('user_id', userId);
-
-      if (!nodeId || nodeId === 'free-notes') {
-        query = query.is('node_id', null);
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { 'Authorization': `Bearer ${session?.access_token}` };
+      
+      let url = `${API_URL}/notebook/entries?entry_type=note&limit=100`;
+      // If we have a valid UUID nodeId, filter by it
+      if (nodeId && nodeId !== 'free-notes' && nodeId.length > 10) {
+        url += `&goal_id=${nodeId}`;
       } else {
-        query = query.eq('node_id', nodeId);
+        // For free notes, the API currently returns all notes if goal_id is not provided.
+        // We'll filter the "unlinked" ones in frontend for now to be safe, 
+        // or just show all if no node is selected.
       }
 
-      const { data, error } = await query.order('logged_at', { ascending: false });
-
-      if (error) throw error;
-      setNotes(data || []);
+      const res = await fetch(url, { headers });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json();
+      
+      // If we are in "Free Notes" mode (nodeId is null/free-notes), only show entries with NO goal_id
+      if (!nodeId || nodeId === 'free-notes') {
+        setNotes((data || []).filter((n: any) => !n.goal_id));
+      } else {
+        setNotes(data || []);
+      }
     } catch (err: any) {
       console.error('Error fetching notes:', err);
     } finally {
@@ -75,7 +85,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
   };
 
   useEffect(() => {
-    if (userId && nodeId) {
+    if (userId) {
       fetchNotes();
     }
   }, [userId, nodeId]);
@@ -85,26 +95,44 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
 
     setAdding(true);
     try {
-      const { error } = await supabase.from('node_journal_entries').insert({
-        node_id: nodeId === 'free-notes' ? null : nodeId,
-        user_id: userId,
-        note: newNote,
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
+
+      const headers = { 
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const isFreeNote = !nodeId || nodeId === 'free-notes';
+
+      const payload = {
+        entry_type: 'note',
+        content: newNote,
         mood: selectedMood,
-        logged_at: new Date().toISOString(),
+        goal_id: isFreeNote ? null : nodeId,
+        domain: isFreeNote ? 'Personal' : (notes[0]?.domain || 'General'),
+        title: isFreeNote ? 'Free Note' : `Note for ${nodeTitle}`,
+        source_table: 'manual_entry',
+        source_id: 'manual',
+      };
+
+      const res = await fetch(`${API_URL}/notebook/entries`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
       });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to save');
+      }
 
-      toast.success('Note added!');
+      toast.success('Note saved to notebook!');
       setNewNote('');
       setSelectedMood(null);
       await fetchNotes();
     } catch (err: any) {
-      if (err.message?.includes('400') || err.message?.includes('not-null')) {
-        toast.error('Database rejected note. Please ensure the "Free Notes" migration has been run in Supabase.');
-      } else {
-        toast.error('Failed to add note: ' + err.message);
-      }
+      toast.error('Failed to add note: ' + err.message);
     } finally {
       setAdding(false);
     }
@@ -112,8 +140,16 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
 
   const handleDeleteNote = async (noteId: string) => {
     try {
-      const { error } = await supabase.from('node_journal_entries').delete().eq('id', noteId);
-      if (error) throw error;
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { 'Authorization': `Bearer ${session?.access_token}` };
+      
+      const res = await fetch(`${API_URL}/notebook/entries/${noteId}`, {
+        method: 'DELETE',
+        headers
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete');
+      
       toast.success('Note deleted');
       await fetchNotes();
     } catch (err: any) {
@@ -142,13 +178,11 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
       <Box sx={{ mb: 2 }}>
         <Typography variant={compact ? 'subtitle1' : 'h6'} sx={{ fontWeight: 700, mb: 0.5 }}>
           <EditNoteIcon sx={{ fontSize: compact ? 18 : 20, mr: 0.5, verticalAlign: 'middle' }} />
-          {compact ? 'Notes' : `Notes for "${nodeTitle}"`}
+          {nodeId ? `Notes for "${nodeTitle}"` : 'Free Notes'}
         </Typography>
-        {!compact && (
-          <Typography variant="caption" color="text.secondary">
-            Journal entries and reflections
-          </Typography>
-        )}
+        <Typography variant="caption" color="text.secondary">
+          {nodeId ? 'Goal-specific reflections' : 'Standalone thoughts and insights'}
+        </Typography>
       </Box>
 
       {/* Add Note Form */}
@@ -157,7 +191,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
           fullWidth
           multiline
           rows={compact ? 2 : 3}
-          placeholder="Add a quick note..."
+          placeholder={nodeId ? "Reflect on this goal..." : "What's on your mind?"}
           value={newNote}
           onChange={(e) => setNewNote(e.target.value)}
           sx={{
@@ -222,7 +256,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
             '&:disabled': { opacity: 0.5 },
           }}
         >
-          {adding ? 'Adding...' : 'Add Note'}
+          {adding ? 'Saving...' : 'Save to Notebook'}
         </Button>
       </GlassCard>
 
@@ -266,7 +300,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
                     />
                   )}
                   <Typography variant="caption" color="text.secondary">
-                    {formatDate(note.logged_at)}
+                    {formatDate(note.occurred_at)}
                   </Typography>
                 </Box>
                 <IconButton
@@ -278,7 +312,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
                 </IconButton>
               </Box>
               <Typography sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                {note.note}
+                {note.content}
               </Typography>
             </GlassCard>
           ))}

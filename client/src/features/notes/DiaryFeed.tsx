@@ -183,32 +183,19 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
           });
         })(),
 
-        // 2. Journal entries (node_journal_entries → journal_entries fallback)
+        // 2. Journal entries (Unified via notebook_entries)
         (async () => {
-          const entries = await safeQuery(() =>
-            supabase.from('node_journal_entries').select('id, node_id, note, mood, logged_at')
-              .eq('user_id', userId).gte('logged_at', since)
-              .order('logged_at', { ascending: false }).limit(200)
-          );
-          if (Array.isArray(entries) && entries.length > 0) {
-            return entries.map((e: any) => ({
-              id: `j-${e.id}`, type: 'journal', timestamp: e.logged_at,
-              title: e.mood ? `${e.mood} Journal` : 'Journal entry',
-              detail: e.note?.slice(0, 200) || '', icon: e.mood || '📓', color: '#8B5CF6', badge: 'Journal',
-              goalId: e.node_id || undefined,
-              goalName: e.node_id ? (nodeNameMap[e.node_id] || undefined) : undefined,
-            }));
-          }
-          // Fallback: legacy journal_entries table
-          const legacy = await safeQuery(() =>
-            supabase.from('journal_entries').select('id, note, mood, created_at')
-              .eq('user_id', userId).gte('created_at', since)
-              .order('created_at', { ascending: false }).limit(200)
-          );
-          return (Array.isArray(legacy) ? legacy : []).map((e: any) => ({
-            id: `j-${e.id}`, type: 'journal', timestamp: e.created_at,
-            title: e.mood ? `${e.mood} Journal` : 'Journal entry',
-            detail: e.note?.slice(0, 200) || '', icon: e.mood || '📓', color: '#8B5CF6', badge: 'Journal',
+          const { data: { session } } = await supabase.auth.getSession();
+          const headers = { 'Authorization': `Bearer ${session?.access_token}` };
+          const res = await fetch(`${API_URL}/notebook/entries?entry_type=note&limit=200`, { headers });
+          if (!res.ok) return [];
+          const entries = await res.json();
+          return (entries || []).map((e: any) => ({
+            id: `j-${e.id}`, type: 'journal', timestamp: e.occurred_at,
+            title: e.title || (e.mood ? `${e.mood} Journal` : 'Journal entry'),
+            detail: e.content?.slice(0, 200) || '', icon: e.mood || '📓', color: '#8B5CF6', badge: 'Journal',
+            goalId: e.goal_id || undefined,
+            goalName: e.goal_id ? (nodeNameMap[e.goal_id] || undefined) : undefined,
           }));
         })(),
 
