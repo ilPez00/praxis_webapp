@@ -83,6 +83,7 @@ function getProcessUptime(pid: number): string {
 /**
  * GET /admin/cli/status
  * Get current process status
+ * Fixed: 2026-03-18 - Added type casting for req.user
  */
 router.get('/status', authenticateToken, catchAsync(async (req: Request, res: Response) => {
   const user: any = req.user;
