@@ -85,7 +85,7 @@ function getProcessUptime(pid: number): string {
  * Get current process status
  */
 router.get('/status', authenticateToken, catchAsync(async (req: Request, res: Response) => {
-  const user = req.user;
+  const user: any = req.user;
   if (!user?.is_admin) {
     throw new UnauthorizedError('Admin access required');
   }
@@ -116,7 +116,7 @@ router.get('/status', authenticateToken, catchAsync(async (req: Request, res: Re
  * Execute a CLI command
  */
 router.post('/execute', authenticateToken, catchAsync(async (req: Request, res: Response) => {
-  const user = req.user;
+  const user: any = req.user;
   if (!user?.is_admin) {
     throw new UnauthorizedError('Admin access required');
   }
@@ -162,7 +162,7 @@ router.post('/execute', authenticateToken, catchAsync(async (req: Request, res: 
  * Get recent logs
  */
 router.get('/logs', authenticateToken, catchAsync(async (req: Request, res: Response) => {
-  const user = req.user;
+  const user: any = req.user;
   if (!user?.is_admin) {
     throw new UnauthorizedError('Admin access required');
   }
