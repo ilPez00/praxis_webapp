@@ -100,7 +100,11 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
       setSelectedMood(null);
       await fetchNotes();
     } catch (err: any) {
-      toast.error('Failed to add note: ' + err.message);
+      if (err.message?.includes('400') || err.message?.includes('not-null')) {
+        toast.error('Database rejected note. Please ensure the "Free Notes" migration has been run in Supabase.');
+      } else {
+        toast.error('Failed to add note: ' + err.message);
+      }
     } finally {
       setAdding(false);
     }
