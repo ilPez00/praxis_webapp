@@ -147,8 +147,12 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  
+  if (!config) return null;
+  
   const objectives: any[] = config.objectives || [];
   const hasObjective = objectives.some(o => currentGoal[o.key]);
+  const configColor = config.color || '#8B5CF6';
 
   const startEdit = () => {
     const init: Record<string, string> = {};
@@ -189,7 +193,7 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
           <IconButton size="small" onClick={() => setEditing(false)} sx={{ color: 'rgba(255,255,255,0.6)' }}>
             <CloseIcon sx={{ fontSize: 14 }} />
           </IconButton>
-          <IconButton size="small" onClick={handleSave} disabled={saving} sx={{ color: config.color }}>
+          <IconButton size="small" onClick={handleSave} disabled={saving} sx={{ color: configColor }}>
             {saving ? <CircularProgress size={12} color="inherit" /> : <CheckIcon sx={{ fontSize: 14 }} />}
           </IconButton>
         </Box>
@@ -199,13 +203,13 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1, flexWrap: 'wrap' }}>
-      <FlagIcon sx={{ fontSize: 12, color: config.color, opacity: 0.7 }} />
+      <FlagIcon sx={{ fontSize: 12, color: configColor, opacity: 0.7 }} />
       {hasObjective ? (
         objectives.filter(o => currentGoal[o.key]).map(o => (
           <Chip key={o.key}
             label={`${o.label}: ${currentGoal[o.key]}${o.unit ? ' ' + o.unit : ''}`}
             size="small"
-            sx={{ height: 16, fontSize: '0.58rem', bgcolor: `${config.color}15`, color: config.color, border: `1px solid ${config.color}25` }}
+            sx={{ height: 16, fontSize: '0.58rem', bgcolor: `${configColor}15`, color: configColor, border: `1px solid ${configColor}25` }}
           />
         ))
       ) : (
@@ -214,7 +218,7 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
         </Typography>
       )}
       <Tooltip title="Edit objectives">
-        <IconButton size="small" onClick={startEdit} sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: config.color }, ml: 'auto', width: 20, height: 20 }}>
+        <IconButton size="small" onClick={startEdit} sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: configColor }, ml: 'auto', width: 20, height: 20 }}>
           <EditIcon sx={{ fontSize: 12 }} />
         </IconButton>
       </Tooltip>
