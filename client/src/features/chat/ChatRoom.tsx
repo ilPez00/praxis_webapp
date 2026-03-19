@@ -184,7 +184,9 @@ const ChatRoom: React.FC = () => {
         const res = await axios.get(`${API_URL}/mutes`, { headers: { Authorization: `Bearer ${session.access_token}` } });
         const mutedUsers: string[] = res.data?.mutedUsers ?? [];
         setMuted(mutedUsers.includes(user2Id));
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.error('Failed to load mute status:', err);
+      }
     })();
 
     channelRef.current = supabase.channel(`chat_${channelName}`, { config: { broadcast: { self: false } } })

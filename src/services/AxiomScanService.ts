@@ -19,6 +19,7 @@ const progressEstimationService = new AxiomProgressEstimationService();
 
 /**
  * Generate brief recommendations based on engagement metrics.
+ * 
  * READS: Trackers, notes, public posts, goal data
  * DOES NOT READ: Private messages, DMs
  * 
@@ -26,6 +27,10 @@ const progressEstimationService = new AxiomProgressEstimationService();
  * - Focus on what's working
  * - Ask about struggles instead of pointing them out
  * - Suggest small actions, don't demand
+ * 
+ * @param metrics - User engagement metrics including archetype, streak, trends
+ * @param userName - User's display name for personalization
+ * @returns Promise containing personalized brief with message, routine, challenges, and resources
  */
 async function generateMetricBasededBrief(metrics: any, userName: string): Promise<any> {
   const { 
@@ -197,7 +202,42 @@ function extractUserDomains(nodes: any[]): string[] {
 // Scan service
 // ---------------------------------------------------------------------------
 
+/**
+ * AxiomScanService - Automated daily brief generation service
+ * 
+ * Responsibilities:
+ * - Runs scheduled cron jobs to generate daily briefs for all active users
+ * - Calculates engagement metrics and user archetypes
+ * - Generates personalized AI-powered daily protocols including:
+ *   - Morning messages tailored to user archetype
+ *   - Daily routine suggestions (hourly tasks from 06:00-22:00)
+ *   - Match, event, and place recommendations
+ *   - Challenge/bet suggestions based on risk factors
+ *   - Resource recommendations based on tracker trends and note themes
+ * - Stores generated briefs in database for frontend consumption
+ * - Auto-saves briefs to notebook_entries for historical tracking
+ * 
+ * Schedule:
+ * - Runs daily at midnight (00:00) via cron
+ * - Generates briefs for users active in last 30 days
+ * - Free users: Mon/Wed/Fri only (unless they pay 500 PP)
+ * - Premium users: Daily
+ * 
+ * Architecture:
+ * - Uses engagement metrics to determine user archetype
+ * - LLM-powered message generation with fallback to algorithmic templates
+ * - Concurrent processing (5 users at a time) for performance
+ * - Comprehensive error handling and logging
+ */
 export class AxiomScanService {
+  /**
+   * Initialize and start the automated scan service
+   * Schedules midnight cron job for daily brief generation
+   * 
+   * @remarks
+   * Cron schedule: '0 0 * * *' (every day at midnight)
+   * Error handling: Logs errors but doesn't throw to avoid crashing the service
+   */
   public static start() {
     cron.schedule('0 0 * * *', async () => {
       logger.info('[AxiomScan] Starting midnight automated scan...');
@@ -210,6 +250,24 @@ export class AxiomScanService {
     logger.info('[AxiomScan] Midnight cron job scheduled.');
   }
 
+  /**
+   * Run global scan to generate daily briefs for all active users
+   * 
+   * Process:
+   * 1. Fetch all users from profiles table
+   * 2. Filter to users active in last 30 days
+   * 3. Process users in batches of 5 (concurrent execution)
+   * 4. For each user:
+   *    - Check premium status and day of week (free users: Mon/Wed/Fri only)
+   *    - Calculate engagement metrics
+   *    - Generate LLM-powered daily brief
+   *    - Store brief in axiom_daily_briefs table
+   *    - Auto-save to notebook_entries for history
+   * 5. Log success/failure counts
+   * 
+   * @throws {Error} If database query fails
+   * @returns Promise<void>
+   */
   public static async runGlobalScan() {
     const today = new Date().toISOString().slice(0, 10);
 
@@ -258,10 +316,36 @@ export class AxiomScanService {
   }
 
   /**
-   * Generate daily brief for a user using FULL LLM-POWERED PROTOCOL.
-   * ALWAYS uses LLM for detailed message, routine, match, event, place recommendations.
+   * Generate daily brief for a user using FULL LLM-POWERED PROTOCOL
+   * 
+   * This is the core method that creates personalized daily protocols for users.
+   * It uses a combination of engagement metrics, user archetype, and AI to generate:
+   * - Personalized greeting message based on archetype and recent activity
+   * - Hourly routine (06:00-22:00) tailored to user's goals and motivation style
+   * - Match recommendation (sparring partner for accountability)
+   * - Event recommendation (local or relevant events)
+   * - Place recommendation (places aligned with user's domains)
+   * - Daily challenge (bet or duel to maintain momentum)
+   * - Resource suggestions (goal insights based on tracker trends)
+   * 
+   * @param userId - The user's unique identifier
+   * @param userName - User's display name for personalization
+   * @param userCity - User's city for local recommendations (events, places)
    * @param useLLM - Always true (deprecated parameter kept for compatibility)
    * @param userData - Optional pre-fetched data to avoid re-fetching (for unified scan)
+   * 
+   * @returns Promise<void> - Brief is stored in database
+   * 
+   * @throws {Error} If user data cannot be fetched or brief generation fails
+   * 
+   * @remarks
+   * - Free users only get briefs on Mon/Wed/Fri (unless they pay 500 PP)
+   * - Premium users get daily briefs
+   * - Briefs are auto-saved to notebook_entries for historical tracking
+   * - Uses LLM with algorithmic fallback if AI fails
+   * 
+   * @example
+   * await AxiomScanService.generateDailyBrief('user-123', 'John', 'Milan', true);
    */
   public static async generateDailyBrief(
     userId: string,

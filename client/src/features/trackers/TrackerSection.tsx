@@ -292,7 +292,7 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes, in
               >
                 {/* Tracker header */}
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', flex: 1 }} onClick={() => openLog(tracker)}>
                     <Typography sx={{ fontSize: '1.3rem', lineHeight: 1 }}>{def.icon}</Typography>
                     <Box>
                       <Typography variant="subtitle2" sx={{ fontWeight: 700, color: def.color }}>{def.label}</Typography>
@@ -302,18 +302,20 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes, in
                   <Stack direction="row" spacing={0.5}>
                     <Button
                       size="small"
-                      variant="outlined"
+                      variant="contained"
                       onClick={() => openLog(tracker)}
                       sx={{
                         borderRadius: '8px',
-                        borderColor: def.border,
-                        color: def.color,
+                        bgcolor: def.color,
+                        color: '#0D0E1A',
                         fontSize: '0.75rem',
                         fontWeight: 700,
-                        '&:hover': { borderColor: def.color, bgcolor: def.bg },
+                        minWidth: 0,
+                        height: 24,
+                        '&:hover': { bgcolor: def.color, opacity: 0.9 },
                       }}
                     >
-                      + Log
+                      Full Log
                     </Button>
                     <Tooltip title="Remove tracker">
                       <IconButton

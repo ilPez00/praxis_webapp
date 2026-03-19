@@ -1,70 +1,82 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Box } from '@mui/material';
+import { Box, Tooltip } from '@mui/material';
 
 interface DayActivity {
   date: string;
   count: number;
   dayIndex: number;
+  dayName: string;
 }
 
 interface ContributionGraphProps {
   userId?: string;
   height?: number;
   width?: number;
+  showTooltip?: boolean;
 }
 
-const ContributionGraph: React.FC<ContributionGraphProps> = ({ userId, height = 40, width = 140 }) => {
-  const [weekData, setWeekData] = useState<DayActivity[]>([]);
+const ContributionGraph: React.FC<ContributionGraphProps> = ({ 
+  userId, 
+  height = 60, 
+  width = 280,
+  showTooltip = true 
+}) => {
+  const [monthData, setMonthData] = useState<DayActivity[]>([]);
   const [maxCount, setMaxCount] = useState(1);
 
   useEffect(() => {
     if (!userId) return;
 
-    const fetchWeekActivity = async () => {
+    const fetchMonthActivity = async () => {
       try {
-        // Get the start of this week (Sunday)
+        // Get the start of this month (30 days ago for rolling view)
         const now = new Date();
-        const dayOfWeek = now.getDay(); // 0 = Sunday
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - dayOfWeek);
-        startOfWeek.setHours(0, 0, 0, 0);
+        const startOfMonth = new Date(now);
+        startOfMonth.setDate(now.getDate() - 29); // 30 days total including today
+        startOfMonth.setHours(0, 0, 0, 0);
 
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
+        const endOfMonth = new Date(now);
+        endOfMonth.setHours(23, 59, 59, 999);
 
-        const startStr = startOfWeek.toISOString().slice(0, 10);
-        const endStr = endOfWeek.toISOString().slice(0, 10);
+        const startStr = startOfMonth.toISOString();
+        const endStr = endOfMonth.toISOString();
 
-        // Fetch notebook entries for this week
-        const { data: entries } = await supabase
+        // Fetch ALL notebook entries for this month
+        const { data: entries, error } = await supabase
           .from('notebook_entries')
-          .select('occurred_at')
+          .select('created_at, entry_type')
           .eq('user_id', userId)
-          .gte('occurred_at', `${startStr}T00:00:00`)
-          .lte('occurred_at', `${endStr}T23:59:59`);
+          .gte('created_at', startStr)
+          .lte('created_at', endStr);
+
+        if (error) {
+          console.error('Error fetching notebook entries:', error);
+          return;
+        }
 
         // Count entries per day
         const dayCounts: Record<string, number> = {};
         const days: DayActivity[] = [];
 
-        // Initialize all 7 days
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startOfWeek);
-          date.setDate(startOfWeek.getDate() + i);
+        // Initialize all 30 days
+        for (let i = 0; i < 30; i++) {
+          const date = new Date(startOfMonth);
+          date.setDate(startOfMonth.getDate() + i);
           const dateStr = date.toISOString().slice(0, 10);
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
           dayCounts[dateStr] = 0;
           days.push({
             date: dateStr,
             count: 0,
             dayIndex: i,
+            dayName,
           });
         }
 
-        // Count entries
+        // Count ALL entries (notes, trackers, goals, achievements, etc.)
         entries?.forEach((entry) => {
-          const dateStr = entry.occurred_at.slice(0, 10);
+          const dateStr = entry.created_at.slice(0, 10);
           if (dayCounts.hasOwnProperty(dateStr)) {
             dayCounts[dateStr]++;
           }
@@ -75,29 +87,29 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({ userId, height = 
           day.count = dayCounts[day.date] || 0;
         });
 
-        setWeekData(days);
+        setMonthData(days);
         setMaxCount(Math.max(1, ...days.map((d) => d.count)));
       } catch (error) {
-        console.error('Failed to fetch week activity:', error);
+        console.error('Failed to fetch month activity:', error);
       }
     };
 
-    fetchWeekActivity();
+    fetchMonthActivity();
   }, [userId]);
 
   const today = new Date().toISOString().slice(0, 10);
-  const todayIndex = weekData.findIndex((d) => d.date === today);
+  const todayIndex = monthData.findIndex((d) => d.date === today);
 
   // Generate SVG path for the line chart
   const generatePath = () => {
-    if (weekData.length === 0) return '';
+    if (monthData.length === 0) return '';
 
-    const padding = 2;
+    const padding = 4;
     const graphHeight = height - padding * 2;
     const graphWidth = width - padding * 2;
-    const pointSpacing = graphWidth / 6; // 6 intervals for 7 points
+    const pointSpacing = graphWidth / 29; // 29 intervals for 30 points
 
-    const points = weekData.map((day, index) => {
+    const points = monthData.map((day, index) => {
       const x = padding + index * pointSpacing;
       const y = padding + graphHeight - (day.count / maxCount) * graphHeight;
       return `${x},${y}`;
@@ -108,27 +120,37 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({ userId, height = 
 
   // Generate area fill path (from line down to bottom)
   const generateAreaPath = () => {
-    if (weekData.length === 0) return '';
+    if (monthData.length === 0) return '';
 
-    const padding = 2;
+    const padding = 4;
     const graphHeight = height - padding * 2;
     const graphWidth = width - padding * 2;
-    const pointSpacing = graphWidth / 6;
+    const pointSpacing = graphWidth / 29;
 
-    const linePoints = weekData.map((day, index) => {
+    const linePoints = monthData.map((day, index) => {
       const x = padding + index * pointSpacing;
       const y = padding + graphHeight - (day.count / maxCount) * graphHeight;
       return `${x},${y}`;
     });
 
     const firstX = padding;
-    const lastX = padding + 6 * pointSpacing;
+    const lastX = padding + 29 * pointSpacing;
     const bottomY = padding + graphHeight;
 
     return `M ${firstX},${bottomY} L ${linePoints.join(' L ')} L ${lastX},${bottomY} Z`;
   };
 
   const isToday = (index: number) => index === todayIndex;
+
+  // Get tooltip title
+  const getTooltipTitle = (day: DayActivity) => {
+    const date = new Date(day.date + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
 
   return (
     <Box
@@ -165,26 +187,54 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({ userId, height = 
           strokeLinejoin="round"
         />
 
-        {/* Data points */}
-        {weekData.map((day, index) => {
-          const padding = 2;
+        {/* Data points with tooltips */}
+        {monthData.map((day, index) => {
+          const padding = 4;
           const graphHeight = height - padding * 2;
           const graphWidth = width - padding * 2;
-          const pointSpacing = graphWidth / 6;
+          const pointSpacing = graphWidth / 29;
           const x = padding + index * pointSpacing;
           const y = padding + graphHeight - (day.count / maxCount) * graphHeight;
 
-          return (
+          const point = (
             <circle
               key={day.date}
               cx={x}
               cy={y}
-              r={isToday(index) ? 3 : 2}
+              r={isToday(index) ? 4 : 2.5}
               fill={isToday(index) ? '#FCD34D' : '#1A1F2E'}
               stroke="#F59E0B"
-              strokeWidth={isToday(index) ? 2 : 1.5}
+              strokeWidth={isToday(index) ? 2.5 : 1.5}
+              style={{
+                cursor: showTooltip ? 'pointer' : 'default',
+                transition: 'r 0.2s ease',
+              }}
             />
           );
+
+          if (showTooltip) {
+            return (
+              <Tooltip
+                key={day.date}
+                title={
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Box sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                      {getTooltipTitle(day)}
+                    </Box>
+                    <Box sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#F59E0B', mt: 0.5 }}>
+                      {day.count} {day.count === 1 ? 'entry' : 'entries'}
+                    </Box>
+                  </Box>
+                }
+                arrow
+                placement="top"
+              >
+                {point}
+              </Tooltip>
+            );
+          }
+
+          return point;
         })}
       </svg>
     </Box>

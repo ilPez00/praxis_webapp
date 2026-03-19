@@ -227,9 +227,12 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
   onObjectiveSaved: (type: string, goal: Record<string, any>) => Promise<void>;
   onProgressUpdate: (nodeId: string, newProgress: number) => void;
 }) {
-  const [form, setForm] = useState<Record<string, string>>({});
+  const [logTracker, setLogTracker] = useState<any>(null); // For Full Log dialog
+  const [manageMode, setManageMode] = useState(false);
+  const [addItemOpen, setAddItemOpen] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
   const [saving, setSaving] = useState(false);
-  const [logOpen, setLogOpen] = useState(false);
+  
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [sliderVal, setSliderVal] = useState(Math.round((node.progress ?? 0) * 100));
   const [progressSaving, setProgressSaving] = useState(false);
@@ -244,7 +247,7 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
   const loggedToday = todayEntries.length > 0;
   const latestEntry = todayEntries[0];
   const currentGoal = tracker?.goal ?? {};
-  const showForm = logOpen || !loggedToday;
+  const library = currentGoal?.library || [];
 
   // Consecutive days logged (streak within this tracker)
   const trackerStreak = (() => {
@@ -259,26 +262,39 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
     return count;
   })();
 
-  const handleLog = async () => {
+  const handleQuickLog = async (item: any) => {
     if (!config) return;
-    const data: Record<string, any> = {};
-    for (const f of config.fields) {
-      const val = form[f.key];
-      if (val !== undefined && val !== '') data[f.key] = f.type === 'number' ? Number(val) : val;
-    }
-    if (Object.keys(data).length === 0) { toast.error('Enter at least one value.'); return; }
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      await axios.post(`${API_URL}/trackers/log`, { type: config.type, data }, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      toast.success(`${config.emoji} Logged! +1⚡`);
-      setForm({});
-      setLogOpen(false);
+      await axios.post(`${API_URL}/trackers/log`, {
+        type: config.type,
+        data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }] }
+      }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+      toast.success(`${config.emoji} Logged: ${item.name}`);
       onLogged();
-    } catch { toast.error('Failed to log. Try again.'); }
+    } catch { toast.error('Failed to log.'); }
     finally { setSaving(false); }
+  };
+
+  const handleAddItem = async () => {
+    if (!newItemName.trim() || !tracker) return;
+    const newLibrary = [...library, { name: newItemName }];
+    try {
+      await supabase.from('trackers').update({ goal: { ...currentGoal, library: newLibrary } }).eq('id', tracker.id);
+      setAddItemOpen(false);
+      setNewItemName('');
+      onLogged();
+    } catch { toast.error('Failed to add item'); }
+  };
+
+  const handleRemoveItem = async (idx: number) => {
+    if (!tracker) return;
+    const newLibrary = library.filter((_: any, i: number) => i !== idx);
+    try {
+      await supabase.from('trackers').update({ goal: { ...currentGoal, library: newLibrary } }).eq('id', tracker.id);
+      onLogged();
+    } catch { toast.error('Failed to remove item'); }
   };
 
   const handleProgressSave = async () => {
@@ -547,65 +563,80 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
           {/* 7-day chart */}
           <MiniChart entries={allEntries} chartKey={config.chartKey} color={accentColor} unit={config.chartUnit} />
 
-          {/* Log form */}
-          <Collapse in={showForm}>
-            <Box sx={{ mt: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
-                <Typography variant="caption" sx={{
-                  color: 'text.disabled', fontSize: '0.58rem', letterSpacing: '0.08em',
-                  textTransform: 'uppercase', fontWeight: 700,
-                }}>
-                  {loggedToday ? 'Log another session' : "Log today's session"}
-                </Typography>
-                {loggedToday && (
-                  <IconButton size="small" onClick={() => setLogOpen(v => !v)} sx={{ color: 'text.disabled', width: 22, height: 22, borderRadius: '6px', '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' } }}>
-                    {logOpen ? <CloseIcon sx={{ fontSize: 12 }} /> : <AddIcon sx={{ fontSize: 12 }} />}
-                  </IconButton>
-                )}
+          {/* Simplified Quick Log Section */}
+          <Box sx={{ mt: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
+              <Typography variant="caption" sx={{
+                color: 'text.disabled', fontSize: '0.58rem', letterSpacing: '0.08em',
+                textTransform: 'uppercase', fontWeight: 700,
+              }}>
+                {loggedToday ? 'Log another' : "Quick Log"}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Button size="small" onClick={() => setLogTracker({ def: config })} sx={{ color: 'text.disabled', fontSize: '0.65rem', minWidth: 0, fontWeight: 700 }}>
+                  Full Log
+                </Button>
+                <Button size="small" onClick={() => setManageMode(!manageMode)} sx={{ color: manageMode ? 'error.main' : 'text.disabled', fontSize: '0.65rem', minWidth: 0 }}>
+                  {manageMode ? 'Done' : 'Edit'}
+                </Button>
               </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.75 }}>
-                {config.fields.map(f => (
-                  <TextField
-                    key={f.key}
-                    size="small"
-                    label={f.unit ? `${f.label} (${f.unit})` : f.label}
-                    type={f.type}
-                    placeholder={f.placeholder}
-                    value={form[f.key] ?? ''}
-                    onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    inputProps={{ min: f.min, max: f.max, step: f.step ?? (f.type === 'number' ? 1 : undefined) }}
-                    sx={{
-                      flex: f.type === 'text' ? '1 1 130px' : '0 1 88px',
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '10px', fontSize: '0.82rem',
-                        '&.Mui-focused fieldset': { borderColor: accentColor },
-                      },
-                      '& .MuiInputLabel-root.Mui-focused': { color: accentColor },
-                      '& .MuiInputLabel-root': { fontSize: '0.77rem' },
-                    }}
-                  />
-                ))}
-              </Box>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleLog}
-                disabled={saving}
-                endIcon={saving ? <CircularProgress size={13} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: '15px !important' }} />}
-                sx={{
-                  borderRadius: '12px', fontWeight: 800, fontSize: '0.82rem', py: 1.25,
-                  background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}cc 100%)`,
-                  color: '#0A0B14',
-                  boxShadow: `0 4px 20px ${accentColor}44`,
-                  '&:hover': { boxShadow: `0 6px 28px ${accentColor}55`, transform: 'translateY(-1px)' },
-                  '&:active': { transform: 'translateY(0)' },
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {loggedToday ? 'Log again +1⚡' : 'Log today +1⚡'}
-              </Button>
             </Box>
-          </Collapse>
+
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {library.map((item: any, idx: number) => (
+                <Button
+                  key={idx}
+                  variant={manageMode ? "outlined" : "contained"}
+                  size="small"
+                  onClick={() => manageMode ? handleRemoveItem(idx) : handleQuickLog(item)}
+                  disabled={saving}
+                  startIcon={manageMode ? <CloseIcon sx={{ fontSize: '12px !important' }} /> : undefined}
+                  sx={{
+                    borderRadius: '10px', fontWeight: 700, fontSize: '0.7rem',
+                    color: manageMode ? 'error.main' : '#0A0B14',
+                    borderColor: manageMode ? 'error.main' : 'transparent',
+                    bgcolor: manageMode ? 'transparent' : accentColor,
+                    '&:hover': { bgcolor: manageMode ? 'rgba(239,68,68,0.1)' : `${accentColor}dd`, borderColor: manageMode ? 'error.light' : 'transparent' },
+                    boxShadow: manageMode ? 'none' : `0 4px 12px ${accentColor}33`,
+                  }}
+                >
+                  {item.name}
+                </Button>
+              ))}
+              {!manageMode && (
+                <IconButton size="small" onClick={() => setAddItemOpen(true)} sx={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '10px' }}>
+                  <AddIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              )}
+            </Box>
+          </Box>
+
+          {/* Add Item Dialog */}
+          <Dialog open={addItemOpen} onClose={() => setAddItemOpen(false)} PaperProps={{ sx: { borderRadius: '16px' } }}>
+            <DialogTitle sx={{ fontWeight: 800 }}>Add to {config.label}</DialogTitle>
+            <DialogContent>
+              <TextField autoFocus label="Item Name" placeholder="e.g. Protein Shake" fullWidth value={newItemName} onChange={e => setNewItemName(e.target.value)} sx={{ mt: 1 }} />
+            </DialogContent>
+            <DialogActions sx={{ p: 2.5 }}>
+              <Button onClick={() => setAddItemOpen(false)}>Cancel</Button>
+              <Button variant="contained" onClick={handleAddItem} disabled={!newItemName.trim()} sx={{ borderRadius: '10px' }}>Add</Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Legacy/Full Log Dialog */}
+          <EditableTrackerForm
+            open={!!logTracker}
+            onClose={() => setLogTracker(null)}
+            tracker={logTracker ? { id: tracker?.id || '', type: config.type, def: config } : null}
+            onSave={async (data) => {
+              const { data: { session } } = await supabase.auth.getSession();
+              await axios.post(`${API_URL}/trackers/log`, { type: config.type, data }, {
+                headers: { Authorization: `Bearer ${session?.access_token}` },
+              });
+              onLogged();
+            }}
+            saving={saving}
+          />
         </Box>
       )}
     </GlassCard>

@@ -134,21 +134,25 @@ const AICoachPage: React.FC = () => {
     try {
       const headers = await getAuthHeaders();
       // Fetch latest axiom daily brief
-      const { data: briefData } = await supabase
+      const { data: briefData, error: supabaseError } = await supabase
         .from('axiom_daily_briefs')
         .select('brief, generated_at')
         .eq('user_id', user.id)
         .order('generated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      
+
+      if (supabaseError) {
+        console.error('Failed to fetch axiom brief from Supabase:', supabaseError);
+      }
+
       if (briefData?.brief) {
         setDailyBrief(briefData.brief);
         if (briefData.brief.message) {
           setLastAxiomMessage(briefData.brief.message);
         }
       }
-      
+
       // Also try API endpoint
       const res = await fetch(`${API_URL}/ai-coaching/daily-brief`, { headers });
       if (res.ok) {
@@ -159,8 +163,13 @@ const AICoachPage: React.FC = () => {
             setLastAxiomMessage(data.brief.message);
           }
         }
+      } else {
+        console.warn('API daily brief endpoint returned non-OK status:', res.status);
       }
-    } catch { /* ignore */ } finally {
+    } catch (err: any) {
+      console.error('Failed to load daily brief:', err);
+      toast.error('Failed to load daily brief');
+    } finally {
       setLoadingDaily(false);
     }
   }, [user?.id, lastAxiomMessage]);
@@ -227,13 +236,14 @@ const AICoachPage: React.FC = () => {
           setReport(cached.brief);
           setGeneratedAt(cached.generated_at);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Cache load error:', err);
+        toast.error('Failed to load cached coaching report');
       } finally {
         if (!cancelled) setLoadingReport(false);
       }
     })();
-    
+
     // Load saved narratives
     loadSavedNarratives();
 

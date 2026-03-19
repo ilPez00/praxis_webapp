@@ -47,8 +47,8 @@ const DesktopWidget: React.FC = () => {
           quote: getAxiomQuote(userRes.status === 'fulfilled' ? userRes.value.data.streak : 0),
           trackers: trackersRes.status === 'fulfilled' ? trackersRes.value.data?.total_entries : 0,
           lastAxiom: axiomRes.status === 'fulfilled' ? axiomRes.value.data?.content : null,
-          goalName: currentUser?.goalTree?.[0]?.name || '',
-          goalProgress: currentUser?.goalTree?.[0]?.progress || 0
+          goalName: '', // TODO: Fetch goal data if needed
+          goalProgress: 0
         };
 
         if ((window as any).electron?.syncWidgetData) {
@@ -82,8 +82,10 @@ const DesktopWidget: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchData, 5 * 60 * 1000); // 5 minutes
+    return () => {
+      clearInterval(interval);
+    };
   }, [fetchData]);
 
   const handleCheckIn = async () => {

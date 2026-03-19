@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Praxis CLI - Wrapper script
+# This script runs the Praxis CLI TypeScript tool
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Check if ts-node is available
+if ! command -v ts-node &> /dev/null; then
+    echo "⚠ ts-node not found globally. Using npx..."
+    npx ts-node "$SCRIPT_DIR/praxis-cli.ts" "$@"
+else
+    ts-node "$SCRIPT_DIR/praxis-cli.ts" "$@"
+fi

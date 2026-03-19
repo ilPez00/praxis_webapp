@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError, BadRequestError, NotFoundError } from '../utils/appErrors';
 import { authenticateToken } from '../middleware/authenticateToken';
+import logger from '../utils/logger';
 
 const router = Router();
 
@@ -29,12 +30,9 @@ router.get('/entries', authenticateToken, catchAsync(async (req: Request, res: R
     offset?: string;
   };
 
-  console.log('[notebookRoutes] Fetching entries:', {
-    userId,
-    entry_type,
-    domain,
-    tag,
-    search,
+  logger.debug('Fetching notebook entries', { 
+    userId, 
+    filters: { entry_type, domain, tag, hasSearch: !!search } 
   });
 
   // Use the database function for filtered queries
@@ -49,11 +47,11 @@ router.get('/entries', authenticateToken, catchAsync(async (req: Request, res: R
   });
 
   if (error) {
-    console.error('[notebookRoutes] Error fetching entries:', error);
+    logger.error('Error fetching notebook entries', error);
     throw error;
   }
-  
-  console.log('[notebookRoutes] Fetched entries:', data?.length || 0);
+
+  logger.debug(`Fetched ${data?.length || 0} notebook entries`);
   res.json(data || []);
 }));
 
@@ -98,12 +96,11 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
 
   if (!content) throw new BadRequestError('content is required');
 
-  console.log('[notebookRoutes] Creating entry:', {
+  logger.info('Creating notebook entry', {
     userId,
     entry_type,
-    title,
+    title: title ? 'present' : 'empty',
     source_table,
-    source_id,
     contentLength: content.length,
   });
 
@@ -132,7 +129,7 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
 
   // If metadata column doesn't exist yet, retry without it
   if (error && metadata && error.message?.includes('metadata')) {
-    console.log('[notebookRoutes] Retrying without metadata');
+    logger.debug('Retrying notebook entry creation without metadata');
     delete insertPayload.metadata;
     ({ data, error } = await supabase
       .from('notebook_entries')
@@ -142,11 +139,11 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
   }
 
   if (error) {
-    console.error('[notebookRoutes] Error creating entry:', error);
+    logger.error('Error creating notebook entry', error);
     throw error;
   }
-  
-  console.log('[notebookRoutes] Entry created successfully:', data.id);
+
+  logger.info(`Notebook entry created successfully: ${data.id}`);
   res.status(201).json(data);
 }));
 

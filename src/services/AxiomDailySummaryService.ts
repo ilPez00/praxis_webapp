@@ -1,7 +1,28 @@
 /**
- * Axiom Daily Summary Service
+ * AxiomDailySummaryService - Automatic daily summary generation
+ * 
  * Generates automatic daily summaries of user notebook activity
- * and posts them as diary entries
+ * and posts them as diary entries.
+ * 
+ * Responsibilities:
+ * - Analyzes user's notebook entries from the previous day
+ * - Extracts statistics (entry counts by type, top themes, mood)
+ * - Identifies achievements and challenges
+ * - Generates AI-powered narrative summary using AICoachingService
+ * - Posts summary as a diary entry (entry_type: 'axiom_daily_summary')
+ * - Provides fallback algorithmic summary if AI fails
+ * 
+ * Features:
+ * - Analyzes ALL entry types (notes, trackers, goal progress, achievements)
+ * - Extracts themes from titles and content
+ * - Identifies patterns (high activity, consistency, emotional tone)
+ * - Generates personalized insights and tomorrow focus suggestions
+ * - Stores summary with full metadata for future reference
+ * 
+ * Usage:
+ * - Called automatically during midnight AxiomScan
+ * - Can be triggered manually for individual users
+ * - Supports batch generation for all active users
  */
 
 import { supabase } from '../lib/supabaseClient';
@@ -23,6 +44,21 @@ interface DailySummary {
 export class AxiomDailySummaryService {
   /**
    * Generate and post daily summary for a user
+   * 
+   * Process:
+   * 1. Fetch yesterday's notebook entries
+   * 2. Analyze entries (stats, themes, mood, achievements, challenges)
+   * 3. Generate AI-powered narrative
+   * 4. Post as diary entry (axiom_daily_summary type)
+   * 
+   * @param userId - The user's unique identifier
+   * @returns Promise<void>
+   * 
+   * @remarks
+   * - Skips if user has no entries from yesterday
+   * - Uses AICoachingService for narrative generation
+   * - Falls back to algorithmic summary if AI fails
+   * - Logs errors but doesn't throw to avoid breaking cron
    */
   async generateAndPostSummary(userId: string): Promise<void> {
     try {
@@ -64,6 +100,20 @@ export class AxiomDailySummaryService {
 
   /**
    * Analyze notebook entries to extract statistics and themes
+   * 
+   * Analyzes entries to extract:
+   * - Activity breakdown by type (notes, trackers, goals, etc.)
+   * - Top themes from titles and content (word frequency analysis)
+   * - Overall mood (most frequent mood value)
+   * - Achievements (completed goals, high progress markers)
+   * - Challenges (struggles, low mood entries)
+   * - Insights (patterns like high activity, consistency, goal focus)
+   * - Tomorrow focus suggestions based on patterns
+   * 
+   * @param userId - The user's unique identifier
+   * @param entries - Array of notebook entries to analyze
+   * @param date - The date string (YYYY-MM-DD format)
+   * @returns DailySummary object with all extracted statistics and insights
    */
   private async analyzeEntries(userId: string, entries: any[], date: string): Promise<DailySummary> {
     // Count by type
@@ -147,6 +197,22 @@ export class AxiomDailySummaryService {
 
   /**
    * Generate AI-powered narrative summary
+   * 
+   * Uses AICoachingService to create a warm, conversational narrative that:
+   * - Acknowledges the user's day
+   * - Highlights 1-2 key achievements
+   * - Gently acknowledges challenges (without criticism)
+   * - Points out patterns and themes
+   * - Ends with encouragement for tomorrow
+   * 
+   * @param userId - The user's unique identifier
+   * @param entries - Raw notebook entries for context
+   * @param summary - Pre-analyzed summary data
+   * @returns AI-generated narrative string (max 200 words)
+   * 
+   * @remarks
+   * - Falls back to generateFallbackSummary if AI fails
+   * - Uses AICoachingService.runWithFallback for reliability
    */
   private async generateNarrative(userId: string, entries: any[], summary: DailySummary): Promise<string> {
     try {
@@ -215,6 +281,16 @@ Write the summary:`;
 
   /**
    * Fallback summary if AI fails
+   * 
+   * Generates a simple algorithmic summary with:
+   * - Total entry count
+   * - Key themes
+   * - Top 2 achievements
+   * - First insight
+   * - First tomorrow focus suggestion
+   * 
+   * @param summary - Pre-analyzed summary data
+   * @returns Formatted text summary (plain text with emoji)
    */
   private generateFallbackSummary(summary: DailySummary): string {
     const parts: string[] = [];
@@ -248,6 +324,22 @@ Write the summary:`;
 
   /**
    * Post summary as a diary/notebook entry
+   * 
+   * Stores the generated summary in notebook_entries table with:
+   * - entry_type: 'axiom_daily_summary'
+   * - title: Formatted with date and emoji
+   * - content: AI-generated or fallback narrative
+   * - metadata: Full summary data + generation info
+   * - is_private: true (only visible to user)
+   * 
+   * @param userId - The user's unique identifier
+   * @param summary - Summary data to store
+   * @param narrative - AI-generated or fallback narrative text
+   * @returns Promise<void>
+   * 
+   * @remarks
+   * - Checks for existing summary to avoid duplicates
+   * - Skips insert if summary already exists for the date
    */
   private async postSummary(userId: string, summary: DailySummary, narrative: string): Promise<void> {
     const { data: existingSummary } = await supabase
@@ -287,6 +379,18 @@ Write the summary:`;
 
   /**
    * Generate summaries for all active users
+   * 
+   * Batch operation that:
+   * 1. Finds all users who logged entries yesterday
+   * 2. Generates summaries for each user sequentially
+   * 3. Adds 1-second delay between users to avoid rate limiting
+   * 
+   * @returns Promise<void>
+   * 
+   * @remarks
+   * - Used by cron job during midnight scan
+   * - Processes users sequentially to respect API rate limits
+   * - Logs overall progress and completion status
    */
   async generateAllSummaries(): Promise<void> {
     try {

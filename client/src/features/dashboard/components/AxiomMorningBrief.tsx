@@ -224,7 +224,7 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
               <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#A78BFA' }}>{points.toLocaleString()} PP</Typography>
             </Box>
             <Box sx={{ width: '1px', height: 28, bgcolor: 'rgba(255,255,255,0.1)', mx: 1 }} />
-            <ContributionGraph userId={userId} height={40} width={120} />
+            <ContributionGraph userId={userId} height={60} width={280} showTooltip={true} />
           </Stack>
         </Box>
 

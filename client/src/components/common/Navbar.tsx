@@ -119,7 +119,9 @@ const Navbar: React.FC = () => {
         ]);
         if (notifsRes.ok) setNotifications(await notifsRes.json());
         if (countRes.ok) { const d = await countRes.json(); setUnreadCount(d.count ?? 0); }
-      } catch { /* silently ignore */ }
+      } catch (err) {
+        console.error('Failed to fetch notifications:', err);
+      }
     };
 
     fetchNotifs();
@@ -140,7 +142,12 @@ const Navbar: React.FC = () => {
       .subscribe();
 
     notifChannelRef.current = channel;
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (notifChannelRef.current) {
+        supabase.removeChannel(notifChannelRef.current);
+        notifChannelRef.current = null;
+      }
+    };
   }, [user?.id]);
 
   const handleOpenNotifs = async (e: React.MouseEvent<HTMLElement>) => {
@@ -156,7 +163,9 @@ const Navbar: React.FC = () => {
         });
         setUnreadCount(0);
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.error('Failed to mark notifications as read:', err);
+      }
     }
   };
 
