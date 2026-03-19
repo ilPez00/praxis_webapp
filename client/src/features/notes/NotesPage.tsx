@@ -595,8 +595,8 @@ const NotesPage: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <ShareButton
                 userId={currentUserId || ''}
-                sourceTable="notebook_entries"
-                sourceId="free-notes"
+                sourceTable="axiom_message"
+                sourceId="notebook-general"
                 title="Free Note"
                 iconOnly
               />
@@ -743,7 +743,7 @@ const NotesPage: React.FC = () => {
 
                 {/* Free Notes Panel */}
                 <GoalNotesPanel
-                  nodeId="free-notes"
+                  nodeId={null as any}
                   nodeTitle="Free Notes"
                   userId={currentUserId || ''}
                 />

@@ -52,12 +52,18 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
     }
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('node_journal_entries')
         .select('id, node_id, note, mood, logged_at')
-        .eq('node_id', nodeId)
-        .eq('user_id', userId)
-        .order('logged_at', { ascending: false });
+        .eq('user_id', userId);
+
+      if (!nodeId || nodeId === 'free-notes') {
+        query = query.is('node_id', null);
+      } else {
+        query = query.eq('node_id', nodeId);
+      }
+
+      const { data, error } = await query.order('logged_at', { ascending: false });
 
       if (error) throw error;
       setNotes(data || []);
@@ -80,7 +86,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
     setAdding(true);
     try {
       const { error } = await supabase.from('node_journal_entries').insert({
-        node_id: nodeId,
+        node_id: nodeId === 'free-notes' ? null : nodeId,
         user_id: userId,
         note: newNote,
         mood: selectedMood,
