@@ -423,10 +423,12 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
             {/* Quick journal at top */}
             {renderJournalForm(domainColor(selectedGoal.domain))}
             
+            <Divider sx={{ my: 3, mx: 2.5, borderColor: 'rgba(255,255,255,0.06)' }} />
+
             {/* Goal detail and widgets below */}
-            <Box sx={{ mt: 2 }}>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', mb: 1, letterSpacing: '0.05em', textTransform: 'uppercase', px: 2.5 }}>
-                Goal Details
+            <Box>
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', mb: 1.5, letterSpacing: '0.05em', textTransform: 'uppercase', px: 2.5 }}>
+                Trackers & Progress
               </Typography>
               <NoteGoalDetail
                 node={toFrontendNode(selectedGoal)}

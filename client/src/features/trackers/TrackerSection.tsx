@@ -33,6 +33,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 interface Tracker {
   id: string;
   type: string;
+  goal?: any;
 }
 
 interface TrackerEntry {
@@ -64,13 +65,18 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes, in
   const [logTracker, setLogTracker] = useState<(Tracker & { def: TrackerType }) | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Library management
+  const [addItemTracker, setAddItemTracker] = useState<Tracker | null>(null);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemUnit, setNewItemUnit] = useState('');
+
   // ── data loading ────────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
     setLoading(true);
     const { data: tData } = await supabase
       .from('trackers')
-      .select('id, type')
+      .select('id, type, goal')
       .eq('user_id', userId)
       .order('created_at');
 
@@ -135,6 +141,44 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes, in
   const deleteEntry = async (entryId: string) => {
     await supabase.from('tracker_entries').delete().eq('id', entryId);
     loadData();
+  };
+
+  const handleAddItem = async () => {
+    if (!addItemTracker || !newItemName.trim()) return;
+    const currentGoal = addItemTracker.goal || {};
+    const library = currentGoal.library || [];
+    const newLibrary = [...library, { name: newItemName, unit: newItemUnit }];
+    try {
+      const { error } = await supabase
+        .from('trackers')
+        .update({ goal: { ...currentGoal, library: newLibrary } })
+        .eq('id', addItemTracker.id);
+      if (error) throw error;
+      toast.success('Added to list');
+      setAddItemTracker(null);
+      setNewItemName('');
+      setNewItemUnit('');
+      loadData();
+    } catch (err: any) {
+      toast.error('Failed to add item');
+    }
+  };
+
+  const handleRemoveLibraryItem = async (tracker: Tracker, itemIdx: number) => {
+    const currentGoal = tracker.goal || {};
+    const library = currentGoal.library || [];
+    const newLibrary = library.filter((_: any, idx: number) => idx !== itemIdx);
+    try {
+      const { error } = await supabase
+        .from('trackers')
+        .update({ goal: { ...currentGoal, library: newLibrary } })
+        .eq('id', tracker.id);
+      if (error) throw error;
+      toast.success('Removed');
+      loadData();
+    } catch (err: any) {
+      toast.error('Failed to remove item');
+    }
   };
 
   // ── open log dialog ─────────────────────────────────────────────────────────
@@ -283,6 +327,37 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes, in
                   </Stack>
                 </Box>
 
+                {/* Library Management */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.disabled', display: 'block', mb: 1 }}>
+                    QUICK ITEMS
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {(tracker.goal?.library || []).map((item: any, idx: number) => (
+                      <Chip
+                        key={idx}
+                        label={item.name}
+                        size="small"
+                        onDelete={() => handleRemoveLibraryItem(tracker, idx)}
+                        sx={{ 
+                          bgcolor: 'rgba(255,255,255,0.05)',
+                          color: def.color,
+                          fontWeight: 600,
+                          fontSize: '0.7rem'
+                        }}
+                      />
+                    ))}
+                    <Button
+                      size="small"
+                      startIcon={<AddIcon sx={{ fontSize: '14px !important' }} />}
+                      onClick={() => setAddItemTracker(tracker)}
+                      sx={{ fontSize: '0.65rem', color: 'text.secondary', p: '2px 8px' }}
+                    >
+                      Add Item
+                    </Button>
+                  </Box>
+                </Box>
+
                 {/* Recent entries */}
                 {trackerEntries.length > 0 ? (
                   <Stack spacing={0.5}>
@@ -359,6 +434,36 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes, in
             )}
           </Stack>
         </DialogContent>
+      </Dialog>
+
+      {/* Add Item Dialog */}
+      <Dialog open={!!addItemTracker} onClose={() => setAddItemTracker(null)} PaperProps={{ sx: { borderRadius: '16px' } }}>
+        <DialogTitle sx={{ fontWeight: 800 }}>Add Trackable Item</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              autoFocus
+              label="Item Name"
+              placeholder="e.g. Coffee, Pushups"
+              fullWidth
+              value={newItemName}
+              onChange={e => setNewItemName(e.target.value)}
+            />
+            <TextField
+              label="Unit (optional)"
+              placeholder="e.g. cup, reps"
+              fullWidth
+              value={newItemUnit}
+              onChange={e => setNewItemUnit(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setAddItemTracker(null)}>Cancel</Button>
+          <Button variant="contained" onClick={handleAddItem} disabled={!newItemName.trim()} sx={{ borderRadius: '10px' }}>
+            Add
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* ── Log Entry Dialog (Now unified via EditableTrackerForm) ─────── */}

@@ -404,6 +404,96 @@ export const TRACKER_TYPES: TrackerType[] = [
       return `${d.node_name || 'Goal'}: ${d.progress_pct}%`;
     },
   },
+  
+  // =============================================================================
+  // Gaming & Esports Trackers (Level 4: Esteem)
+  // =============================================================================
+  {
+    id: 'gaming',
+    label: 'Gaming Session',
+    icon: '🎮',
+    description: 'Log gaming sessions, playtime, and activities',
+    color: '#8B5CF6',
+    bg: 'rgba(139,92,246,0.08)',
+    border: 'rgba(139,92,246,0.25)',
+    fields: [
+      { key: 'game', label: 'Game', type: 'text', placeholder: 'e.g. Elden Ring, Valorant' },
+      { key: 'duration', label: 'Duration (min)', type: 'number', placeholder: '60' },
+      { key: 'platform', label: 'Platform', type: 'select', options: ['PC', 'PlayStation', 'Xbox', 'Nintendo Switch', 'Mobile', 'Arcade'], optional: true },
+      { key: 'mode', label: 'Mode', type: 'select', options: ['Casual', 'Ranked', 'Competitive', 'Speedrun', 'Completionist', 'Co-op'], optional: true },
+      { key: 'notes', label: 'Notes', type: 'text', placeholder: 'Achievements, wins, highlights', optional: true },
+    ],
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.name} (${i.duration}min)`).join(', ');
+      }
+      return `🎮 ${d.game || 'Gaming'} — ${d.duration || '?'}min${d.mode ? ` (${d.mode})` : ''}`;
+    },
+  },
+  {
+    id: 'achievements',
+    label: 'Achievement Hunter',
+    icon: '🏆',
+    description: 'Track achievements, trophies, and completions',
+    color: '#FBBF24',
+    bg: 'rgba(251,191,36,0.08)',
+    border: 'rgba(251,191,36,0.25)',
+    fields: [
+      { key: 'game', label: 'Game', type: 'text', placeholder: 'e.g. Dark Souls 3' },
+      { key: 'achievement', label: 'Achievement/Trophy', type: 'text', placeholder: 'e.g. Dark Lord' },
+      { key: 'rarity', label: 'Rarity', type: 'select', options: ['Common', 'Uncommon', 'Rare', 'Ultra Rare', 'Legendary'], optional: true },
+      { key: 'type', label: 'Type', type: 'select', options: ['Trophy', 'Achievement', 'Steam', 'Xbox', 'PSN', 'Other'], optional: true },
+    ],
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.achievement || i.name} in ${i.game}`).join(', ');
+      }
+      return `🏆 ${d.achievement || 'Achievement'} in ${d.game || '?'}`;
+    },
+  },
+  {
+    id: 'rank',
+    label: 'Rank Progress',
+    icon: '📊',
+    description: 'Track competitive rank progression in esports titles',
+    color: '#EC4899',
+    bg: 'rgba(236,72,153,0.08)',
+    border: 'rgba(236,72,153,0.25)',
+    fields: [
+      { key: 'game', label: 'Game', type: 'text', placeholder: 'e.g. Valorant, LoL, CS:GO' },
+      { key: 'rank', label: 'Current Rank', type: 'text', placeholder: 'e.g. Diamond 2, Global Elite' },
+      { key: 'lp_mmr', label: 'LP/MMR (optional)', type: 'text', placeholder: 'e.g. 2500 MMR', optional: true },
+      { key: 'peak', label: 'Peak Rank', type: 'text', placeholder: 'e.g. Ascendant 1', optional: true },
+    ],
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.rank || i.name} in ${i.game}`).join(', ');
+      }
+      return `📊 ${d.rank || 'Rank'} in ${d.game || '?'}${d.peak ? ` (Peak: ${d.peak})` : ''}`;
+    },
+  },
+  {
+    id: 'streaming',
+    label: 'Streaming/Content',
+    icon: '📹',
+    description: 'Track streaming sessions and content creation',
+    color: '#F472B6',
+    bg: 'rgba(244,114,182,0.08)',
+    border: 'rgba(244,114,182,0.25)',
+    fields: [
+      { key: 'platform', label: 'Platform', type: 'select', options: ['Twitch', 'YouTube', 'TikTok', 'Kick', 'Other'] },
+      { key: 'duration', label: 'Duration (min)', type: 'number', placeholder: '120' },
+      { key: 'viewers_avg', label: 'Avg Viewers', type: 'number', placeholder: '25', optional: true },
+      { key: 'followers_gained', label: 'Followers Gained', type: 'number', placeholder: '5', optional: true },
+      { key: 'content_type', label: 'Content Type', type: 'select', options: ['Live Stream', 'VOD', 'Highlight', 'Tutorial', 'Other'], optional: true },
+    ],
+    entryLabel: d => {
+      if (d.items && Array.isArray(d.items)) {
+        return d.items.map(i => `${i.platform || 'Stream'} (${i.duration}min)`).join(', ');
+      }
+      return `📹 ${d.platform || 'Streaming'} — ${d.duration || '?'}min${d.viewers_avg ? ` (${d.viewers_avg} viewers)` : ''}`;
+    },
+  },
 ];
 
 export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
@@ -413,16 +503,31 @@ export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
 /**
  * Maps each goal domain to the tracker IDs that are automatically
  * activated when a user has goals in that domain.
+ * 
+ * Updated for Maslow's Hierarchy-based domain system (2026-03-18)
  */
 export const DOMAIN_TRACKER_MAP: Record<string, string[]> = {
-  [Domain.FITNESS]:                          ['lift', 'cardio', 'meal', 'steps'],
-  [Domain.ACADEMICS]:                        ['study', 'books'],
-  [Domain.MENTAL_HEALTH]:                    ['sleep', 'meditation', 'journal'],
-  [Domain.PHILOSOPHICAL_DEVELOPMENT]:        ['meditation', 'journal'],
-  [Domain.INVESTING]:                        ['budget', 'expenses', 'investments'],
-  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]:     ['hangout'],
-  [Domain.INTIMACY_ROMANTIC_EXPLORATION]:    ['hangout'],
-  [Domain.CAREER]:                           ['job-apps'],
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: ['project', 'books', 'music'],
-  [Domain.PERSONAL_GOALS]:                   ['adventure'],
+  // Level 1: Physiological
+  'Body & Fitness':                ['lift', 'cardio', 'meal', 'steps', 'sports'],
+  'Rest & Recovery':               ['sleep', 'rest_day'],
+  'Mental Balance':                ['sleep', 'meditation', 'journal', 'mood'],
+  
+  // Level 2: Safety
+  'Environment & Home':            ['cleaning', 'home_projects'],
+  'Health & Longevity':            ['meals', 'water', 'supplements', 'medical'],
+  'Financial Security':            ['budget', 'expenses', 'savings', 'debt'],
+  
+  // Level 3: Love/Belonging
+  'Friendship & Social':           ['hangout', 'social_events'],
+  'Romance & Intimacy':            ['dates', 'relationship_checkin'],
+  'Community & Contribution':      ['volunteer', 'community_events'],
+  
+  // Level 4: Esteem
+  'Career & Craft':                ['deep_work', 'job_apps', 'projects', 'learning'],
+  'Wealth & Assets':               ['investments', 'portfolio', 'passive_income'],
+  'Gaming & Esports':              ['gaming', 'achievements', 'rank', 'streaming'],
+  
+  // Level 5: Self-Transcendence
+  'Impact & Legacy':               ['mentoring', 'teaching', 'content_creation'],
+  'Spirit & Purpose':              ['journal', 'reflection', 'meditation', 'reading'],
 };
