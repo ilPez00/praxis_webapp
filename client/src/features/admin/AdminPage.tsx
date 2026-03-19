@@ -13,6 +13,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PublicIcon from '@mui/icons-material/Public';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
+import TerminalIcon from '@mui/icons-material/Terminal';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import {
@@ -28,6 +29,7 @@ import ServicesTab from './tabs/ServicesTab';
 import CoachesTab from './tabs/CoachesTab';
 import AxiomTab from './tabs/AxiomTab';
 import PlacesImportTab from './tabs/PlacesImportTab';
+import CLITab from './tabs/CLITab';
 
 // ── Tab panel ─────────────────────────────────────────────────────────────────
 
@@ -205,6 +207,7 @@ const AdminPage: React.FC = () => {
         <Tab icon={<SchoolIcon fontSize="small" />} iconPosition="start" label="Coaches" />
         <Tab icon={<SmartToyIcon fontSize="small" />} iconPosition="start" label="Axiom" />
         <Tab icon={<PublicIcon fontSize="small" />} iconPosition="start" label="Places" />
+        <Tab icon={<TerminalIcon fontSize="small" />} iconPosition="start" label="CLI" />
       </Tabs>
 
       <TabPanel value={tab} index={0}>
@@ -247,6 +250,10 @@ const AdminPage: React.FC = () => {
 
       <TabPanel value={tab} index={8}>
         <PlacesImportTab />
+      </TabPanel>
+
+      <TabPanel value={tab} index={9}>
+        <CLITab />
       </TabPanel>
     </Container>
   );

@@ -46,6 +46,7 @@ import sparringRoutes from './routes/sparringRoutes';
 import scheduleRoutes from './routes/scheduleRoutes';
 import narrativeRoutes from './routes/narrativeRoutes';
 import publicWidgetRoutes from './routes/publicWidgetRoutes';
+import adminCLIRoutes from './routes/adminCLIRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -124,6 +125,7 @@ apiRouter.use('/ai-coaching', aiLimiter, aiCoachingRoutes);  // AI cost control:
 apiRouter.use('/axiom', axiomLimiter, axiomRoutes);  // Axiom briefs: 3/hour
 apiRouter.use('/stripe', strictLimiter, stripeRoutes);  // Payments: 10/15 min
 apiRouter.use('/admin', strictLimiter, adminRoutes);  // Admin ops: 10/15 min
+apiRouter.use('/admin/cli', strictLimiter, adminCLIRoutes);  // CLI control: 10/15 min
 
 // General routes with fallback limiter
 apiRouter.use('/users', generalLimiter, userRoutes);
