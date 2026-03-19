@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Dialog, DialogContent, Box, Typography, TextField, Button, Chip,
-  Slide, IconButton, CircularProgress,
+  Slide, IconButton, CircularProgress, Divider,
 } from '@mui/material';
 import { TransitionProps } from '@mui/material/transitions';
 import CloseIcon from '@mui/icons-material/Close';
