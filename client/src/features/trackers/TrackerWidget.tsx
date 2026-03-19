@@ -279,7 +279,10 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box 
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', flex: 1 }}
+                    onClick={() => openFullLog(tracker)}
+                  >
                     <Typography sx={{ fontSize: '1.2rem', lineHeight: 1 }}>{def.icon}</Typography>
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 700, color: def.color, lineHeight: 1.2 }}>
@@ -293,17 +296,27 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
                   <Box sx={{ display: 'flex', gap: 0.5 }}>
                     <Button
                       size="small"
-                      onClick={() => setManageTrackerId(isManaging ? null : tracker.id)}
-                      sx={{ color: isManaging ? 'primary.main' : 'text.secondary', fontSize: '0.65rem', minWidth: 0 }}
+                      variant="contained"
+                      onClick={() => openFullLog(tracker)}
+                      sx={{ 
+                        bgcolor: def.color, 
+                        color: '#0D0E1A', 
+                        fontSize: '0.65rem', 
+                        fontWeight: 800,
+                        minWidth: 0,
+                        height: 24,
+                        borderRadius: '6px',
+                        '&:hover': { bgcolor: def.color, opacity: 0.9 }
+                      }}
                     >
-                      {isManaging ? 'Done' : 'Edit'}
+                      Full Log
                     </Button>
                     <Button
                       size="small"
-                      onClick={() => openFullLog(tracker)}
-                      sx={{ color: 'text.secondary', fontSize: '0.65rem', minWidth: 0 }}
+                      onClick={() => setManageTrackerId(isManaging ? null : tracker.id)}
+                      sx={{ color: isManaging ? 'primary.main' : 'text.secondary', fontSize: '0.65rem', minWidth: 0 }}
                     >
-                      Full Log
+                      {isManaging ? 'Done' : 'Edit List'}
                     </Button>
                   </Box>
                 </Box>

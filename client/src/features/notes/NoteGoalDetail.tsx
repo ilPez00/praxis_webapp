@@ -288,7 +288,10 @@ function SimplifiedTracker({ trackerConfig, tracker, onLog, userId }: {
       bgcolor: todayEntries.length > 0 ? `${color}08` : 'rgba(255,255,255,0.02)',
     }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box 
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', flex: 1 }}
+          onClick={() => setLogTracker({ ...tracker, def: trackerConfig })}
+        >
           <Typography sx={{ fontSize: '1.2rem' }}>{trackerConfig.icon}</Typography>
           <Box>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, color: todayEntries.length > 0 ? color : 'text.primary' }}>
@@ -300,11 +303,25 @@ function SimplifiedTracker({ trackerConfig, tracker, onLog, userId }: {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <Button size="small" onClick={() => setManageMode(!manageMode)} sx={{ color: 'text.secondary', fontSize: '0.65rem', minWidth: 0 }}>
-            {manageMode ? 'Done' : 'Edit'}
-          </Button>
-          <Button size="small" onClick={() => setLogTracker({ ...tracker, def: trackerConfig })} sx={{ color: 'text.secondary', fontSize: '0.65rem', minWidth: 0 }}>
+          <Button 
+            size="small" 
+            variant="contained"
+            onClick={() => setLogTracker({ ...tracker, def: trackerConfig })} 
+            sx={{ 
+              bgcolor: color, 
+              color: '#0D0E1A',
+              fontSize: '0.65rem', 
+              fontWeight: 800,
+              minWidth: 0,
+              height: 24,
+              borderRadius: '6px',
+              '&:hover': { bgcolor: color, opacity: 0.9 }
+            }}
+          >
             Full Log
+          </Button>
+          <Button size="small" onClick={() => setManageMode(!manageMode)} sx={{ color: 'text.secondary', fontSize: '0.65rem', minWidth: 0 }}>
+            {manageMode ? 'Done' : 'Edit List'}
           </Button>
         </Box>
       </Box>
