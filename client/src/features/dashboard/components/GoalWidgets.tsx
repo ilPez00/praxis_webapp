@@ -346,16 +346,30 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
               {config && (
-                <Box sx={{
-                  width: 34, height: 34, borderRadius: '10px', flexShrink: 0,
-                  bgcolor: `${accentColor}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: `1px solid ${accentColor}30`,
-                  boxShadow: loggedToday ? `0 0 12px ${accentColor}30` : 'none',
-                }}>
+                <Box 
+                  onClick={() => setLogTracker({ def: config })}
+                  sx={{
+                    width: 34, height: 34, borderRadius: '10px', flexShrink: 0,
+                    bgcolor: `${accentColor}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: `1px solid ${accentColor}30`,
+                    boxShadow: loggedToday ? `0 0 12px ${accentColor}30` : 'none',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: `${accentColor}25` }
+                  }}
+                >
                   <Typography sx={{ fontSize: '1.1rem', lineHeight: 1 }}>{config.emoji}</Typography>
                 </Box>
               )}
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em', flex: 1 }} noWrap>
+              <Typography 
+                variant="subtitle1" 
+                onClick={() => setLogTracker({ def: config })}
+                sx={{ 
+                  fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em', flex: 1, 
+                  cursor: 'pointer',
+                  '&:hover': { color: accentColor }
+                }} 
+                noWrap
+              >
                 {node.name}
               </Typography>
               {/* Today logged chip */}
@@ -573,11 +587,25 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
                 {loggedToday ? 'Log another' : "Quick Log"}
               </Typography>
               <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <Button size="small" onClick={() => setLogTracker({ def: config })} sx={{ color: 'text.disabled', fontSize: '0.65rem', minWidth: 0, fontWeight: 700 }}>
+                <Button 
+                  size="small" 
+                  variant="contained"
+                  onClick={() => setLogTracker({ def: config })} 
+                  sx={{ 
+                    bgcolor: accentColor, 
+                    color: '#0A0B14', 
+                    fontSize: '0.65rem', 
+                    fontWeight: 800,
+                    minWidth: 0,
+                    height: 24,
+                    borderRadius: '6px',
+                    '&:hover': { bgcolor: accentColor, opacity: 0.9 }
+                  }}
+                >
                   Full Log
                 </Button>
-                <Button size="small" onClick={() => setManageMode(!manageMode)} sx={{ color: manageMode ? 'error.main' : 'text.disabled', fontSize: '0.65rem', minWidth: 0 }}>
-                  {manageMode ? 'Done' : 'Edit'}
+                <Button size="small" onClick={() => setManageMode(!manageMode)} sx={{ color: manageMode ? 'error.main' : 'text.disabled', fontSize: '0.65rem', minWidth: 0, fontWeight: 700 }}>
+                  {manageMode ? 'Done' : 'Edit List'}
                 </Button>
               </Box>
             </Box>
