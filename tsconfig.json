@@ -16,6 +16,8 @@
     "playwright.config.ts",
     "jest.config.js",
     "**/*.test.ts",
-    "**/__tests__/**"
+    "**/__tests__/**",
+    "praxis-cli.ts",
+    "praxis"
   ]
 }
