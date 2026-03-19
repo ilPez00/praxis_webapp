@@ -164,7 +164,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
           const { data: entries } = await supabase
             .from('tracker_entries').select('id, tracker_id, data, logged_at')
             .in('tracker_id', ids).gte('logged_at', since)
-            .order('logged_at', { ascending: false }).limit(100);
+            .order('logged_at', { ascending: false }).limit(200);
           return (entries || []).map(e => {
             const tType = typeMap[e.tracker_id] || 'log';
             const d = e.data as Record<string, any>;
@@ -188,7 +188,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
           const entries = await safeQuery(() =>
             supabase.from('node_journal_entries').select('id, node_id, note, mood, logged_at')
               .eq('user_id', userId).gte('logged_at', since)
-              .order('logged_at', { ascending: false }).limit(50)
+              .order('logged_at', { ascending: false }).limit(200)
           );
           if (Array.isArray(entries) && entries.length > 0) {
             return entries.map((e: any) => ({
@@ -203,7 +203,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
           const legacy = await safeQuery(() =>
             supabase.from('journal_entries').select('id, note, mood, created_at')
               .eq('user_id', userId).gte('created_at', since)
-              .order('created_at', { ascending: false }).limit(50)
+              .order('created_at', { ascending: false }).limit(200)
           );
           return (Array.isArray(legacy) ? legacy : []).map((e: any) => ({
             id: `j-${e.id}`, type: 'journal', timestamp: e.created_at,
@@ -217,7 +217,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
           const data = await safeQuery(() =>
             supabase.from('checkins').select('id, mood, win_of_the_day, checked_in_at, streak_day')
               .eq('user_id', userId).gte('checked_in_at', since)
-              .order('checked_in_at', { ascending: false }).limit(30)
+              .order('checked_in_at', { ascending: false }).limit(200)
           );
           return (Array.isArray(data) ? data : []).map((e: any) => ({
             id: `c-${e.id}`, type: 'checkin', timestamp: e.checked_in_at,
@@ -230,7 +230,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
         supabase
           .from('bets').select('id, goal_name, goal_node_id, stake_points, status, created_at')
           .eq('user_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(30)
+          .order('created_at', { ascending: false }).limit(200)
           .then(({ data }) => (data || []).map(e => ({
             id: `b-${e.id}`, type: 'bet', timestamp: e.created_at,
             title: e.status === 'won' ? `Won bet: ${e.goal_name}` : e.status === 'lost' ? `Lost bet: ${e.goal_name}` : `Staked on: ${e.goal_name}`,
@@ -246,7 +246,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
         supabase
           .from('achievements').select('id, title, domain, created_at')
           .eq('user_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(20)
+          .order('created_at', { ascending: false }).limit(200)
           .then(({ data }) => (data || []).map(e => ({
             id: `a-${e.id}`, type: 'achievement', timestamp: e.created_at,
             title: `Goal completed: ${e.title}`,
@@ -259,7 +259,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
         supabase
           .from('posts').select('id, title, content, created_at')
           .eq('user_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(30)
+          .order('created_at', { ascending: false }).limit(200)
           .then(({ data }) => (data || []).map(e => ({
             id: `p-${e.id}`, type: 'post', timestamp: e.created_at,
             title: e.title || 'Shared a post',
@@ -270,7 +270,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
         supabase
           .from('completion_requests').select('id, goal_name, goal_node_id, status, created_at')
           .eq('requester_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(20)
+          .order('created_at', { ascending: false }).limit(200)
           .then(({ data }) => (data || []).map(e => ({
             id: `v-${e.id}`, type: 'verification', timestamp: e.created_at,
             title: `${e.status === 'approved' ? 'Verified' : e.status === 'rejected' ? 'Rejected' : 'Pending'}: ${e.goal_name}`,
@@ -366,7 +366,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
         supabase
           .from('places').select('id, name, type, description, created_at')
           .eq('owner_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(20)
+          .order('created_at', { ascending: false }).limit(200)
           .then(({ data }) => (data || []).map(e => ({
             id: `pl-${e.id}`, type: 'place', timestamp: e.created_at,
             title: `Reported Place: ${e.name}`,

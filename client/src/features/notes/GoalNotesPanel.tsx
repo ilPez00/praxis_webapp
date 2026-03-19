@@ -46,7 +46,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
   };
 
   const fetchNotes = async () => {
-    if (!nodeId || nodeId.length < 4) {
+    if (!nodeId) {
       setLoading(false);
       return;
     }

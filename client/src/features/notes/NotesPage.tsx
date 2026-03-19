@@ -14,6 +14,7 @@ import ClickableDiaryFeed from './ClickableDiaryFeed';
 import ActivityCalendar from './ActivityCalendar';
 import DayDetailView from './DayDetailView';
 import GoalNotesPanel from './GoalNotesPanel';
+import ShareButton from '../../components/common/ShareButton';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import Slider from '@mui/material/Slider';
 
@@ -591,13 +592,22 @@ const NotesPage: React.FC = () => {
                 {treeData.length} TOPICS
               </Typography>
             </Box>
-            {praxisPoints !== null && (
-              <Chip
-                label={`${praxisPoints} PP`}
-                size="small"
-                sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', fontWeight: 800, fontSize: '0.7rem' }}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ShareButton
+                userId={currentUserId || ''}
+                sourceTable="notebook_entries"
+                sourceId="free-notes"
+                title="Free Note"
+                iconOnly
               />
-            )}
+              {praxisPoints !== null && (
+                <Chip
+                  label={`${praxisPoints} PP`}
+                  size="small"
+                  sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', fontWeight: 800, fontSize: '0.7rem' }}
+                />
+              )}
+            </Box>
           </Box>
 
           {/* Tree Section */}
@@ -662,7 +672,7 @@ const NotesPage: React.FC = () => {
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', my: 4 }} />
 
-            {/* 2. MIDDLE: Selected Goal or Overview */}
+            {/* 2. MIDDLE: Selected Goal or Free Notes Overview */}
             {selectedNode ? (
               <Stack spacing={4}>
                 {/* Back button on mobile */}
@@ -721,26 +731,37 @@ const NotesPage: React.FC = () => {
                   focusedTrackerType={activeLogType}
                 />
               </Stack>
-            ) : null}
+            ) : (
+              <Stack spacing={4}>
+                {/* Overview Header */}
+                <Box sx={{ p: 3, borderRadius: '24px', bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>Notebook Overview</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Select a topic from the sidebar to manage specific goals, or log a free note below.
+                  </Typography>
+                </Box>
+
+                {/* Free Notes Panel */}
+                <GoalNotesPanel
+                  nodeId="free-notes"
+                  nodeTitle="Free Notes"
+                  userId={currentUserId || ''}
+                />
+              </Stack>
+            )}
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', my: 6 }} />
 
-            {/* 3. BOTTOM: Global Logs & Free Notes (Persistent) */}
+            {/* 3. BOTTOM: Global Logs (Persistent) */}
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 900, mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <MenuBookIcon sx={{ color: 'primary.main', fontSize: '1.2rem' }} />
-                Notebook Logs
+                Unified Notebook Feed
               </Typography>
               
               {currentUserId && (
                 <Stack spacing={4}>
-                  {/* General Diary Feed */}
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 800, mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Recent Activity
-                    </Typography>
-                    <ClickableDiaryFeed userId={currentUserId} />
-                  </Box>
+                  <ClickableDiaryFeed userId={currentUserId} days={90} />
                 </Stack>
               )}
             </Box>

@@ -46,10 +46,16 @@ export interface CoachingReport {
     insight: string;
     steps: string[];
   }>;
-  network: string;
 }
 
-const AXIOM_IDENTITY_DEFAULT = `You are Axiom - a wise, warm, and practical life coach. Your tone is friendly and direct. You give practical, concrete guidance. You never cite books by name or author. You just give people what they need to move forward.`;
+const AXIOM_IDENTITY_DEFAULT = `You are Axiom - a wise, warm, and highly analytical life coach. Your tone is friendly, direct, and results-oriented. 
+Your primary task is to formulate a high-level goal strategy for your student.
+- You analyze recent logs, notes, and progress to find patterns.
+- You identify specific bottlenecks (e.g., "you haven't logged cardio in 4 days despite your Fitness goal").
+- You provide 3-5 concrete, tactical steps for each primary goal.
+- You never cite books by name or author.
+- You do NOT provide "network leverage" or social advice unless specifically asked.
+- Your goal is to move the needle on their structured Goal Tree.`;
 
 const engagementMetricService = new EngagementMetricService();
 
@@ -141,30 +147,10 @@ function generateTemplateStrategy(context: CoachingContext): CoachingReport['str
   });
 }
 
-function generateTemplateNetwork(context: CoachingContext): string {
-  const { engagementMetrics, network } = context;
-  const socialScore = engagementMetrics ? 
-    (context.network as any[]).length > 0 ? engagementMetrics.weeklyActivityScore : 0 
-    : 0;
-  
-  const networkSize = context.network?.length || 0;
-  
-  if (networkSize === 0) {
-    return socialScore < 40 
-      ? 'Connect with 3 people working on similar goals. Accountability accelerates progress.'
-      : 'Consider reaching out to someone new this week.';
-  }
-  if (networkSize < 5) {
-    return `You have ${networkSize} connections. Consider reaching out to one person this week for a check-in.`;
-  }
-  return `Your network of ${networkSize} people is a strength. Share a win or ask for help when you need it.`;
-}
-
 function generateTemplateReport(context: CoachingContext): CoachingReport {
   return {
     motivation: generateTemplateMotivation(context),
     strategy: generateTemplateStrategy(context),
-    network: generateTemplateNetwork(context),
   };
 }
 
@@ -391,21 +377,66 @@ export class AICoachingService {
     // Minimal AI Mode: use templates by default
     if (!useLLM) {
       logger.info('[AICoachingService] Using template-based report (Minimal AI Mode)');
-      return generateTemplateReport(context);
+      const template = generateTemplateReport(context);
+      return {
+        motivation: template.motivation,
+        strategy: template.strategy
+      };
     }
 
     // Premium "Axiom Boost" - real LLM call
     logger.info('[AICoachingService] Using LLM for premium report (Axiom Boost)');
     const identity = await this.getIdentity();
-    const prompt = `${identity}\nStudent: ${context.userName}\nLanguage: ${context.language}\nGoals: ${JSON.stringify(context.goals)}\nRecent Notes: ${JSON.stringify(context.recentNotes || [])}\nActionable JSON: {motivation, strategy: [{goal, domain, progress, insight, steps}], network}. Respond concise in ${context.language}.`;
+    
+    const contextData = {
+      student: context.userName,
+      goals: context.goals,
+      recentNotes: (context.recentNotes || []).slice(0, 5),
+      recentActivity: context.trackerTrends || [],
+      achievements: context.achievements || []
+    };
+
+    const prompt = `${identity}
+Language: ${context.language}
+Student Context: ${JSON.stringify(contextData)}
+
+Formulate a deep strategic analysis. For the 'strategy' array, pick the 3 most important goals. 
+For each goal, provide:
+1. 'insight': A 2-sentence analysis of their current pace and obstacles based on their logs/notes.
+2. 'steps': 3-5 high-impact, specific actions they should take in the next 48 hours.
+
+Respond ONLY with this JSON structure:
+{
+  "motivation": "A warm, high-energy 2-sentence opening acknowledging their recent wins/mindset.",
+  "strategy": [
+    {
+      "goal": "Name",
+      "domain": "Domain",
+      "progress": 0,
+      "insight": "Deep analysis...",
+      "steps": ["Step 1", "Step 2", "Step 3"]
+    }
+  ]
+}
+Respond in ${context.language}.`;
+
     try {
       const text = await this.runWithFallback(prompt);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      return JSON.parse(jsonMatch ? jsonMatch[0] : text);
+      const result = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+      
+      return {
+        motivation: result.motivation,
+        strategy: result.strategy || []
+      };
     } catch (error: any) {
       logger.error('Error generating coaching report:', error.message);
       // Fallback to template if LLM fails
-      return generateTemplateReport(context);
+      const template = generateTemplateReport(context);
+      return {
+        motivation: template.motivation,
+        strategy: template.strategy
+      };
     }
   }
 
