@@ -807,7 +807,7 @@ const NotesPage: React.FC = () => {
           <DialogActions sx={{ px: 3, pb: 3 }}>
             <Button onClick={() => { setEditingNode(null); setIsBranching(false); }} sx={{ color: 'text.secondary' }}>Cancel</Button>
             <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim()} sx={{ borderRadius: '10px' }}>
-              {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Chapter (150 PP)' : 'Add Topic (150 PP)') : (
+              {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Chapter' : 'Add Topic') : (
                 (editingNode && (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') ||
                  editDesc.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.customDetails || '') ||
                  editMetric.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.completionMetric || '') ||

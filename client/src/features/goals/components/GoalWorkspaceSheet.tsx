@@ -147,7 +147,7 @@ const GoalWorkspaceSheet: React.FC<GoalWorkspaceSheetProps> = ({
             fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)',
             letterSpacing: '0.08em', mb: 0.75,
           }}>
-            CHAPTERS (SUB-GOALS)
+            CHAPTERS
           </Typography>
           {node.children.map(child => (
             <Box
@@ -185,7 +185,7 @@ const GoalWorkspaceSheet: React.FC<GoalWorkspaceSheetProps> = ({
           }}
         >
           <Typography sx={{ fontSize: '1rem' }}>+</Typography>
-          <Typography sx={{ fontSize: '0.8rem' }}>Add Chapter (Sub-goal) (150 PP)</Typography>
+          <Typography sx={{ fontSize: '0.8rem' }}>Add Chapter</Typography>
         </Box>
       )}
 
