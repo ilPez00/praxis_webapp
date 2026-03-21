@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, Component, ErrorInfo } from 'r
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
-  Box, Typography, TextField, Button, Chip, LinearProgress,
+  Box, Typography, TextField, Button, Chip, LinearProgress, Slider,
   IconButton, Tooltip, CircularProgress, Dialog, DialogTitle,
   DialogContent, DialogActions,
 } from '@mui/material';
@@ -273,6 +273,44 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   const trackerConfig = config ? TRACKER_TYPES.find(t => t.id === config.type) : null;
   const hasTracker = !!config && !!trackerConfig;
 
+  // Domain tracker fallback: show domain-level trackers when no specific widget config
+  const domainTrackerIds = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
+  const domainTrackers = !hasTracker
+    ? domainTrackerIds
+        .map(id => {
+          const tt = TRACKER_TYPES.find(t => t.id === id);
+          if (!tt) return null;
+          const tr = trackers.find(t => t.type === id) ?? { id: '', type: id, goal: {}, entries: [] };
+          return { config: tt, tracker: tr };
+        })
+        .filter(Boolean) as { config: typeof TRACKER_TYPES[0]; tracker: Tracker }[]
+    : [];
+
+  // Aggregate "logged today" across all domain trackers for the header chip
+  const anyLoggedToday = loggedToday || domainTrackers.some(dt =>
+    dt.tracker.entries.some(e => e.logged_at.slice(0, 10) === todayKey)
+  );
+
+  // Progress slider state
+  const [progressDraft, setProgressDraft] = useState<number | null>(null);
+  const [savingProgress, setSavingProgress] = useState(false);
+
+  const handleSaveProgress = async (newPct: number) => {
+    setSavingProgress(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+      await fetch(`${API_URL}/goals/${userId}/node/${goal.id}/progress`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ progress: newPct / 100 }),
+      });
+      toast.success(`Progress updated to ${newPct}%`);
+      setProgressDraft(null);
+    } catch { toast.error('Failed to update progress'); }
+    finally { setSavingProgress(false); }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -284,11 +322,11 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   return (
     <GlassCard sx={{
       p: 0, borderRadius: '20px', overflow: 'hidden',
-      border: `1px solid ${loggedToday ? accentColor + '40' : 'rgba(255,255,255,0.08)'}`,
-      background: loggedToday
+      border: `1px solid ${anyLoggedToday ? accentColor + '40' : 'rgba(255,255,255,0.08)'}`,
+      background: anyLoggedToday
         ? `linear-gradient(160deg, ${accentColor}12 0%, rgba(13,14,26,0.94) 100%)`
         : 'rgba(17,24,39,0.82)',
-      boxShadow: loggedToday ? `0 4px 24px ${accentColor}18` : undefined,
+      boxShadow: anyLoggedToday ? `0 4px 24px ${accentColor}18` : undefined,
       '&:hover': { transform: 'none' },
     }}>
       {/* ── Accent bar ── */}
@@ -318,7 +356,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
                   sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B' }}
                 />
               )}
-              {loggedToday && (
+              {anyLoggedToday && (
                 <Chip
                   icon={<CheckIcon sx={{ fontSize: '10px !important' }} />}
                   label="Today"
@@ -346,6 +384,27 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
             },
           }}
         />
+
+        {/* Progress slider — tap to adjust */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1 }}>
+          <Slider
+            value={progressDraft ?? pct}
+            onChange={(_, v) => setProgressDraft(v as number)}
+            onChangeCommitted={(_, v) => handleSaveProgress(v as number)}
+            disabled={savingProgress}
+            sx={{
+              flex: 1, color: accentColor, height: 6,
+              '& .MuiSlider-thumb': {
+                width: 16, height: 16,
+                '&:hover, &.Mui-focusVisible': { boxShadow: `0 0 8px ${accentColor}55` },
+              },
+              '& .MuiSlider-rail': { opacity: 0.15 },
+            }}
+          />
+          <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', minWidth: 50, textAlign: 'right' }}>
+            {savingProgress ? 'Saving...' : 'Drag to update'}
+          </Typography>
+        </Box>
 
         {/* Bet indicator */}
         {bet && (
@@ -403,6 +462,37 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
       {hasTracker && config && allEntries.length > 0 && (
         <Box sx={{ px: 2.5, pb: 1 }}>
           <MiniChart entries={allEntries} chartKey={config.chartKey} color={accentColor} unit={config.chartUnit} />
+        </Box>
+      )}
+
+      {/* ── Domain tracker buttons (fallback when no specific widget) ── */}
+      {!hasTracker && domainTrackers.length > 0 && (
+        <Box sx={{ px: 2.5, pb: 1.5 }}>
+          <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1 }}>
+            ⚡ Log Activity
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+            {domainTrackers.map(dt => {
+              const dtTodayCount = dt.tracker.entries.filter(e => e.logged_at.slice(0, 10) === todayKey).length;
+              return (
+                <Button
+                  key={dt.config.id}
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setLogTracker({ ...dt.tracker, def: dt.config })}
+                  sx={{
+                    borderRadius: '10px', fontWeight: 700, fontSize: '0.7rem',
+                    py: 0.25, minHeight: 28,
+                    color: dt.config.color || accentColor,
+                    borderColor: `${dt.config.color || accentColor}35`,
+                    '&:hover': { bgcolor: `${dt.config.color || accentColor}12` },
+                  }}
+                >
+                  {dt.config.icon} {dt.config.label}{dtTodayCount > 0 ? ` (${dtTodayCount})` : ''}
+                </Button>
+              );
+            })}
+          </Box>
         </Box>
       )}
 
