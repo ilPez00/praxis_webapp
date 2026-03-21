@@ -336,12 +336,12 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
             )}
           </Box>
           <Chip
-            label={meta.badge}
+            label={meta?.badge || item.type}
             size="small"
             sx={{
               height: 18, fontSize: '0.5rem', fontWeight: 700,
-              bgcolor: `${meta.color}15`, color: `${meta.color}cc`,
-              border: `1px solid ${meta.color}25`,
+              bgcolor: `${meta?.color || '#888'}15`, color: `${meta?.color || '#888'}cc`,
+              border: `1px solid ${meta?.color || '#888'}25`,
               '& .MuiChip-label': { px: '6px' },
             }}
           />
