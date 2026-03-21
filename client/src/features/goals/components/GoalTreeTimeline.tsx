@@ -18,16 +18,20 @@ import { Domain } from '../../../models/Domain';
 const ALL_DOMAINS = Object.values(Domain);
 
 const DOMAIN_SHORT: Record<string, string> = {
-  [Domain.CAREER]: 'Career',
-  [Domain.INVESTING]: 'Finance',
-  [Domain.FITNESS]: 'Fitness',
-  [Domain.ACADEMICS]: 'Academics',
-  [Domain.MENTAL_HEALTH]: 'Mental Health',
-  [Domain.PHILOSOPHICAL_DEVELOPMENT]: 'Philosophy',
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: 'Creative',
-  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: 'Intimacy',
-  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: 'Social',
-  [Domain.PERSONAL_GOALS]: 'Personal',
+  [Domain.BODY_FITNESS]: 'Fitness',
+  [Domain.REST_RECOVERY]: 'Recovery',
+  [Domain.MENTAL_BALANCE]: 'Mental',
+  [Domain.ENVIRONMENT_HOME]: 'Home',
+  [Domain.HEALTH_LONGEVITY]: 'Longevity',
+  [Domain.FINANCIAL_SECURITY]: 'Safety',
+  [Domain.FRIENDSHIP_SOCIAL]: 'Social',
+  [Domain.ROMANCE_INTIMACY]: 'Romance',
+  [Domain.COMMUNITY_CONTRIBUTION]: 'Impact',
+  [Domain.CAREER_CRAFT]: 'Career',
+  [Domain.WEALTH_ASSETS]: 'Wealth',
+  [Domain.GAMING_ESPORTS]: 'Gaming',
+  [Domain.IMPACT_LEGACY]: 'Legacy',
+  [Domain.SPIRIT_PURPOSE]: 'Spirit',
 };
 
 interface Props {

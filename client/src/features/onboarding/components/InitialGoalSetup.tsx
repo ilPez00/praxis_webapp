@@ -11,7 +11,7 @@ interface InitialGoalSetupProps {
 
 const InitialGoalSetup: React.FC<InitialGoalSetupProps> = ({ userId, onGoalsCreated }) => {
   const [currentGoalName, setCurrentGoalName] = useState('');
-  const [currentGoalDomain, setCurrentGoalDomain] = useState<Domain>(Domain.CAREER);
+  const [currentGoalDomain, setCurrentGoalDomain] = useState<Domain>(Domain.BODY_FITNESS);
   const [goals, setGoals] = useState<GoalNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -601,7 +601,7 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
     id: (crypto as any).randomUUID ? (crypto as any).randomUUID() : Math.random().toString(36).substring(2, 15),
     name: name.trim(),
     customDetails: description ?? null,
-    domain: domain || Domain.PERSONAL_GOALS,
+    domain: domain || Domain.IMPACT_LEGACY,
     targetDate: targetDate ?? null,
     completionMetric: completionMetric ?? null,
     parentId: parentId ?? null,

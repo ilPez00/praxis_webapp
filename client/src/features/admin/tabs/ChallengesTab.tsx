@@ -32,7 +32,7 @@ interface ChallengesTabProps {
 
 const ChallengesTab: React.FC<ChallengesTabProps> = ({ challenges, loading, fetchChallenges }) => {
   const [newChallenge, setNewChallenge] = useState({
-    title: '', description: '', domain: Domain.FITNESS as string,
+    title: '', description: '', domain: Domain.BODY_FITNESS as string,
     duration_days: 30, reward_points: 100,
   });
   const [creatingChallenge, setCreatingChallenge] = useState(false);
@@ -50,7 +50,7 @@ const ChallengesTab: React.FC<ChallengesTabProps> = ({ challenges, loading, fetc
         const created = await res.json();
         // Note: parent should re-fetch to get updated list
         fetchChallenges();
-        setNewChallenge({ title: '', description: '', domain: Domain.FITNESS, duration_days: 30, reward_points: 100 });
+        setNewChallenge({ title: '', description: '', domain: Domain.BODY_FITNESS, duration_days: 30, reward_points: 100 });
         toast.success(`Challenge "${created.title}" created!`);
       } else {
         const b = await res.json().catch(() => ({}));
