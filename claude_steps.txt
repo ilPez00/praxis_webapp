@@ -490,3 +490,21 @@ Session 78: Unified Goal Widget + Notebook Dual-Write Fix (2026-03-21)
 - Verification: 0 TypeScript errors (frontend, excluding node_modules/i18next)
 - Next: Run 2026-03-18 migration in Supabase SQL editor, push to deploy, test QuickLog→Notebook flow end-to-end
 - Sign: Claude
+
+Session 79: Single Effective Tracker per Goal Widget (2026-03-21)
+- UnifiedGoalWidget.tsx: refactored from multi-tracker picker to ONE effective tracker per goal
+  - Resolution: widget config match → first DOMAIN_TRACKER_MAP entry fallback → no tracker
+  - Removed old derived variables (tracker, allEntries, loggedToday, todayCount, library)
+  - All render sections now use effectiveTrackerConfig, effectiveEntries, effectiveLibrary, effectiveTodayCount, effectiveColor, anyLoggedToday
+  - Removed dead domain tracker selector section (referenced undefined domainTrackers variable — would crash at runtime)
+  - MiniChart: derives chartKey from widget config → first numeric field in TrackerType → 'value' fallback
+  - Footer Full Log button uses effectiveTracker/effectiveTrackerConfig
+  - Add item dialog title uses effectiveTrackerConfig.label
+  - EditableTrackerForm onSave uses effectiveType
+  - Streak calculation moved after effective resolution, uses effectiveEntries
+  - Accent bar uses anyLoggedToday instead of old loggedToday
+- trackerTypes.ts (prev session): fixed DOMAIN_TRACKER_MAP phantom IDs → real TRACKER_TYPES IDs
+- Files: client/src/components/common/UnifiedGoalWidget.tsx
+- Verification: 0 TypeScript errors, build passes (10.11s)
+- Next: Push to deploy, test SpeedDial→Quick Log→select goal→single tracker widget flow
+- Sign: Claude

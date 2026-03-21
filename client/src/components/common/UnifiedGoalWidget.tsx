@@ -169,36 +169,19 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   useEffect(() => { fetchTrackers(); }, [fetchTrackers]);
 
   // Derived data
-  const tracker = config ? trackers.find(t => t.type === config.type) : undefined;
-  const allEntries = tracker?.entries ?? [];
   const todayKey = new Date().toISOString().slice(0, 10);
-  const loggedToday = allEntries.some(e => e.logged_at.slice(0, 10) === todayKey);
-  const todayCount = allEntries.filter(e => e.logged_at.slice(0, 10) === todayKey).length;
-  const library = tracker?.goal?.library || [];
   const pct = Math.round((goal.progress || 0) * 100);
-
-  const trackerStreak = (() => {
-    let count = 0;
-    const today = new Date();
-    for (let i = 0; i < 60; i++) {
-      const d = new Date(today); d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      if (allEntries.some(e => e.logged_at.slice(0, 10) === key)) count++;
-      else break;
-    }
-    return count;
-  })();
 
   const bet = activeBets.find((b: any) => b.goal_node_id === goal.id);
 
   // ── Quick-log a library item ─────────────────────────────────────────────
   const handleQuickLog = async (item: any) => {
-    if (!config) return;
+    if (!effectiveType) return;
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await axios.post(`${API_URL}/trackers/log`, {
-        type: config.type,
+        type: effectiveType,
         data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }] },
       }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
       const pp = res.data?.ppAwarded || 1;
@@ -210,13 +193,13 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
 
   // ── Add/remove library items ─────────────────────────────────────────────
   const handleAddItem = async () => {
-    if (!newItemName.trim() || !tracker) return;
-    const currentGoal = tracker.goal || {};
+    if (!newItemName.trim() || !effectiveTracker?.id) return;
+    const currentGoal = effectiveTracker.goal || {};
     const newLibrary = [...(currentGoal.library || []), { name: newItemName }];
     try {
       const { error } = await supabase.from('trackers')
         .update({ goal: { ...currentGoal, library: newLibrary } })
-        .eq('id', tracker.id);
+        .eq('id', effectiveTracker.id);
       if (error) throw error;
       setAddItemOpen(false);
       setNewItemName('');
@@ -225,13 +208,13 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   };
 
   const handleRemoveItem = async (idx: number) => {
-    if (!tracker) return;
-    const currentGoal = tracker.goal || {};
+    if (!effectiveTracker?.id) return;
+    const currentGoal = effectiveTracker.goal || {};
     const newLibrary = (currentGoal.library || []).filter((_: any, i: number) => i !== idx);
     try {
       await supabase.from('trackers')
         .update({ goal: { ...currentGoal, library: newLibrary } })
-        .eq('id', tracker.id);
+        .eq('id', effectiveTracker.id);
       fetchTrackers();
     } catch { toast.error('Failed to remove item'); }
   };
@@ -271,26 +254,42 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
     } finally { setSaving(false); }
   };
 
-  const trackerConfig = config ? TRACKER_TYPES.find(t => t.id === config.type) : null;
-  const hasTracker = !!config && !!trackerConfig;
+  // Resolve ONE effective tracker: widget config match → first domain tracker fallback
+  let effectiveTrackerConfig = config ? TRACKER_TYPES.find(t => t.id === config.type) ?? null : null;
+  let effectiveTracker = effectiveTrackerConfig ? trackers.find(t => t.type === config!.type) : undefined;
+  let effectiveType = config?.type;
 
-  // Domain tracker fallback: show domain-level trackers when no specific widget config
-  const domainTrackerIds = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
-  const domainTrackers = !hasTracker
-    ? domainTrackerIds
-        .map(id => {
-          const tt = TRACKER_TYPES.find(t => t.id === id);
-          if (!tt) return null;
-          const tr = trackers.find(t => t.type === id) ?? { id: '', type: id, goal: {}, entries: [] };
-          return { config: tt, tracker: tr };
-        })
-        .filter(Boolean) as { config: typeof TRACKER_TYPES[0]; tracker: Tracker }[]
-    : [];
+  if (!effectiveTrackerConfig) {
+    const domainTrackerIds = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
+    for (const id of domainTrackerIds) {
+      const tt = TRACKER_TYPES.find(t => t.id === id);
+      if (tt) {
+        effectiveTrackerConfig = tt;
+        effectiveTracker = trackers.find(t => t.type === id) ?? { id: '', type: id, goal: {}, entries: [] };
+        effectiveType = id;
+        break;
+      }
+    }
+  }
 
-  // Aggregate "logged today" across all domain trackers for the header chip
-  const anyLoggedToday = loggedToday || domainTrackers.some(dt =>
-    dt.tracker.entries.some(e => e.logged_at.slice(0, 10) === todayKey)
-  );
+  const hasTracker = !!effectiveTrackerConfig;
+  const effectiveEntries = effectiveTracker?.entries ?? [];
+  const effectiveLibrary = effectiveTracker?.goal?.library || [];
+  const effectiveColor = (config?.color || effectiveTrackerConfig?.color) ?? accentColor;
+  const anyLoggedToday = effectiveEntries.some(e => e.logged_at.slice(0, 10) === todayKey);
+  const effectiveTodayCount = effectiveEntries.filter(e => e.logged_at.slice(0, 10) === todayKey).length;
+
+  const trackerStreak = (() => {
+    let count = 0;
+    const today = new Date();
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      if (effectiveEntries.some(e => e.logged_at.slice(0, 10) === key)) count++;
+      else break;
+    }
+    return count;
+  })();
 
   // Progress slider state
   const [progressDraft, setProgressDraft] = useState<number | null>(null);
@@ -334,7 +333,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
       <Box sx={{
         height: 3,
         background: `linear-gradient(90deg, ${domainColor}00, ${accentColor}, ${domainColor}00)`,
-        opacity: loggedToday ? 1 : 0.3,
+        opacity: anyLoggedToday ? 1 : 0.3,
       }} />
 
       {/* ── Header: name + progress ── */}
@@ -418,20 +417,20 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
       </Box>
 
       {/* ── Quick-log tracker buttons ── */}
-      {hasTracker && library.length > 0 && (
+      {hasTracker && effectiveLibrary.length > 0 && (
         <Box sx={{ px: 2.5, pb: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
             <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               ⚡ Quick Log
             </Typography>
-            {todayCount > 0 && (
+            {effectiveTodayCount > 0 && (
               <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>
-                · {todayCount} today
+                · {effectiveTodayCount} today
               </Typography>
             )}
           </Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-            {library.map((item: any, idx: number) => (
+            {effectiveLibrary.map((item: any, idx: number) => (
               <Button
                 key={idx}
                 variant="outlined"
@@ -460,42 +459,20 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
       )}
 
       {/* ── 7-day mini chart ── */}
-      {hasTracker && config && allEntries.length > 0 && (
-        <Box sx={{ px: 2.5, pb: 1 }}>
-          <MiniChart entries={allEntries} chartKey={config.chartKey} color={accentColor} unit={config.chartUnit} />
-        </Box>
-      )}
-
-      {/* ── Domain tracker buttons (fallback when no specific widget) ── */}
-      {!hasTracker && domainTrackers.length > 0 && (
-        <Box sx={{ px: 2.5, pb: 1.5 }}>
-          <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1 }}>
-            ⚡ Log Activity
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-            {domainTrackers.map(dt => {
-              const dtTodayCount = dt.tracker.entries.filter(e => e.logged_at.slice(0, 10) === todayKey).length;
-              return (
-                <Button
-                  key={dt.config.id}
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setLogTracker({ ...dt.tracker, def: dt.config })}
-                  sx={{
-                    borderRadius: '10px', fontWeight: 700, fontSize: '0.7rem',
-                    py: 0.25, minHeight: 28,
-                    color: dt.config.color || accentColor,
-                    borderColor: `${dt.config.color || accentColor}35`,
-                    '&:hover': { bgcolor: `${dt.config.color || accentColor}12` },
-                  }}
-                >
-                  {dt.config.icon} {dt.config.label}{dtTodayCount > 0 ? ` (${dtTodayCount})` : ''}
-                </Button>
-              );
-            })}
+      {hasTracker && effectiveEntries.length > 0 && (() => {
+        // Derive chart key: widget config → first numeric field in tracker type → 'value'
+        const chartKey = config?.chartKey
+          || effectiveTrackerConfig?.fields.find(f => f.type === 'number')?.key
+          || 'value';
+        const chartUnit = config?.chartUnit
+          || effectiveTrackerConfig?.fields.find(f => f.type === 'number')?.label
+          || '';
+        return (
+          <Box sx={{ px: 2.5, pb: 1 }}>
+            <MiniChart entries={effectiveEntries} chartKey={chartKey} color={effectiveColor} unit={chartUnit} />
           </Box>
-        </Box>
-      )}
+        );
+      })()}
 
       {/* ── Mood picker ── */}
       <Box sx={{ px: 2.5, pt: 1 }}>
@@ -565,7 +542,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
         }}>
           <Button
             size="small"
-            onClick={() => setLogTracker({ ...tracker, def: trackerConfig })}
+            onClick={() => setLogTracker({ ...effectiveTracker, def: effectiveTrackerConfig })}
             sx={{
               flex: 1, py: 1, fontSize: '0.7rem', fontWeight: 700,
               color: accentColor, borderRadius: 0,
@@ -592,7 +569,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
 
       {/* ── Add item dialog ── */}
       <Dialog open={addItemOpen} onClose={() => setAddItemOpen(false)} PaperProps={{ sx: { borderRadius: '16px' } }}>
-        <DialogTitle sx={{ fontWeight: 800 }}>Add to {trackerConfig?.label || 'Tracker'}</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800 }}>Add to {effectiveTrackerConfig?.label || 'Tracker'}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus label="Item Name" placeholder="e.g. Bench Press"
@@ -613,7 +590,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
         onClose={() => setLogTracker(null)}
         tracker={logTracker}
         onSave={async (data) => {
-          const logType = logTracker?.def?.id || config?.type;
+          const logType = logTracker?.def?.id || effectiveType;
           if (!logType) return;
           const { data: { session } } = await supabase.auth.getSession();
           const res = await axios.post(`${API_URL}/trackers/log`, { type: logType, data }, {
