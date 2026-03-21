@@ -1,8 +1,8 @@
--- Migration: Fix Free Notes
+-- Migration: Fix Free Notes and Unified Feed
 -- 1. Allow NULL node_id in node_journal_entries (for "Free Notes")
 ALTER TABLE public.node_journal_entries ALTER COLUMN node_id DROP NOT NULL;
 
--- 2. Update trigger to provide better titles for free notes
+-- 2. Update trigger to provide better titles for free notes and support more tables
 CREATE OR REPLACE FUNCTION public.create_notebook_entry()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -52,6 +52,11 @@ BEGIN
       v_content := 'Committed ' || (v_new->>'stake_points') || ' PP to goal: ' || (v_new->>'goal_name');
       v_title := 'New Accountability Bet';
       v_goal_id := v_new->>'goal_node_id';
+    WHEN 'goal_progress_history' THEN
+      v_entry_type := 'goal';
+      v_content := 'Progress updated to ' || (v_new->>'new_progress') || '%';
+      v_title := 'Goal Progress: ' || (v_new->>'node_name');
+      v_goal_id := v_new->>'node_id';
     ELSE
       v_entry_type := 'note';
       v_content := 'Entry created';
@@ -60,6 +65,7 @@ BEGIN
 
   v_occurred_at := COALESCE(
     (v_new->>'logged_at')::TIMESTAMPTZ,
+    (v_new->>'timestamp')::TIMESTAMPTZ,
     (v_new->>'created_at')::TIMESTAMPTZ,
     (v_new->>'checked_in_at')::TIMESTAMPTZ,
     (v_new->>'deadline')::TIMESTAMPTZ,
@@ -84,3 +90,19 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Ensure tables have the trigger
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trig_notebook_bet') THEN
+    CREATE TRIGGER trig_notebook_bet
+    AFTER INSERT ON public.bets
+    FOR EACH ROW EXECUTE FUNCTION public.create_notebook_entry();
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trig_notebook_goal_progress') THEN
+    CREATE TRIGGER trig_notebook_goal_progress
+    AFTER INSERT ON public.goal_progress_history
+    FOR EACH ROW EXECUTE FUNCTION public.create_notebook_entry();
+  END IF;
+END $$;

@@ -3,10 +3,9 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Box, Typography, IconButton, Chip,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
 import { supabase } from '../../lib/supabase';
+import { API_URL } from '../../lib/api';
 import toast from 'react-hot-toast';
 
 interface FeedItem {
@@ -18,8 +17,6 @@ interface FeedItem {
   icon: string;
   color: string;
   badge: string;
-  originalId?: string;  // For tracking original item ID
-  originalType?: string;  // For tracking original table/type
 }
 
 interface NoteEditDialogProps {
@@ -36,56 +33,25 @@ const NoteEditDialog: React.FC<NoteEditDialogProps> = ({ item, open, onClose, on
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Extract original ID from item.id (format: "j-uuid" or "t-uuid")
-      const originalId = item.originalId || item.id.replace(/^[a-z]-/, '');
-      
-      if (item.type === 'journal' || item.originalType === 'journal') {
-        // Try node_journal_entries first
-        const { error: nodeError } = await supabase
-          .from('node_journal_entries')
-          .update({ note })
-          .eq('id', originalId);
-        
-        if (nodeError) {
-          // Fallback to journal_entries
-          const { error: legacyError } = await supabase
-            .from('journal_entries')
-            .update({ note })
-            .eq('id', originalId);
-          
-          if (legacyError) throw legacyError;
-        }
-      } else if (item.type === 'post' || item.originalType === 'post') {
-        // Posts can be edited directly
-        const { error } = await supabase
-          .from('posts')
-          .update({ content: note })
-          .eq('id', originalId);
-        
-        if (error) throw error;
-      } else if (item.type === 'goal' || item.originalType === 'goal') {
-        // Goals: add as a note/comment since goals themselves shouldn't be edited retroactively
-        const { error } = await supabase
-          .from('goal_notes')
-          .insert({
-            goal_id: originalId,
-            note: `Edit: ${note}`,
-            created_at: item.timestamp,
-          });
-        
-        if (error) {
-          // If goal_notes doesn't exist, just update the journal entry
-          await supabase
-            .from('journal_entries')
-            .update({ note })
-            .eq('id', originalId);
-        }
-      } else {
-        // Default: update journal_entries as fallback
-        await supabase
-          .from('journal_entries')
-          .update({ note })
-          .eq('id', originalId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { 
+        'Authorization': `Bearer ${session?.access_token}`,
+        'Content-Type': 'application/json'
+      };
+
+      // Strip prefixes like "j-" or "t-" if present
+      const cleanId = item.id.includes('-') && item.id.length > 30 ? item.id.split('-').slice(1).join('-') : item.id;
+
+      // Use the unified notebook API for updates
+      const res = await fetch(`${API_URL}/notebook/entries/${cleanId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ content: note }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to update');
       }
       
       toast.success('Note updated!');
@@ -99,38 +65,23 @@ const NoteEditDialog: React.FC<NoteEditDialogProps> = ({ item, open, onClose, on
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this note permanently?')) return;
+    if (!confirm('Delete this permanently?')) return;
     
     setSaving(true);
     try {
-      const originalId = item.originalId || item.id.replace(/^[a-z]-/, '');
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { 'Authorization': `Bearer ${session?.access_token}` };
       
-      if (item.type === 'journal' || item.originalType === 'journal') {
-        const { error: nodeError } = await supabase
-          .from('node_journal_entries')
-          .delete()
-          .eq('id', originalId);
-        
-        if (nodeError) {
-          await supabase
-            .from('journal_entries')
-            .delete()
-            .eq('id', originalId);
-        }
-      } else if (item.type === 'post' || item.originalType === 'post') {
-        // Soft delete posts (add deleted flag)
-        await supabase
-          .from('posts')
-          .update({ is_deleted: true })
-          .eq('id', originalId);
-      } else {
-        await supabase
-          .from('journal_entries')
-          .delete()
-          .eq('id', originalId);
-      }
+      const cleanId = item.id.includes('-') && item.id.length > 30 ? item.id.split('-').slice(1).join('-') : item.id;
+
+      const res = await fetch(`${API_URL}/notebook/entries/${cleanId}`, {
+        method: 'DELETE',
+        headers
+      });
+
+      if (!res.ok) throw new Error('Failed to delete');
       
-      toast.success('Note deleted');
+      toast.success('Deleted');
       onUpdated({ ...item, detail: '[DELETED]' });
       onClose();
     } catch (err: any) {
@@ -145,7 +96,7 @@ const NoteEditDialog: React.FC<NoteEditDialogProps> = ({ item, open, onClose, on
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Edit Note
+            Edit {item.badge}
           </Typography>
           <IconButton size="small" onClick={onClose}>
             <CloseIcon />
@@ -159,7 +110,7 @@ const NoteEditDialog: React.FC<NoteEditDialogProps> = ({ item, open, onClose, on
           rows={6}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Edit your note..."
+          placeholder="Edit your content..."
           sx={{
             mt: 2,
             '& .MuiOutlinedInput-root': {
@@ -171,7 +122,7 @@ const NoteEditDialog: React.FC<NoteEditDialogProps> = ({ item, open, onClose, on
           }}
         />
         <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Chip label={item.type} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: item.color }} />
+          <Chip label={item.badge} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: item.color }} />
           <Chip label={new Date(item.timestamp).toLocaleString()} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)' }} />
         </Box>
       </DialogContent>

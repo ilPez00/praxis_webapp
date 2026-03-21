@@ -30,7 +30,7 @@ interface DiaryFeedProps {
 
 const TYPE_META: Record<string, { badge: string; color: string }> = {
   tracker:      { badge: 'Tracked', color: '#F59E0B' },
-  journal:      { badge: 'Journal', color: '#8B5CF6' },
+  note:         { badge: 'Journal', color: '#8B5CF6' },
   checkin:      { badge: 'Check-in', color: '#10B981' },
   bet:          { badge: 'Bet', color: '#EF4444' },
   achievement:  { badge: 'Achievement', color: '#F59E0B' },
@@ -142,233 +142,59 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
     const fetchAll = async () => {
       setLoading(true);
 
-      // Fetch goal nodes for name mapping
-      const { data: treeData } = await supabase
-        .from('goal_trees').select('nodes').eq('user_id', userId).single();
-      const allNodes: any[] = treeData?.nodes && Array.isArray(treeData.nodes) ? treeData.nodes : [];
-      const nodeNameMap: Record<string, string> = {};
-      const nodeDomainMap: Record<string, string> = {};
-      for (const n of allNodes) {
-        nodeNameMap[n.id] = n.name || n.title || 'Goal';
-        nodeDomainMap[n.id] = n.domain || '';
-      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers = { 'Authorization': `Bearer ${session?.access_token}` };
+        
+        // 1. Fetch goal nodes for name mapping (used for the 'By Goal' sort mode)
+        const { data: treeData } = await supabase
+          .from('goal_trees').select('nodes').eq('user_id', userId).single();
+        const allNodes: any[] = treeData?.nodes && Array.isArray(treeData.nodes) ? treeData.nodes : [];
+        const nodeNameMap: Record<string, string> = {};
+        for (const n of allNodes) {
+          nodeNameMap[n.id] = n.name || n.title || 'Goal';
+        }
 
-      const results = await Promise.allSettled([
-        // 1. Tracker entries
-        (async () => {
-          const { data: trackers } = await supabase
-            .from('trackers').select('id, type').eq('user_id', userId);
-          if (!trackers?.length) return [];
-          const ids = trackers.map(t => t.id);
-          const typeMap = Object.fromEntries(trackers.map(t => [t.id, t.type]));
-          const { data: entries } = await supabase
-            .from('tracker_entries').select('id, tracker_id, data, logged_at')
-            .in('tracker_id', ids).gte('logged_at', since)
-            .order('logged_at', { ascending: false }).limit(200);
-          return (entries || []).map(e => {
-            const tType = typeMap[e.tracker_id] || 'log';
-            const d = e.data as Record<string, any>;
-            let detail = '';
-            if (tType === 'lift' && d.exercise) detail = `${d.exercise} — ${d.sets}×${d.reps} @ ${d.weight}kg`;
-            else if (tType === 'cardio') detail = `${d.activity || 'Cardio'} — ${d.duration || '?'}min`;
-            else if (tType === 'meal') detail = `${d.food || 'Meal'} ${d.calories ? '· ' + d.calories + ' kcal' : ''}`;
-            else if (tType === 'steps') detail = `${d.steps || 0} steps`;
-            else if (tType === 'sleep') detail = `${d.hours || '?'}h sleep · quality ${d.quality || '?'}/5`;
-            else detail = Object.values(d).filter(Boolean).slice(0, 3).join(' · ');
-            return {
-              id: `t-${e.id}`, type: 'tracker', timestamp: e.logged_at,
-              title: `${tType.charAt(0).toUpperCase() + tType.slice(1)} entry`,
-              detail, icon: '📊', color: '#F59E0B', badge: 'Tracked',
-            };
-          });
-        })(),
+        // 2. Fetch everything from the unified notebook API
+        // We use entry_type=all (or just omit it) to get trackers, notes, checkins, etc.
+        const url = `${API_URL}/notebook/entries?since=${since}&limit=300`;
+        const res = await fetch(url, { headers });
+        if (!res.ok) throw new Error('Failed to fetch notebook');
+        
+        const entries = await res.json();
 
-        // 2. Journal entries (Unified via notebook_entries)
-        (async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          const headers = { 'Authorization': `Bearer ${session?.access_token}` };
-          const res = await fetch(`${API_URL}/notebook/entries?entry_type=note&limit=200`, { headers });
-          if (!res.ok) return [];
-          const entries = await res.json();
-          return (entries || []).map((e: any) => ({
-            id: `j-${e.id}`, type: 'journal', timestamp: e.occurred_at,
-            title: e.title || (e.mood ? `${e.mood} Journal` : 'Journal entry'),
-            detail: e.content?.slice(0, 200) || '', icon: e.mood || '📓', color: '#8B5CF6', badge: 'Journal',
+        // 3. Map to FeedItem format
+        const feedItems: FeedItem[] = (entries || []).map((e: any) => {
+          const meta = TYPE_META[e.entry_type] || { badge: 'Entry', color: '#888' };
+          
+          let icon = e.mood || '📓';
+          if (e.entry_type === 'tracker') icon = '📊';
+          else if (e.entry_type === 'checkin') icon = '✅';
+          else if (e.entry_type === 'bet') icon = '🎰';
+          else if (e.entry_type === 'achievement') icon = '🏆';
+          else if (e.entry_type === 'goal') icon = '🎯';
+          else if (e.entry_type === 'post') icon = '📝';
+          
+          return {
+            id: e.id,
+            type: e.entry_type,
+            timestamp: e.occurred_at,
+            title: e.title || 'Note',
+            detail: e.content || '',
+            icon,
+            color: e.entry_type === 'tracker' ? '#F59E0B' : (DOMAIN_COLORS[e.domain] || meta.color),
+            badge: meta.badge,
             goalId: e.goal_id || undefined,
             goalName: e.goal_id ? (nodeNameMap[e.goal_id] || undefined) : undefined,
-          }));
-        })(),
+          };
+        });
 
-        // 3. Check-ins
-        (async () => {
-          const data = await safeQuery(() =>
-            supabase.from('checkins').select('id, mood, win_of_the_day, checked_in_at, streak_day')
-              .eq('user_id', userId).gte('checked_in_at', since)
-              .order('checked_in_at', { ascending: false }).limit(200)
-          );
-          return (Array.isArray(data) ? data : []).map((e: any) => ({
-            id: `c-${e.id}`, type: 'checkin', timestamp: e.checked_in_at,
-            title: `Day ${e.streak_day || '?'} check-in${e.mood ? ' · ' + e.mood : ''}`,
-            detail: e.win_of_the_day || '', icon: '✅', color: '#10B981', badge: 'Check-in',
-          }));
-        })(),
-
-        // 4. Bets
-        supabase
-          .from('bets').select('id, goal_name, goal_node_id, stake_points, status, created_at')
-          .eq('user_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(200)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `b-${e.id}`, type: 'bet', timestamp: e.created_at,
-            title: e.status === 'won' ? `Won bet: ${e.goal_name}` : e.status === 'lost' ? `Lost bet: ${e.goal_name}` : `Staked on: ${e.goal_name}`,
-            detail: `${e.stake_points} PP ${e.status === 'won' ? '→ +' + e.stake_points * 2 + ' PP' : 'at stake'}`,
-            icon: e.status === 'won' ? '🎉' : e.status === 'lost' ? '💸' : '🎰',
-            color: e.status === 'won' ? '#10B981' : e.status === 'lost' ? '#EF4444' : '#F59E0B',
-            badge: 'Bet',
-            goalId: e.goal_node_id || undefined,
-            goalName: e.goal_name || undefined,
-          }))),
-
-        // 5. Achievements
-        supabase
-          .from('achievements').select('id, title, domain, created_at')
-          .eq('user_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(200)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `a-${e.id}`, type: 'achievement', timestamp: e.created_at,
-            title: `Goal completed: ${e.title}`,
-            detail: e.domain || '', icon: DOMAIN_ICONS[e.domain] || '🏆',
-            color: DOMAIN_COLORS[e.domain] || '#F59E0B', badge: 'Achievement',
-            goalName: e.title || undefined,
-          }))),
-
-        // 6. Posts
-        supabase
-          .from('posts').select('id, title, content, created_at')
-          .eq('user_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(200)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `p-${e.id}`, type: 'post', timestamp: e.created_at,
-            title: e.title || 'Shared a post',
-            detail: e.content?.slice(0, 200) || '', icon: '📝', color: '#3B82F6', badge: 'Post',
-          }))),
-
-        // 7. Verification requests
-        supabase
-          .from('completion_requests').select('id, goal_name, goal_node_id, status, created_at')
-          .eq('requester_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(200)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `v-${e.id}`, type: 'verification', timestamp: e.created_at,
-            title: `${e.status === 'approved' ? 'Verified' : e.status === 'rejected' ? 'Rejected' : 'Pending'}: ${e.goal_name}`,
-            detail: '', icon: e.status === 'approved' ? '✅' : e.status === 'rejected' ? '❌' : '🔍',
-            color: e.status === 'approved' ? '#10B981' : e.status === 'rejected' ? '#EF4444' : '#06B6D4',
-            badge: 'Verification',
-            goalId: e.goal_node_id || undefined,
-            goalName: e.goal_name || undefined,
-          }))),
-
-        // 8. Goal progress updates
-        Promise.resolve(
-          allNodes
-            .filter(n => n.updated_at && n.updated_at >= since)
-            .map(n => ({
-              id: `g-${n.id}`, type: 'goal', timestamp: n.updated_at,
-              title: `${n.name} → ${Math.round((n.progress || 0) * 100)}%`,
-              detail: n.domain || '',
-              icon: DOMAIN_ICONS[n.domain] || '🎯',
-              color: DOMAIN_COLORS[n.domain] || '#A78BFA', badge: 'Goal',
-              goalId: n.id,
-              goalName: n.name || undefined,
-            }))
-        ),
-
-        // 9. Event RSVPs
-        (async () => {
-          const { data: rsvps } = await supabase
-            .from('event_rsvps').select('id, event_id, status, created_at')
-            .eq('user_id', userId).gte('created_at', since);
-          if (!rsvps?.length) return [];
-          const eventIds = rsvps.map(r => r.event_id);
-          const { data: events } = await supabase
-            .from('events').select('id, title').in('id', eventIds);
-          const eventMap = Object.fromEntries((events || []).map(e => [e.id, e.title]));
-          return rsvps.map(r => ({
-            id: `e-${r.id}`, type: 'event', timestamp: r.created_at,
-            title: `${r.status === 'going' ? 'Attending' : 'RSVP'}: ${eventMap[r.event_id] || 'Event'}`,
-            detail: '', icon: '📅', color: '#06B6D4', badge: 'Event',
-          }));
-        })(),
-
-        // 10. Consistent conversations (>20 messages/day with someone)
-        (async () => {
-          const { data: msgs } = await supabase
-            .from('messages').select('sender_id, receiver_id, timestamp')
-            .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-            .gte('timestamp', since);
-          if (!msgs?.length) return [];
-
-          const dayPartner: Record<string, Record<string, number>> = {};
-          for (const m of msgs) {
-            const partner = m.sender_id === userId ? m.receiver_id : m.sender_id;
-            if (!partner) continue;
-            const day = m.timestamp.slice(0, 10);
-            if (!dayPartner[day]) dayPartner[day] = {};
-            dayPartner[day][partner] = (dayPartner[day][partner] || 0) + 1;
-          }
-
-          const chatItems: FeedItem[] = [];
-          const partnerIds = new Set<string>();
-          const convos: { day: string; partnerId: string; count: number }[] = [];
-
-          for (const [day, partners] of Object.entries(dayPartner)) {
-            for (const [pid, count] of Object.entries(partners)) {
-              if (count >= 20) {
-                convos.push({ day, partnerId: pid, count });
-                partnerIds.add(pid);
-              }
-            }
-          }
-
-          if (convos.length === 0) return [];
-
-          const { data: profiles } = await supabase
-            .from('profiles').select('id, name, avatar_url')
-            .in('id', Array.from(partnerIds));
-          const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.name || p.id.slice(0, 8)]));
-
-          for (const c of convos) {
-            chatItems.push({
-              id: `chat-${c.day}-${c.partnerId}`,
-              type: 'chat', timestamp: `${c.day}T23:59:00`,
-              title: `Deep convo with ${nameMap[c.partnerId] || 'someone'}`,
-              detail: `${c.count} messages exchanged`,
-              icon: '💬', color: '#F97316', badge: 'Conversation',
-            });
-          }
-          return chatItems;
-        })(),
-
-        // 11. Places reported/bookmarked
-        supabase
-          .from('places').select('id, name, type, description, created_at')
-          .eq('owner_id', userId).gte('created_at', since)
-          .order('created_at', { ascending: false }).limit(200)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `pl-${e.id}`, type: 'place', timestamp: e.created_at,
-            title: `Reported Place: ${e.name}`,
-            detail: e.description || e.type,
-            icon: '📍', color: '#A78BFA', badge: 'Place',
-          }))),
-      ]);
-
-      const all: FeedItem[] = [];
-      for (const r of results) {
-        if (r.status === 'fulfilled' && Array.isArray(r.value)) all.push(...r.value);
+        setItems(feedItems);
+      } catch (err) {
+        console.error('Error fetching diary feed:', err);
+      } finally {
+        setLoading(false);
       }
-      all.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-      setItems(all);
-      setLoading(false);
     };
 
     fetchAll();
@@ -517,7 +343,7 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
           <Typography sx={{ fontSize: '0.5rem', color: 'text.disabled', fontWeight: 600, flexShrink: 0 }}>
             {relativeTime(item.timestamp)}
           </Typography>
-          {(item.type === 'journal' || item.type === 'post' || item.type === 'goal') && (
+          {(item.type === 'note' || item.type === 'post' || item.type === 'goal') && (
             <IconButton
               size="small"
               onClick={(e) => handleEditClick(item, e)}
