@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Component, ErrorInfo } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
@@ -535,4 +535,43 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   );
 };
 
-export default UnifiedGoalWidget;
+// ── Error Boundary ─────────────────────────────────────────────────────────
+
+class WidgetErrorBoundary extends Component<
+  { children: React.ReactNode; goalName: string },
+  { hasError: boolean; error: string }
+> {
+  state = { hasError: false, error: '' };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[UnifiedGoalWidget] crash:', error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography sx={{ color: 'error.main', fontWeight: 700, mb: 1 }}>
+            Widget failed to load
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+            {this.state.error}
+          </Typography>
+        </Box>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const UnifiedGoalWidgetSafe: React.FC<UnifiedGoalWidgetProps> = (props) => (
+  <WidgetErrorBoundary goalName={props.goal.name}>
+    <UnifiedGoalWidget {...props} />
+  </WidgetErrorBoundary>
+);
+
+export default UnifiedGoalWidgetSafe;
