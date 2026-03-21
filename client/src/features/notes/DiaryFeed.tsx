@@ -4,6 +4,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import SortIcon from '@mui/icons-material/Sort';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { supabase } from '../../lib/supabase';
+import { API_URL } from '../../lib/api';
 import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 import NoteEditDialog from './NoteEditDialog';
 
