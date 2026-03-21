@@ -477,3 +477,16 @@ Session 77: Notebook Reply/Share + Axiom Share Buttons + Backend Integration (20
 - Verification: 0 TypeScript errors (backend + frontend, excluding node_modules/i18next)
 - Next: Run SQL migration, commit + push, test reply/share end-to-end with live data
 - Sign: Claude
+
+Session 78: Unified Goal Widget + Notebook Dual-Write Fix (2026-03-21)
+- Fixed notebook data silo: QuickLogDialog was writing to journal_entries/node_journal_entries but NotebookPage reads from notebook_entries. Added dual-write to both legacy tables AND notebook_entries via POST /notebook/entries API
+- Created UnifiedGoalWidget.tsx: single card combining goal header+progress, one-tap tracker buttons, 7-day mini chart, mood picker, inline journal+send, Full Log/Edit List footer
+- Replaced fragmented NoteGoalDetail + separate journal form in QuickLogDialog with UnifiedGoalWidget — now each goal has one unified, easy-to-use widget
+- Cleaned up QuickLogDialog: removed dead toFrontendNode/handleProgressUpdate callbacks, simplified handleSaveJournal to only handle free diary path, renamed renderJournalForm→renderFreeDiaryForm
+- notebookRoutes.ts: added goal_id and since params to get_notebook_entries RPC call (p_goal_id, p_since)
+- Updated migration SQL with corrected function signature (p_goal_id TEXT, p_since TIMESTAMPTZ)
+- Confirmed Axiom auto-updates progress: AxiomProgressEstimationService.estimateAllGoalProgress() analyzes activity via LLM, updates goal_trees JSONB if >5% change, runs as part of midnight scan
+- Files: client/src/components/common/UnifiedGoalWidget.tsx (NEW), client/src/components/common/QuickLogDialog.tsx, src/routes/notebookRoutes.ts, migrations/2026-03-18-fix-notebook-entries-not-showing.sql
+- Verification: 0 TypeScript errors (frontend, excluding node_modules/i18next)
+- Next: Run 2026-03-18 migration in Supabase SQL editor, push to deploy, test QuickLog→Notebook flow end-to-end
+- Sign: Claude
