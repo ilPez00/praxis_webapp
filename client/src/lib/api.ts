@@ -22,13 +22,14 @@ const getBaseUrl = () => {
 export const API_URL = getBaseUrl();
 
 /**
- * Centralized API client with automatic authentication.
+ * Centralized API client with automatic authentication and 401 token-refresh retry.
+ * Replaces the former `axiosInstance.ts` duplicate — use this single client everywhere.
  */
 const api = axios.create({
   baseURL: API_URL,
 });
 
-// Request interceptor to add Supabase JWT
+// Request interceptor: attach Supabase JWT to every request
 api.interceptors.request.use(async (config) => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.access_token) {
@@ -39,4 +40,20 @@ api.interceptors.request.use(async (config) => {
   return Promise.reject(error);
 });
 
+// Response interceptor: on 401, refresh the session and retry once
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    if (error.response?.status === 401) {
+      const { data: { session } } = await supabase.auth.refreshSession();
+      if (session?.access_token) {
+        error.config.headers.Authorization = `Bearer ${session.access_token}`;
+        return api(error.config);
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
 export default api;
+

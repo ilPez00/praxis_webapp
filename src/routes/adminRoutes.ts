@@ -15,6 +15,7 @@ import adminAxiomRoutes from './adminAxiomRoutes';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
 import { generateAllBriefs } from '../controllers/adminController';
+import adminDebugRoutes from './adminDebugRoutes';
 
 const router = Router();
 
@@ -66,5 +67,6 @@ router.post('/axiom/generate-all-briefs', authenticateToken, requireAdmin, gener
 router.post('/import-osm-places', authenticateToken, requireAdmin, importOSMPlacesEndpoint);
 
 router.use('/axiom', adminAxiomRoutes);
+router.use('/debug', adminDebugRoutes);
 
 export default router;

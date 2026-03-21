@@ -840,6 +840,147 @@ const AnalyticsPage: React.FC = () => {
         </Grid>
       </Stack>
 
+      {/* NEW: Enhanced Charts Section */}
+      {isPremium && progressData.length > 0 && (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ShowChartIcon sx={{ color: 'primary.main' }} />
+            Visual Analytics
+          </Typography>
+          
+          <Grid container spacing={3}>
+            {/* Goal Progress Line Chart */}
+            <Grid size={{ xs: 12, md: 8 }}>
+              <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Goal Progress Over Time</Typography>
+                  <Box sx={{ height: 300 }}>
+                    {progressData.length > 0 && (
+                      <ChartContainer
+                        series={[{
+                          data: progressData.map(g => Math.round(g.progress * 100)),
+                          label: 'Progress (%)',
+                          color: '#F59E0B',
+                        }]}
+                        xAxis={[{
+                          scaleType: 'band',
+                          data: progressData.map(g => g.goalName.length > 15 ? g.goalName.slice(0, 15) + '...' : g.goalName),
+                        }]}
+                        sx={{
+                          '& .MuiChartsAxis-line': { stroke: 'rgba(255,255,255,0.1)' },
+                          '& .MuiChartsAxis-tick text': { fill: 'rgba(255,255,255,0.6)', fontSize: 10 },
+                        }}
+                      >
+                        <LineChart />
+                        <ChartsTooltip />
+                      </ChartContainer>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Domain Performance Pie Chart */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Domain Distribution</Typography>
+                  <Box sx={{ height: 300 }}>
+                    {domainPerformance.length > 0 && (
+                      <ChartContainer
+                        series={[{
+                          type: 'pie',
+                          data: domainPerformance.map(d => ({
+                            id: d.domain,
+                            label: d.domain,
+                            value: d.count,
+                            color: DOMAIN_COLORS[d.domain] || '#888',
+                          })),
+                          innerRadius: 30,
+                          outerRadius: 100,
+                        }]}
+                        sx={{
+                          '& .MuiChartsLegend-root': { display: 'none' },
+                        }}
+                      >
+                        <PieChart />
+                        <ChartsTooltip />
+                        <Legend position="bottom" />
+                      </ChartContainer>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Feedback Bar Chart */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Feedback Distribution</Typography>
+                  <Box sx={{ height: 250 }}>
+                    {feedbackTrends.filter(d => d.count > 0).length > 0 && (
+                      <ChartContainer
+                        series={[{
+                          type: 'bar',
+                          data: feedbackTrends.map(f => ({
+                            id: f.grade,
+                            label: f.grade,
+                            value: f.count,
+                            color: f.grade === 'A+' ? '#10B981' : f.grade === 'A' ? '#3B82F6' : f.grade === 'B' ? '#F59E0B' : '#EF4444',
+                          })),
+                        }]}
+                        xAxis={[{
+                          scaleType: 'band',
+                          data: feedbackTrends.map(f => f.grade),
+                        }]}
+                        sx={{
+                          '& .MuiChartsAxis-line': { stroke: 'rgba(255,255,255,0.1)' },
+                          '& .MuiChartsAxis-tick text': { fill: 'rgba(255,255,255,0.6)' },
+                        }}
+                      >
+                        <BarChart />
+                        <ChartsTooltip />
+                      </ChartContainer>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Achievement Gauge */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
+                <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 250 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Achievement Rate</Typography>
+                  {achievementRate && (
+                    <>
+                      <Typography variant="h2" sx={{ fontWeight: 700, color: achievementRate.completionRate >= 50 ? '#10B981' : '#F59E0B' }}>
+                        {achievementRate.completionRate}%
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ mt: 1 }}>
+                        {achievementRate.completed} of {achievementRate.totalGoals} goals completed
+                      </Typography>
+                      <Box sx={{ width: '100%', mt: 2 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={achievementRate.completionRate}
+                          sx={{
+                            height: 12, borderRadius: 6,
+                            bgcolor: 'rgba(255,255,255,0.06)',
+                            '& .MuiLinearProgress-bar': { bgcolor: achievementRate.completionRate >= 50 ? '#10B981' : '#F59E0B', borderRadius: 6 },
+                          }}
+                        />
+                      </Box>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Box>
+      )}
+
       {/* Leaderboard */}
       <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ p: 3, mt: 3 }}>
 

@@ -14,6 +14,7 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PublicIcon from '@mui/icons-material/Public';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import TerminalIcon from '@mui/icons-material/Terminal';
+import BugReportIcon from '@mui/icons-material/BugReport';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import {
@@ -30,6 +31,7 @@ import CoachesTab from './tabs/CoachesTab';
 import AxiomTab from './tabs/AxiomTab';
 import PlacesImportTab from './tabs/PlacesImportTab';
 import CLITab from './tabs/CLITab';
+import DebugTab from './tabs/DebugTab';
 
 // ── Tab panel ─────────────────────────────────────────────────────────────────
 
@@ -62,6 +64,8 @@ const AdminPage: React.FC = () => {
   const [loadingServices, setLoadingServices] = useState(false);
   const [coaches, setCoaches] = useState<AdminCoach[]>([]);
   const [loadingCoaches, setLoadingCoaches] = useState(false);
+  const [errorLogs, setErrorLogs] = useState<any[]>([]);
+  const [loadingErrors, setLoadingErrors] = useState(false);
 
   // ── Data fetchers ──────────────────────────────────────────────────────────
 
@@ -208,6 +212,7 @@ const AdminPage: React.FC = () => {
         <Tab icon={<SmartToyIcon fontSize="small" />} iconPosition="start" label="Axiom" />
         <Tab icon={<PublicIcon fontSize="small" />} iconPosition="start" label="Places" />
         <Tab icon={<TerminalIcon fontSize="small" />} iconPosition="start" label="CLI" />
+        <Tab icon={<BugReportIcon fontSize="small" />} iconPosition="start" label="Debug" />
       </Tabs>
 
       <TabPanel value={tab} index={0}>
@@ -254,6 +259,10 @@ const AdminPage: React.FC = () => {
 
       <TabPanel value={tab} index={9}>
         <CLITab />
+      </TabPanel>
+
+      <TabPanel value={tab} index={10}>
+        <DebugTab />
       </TabPanel>
     </Container>
   );

@@ -97,20 +97,24 @@ auditSecurity();
 app.get('/health', async (_req, res) => {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   const keyType = key.startsWith('sb_') ? 'anon_publishable_WRONG' : key.startsWith('eyJ') ? 'service_role_ok' : 'missing';
-  // Test an actual write to catch service-role key / RLS issues
-  const testId = '00000000-0000-0000-0000-000000000001';
-  const { error: writeErr } = await supabase
-    .from('messages')
-    .insert({ sender_id: testId, receiver_id: testId, content: '__health_check__' })
-    .select()
-    .single();
-  // Immediately delete it (best-effort)
-  await supabase.from('messages').delete().eq('content', '__health_check__');
-  const writeOk = !writeErr || writeErr.code === '23503'; // 23503 = FK violation (user doesn't exist) = key is fine
+  // Lightweight connectivity check — avoids DB writes, FK errors and log noise
+  let dbPing: string;
+  try {
+    const { error: pingErr } = await supabase.rpc('version').maybeSingle();
+    if (pingErr) {
+      // Fallback: read-only table probe
+      const { error: readErr } = await supabase.from('profiles').select('id').limit(1);
+      dbPing = readErr ? readErr.message : 'ok';
+    } else {
+      dbPing = 'ok';
+    }
+  } catch {
+    dbPing = 'unreachable';
+  }
   res.json({
     status: 'ok',
     supabase_key_type: keyType,
-    write_test: writeOk ? 'ok' : writeErr?.message,
+    db_ping: dbPing,
   });
 });
 

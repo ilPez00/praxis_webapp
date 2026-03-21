@@ -65,12 +65,15 @@ export function isOffline(): boolean {
  * Listen for online/offline events
  */
 export function onOnlineStatusChange(callback: (online: boolean) => void) {
-  window.addEventListener('online', () => callback(true));
-  window.addEventListener('offline', () => callback(false));
-  
-  // Return cleanup function
+  const onOnline = () => callback(true);
+  const onOffline = () => callback(false);
+
+  window.addEventListener('online', onOnline);
+  window.addEventListener('offline', onOffline);
+
+  // Return cleanup function — uses the same stable references so listeners are actually removed
   return () => {
-    window.removeEventListener('online', () => callback(true));
-    window.removeEventListener('offline', () => callback(false));
+    window.removeEventListener('online', onOnline);
+    window.removeEventListener('offline', onOffline);
   };
 }

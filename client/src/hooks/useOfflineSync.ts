@@ -61,6 +61,7 @@ export const useOfflineSync = () => {
 
       console.log(`[OfflineSync] Syncing ${pending.length} tracker entries...`);
 
+      let syncedCount = 0;
       for (const entry of pending) {
         try {
           await api.post('/trackers/log', {
@@ -70,6 +71,7 @@ export const useOfflineSync = () => {
           });
 
           await db.trackerEntries.update(entry.id!, { sync_status: 'synced' });
+          syncedCount++;
           console.log(`[OfflineSync] Tracker entry ${entry.id} synced`);
         } catch (err: any) {
           if (err.response?.status === 401 || err.response?.status === 403) {
@@ -83,9 +85,9 @@ export const useOfflineSync = () => {
           console.error(`[OfflineSync] Failed to sync tracker entry ${entry.id}:`, err.message);
         }
       }
-      
-      if (pending.length > 0) {
-        toast.success(`Synced ${pending.length} tracker entries`);
+
+      if (syncedCount > 0) {
+        toast.success(`Synced ${syncedCount} tracker entr${syncedCount === 1 ? 'y' : 'ies'}`);
       }
     };
 

@@ -15,9 +15,6 @@ enforceFreshContent();
 // Register service worker for offline support
 registerServiceWorker();
 
-// Force refresh if version mismatch
-enforceFreshContent();
-
 // SILENCE NON-FATAL ERRORS (scrollTop null / ResizeObserver)
 if (typeof window !== 'undefined') {
   const originalError = window.onerror;
