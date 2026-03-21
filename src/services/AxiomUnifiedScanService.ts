@@ -4,8 +4,10 @@
  * - Daily brief generation
  * - Progress estimation
  * - Daily summary generation
- * 
+ *
  * All operations share the same fetched data to minimize API calls
+ * 
+ * Load Balancing: Randomizes execution time to balance API load
  */
 
 import { supabase } from '../lib/supabaseClient';
@@ -49,11 +51,20 @@ export class AxiomUnifiedScanService {
 
   /**
    * Run all daily Axiom operations for all active users in a single scan
+   * 
+   * Load Balancing: Randomizes start time and adds per-user delays
+   * to distribute API load across keys evenly
    */
   async runMidnightScan(): Promise<void> {
     try {
       logger.info('[AxiomUnifiedScan] Starting midnight scan...');
       const startTime = Date.now();
+
+      // RANDOMIZATION: Add random delay (0-60 minutes) to avoid all users being processed at once
+      // This spreads the API load more evenly across the night
+      const randomDelayMs = Math.floor(Math.random() * 60 * 60 * 1000); // 0-60 minutes
+      logger.info(`[AxiomUnifiedScan] Random delay: ${Math.round(randomDelayMs / 60000)} minutes`);
+      await new Promise(resolve => setTimeout(resolve, randomDelayMs));
 
       // Get all active users (logged something in last 7 days)
       const sevenDaysAgo = new Date();
@@ -80,8 +91,9 @@ export class AxiomUnifiedScanService {
         try {
           await this.processUser(userId);
           successCount++;
-          // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // RANDOMIZATION: Small random delay (200-800ms) between users to avoid rate limiting
+          const userDelay = 200 + Math.floor(Math.random() * 600);
+          await new Promise(resolve => setTimeout(resolve, userDelay));
         } catch (error: any) {
           logger.error(`[AxiomUnifiedScan] Failed for user ${userId}:`, error.message);
           failCount++;

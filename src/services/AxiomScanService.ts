@@ -233,21 +233,30 @@ export class AxiomScanService {
   /**
    * Initialize and start the automated scan service
    * Schedules midnight cron job for daily brief generation
-   * 
+   *
    * @remarks
-   * Cron schedule: '0 0 * * *' (every day at midnight)
+   * Cron schedule: Randomized hour (00:00 - 05:00) to balance API load
+   * Randomization helps distribute load across API keys more evenly
    * Error handling: Logs errors but doesn't throw to avoid crashing the service
    */
   public static start() {
-    cron.schedule('0 0 * * *', async () => {
-      logger.info('[AxiomScan] Starting midnight automated scan...');
-      try {
-        await this.runGlobalScan();
-      } catch (err: any) {
-        logger.error('[AxiomScan] Global scan failed:', err.message);
-      }
+    // Schedule at a random time between 00:00 and 05:00 each day
+    // We use a cron that runs every hour from 0-5 AM, then add random minute delay
+    cron.schedule('0 0-5 * * *', async () => {
+      // Add random minute delay (0-59 minutes) within the hour
+      const randomMinutes = Math.floor(Math.random() * 60);
+      logger.info(`[AxiomScan] Scheduled run in ${randomMinutes} minutes...`);
+      
+      setTimeout(async () => {
+        logger.info('[AxiomScan] Starting midnight automated scan...');
+        try {
+          await this.runGlobalScan();
+        } catch (err: any) {
+          logger.error('[AxiomScan] Global scan failed:', err.message);
+        }
+      }, randomMinutes * 60 * 1000);
     });
-    logger.info('[AxiomScan] Midnight cron job scheduled.');
+    logger.info('[AxiomScan] Midnight cron job scheduled (randomized 00:00-05:59).');
   }
 
   /**

@@ -1,5 +1,6 @@
 import app from './app';
 import { AxiomScanService } from './services/AxiomScanService';
+import { AxiomMonthlySummaryService } from './services/AxiomMonthlySummaryService';
 
 const port = process.env.PORT || 3001;
 
@@ -13,8 +14,9 @@ app.listen(port, () => {
 // Start automated background tasks (non-blocking)
 try {
   AxiomScanService.start();
-  console.log('[Startup] AxiomScanService started successfully');
+  AxiomMonthlySummaryService.start();
+  console.log('[Startup] AxiomScanService and AxiomMonthlySummaryService started successfully');
 } catch (error: any) {
-  console.error('[Startup] Failed to start AxiomScanService:', error.message);
+  console.error('[Startup] Failed to start background services:', error.message);
   // Don't crash the server - this is non-critical
 }

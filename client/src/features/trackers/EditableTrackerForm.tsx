@@ -1,18 +1,21 @@
 /**
  * EditableTrackerForm - Dynamic tracker form with configurable rows
- * Users can add/remove rows and customize labels for each tracker type
+ * Users can add/remove rows and customize labels for each tracker type.
+ * Row templates are persisted in the DB so users configure once.
  */
 
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, TextField, IconButton, Stack, Button,
   Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
-  Autocomplete, MenuItem, Select, FormControl, InputLabel,
+  Autocomplete, MenuItem, Select, Chip, Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import toast from 'react-hot-toast';
 import { TrackerType } from './trackerTypes';
 import { searchExercises } from './exerciseLibrary';
@@ -23,16 +26,17 @@ import { searchAssets } from './investmentsLibrary';
 import { searchCompanies } from './companiesLibrary';
 import { searchSubjects } from './subjectsLibrary';
 import { searchInstruments } from './musicLibrary';
+import { supabase } from '../../lib/supabase';
+import { API_URL } from '../../lib/api';
 
 interface TrackerRow {
   id: string;
-  label: string; // usually the "name" or "item"
+  label: string;
   value: string | number;
   unit?: string;
   weight?: number;
   reps?: number;
   sets?: number;
-  // Specialized fields
   category?: string;
   merchant?: string;
   amount?: number;
@@ -54,7 +58,7 @@ interface TrackerRow {
 interface EditableTrackerFormProps {
   open: boolean;
   onClose: () => void;
-  tracker: { id: string; type: string; def: TrackerType } | null;
+  tracker: { id: string; type: string; def: TrackerType; goal?: Record<string, any> } | null;
   onSave: (data: any) => Promise<void>;
   saving: boolean;
   /** Render form rows inline (no Dialog wrapper) */
@@ -63,7 +67,7 @@ interface EditableTrackerFormProps {
   accentColor?: string;
 }
 
-// Default rows for common trackers
+// Default rows for common trackers (used when no saved template exists)
 const DEFAULT_ROWS: Record<string, TrackerRow[]> = {
   meal: [
     { id: '1', label: 'Eggs', value: 0, unit: 'pcs' },
@@ -89,6 +93,42 @@ const DEFAULT_ROWS: Record<string, TrackerRow[]> = {
   ]
 };
 
+/** Build a new empty row for a tracker type */
+function makeEmptyRow(trackerType: string): TrackerRow {
+  const base = { id: Date.now().toString(), label: '', value: 0 };
+  switch (trackerType) {
+    case 'lift': return { ...base, weight: 0, reps: 0, sets: 0 };
+    case 'meal': return { ...base, unit: 'g' };
+    case 'expenses': return { ...base, category: 'Food', amount: 0, merchant: '' };
+    case 'cardio': return { ...base, duration: 0, distance: 0 };
+    case 'study': return { ...base, subject: '', duration: 0 };
+    default: return base;
+  }
+}
+
+/** Convert saved template rows (label + unit only) into full TrackerRows with zeroed values */
+function templateToRows(template: any[], trackerType: string): TrackerRow[] {
+  return template.map((t, i) => {
+    const row = makeEmptyRow(trackerType);
+    row.id = (i + 1).toString();
+    row.label = t.label || '';
+    if (t.unit) row.unit = t.unit;
+    if (t.subject) row.subject = t.subject;
+    if (t.category) row.category = t.category;
+    return row;
+  });
+}
+
+/** Extract saveable template data from rows (just labels + metadata, no values) */
+function rowsToTemplate(rows: TrackerRow[]): any[] {
+  return rows.map(r => ({
+    label: r.label || r.subject || '',
+    ...(r.unit ? { unit: r.unit } : {}),
+    ...(r.subject ? { subject: r.subject } : {}),
+    ...(r.category ? { category: r.category } : {}),
+  }));
+}
+
 const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
   open,
   onClose,
@@ -100,22 +140,30 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
 }) => {
   const [rows, setRows] = useState<TrackerRow[]>([]);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
-  
-  // Library suggestions
+  const [editMode, setEditMode] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [axiomSuggestions, setAxiomSuggestions] = useState<{ name: string; count: number }[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
-  // Initialize rows when tracker opens
+  // Initialize rows from saved template or defaults
   useEffect(() => {
     if (open && tracker) {
-      const defaults = DEFAULT_ROWS[tracker.type] || [];
-      setRows(defaults.length > 0 ? JSON.parse(JSON.stringify(defaults)) : [
-        { id: Date.now().toString(), label: '', value: 0 }
-      ]);
+      const savedTemplate = tracker.goal?.template_rows;
+      if (Array.isArray(savedTemplate) && savedTemplate.length > 0) {
+        setRows(templateToRows(savedTemplate, tracker.type));
+      } else {
+        const defaults = DEFAULT_ROWS[tracker.type] || [];
+        setRows(defaults.length > 0 ? JSON.parse(JSON.stringify(defaults)) : [
+          makeEmptyRow(tracker.type)
+        ]);
+      }
+      setEditMode(false);
     }
   }, [open, tracker]);
 
-  // Handle autocomplete search
+  // Autocomplete search for item labels
   useEffect(() => {
     if (!editingLabel) return;
     const row = rows.find(r => r.id === editingLabel);
@@ -156,23 +204,25 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     setSearching(false);
   }, [editingLabel, rows, tracker?.type]);
 
+  // Fetch Axiom suggestions when entering edit mode
+  const fetchAxiomSuggestions = async () => {
+    if (!tracker?.type) return;
+    setLoadingSuggestions(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API_URL}/trackers/${tracker.type}/suggestions`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAxiomSuggestions(data.suggestions || []);
+      }
+    } catch { /* ignore */ }
+    finally { setLoadingSuggestions(false); }
+  };
+
   const handleAddRow = () => {
-    const baseRow = { id: Date.now().toString(), label: '', value: 0 };
-    let newRow: TrackerRow = baseRow;
-
-    if (tracker?.type === 'lift') {
-      newRow = { ...baseRow, weight: 0, reps: 0, sets: 0 };
-    } else if (tracker?.type === 'meal') {
-      newRow = { ...baseRow, unit: 'g' };
-    } else if (tracker?.type === 'expenses') {
-      newRow = { ...baseRow, category: 'Food', amount: 0, merchant: '' };
-    } else if (tracker?.type === 'cardio') {
-      newRow = { ...baseRow, duration: 0, distance: 0 };
-    } else if (tracker?.type === 'study') {
-      newRow = { ...baseRow, subject: '', duration: 0 };
-    }
-
-    setRows([...rows, newRow]);
+    setRows([...rows, makeEmptyRow(tracker?.type || '')]);
   };
 
   const handleRemoveRow = (id: string) => {
@@ -190,7 +240,6 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     const name = typeof val === 'string' ? val : (val.name || val.title || val.ticker || val.label);
     const updates: Partial<TrackerRow> = { label: name };
 
-    // Type-specific auto-fill
     if (tracker?.type === 'meal' && val.kcalPer100g) {
       updates.value = val.kcalPer100g;
     } else if (tracker?.type === 'books') {
@@ -206,15 +255,43 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     setEditingLabel(null);
   };
 
+  const handleAddAxiomSuggestion = (name: string) => {
+    const newRow = makeEmptyRow(tracker?.type || '');
+    newRow.label = name;
+    setRows([...rows, newRow]);
+    setAxiomSuggestions(prev => prev.filter(s => s.name !== name));
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!tracker?.type) return;
+    setTemplateSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API_URL}/trackers/${tracker.type}/template`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rows: rowsToTemplate(rows) }),
+      });
+      if (res.ok) {
+        toast.success('Template saved! This layout will load next time.');
+        setEditMode(false);
+      } else {
+        toast.error('Failed to save template');
+      }
+    } catch { toast.error('Failed to save template'); }
+    finally { setTemplateSaving(false); }
+  };
+
   const handleSave = async () => {
-    // Validate rows
     const emptyLabels = rows.filter(r => !r.label.trim() && !r.subject?.trim());
     if (emptyLabels.length > 0) {
       toast.error('Please fill in all item names');
       return;
     }
 
-    // Build data object
     const data: any = {
       items: rows.map(r => ({
         name: r.label || r.subject || 'Item',
@@ -243,11 +320,15 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     };
 
     await onSave(data);
-    setRows([]);
+    // Re-initialize rows from template (zero out values, keep labels)
+    const template = rowsToTemplate(rows);
+    setRows(templateToRows(template, tracker?.type || ''));
     onClose();
   };
 
   const renderRowFields = (row: TrackerRow) => {
+    if (editMode) return null; // In edit mode, only show labels — no value fields
+
     switch(tracker?.type) {
       case 'meal':
         return (
@@ -359,21 +440,96 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
 
   if (!tracker) return null;
 
-  // Shared form body — used by both Dialog and inline modes
+  // ── Edit mode header ──
+  const editModeHeader = editMode ? (
+    <Box sx={{ mb: 1.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Edit Template — configure your default rows
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Button
+            size="small"
+            onClick={() => setEditMode(false)}
+            sx={{ fontSize: '0.65rem', color: 'text.secondary', minWidth: 0 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={handleSaveTemplate}
+            disabled={templateSaving}
+            startIcon={templateSaving ? <CircularProgress size={12} color="inherit" /> : <SaveIcon sx={{ fontSize: 14 }} />}
+            sx={{
+              fontSize: '0.65rem', borderRadius: '8px', minWidth: 0,
+              bgcolor: accentColor || '#A78BFA',
+              '&:hover': { filter: 'brightness(1.1)' },
+            }}
+          >
+            Save
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Axiom suggestions */}
+      {axiomSuggestions.length > 0 && (
+        <Box sx={{ mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+            <AutoFixHighIcon sx={{ fontSize: 12, color: '#A78BFA' }} />
+            <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: '#A78BFA' }}>
+              Axiom suggests (from your history)
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {axiomSuggestions.map(s => (
+              <Chip
+                key={s.name}
+                label={`${s.name} (${s.count}×)`}
+                size="small"
+                onClick={() => handleAddAxiomSuggestion(s.name)}
+                icon={<AddIcon sx={{ fontSize: '12px !important' }} />}
+                sx={{
+                  fontSize: '0.6rem', height: 24,
+                  bgcolor: 'rgba(167,139,250,0.08)',
+                  border: '1px solid rgba(167,139,250,0.2)',
+                  color: 'rgba(255,255,255,0.7)',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'rgba(167,139,250,0.15)' },
+                }}
+              />
+            ))}
+          </Box>
+        </Box>
+      )}
+      {loadingSuggestions && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+          <CircularProgress size={10} sx={{ color: '#A78BFA' }} />
+          <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>Loading suggestions...</Typography>
+        </Box>
+      )}
+    </Box>
+  ) : null;
+
+  // ── Shared form body ──
   const formBody = (
-    <Stack spacing={2}>
+    <Stack spacing={editMode ? 1 : 2}>
+      {editModeHeader}
+
       {rows.map((row) => (
         <Box
           key={row.id}
           sx={{
-            p: 1.5,
+            p: editMode ? 1 : 1.5,
             borderRadius: inline ? '12px' : '16px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            bgcolor: 'rgba(255,255,255,0.02)',
+            border: editMode
+              ? '1px dashed rgba(167,139,250,0.3)'
+              : '1px solid rgba(255,255,255,0.08)',
+            bgcolor: editMode ? 'rgba(167,139,250,0.03)' : 'rgba(255,255,255,0.02)',
             position: 'relative'
           }}
         >
-          <Box sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: editMode ? 0 : 1.5, alignItems: 'center' }}>
             {editingLabel === row.id ? (
               <Autocomplete
                 freeSolo
@@ -449,32 +605,58 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     </Stack>
   );
 
-  // ── Inline mode: render form body + log button directly ──
+  // ── Inline mode ──
   if (inline) {
     return (
       <Box>
+        {/* Edit template button */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
+          {!editMode && (
+            <Tooltip title="Customize which items appear by default" placement="top">
+              <Button
+                size="small"
+                onClick={() => {
+                  setEditMode(true);
+                  fetchAxiomSuggestions();
+                }}
+                startIcon={<EditIcon sx={{ fontSize: 12 }} />}
+                sx={{
+                  fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)',
+                  textTransform: 'none', minWidth: 0,
+                  '&:hover': { color: accentColor || '#A78BFA' },
+                }}
+              >
+                Edit template
+              </Button>
+            </Tooltip>
+          )}
+        </Box>
+
         {formBody}
-        <Button
-          fullWidth
-          onClick={handleSave}
-          disabled={saving}
-          sx={{
-            mt: 2, borderRadius: '14px', fontWeight: 800, py: 1.25, fontSize: '0.85rem',
-            background: accentColor
-              ? `linear-gradient(135deg, ${accentColor}, ${accentColor}bb)`
-              : 'linear-gradient(135deg, #A78BFA, #F59E0B)',
-            color: '#0D0E1A',
-            '&:hover': { filter: 'brightness(1.1)' },
-            '&:disabled': { opacity: 0.4 },
-          }}
-        >
-          {saving ? <CircularProgress size={18} color="inherit" /> : `Log Entry (+1 PP)`}
-        </Button>
+
+        {!editMode && (
+          <Button
+            fullWidth
+            onClick={handleSave}
+            disabled={saving}
+            sx={{
+              mt: 2, borderRadius: '14px', fontWeight: 800, py: 1.25, fontSize: '0.85rem',
+              background: accentColor
+                ? `linear-gradient(135deg, ${accentColor}, ${accentColor}bb)`
+                : 'linear-gradient(135deg, #A78BFA, #F59E0B)',
+              color: '#0D0E1A',
+              '&:hover': { filter: 'brightness(1.1)' },
+              '&:disabled': { opacity: 0.4 },
+            }}
+          >
+            {saving ? <CircularProgress size={18} color="inherit" /> : `Log Entry (+1 PP)`}
+          </Button>
+        )}
       </Box>
     );
   }
 
-  // ── Dialog mode (original) ──
+  // ── Dialog mode ──
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
       <DialogTitle sx={{ pb: 1 }}>
@@ -483,7 +665,16 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
             <Typography sx={{ fontSize: '1.5rem' }}>{tracker.def.icon}</Typography>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>{tracker.def.label}</Typography>
           </Box>
-          <IconButton size="small" onClick={onClose}><CloseIcon /></IconButton>
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            {!editMode && (
+              <Tooltip title="Edit template">
+                <IconButton size="small" onClick={() => { setEditMode(true); fetchAxiomSuggestions(); }}>
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            <IconButton size="small" onClick={onClose}><CloseIcon /></IconButton>
+          </Box>
         </Box>
       </DialogTitle>
 
@@ -491,24 +682,26 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
         {formBody}
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-        <Button onClick={onClose} sx={{ color: 'text.secondary', borderRadius: '10px' }}>Cancel</Button>
-        <Button
-          onClick={handleSave}
-          variant="contained"
-          disabled={saving}
-          sx={{
-            borderRadius: '10px',
-            bgcolor: 'primary.main',
-            color: '#0D0E1A',
-            fontWeight: 800,
-            px: 4,
-            '&:hover': { bgcolor: 'primary.light' },
-          }}
-        >
-          {saving ? <CircularProgress size={20} color="inherit" /> : 'Log Entry'}
-        </Button>
-      </DialogActions>
+      {!editMode && (
+        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+          <Button onClick={onClose} sx={{ color: 'text.secondary', borderRadius: '10px' }}>Cancel</Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            disabled={saving}
+            sx={{
+              borderRadius: '10px',
+              bgcolor: 'primary.main',
+              color: '#0D0E1A',
+              fontWeight: 800,
+              px: 4,
+              '&:hover': { bgcolor: 'primary.light' },
+            }}
+          >
+            {saving ? <CircularProgress size={20} color="inherit" /> : 'Log Entry'}
+          </Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 };

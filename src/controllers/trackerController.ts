@@ -237,6 +237,107 @@ export const updateObjective = catchAsync(async (req: Request, res: Response) =>
 });
 
 /**
+ * PUT /trackers/:type/template
+ * Body: { rows: Array<{ label, unit?, ... }> }
+ * Saves the user's custom row template for a tracker type.
+ * Stored inside the `goal` JSONB column as `goal.template_rows`.
+ */
+export const saveTemplate = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const { type } = req.params;
+  const { rows } = req.body as { rows?: any[] };
+  if (!Array.isArray(rows)) throw new BadRequestError('rows must be an array.');
+
+  // Upsert tracker row
+  const { data: tracker, error: upsertErr } = await supabase
+    .from('trackers')
+    .upsert({ user_id: userId, type }, { onConflict: 'user_id,type' })
+    .select('id, goal')
+    .single();
+
+  if (upsertErr) {
+    if (SCHEMA_MISSING(upsertErr.message)) {
+      return res.status(503).json({ message: 'Trackers table not set up.' });
+    }
+    throw new Error(upsertErr.message);
+  }
+
+  // Merge template_rows into existing goal JSONB
+  const existingGoal = (tracker.goal && typeof tracker.goal === 'object') ? tracker.goal : {};
+  const { error: updateErr } = await supabase
+    .from('trackers')
+    .update({ goal: { ...existingGoal, template_rows: rows } })
+    .eq('id', tracker.id);
+
+  if (updateErr) throw new Error(updateErr.message);
+
+  res.json({ ok: true, rows });
+});
+
+/**
+ * GET /trackers/:type/suggestions
+ * Analyzes recent tracker_entries to find frequently logged item names.
+ * Returns top items not already in the user's template.
+ */
+export const getTemplateSuggestions = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const { type } = req.params;
+
+  // Get the tracker
+  const { data: tracker } = await supabase
+    .from('trackers')
+    .select('id, goal')
+    .eq('user_id', userId)
+    .eq('type', type)
+    .single();
+
+  if (!tracker) return res.json({ suggestions: [] });
+
+  // Get last 60 days of entries
+  const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: entries } = await supabase
+    .from('tracker_entries')
+    .select('data')
+    .eq('tracker_id', tracker.id)
+    .gte('created_at', since);
+
+  if (!entries || entries.length === 0) return res.json({ suggestions: [] });
+
+  // Count item names from entries
+  const nameCounts: Record<string, number> = {};
+  for (const entry of entries) {
+    const items = entry.data?.items;
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        const name = (item.name || item.label || '').trim();
+        if (name) nameCounts[name] = (nameCounts[name] || 0) + 1;
+      }
+    } else {
+      // Single-field entries (e.g. exercise, food)
+      const name = (entry.data?.exercise || entry.data?.food || entry.data?.subject || entry.data?.project || entry.data?.game || '').trim();
+      if (name) nameCounts[name] = (nameCounts[name] || 0) + 1;
+    }
+  }
+
+  // Get existing template row labels to exclude
+  const templateRows: any[] = tracker.goal?.template_rows || [];
+  const existingLabels = new Set(templateRows.map((r: any) => (r.label || '').toLowerCase()));
+
+  // Sort by frequency, exclude already-in-template, take top 10
+  const suggestions = Object.entries(nameCounts)
+    .filter(([name]) => !existingLabels.has(name.toLowerCase()))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([name, count]) => ({ name, count }));
+
+  res.json({ suggestions });
+});
+
+/**
  * POST /trackers/log
  * Body: { type: string, data: Record<string, any> }
  * Upserts the tracker row (creates if missing), inserts an entry, awards +5 PP.
