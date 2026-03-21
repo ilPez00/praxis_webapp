@@ -599,3 +599,14 @@ Session 81: Daily Tracker Limit + Note Attachments (2026-03-21)
 7. Remove i18n if not needed
 8. Update tsconfig targets
 - Sign: Claude
+
+Session 82: Tracker Template Persistence + Axiom Auto-Suggest (2026-03-21)
+- trackerController.ts: added PUT /:type/template (saves row template in goal.template_rows JSONB) + GET /:type/suggestions (analyzes 60d of entries, returns top items not in template)
+- trackerRoutes.ts: registered /template + /suggestions endpoints
+- EditableTrackerForm.tsx: complete rewrite — loads saved template_rows from DB instead of hardcoded DEFAULT_ROWS; added "Edit template" button (edit mode hides value fields, shows only labels); "Save" persists layout via PUT /template; Axiom suggestions shown as clickable chips from GET /suggestions; after logging, rows reset to template with zeroed values (not lost)
+- UnifiedGoalWidget.tsx: passes tracker.goal to EditableTrackerForm so saved templates load correctly
+- AxiomScanService.ts: added autoPopulateTrackerTemplates() — runs after global scan, finds trackers with entries but no template, creates template from top 8 items (min 2 occurrences), marks as template_auto:true
+- Files: src/controllers/trackerController.ts, src/routes/trackerRoutes.ts, client/src/features/trackers/EditableTrackerForm.tsx, client/src/components/common/UnifiedGoalWidget.tsx, src/services/AxiomScanService.ts
+- Verification: 0 TypeScript errors (frontend + backend)
+- Next: Deploy + test template save/load flow, verify Axiom auto-populate in dev
+- Sign: Claude

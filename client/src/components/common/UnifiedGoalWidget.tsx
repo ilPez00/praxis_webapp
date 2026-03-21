@@ -399,7 +399,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
               onClose={() => {}}
               inline
               accentColor={effectiveColor}
-              tracker={effectiveTracker ? { ...effectiveTracker, def: effectiveTrackerConfig! } : { id: '', type: effectiveType || '', def: effectiveTrackerConfig!, goal: {}, entries: [] }}
+              tracker={effectiveTracker ? { ...effectiveTracker, def: effectiveTrackerConfig!, goal: effectiveTracker.goal } : { id: '', type: effectiveType || '', def: effectiveTrackerConfig!, goal: {} }}
               onSave={async (data) => {
                 if (!effectiveType) return;
                 const { data: { session } } = await supabase.auth.getSession();

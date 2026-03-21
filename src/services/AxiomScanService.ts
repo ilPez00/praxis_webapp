@@ -322,6 +322,92 @@ export class AxiomScanService {
     }
     
     logger.info(`[AxiomScan] Scan complete: ${successCount} succeeded, ${failCount} failed.`);
+
+    // Auto-generate tracker templates for users who don't have one yet
+    try {
+      await this.autoPopulateTrackerTemplates();
+    } catch (err: any) {
+      logger.warn(`[AxiomScan] Template auto-populate failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Auto-populate tracker templates from frequently logged items.
+   * For each tracker that has entries but no saved template, analyze
+   * the user's history and create a template from their top items.
+   */
+  private static async autoPopulateTrackerTemplates() {
+    // Find trackers without a template (goal is null/empty or has no template_rows)
+    const { data: trackers } = await supabase
+      .from('trackers')
+      .select('id, user_id, type, goal');
+
+    if (!trackers || trackers.length === 0) return;
+
+    const needsTemplate = trackers.filter(t =>
+      !t.goal?.template_rows || !Array.isArray(t.goal.template_rows) || t.goal.template_rows.length === 0
+    );
+
+    if (needsTemplate.length === 0) return;
+
+    logger.info(`[AxiomScan] Auto-populating templates for ${needsTemplate.length} trackers`);
+    let populated = 0;
+
+    for (const tracker of needsTemplate) {
+      try {
+        const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: entries } = await supabase
+          .from('tracker_entries')
+          .select('data')
+          .eq('tracker_id', tracker.id)
+          .gte('created_at', since);
+
+        if (!entries || entries.length < 3) continue; // Need at least 3 entries to infer a pattern
+
+        // Count item names
+        const nameCounts: Record<string, { count: number; unit?: string; category?: string; subject?: string }> = {};
+        for (const entry of entries) {
+          const items = entry.data?.items;
+          if (Array.isArray(items)) {
+            for (const item of items) {
+              const name = (item.name || item.label || '').trim();
+              if (!name) continue;
+              if (!nameCounts[name]) nameCounts[name] = { count: 0, unit: item.unit, category: item.category, subject: item.subject };
+              nameCounts[name].count++;
+            }
+          }
+        }
+
+        // Take top 8 items that appear at least twice
+        const topItems = Object.entries(nameCounts)
+          .filter(([, v]) => v.count >= 2)
+          .sort((a, b) => b[1].count - a[1].count)
+          .slice(0, 8)
+          .map(([name, meta]) => ({
+            label: name,
+            ...(meta.unit ? { unit: meta.unit } : {}),
+            ...(meta.category ? { category: meta.category } : {}),
+            ...(meta.subject ? { subject: meta.subject } : {}),
+          }));
+
+        if (topItems.length < 2) continue;
+
+        // Save as template
+        const existingGoal = (tracker.goal && typeof tracker.goal === 'object') ? tracker.goal : {};
+        await supabase
+          .from('trackers')
+          .update({ goal: { ...existingGoal, template_rows: topItems, template_auto: true } })
+          .eq('id', tracker.id);
+
+        populated++;
+      } catch (err: any) {
+        logger.warn(`[AxiomScan] Failed to auto-populate template for tracker ${tracker.id}: ${err.message}`);
+      }
+    }
+
+    if (populated > 0) {
+      logger.info(`[AxiomScan] Auto-populated ${populated} tracker templates`);
+    }
   }
 
   /**
