@@ -508,26 +508,26 @@ export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
  */
 export const DOMAIN_TRACKER_MAP: Record<string, string[]> = {
   // Level 1: Physiological
-  'Body & Fitness':                ['lift', 'cardio', 'meal', 'steps', 'sports'],
-  'Rest & Recovery':               ['sleep', 'rest_day'],
-  'Mental Balance':                ['sleep', 'meditation', 'journal', 'mood'],
-  
+  'Body & Fitness':                ['lift', 'cardio', 'meal', 'steps'],
+  'Rest & Recovery':               ['sleep', 'meditation'],
+  'Mental Balance':                ['sleep', 'meditation', 'journal'],
+
   // Level 2: Safety
-  'Environment & Home':            ['cleaning', 'home_projects'],
-  'Health & Longevity':            ['meals', 'water', 'supplements', 'medical'],
-  'Financial Security':            ['budget', 'expenses', 'savings', 'debt'],
-  
+  'Environment & Home':            ['project', 'progress'],
+  'Health & Longevity':            ['meal', 'steps', 'sleep'],
+  'Financial Security':            ['budget', 'expenses', 'investments'],
+
   // Level 3: Love/Belonging
-  'Friendship & Social':           ['hangout', 'social_events'],
-  'Romance & Intimacy':            ['dates', 'relationship_checkin'],
-  'Community & Contribution':      ['volunteer', 'community_events'],
-  
+  'Friendship & Social':           ['hangout', 'adventure'],
+  'Romance & Intimacy':            ['hangout', 'adventure', 'journal'],
+  'Community & Contribution':      ['hangout', 'project', 'journal'],
+
   // Level 4: Esteem
-  'Career & Craft':                ['deep_work', 'job_apps', 'projects', 'learning'],
-  'Wealth & Assets':               ['investments', 'portfolio', 'passive_income'],
+  'Career & Craft':                ['study', 'books', 'project', 'job-apps'],
+  'Wealth & Assets':               ['investments', 'expenses', 'budget'],
   'Gaming & Esports':              ['gaming', 'achievements', 'rank', 'streaming'],
-  
+
   // Level 5: Self-Transcendence
-  'Impact & Legacy':               ['mentoring', 'teaching', 'content_creation'],
-  'Spirit & Purpose':              ['journal', 'reflection', 'meditation', 'reading'],
+  'Impact & Legacy':               ['project', 'journal', 'study'],
+  'Spirit & Purpose':              ['journal', 'meditation', 'books'],
 };
