@@ -197,11 +197,12 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      await axios.post(`${API_URL}/trackers/log`, {
+      const res = await axios.post(`${API_URL}/trackers/log`, {
         type: config.type,
         data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }] },
       }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
-      toast.success(`Logged: ${item.name}`);
+      const pp = res.data?.ppAwarded || 1;
+      toast.success(`Logged: ${item.name}  (+${pp} PP)`);
       fetchTrackers();
     } catch { toast.error('Failed to log'); }
     finally { setSaving(false); }
@@ -612,11 +613,14 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
         onClose={() => setLogTracker(null)}
         tracker={logTracker}
         onSave={async (data) => {
-          if (!config) return;
+          const logType = logTracker?.def?.id || config?.type;
+          if (!logType) return;
           const { data: { session } } = await supabase.auth.getSession();
-          await axios.post(`${API_URL}/trackers/log`, { type: config.type, data }, {
+          const res = await axios.post(`${API_URL}/trackers/log`, { type: logType, data }, {
             headers: { Authorization: `Bearer ${session?.access_token}` },
           });
+          const pp = res.data?.ppAwarded || 1;
+          toast.success(`Logged! +${pp} PP`);
           fetchTrackers();
         }}
         saving={saving}
