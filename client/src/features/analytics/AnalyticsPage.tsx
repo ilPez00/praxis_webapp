@@ -49,8 +49,8 @@ import {
   PieChart,
   XAxis,
   YAxis,
-  Tooltip as ChartsTooltip,
-  Legend,
+  ChartsTooltip,
+  ChartsLegend as Legend,
 } from '@mui/x-charts';
 
 // ── Habit Calendar ─────────────────────────────────────────────────────────────
