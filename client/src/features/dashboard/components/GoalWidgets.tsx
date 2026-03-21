@@ -525,7 +525,7 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 2 }} />
 
           {/* Today's logged data — prominent stat boxes */}
-          {loggedToday && latestEntry && (
+          {config && loggedToday && latestEntry && (
             <Box sx={{ mb: 2.5 }}>
               <Typography variant="caption" sx={{
                 color: accentColor, fontSize: '0.58rem', letterSpacing: '0.1em',
@@ -575,10 +575,10 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
           )}
 
           {/* Objectives */}
-          <ObjectiveRow config={config} currentGoal={currentGoal} onSave={goal => onObjectiveSaved(config.type, goal)} />
+          {config && <ObjectiveRow config={config} currentGoal={currentGoal} onSave={goal => onObjectiveSaved(config.type, goal)} />}
 
           {/* 7-day chart */}
-          <MiniChart entries={allEntries} chartKey={config.chartKey} color={accentColor} unit={config.chartUnit} />
+          {config && <MiniChart entries={allEntries} chartKey={config.chartKey} color={accentColor} unit={config.chartUnit} />}
 
           {/* Simplified Quick Log Section */}
           <Box sx={{ mt: 2 }}>
@@ -643,6 +643,7 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
           </Box>
 
           {/* Add Item Dialog */}
+          {config && (
           <Dialog open={addItemOpen} onClose={() => setAddItemOpen(false)} PaperProps={{ sx: { borderRadius: '16px' } }}>
             <DialogTitle sx={{ fontWeight: 800 }}>Add to {config.label}</DialogTitle>
             <DialogContent>
@@ -653,8 +654,10 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
               <Button variant="contained" onClick={handleAddItem} disabled={!newItemName.trim()} sx={{ borderRadius: '10px' }}>Add</Button>
             </DialogActions>
           </Dialog>
+          )}
 
           {/* Legacy/Full Log Dialog */}
+          {config && (
           <EditableTrackerForm
             open={!!logTracker}
             onClose={() => setLogTracker(null)}
@@ -668,6 +671,7 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
             }}
             saving={saving}
           />
+          )}
         </Box>
       )}
     </GlassCard>

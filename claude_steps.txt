@@ -610,3 +610,27 @@ Session 82: Tracker Template Persistence + Axiom Auto-Suggest (2026-03-21)
 - Verification: 0 TypeScript errors (frontend + backend)
 - Next: Deploy + test template save/load flow, verify Axiom auto-populate in dev
 - Sign: Claude
+
+Session 83: Security Audit + Production Crash Fix (2026-03-21)
+- Full codebase security audit: identified unauthenticated routes, auth bypass vectors, routing bugs, memory leaks, silent error swallowing
+- Audit report: docs/audit_2026-03-21.md (persistent reference)
+- Phase 1 — Security fixes:
+  - messageRoutes.ts: added authenticateToken to all 3 routes (DMs were fully open)
+  - achievementRoutes.ts: added authenticateToken to all write operations
+  - userRoutes.ts: added authenticateToken to PUT/:id and verify; added ownership check in controller
+  - pointsController.ts: removed userId fallback from query/body params (auth bypass)
+  - stripeController.ts: createPPCheckout now uses req.user.id, added auth to checkout routes
+  - groupRoutes.ts: added authenticateToken to join/leave/messages/create; added membership check for reading messages
+  - messageController.ts: sendMessage uses req.user.id as sender (was body.senderId = impersonation); getMessages checks ownership
+  - adminController.ts: fixed isJwtAdmin type safety (4 occurrences)
+- Phase 2 — Bug fixes:
+  - app.ts: removed duplicate /axiom route (was shadowing axiomLimiter); moved publicWidgetRoutes before notFoundHandler
+  - ChatRoom.tsx: fixed typingTimerRef memory leak (cleanup on unmount)
+  - Replaced 12 `.catch(() => {})` with logging across 7 controllers
+- Production crash fix (TypeError: can't access property "color", t is undefined):
+  - Root cause: findWidget() returns null for goals without matching widget configs
+  - GoalWidgets.tsx: added null guards around all config.xxx accesses in UnifiedGoalCard (ObjectiveRow, MiniChart, Today's data, Add Item Dialog, Full Log Dialog)
+- Files: src/routes/messageRoutes.ts, achievementRoutes.ts, userRoutes.ts, stripeRoutes.ts, groupRoutes.ts, src/controllers/userController.ts, pointsController.ts, stripeController.ts, messageController.ts, adminController.ts, goalController.ts, honorController.ts, completionController.ts, groupController.ts, src/app.ts, client/src/features/chat/ChatRoom.tsx, client/src/features/dashboard/components/GoalWidgets.tsx
+- Verification: 0 app-level TypeScript errors (node_modules type errors are pre-existing from i18next + MUI x-internals)
+- Next: Deploy and verify crash is resolved in production; Phase 3 cleanup (delete dead components) if needed
+- Sign: Claude
