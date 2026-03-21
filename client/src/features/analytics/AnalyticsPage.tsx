@@ -19,6 +19,13 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Tooltip,
+  Button,
+  Card,
+  CardContent,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -29,8 +36,22 @@ import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FlagIcon from '@mui/icons-material/Flag';
+import DownloadIcon from '@mui/icons-material/Download';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { DOMAIN_COLORS } from '../../types/goal';
 import ProBanner from '../../components/common/ProBanner';
+import {
+  ChartContainer,
+  LineChart,
+  BarChart,
+  PieChart,
+  XAxis,
+  YAxis,
+  Tooltip as ChartsTooltip,
+  Legend,
+} from '@mui/x-charts';
 
 // ── Habit Calendar ─────────────────────────────────────────────────────────────
 
@@ -345,6 +366,10 @@ const AnalyticsPage: React.FC = () => {
     goals: true
   });
 
+  // NEW: Time range filter for analytics
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
+  const [exporting, setExporting] = useState(false);
+
   // Fetch calendar data independently (available to everyone)
   useEffect(() => {
     if (userLoading || !user) return;
@@ -472,17 +497,110 @@ const AnalyticsPage: React.FC = () => {
 
   const isPremium = user?.is_premium ?? false;
 
+  // NEW: Export analytics data
+  const handleExportAnalytics = async () => {
+    setExporting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { Authorization: `Bearer ${session?.access_token}` };
+      
+      // Fetch all analytics data
+      const [progressRes, domainRes, feedbackRes, achievementRes] = await Promise.all([
+        axios.get(`${API_URL}/analytics/goal-progress`, { headers }),
+        axios.get(`${API_URL}/analytics/domain-performance`, { headers }),
+        axios.get(`${API_URL}/analytics/feedback-trends`, { headers }),
+        axios.get(`${API_URL}/analytics/achievement-rate`, { headers }),
+      ]);
+
+      // Build CSV content
+      const timestamp = new Date().toISOString().slice(0, 10);
+      let csvContent = 'data:text/csv;charset=utf-8,';
+      
+      // Section 1: Goal Progress
+      csvContent += '=== GOAL PROGRESS ===\n';
+      csvContent += 'Goal Name,Domain,Progress (%),Weight,Target Date\n';
+      progressRes.data.forEach((g: any) => {
+        csvContent += `"${g.goalName}","${g.domain}",${Math.round(g.progress * 100)},${g.weight},"${g.targetDate || 'N/A'}"\n`;
+      });
+      
+      // Section 2: Domain Performance
+      csvContent += '\n=== DOMAIN PERFORMANCE ===\n';
+      csvContent += 'Domain,Average Progress,Goal Count\n';
+      domainRes.data.forEach((d: any) => {
+        csvContent += `"${d.domain}",${Math.round(d.avgProgress)},${d.count}\n`;
+      });
+      
+      // Section 3: Feedback Trends
+      csvContent += '\n=== FEEDBACK TRENDS ===\n';
+      csvContent += 'Grade,Count\n';
+      feedbackRes.data.forEach((f: any) => {
+        csvContent += `${f.grade},${f.count}\n`;
+      });
+      
+      // Section 4: Achievement Rate
+      csvContent += '\n=== ACHIEVEMENT RATE ===\n';
+      csvContent += `Total Goals,${achievementRes.data.totalGoals}\n`;
+      csvContent += `Completed,${achievementRes.data.completed}\n`;
+      csvContent += `Completion Rate,${achievementRes.data.completionRate}%\n`;
+      
+      // Create and download file
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `praxis-analytics-${timestamp}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (error: any) {
+      console.error('Export failed:', error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, pb: 6 }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-          <InsightsIcon sx={{ color: 'primary.main', fontSize: 28 }} />
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            Analytics
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <InsightsIcon sx={{ color: 'primary.main', fontSize: 28 }} />
+            <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              Analytics
+            </Typography>
+          </Box>
           {isPremium && (
             <Chip label="PREMIUM" size="small" sx={{ bgcolor: 'rgba(245,158,11,0.15)', color: 'primary.main', fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)' }} />
+          )}
+          <Box sx={{ flexGrow: 1 }} />
+          {isPremium && (
+            <>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Time Range</InputLabel>
+                <Select
+                  value={timeRange}
+                  label="Time Range"
+                  onChange={(e) => setTimeRange(e.target.value as any)}
+                  sx={{ color: 'text.primary' }}
+                >
+                  <MenuItem value="7d">Last 7 days</MenuItem>
+                  <MenuItem value="30d">Last 30 days</MenuItem>
+                  <MenuItem value="90d">Last 90 days</MenuItem>
+                  <MenuItem value="1y">Last year</MenuItem>
+                  <MenuItem value="all">All time</MenuItem>
+                </Select>
+              </FormControl>
+              <Button
+                variant="outlined"
+                startIcon={exporting ? <CircularProgress size={18} /> : <DownloadIcon />}
+                onClick={handleExportAnalytics}
+                disabled={exporting || loadingAnalytics}
+                sx={{ borderRadius: '10px' }}
+              >
+                Export
+              </Button>
+            </>
           )}
         </Box>
         <Typography color="text.secondary">
