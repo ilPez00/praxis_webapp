@@ -7,8 +7,9 @@
 DROP FUNCTION IF EXISTS public.get_notebook_entries(UUID, TEXT, UUID, TEXT, TEXT, TEXT, INTEGER, INTEGER);
 DROP FUNCTION IF EXISTS public.get_notebook_entries(UUID, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER);
 DROP FUNCTION IF EXISTS public.get_notebook_entries(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS public.get_notebook_entries(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, INTEGER, INTEGER);
 
--- 2. Create the updated function (FIXED: properly handles NULL goal_id)
+-- 2. Create the updated function (FIXED: properly handles NULL goal_id and adds since filter)
 CREATE OR REPLACE FUNCTION public.get_notebook_entries(
   p_user_id UUID,
   p_entry_type TEXT DEFAULT NULL,
@@ -16,6 +17,7 @@ CREATE OR REPLACE FUNCTION public.get_notebook_entries(
   p_domain TEXT DEFAULT NULL,
   p_tag TEXT DEFAULT NULL,
   p_search TEXT DEFAULT NULL,
+  p_since TIMESTAMPTZ DEFAULT NULL,
   p_limit INTEGER DEFAULT 50,
   p_offset INTEGER DEFAULT 0
 )
@@ -57,6 +59,7 @@ BEGIN
     AND (p_domain IS NULL OR ne.domain = p_domain OR (p_domain IS NULL AND ne.domain IS NULL))
     AND (p_tag IS NULL OR ne.tags IS NULL OR p_tag = ANY(ne.tags))
     AND (p_search IS NULL OR ne.content ILIKE '%' || p_search || '%')
+    AND (p_since IS NULL OR ne.occurred_at >= p_since)
   ORDER BY ne.is_pinned DESC, ne.occurred_at DESC
   LIMIT p_limit OFFSET p_offset;
 END;

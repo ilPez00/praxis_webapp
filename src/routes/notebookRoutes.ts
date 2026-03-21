@@ -19,6 +19,8 @@ router.get('/entries', authenticateToken, catchAsync(async (req: Request, res: R
     domain,
     tag,
     search,
+    goal_id,
+    since,
     limit = '100',
     offset = '0',
   } = req.query as {
@@ -26,13 +28,15 @@ router.get('/entries', authenticateToken, catchAsync(async (req: Request, res: R
     domain?: string;
     tag?: string;
     search?: string;
+    goal_id?: string;
+    since?: string;
     limit?: string;
     offset?: string;
   };
 
   logger.debug('Fetching notebook entries', { 
     userId, 
-    filters: { entry_type, domain, tag, hasSearch: !!search } 
+    filters: { entry_type, domain, tag, goal_id, since, hasSearch: !!search } 
   });
 
   // Use the database function for filtered queries
@@ -42,6 +46,8 @@ router.get('/entries', authenticateToken, catchAsync(async (req: Request, res: R
     p_domain: domain === 'all' ? null : domain,
     p_tag: tag === 'all' ? null : tag,
     p_search: search || null,
+    p_goal_id: goal_id || null,
+    p_since: since || null,
     p_limit: Math.min(parseInt(limit, 10) || 100, 200),
     p_offset: parseInt(offset, 10) || 0,
   });
