@@ -6,6 +6,7 @@ const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('42P01') || msg?.includes('does not exist');
 
 const PP_PER_LOG = 1; // Praxis Points awarded per tracker log
+const MAX_TRACKER_LOGS_PER_DAY = 3; // Max tracker entries per goal per day
 
 /**
  * GET /trackers/calendar
@@ -260,6 +261,23 @@ export const logTracker = catchAsync(async (req: Request, res: Response) => {
       return res.status(503).json({ message: 'Trackers table not set up. Run migrations.' });
     }
     throw new Error(`Failed to upsert tracker: ${upsertErr.message}`);
+  }
+
+  // Check daily limit (3 per tracker per day)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const { count: todayCount } = await supabase
+    .from('tracker_entries')
+    .select('id', { count: 'exact', head: true })
+    .eq('tracker_id', tracker.id)
+    .eq('user_id', userId)
+    .gte('created_at', todayStart.toISOString());
+
+  if ((todayCount ?? 0) >= MAX_TRACKER_LOGS_PER_DAY) {
+    return res.status(429).json({
+      message: `Daily limit reached (${MAX_TRACKER_LOGS_PER_DAY} logs per goal). Free notes are unlimited.`,
+      limitReached: true,
+    });
   }
 
   // Insert entry

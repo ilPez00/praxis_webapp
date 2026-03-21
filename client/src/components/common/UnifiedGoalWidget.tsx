@@ -225,6 +225,8 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   const effectiveColor = (config?.color || effectiveTrackerConfig?.color) ?? accentColor;
   const anyLoggedToday = effectiveEntries.some(e => e.logged_at.slice(0, 10) === todayKey);
   const effectiveTodayCount = effectiveEntries.filter(e => e.logged_at.slice(0, 10) === todayKey).length;
+  const DAILY_TRACKER_LIMIT = 3;
+  const trackerLimitReached = effectiveTodayCount >= DAILY_TRACKER_LIMIT;
 
   const trackerStreak = (() => {
     let count = 0;
@@ -370,30 +372,46 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
             <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {effectiveTrackerConfig?.icon} {effectiveTrackerConfig?.label || 'Log'}
             </Typography>
-            {effectiveTodayCount > 0 && (
-              <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>
-                · {effectiveTodayCount} today
-              </Typography>
-            )}
+            <Typography sx={{ fontSize: '0.55rem', color: trackerLimitReached ? '#F59E0B' : 'rgba(255,255,255,0.3)' }}>
+              · {effectiveTodayCount}/{DAILY_TRACKER_LIMIT} today
+            </Typography>
           </Box>
-          <EditableTrackerForm
-            open={true}
-            onClose={() => {}}
-            inline
-            accentColor={effectiveColor}
-            tracker={effectiveTracker ? { ...effectiveTracker, def: effectiveTrackerConfig! } : { id: '', type: effectiveType || '', def: effectiveTrackerConfig!, goal: {}, entries: [] }}
-            onSave={async (data) => {
-              if (!effectiveType) return;
-              const { data: { session } } = await supabase.auth.getSession();
-              const res = await axios.post(`${API_URL}/trackers/log`, { type: effectiveType, data }, {
-                headers: { Authorization: `Bearer ${session?.access_token}` },
-              });
-              const pp = res.data?.ppAwarded || 1;
-              toast.success(`Logged! +${pp} PP`);
-              fetchTrackers();
-            }}
-            saving={saving}
-          />
+          {trackerLimitReached ? (
+            <Box sx={{
+              p: 2, borderRadius: '12px', textAlign: 'center',
+              bgcolor: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)',
+            }}>
+              <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#F59E0B', mb: 0.5 }}>
+                Daily limit reached
+              </Typography>
+              <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>
+                {DAILY_TRACKER_LIMIT} tracker logs per goal per day. Notes below are unlimited.
+              </Typography>
+            </Box>
+          ) : (
+            <EditableTrackerForm
+              open={true}
+              onClose={() => {}}
+              inline
+              accentColor={effectiveColor}
+              tracker={effectiveTracker ? { ...effectiveTracker, def: effectiveTrackerConfig! } : { id: '', type: effectiveType || '', def: effectiveTrackerConfig!, goal: {}, entries: [] }}
+              onSave={async (data) => {
+                if (!effectiveType) return;
+                const { data: { session } } = await supabase.auth.getSession();
+                const res = await axios.post(`${API_URL}/trackers/log`, { type: effectiveType, data }, {
+                  headers: { Authorization: `Bearer ${session?.access_token}` },
+                });
+                if (res.data?.limitReached) {
+                  toast.error('Daily limit reached (3 per goal)');
+                  return;
+                }
+                const pp = res.data?.ppAwarded || 1;
+                toast.success(`Logged! +${pp} PP`);
+                fetchTrackers();
+              }}
+              saving={saving}
+            />
+          )}
         </Box>
       )}
 
