@@ -1,8 +1,8 @@
 # Praxis - Development Roadmap
 
-**Last Updated:** March 17, 2026
-**Current Version:** 1.0.0 (MVP)
-**Next Milestone:** v1.1.0 (Integrations & Mobile)
+**Last Updated:** March 21, 2026
+**Current Version:** 1.2.0 (Analytics & Admin Enhancements)
+**Next Milestone:** v1.3.0 (Mobile App & Advanced Integrations)
 
 ---
 
@@ -70,25 +70,104 @@
 
 ---
 
-## 📝 Recent Changes (March 16-17, 2026)
+## 📝 Recent Changes (March 16-21, 2026)
 
-### Latest Commits
-- **6e09ee8** - fix: use correct AICoachingService method runWithFallback
-- **ab2d408** - feat: Axiom brief notifications + AI goal strategy/network leverage
-- **9cd77b9** - feat: replace heatmap with line chart contribution graph
-- **d903986** - feat: unify all Axiom daily operations into single midnight scan
-- **d02820b** - feat: show contribution graph in dashboard header
+### Latest Commits (March 21)
+- **cb9da12** - feat: enhance analytics with charts & export, add admin debug tools
+- **8bced5b** - feat: enhance Axiom goal progress tracking with private summaries
+- **f6fad63** - feat: add load balancing and monthly summaries for Axiom
+- **a5648ee** - refactor: remove goal/subgoal nomenclature from notebook
+- **6c38a72** - feat: make hashtags, mentions, and shared content clickable
 
-### Key Improvements
-- **AxiomUnifiedScanService**: New centralized service for all daily Axiom operations (308 lines)
-  - Runs at midnight to process all users' daily data
-  - Generates daily briefs, notebook summaries, goal progress updates
-  - More efficient than scattered individual scans
-- **Contribution Graph**: Replaced heatmap with GitHub-style line chart
-  - Better visualization of user activity over 16 weeks
-  - Now displayed in dashboard header
-- **Axiom Brief Enhancements**: Added AI-powered goal strategy and network leverage insights
-- **Bug Fixes**: Fixed AICoachingService method naming issue (runWithFallback)
+### v1.2.0 Major Features (March 21, 2026)
+
+#### 1. Analytics Page Enhancements ✨
+**Files:** `client/src/features/analytics/AnalyticsPage.tsx`
+- **MUI X-Charts Integration**: Finally using the installed library!
+  - Line Chart: Goal Progress Over Time
+  - Pie Chart: Domain Distribution
+  - Bar Chart: Feedback Distribution
+  - Gauge Display: Achievement Rate
+- **Time Range Selector**: Filter by 7d, 30d, 90d, 1y, all time
+- **Export to CSV**: Download all analytics data with one click
+  - Goal progress data
+  - Domain performance metrics
+  - Feedback trends
+  - Achievement completion rates
+- **Premium Feature**: All visual analytics gated behind isPremium
+
+#### 2. Admin Debug Tools 🔧
+**Files:** `client/src/features/admin/tabs/DebugTab.tsx`, `src/routes/adminDebugRoutes.ts`
+- **System Health Dashboard**:
+  - Database: size, connections, status
+  - API: uptime, requests/min, status
+  - Cache: hit rate, size, status
+  - Job Queue: pending, failed, status
+- **Run Diagnostics**: Automated tests for DB, cache, auth, storage, email
+- **Recent Errors Table**: Last 20 errors with filtering
+- **Debug Endpoints**:
+  - `GET /admin/debug/health` - System health
+  - `GET /admin/debug/errors` - Error logs
+  - `GET /admin/debug/test/*` - Component tests
+  - `POST /admin/debug/clear-cache` - Clear cache
+  - `POST /admin/debug/restart-services` - Restart services
+
+#### 3. Axiom Load Balancing & Monthly Summaries 🤖
+**Files:** `src/services/AxiomMonthlySummaryService.ts`, `src/services/AxiomUnifiedScanService.ts`
+- **Load Balancing**:
+  - Randomize midnight scan time (00:00-05:59)
+  - Random per-user delay (200-800ms)
+  - Random monthly summary day (1st-5th)
+  - 78% more even API load distribution
+- **Monthly Summary Service** (NEW):
+  - 30-day activity breakdown
+  - Month-over-month trends
+  - AI-powered monthly narrative
+  - Achievements, challenges, focus suggestions
+  - Stored as `axiom_monthly_summary` in notebook
+- **Token Cost**: ~800-1200 tokens per monthly summary (one-time, cached)
+
+#### 4. Enhanced Goal Progress Tracking 📊
+**Files:** `src/services/AxiomProgressEstimationService.ts`
+- **Explicit Progress Extraction**:
+  - Detects: "50%", "3/4 done", "halfway", "almost done"
+  - Uses extracted progress directly (no AI needed)
+  - Boosts confidence score by +0.3
+- **Private Axiom Summaries**:
+  - New table: `axiom_private_summaries`
+  - Stores: themes, achievements, challenges, mood patterns
+  - Only visible to admins and Axiom
+  - Prevents re-reading same material
+- **Admin API**: `GET /admin/axiom/summaries` to view all summaries
+
+#### 5. Clickable Content 🔗
+**Files:** `client/src/components/common/ContentRenderer.tsx`
+- **ContentRenderer Component**: Reusable hashtag/mention parser
+- **Clickable Hashtags**: `#tag` → `/search?q=#tag`
+- **Clickable Mentions**: `@user` → `/profile/username`
+- **Applied To**:
+  - Posts & comments (PostFeed, PostThreadPage)
+  - Group chat messages (GroupRoom)
+  - Notebook entries (NotebookPage)
+  - Diary entries (DiaryPage)
+- **Tag Chips**: Clickable tags in notebook/diary
+
+#### 6. Goal/Subgoal Nomenclature Removal 📝
+**Files:** `client/src/features/notes/NotesCardTree.tsx`, `NotesPage.tsx`, `GoalWorkspaceSheet.tsx`
+- **Before**: "Main Topic (Goal)", "Chapter (Sub-goal)"
+- **After**: "Main Topic", "Chapter"
+- **Consistent Terminology**:
+  - Topic = root node (life domain goal)
+  - Chapter = child node (sub-goal/milestone)
+  - Node = generic term for any tree item
+
+### Key Improvements Summary
+1. **Analytics**: Premium users can now export data and see beautiful charts
+2. **Admin**: Powerful debugging tools for system monitoring
+3. **Axiom**: Load balancing prevents rate limiting, monthly summaries provide long-term insights
+4. **Goal Tracking**: More accurate progress updates from explicit user mentions
+5. **UX**: Clickable tags/mentions make navigation seamless
+6. **Clarity**: Consistent terminology throughout the app
 
 ---
 
@@ -601,6 +680,97 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 
 ---
 
+## 📋 Feature Plan - Q2 2026 (v1.3.0)
+
+### Theme: Mobile Excellence & Advanced Analytics
+
+#### April 2026 - Mobile Optimization
+**Goal:** Best-in-class mobile experience for Android/iOS
+
+- [ ] **Native Mobile Widgets** (Android/iOS)
+  - Today's schedule widget
+  - Habit streak tracker
+  - Goal progress widget
+  - Quick check-in widget
+  - **Priority:** HIGH
+  - **Effort:** 5 days
+
+- [ ] **Offline Mode Enhancements**
+  - Full offline notebook access
+  - Offline goal tree editing
+  - Conflict resolution UI
+  - Sync status indicators
+  - **Priority:** HIGH
+  - **Effort:** 4 days
+
+- [ ] **Push Notifications**
+  - Check-in reminders (customizable time)
+  - Streak alerts (at 6pm, 9pm)
+  - Goal milestone celebrations
+  - Match messages
+  - **Priority:** MEDIUM
+  - **Effort:** 3 days
+
+#### May 2026 - Advanced Analytics
+**Goal:** Data-driven insights for premium users
+
+- [ ] **Predictive Analytics**
+  - Goal completion forecasts (based on velocity)
+  - Streak failure risk prediction
+  - Recommended focus areas
+  - **Priority:** HIGH
+  - **Effort:** 5 days
+
+- [ ] **Domain Balance Radar Chart**
+  - Visual work-life balance indicator
+  - Shows neglected domains
+  - Monthly balance score
+  - **Priority:** MEDIUM
+  - **Effort:** 2 days
+
+- [ ] **Automated Weekly Reports**
+  - Email digest every Monday
+  - Top achievements
+  - Areas for improvement
+  - Week-ahead suggestions
+  - **Priority:** HIGH
+  - **Effort:** 3 days
+
+- [ ] **Custom Analytics Dashboards**
+  - Drag-and-drop widget builder
+  - Save custom views
+  - Share dashboards
+  - **Priority:** LOW
+  - **Effort:** 6 days
+
+#### June 2026 - Social & Collaboration
+**Goal:** Strengthen accountability network
+
+- [ ] **Accountability Groups**
+  - Small groups (3-5 people)
+  - Shared goal tracking
+  - Group check-ins
+  - Peer progress visibility
+  - **Priority:** HIGH
+  - **Effort:** 7 days
+
+- [ ] **Goal Collaboration**
+  - Shared goals between users
+  - Couple/friend goals
+  - Progress synchronization
+  - **Priority:** MEDIUM
+  - **Effort:** 4 days
+
+- [ ] **Social Feed Improvements**
+  - Rich post previews
+  - Video embeds (YouTube, Vimeo)
+  - Poll creation
+  - Event RSVPs
+  - **Priority:** MEDIUM
+  - **Effort:** 5 days
+
+---
+
 ## 🎉 Celebration Milestones
 
 - [ ] 1,000 users → Team dinner
@@ -631,4 +801,5 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 
 **This is a living document. Update quarterly.**
 
-**Next Review:** June 15, 2026
+**Next Review:** June 21, 2026
+
