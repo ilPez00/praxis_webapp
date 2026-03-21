@@ -508,3 +508,16 @@ Session 79: Single Effective Tracker per Goal Widget (2026-03-21)
 - Verification: 0 TypeScript errors, build passes (10.11s)
 - Next: Push to deploy, test SpeedDial→Quick Log→select goal→single tracker widget flow
 - Sign: Claude
+
+Session 80: Full Log as Default Widget View (2026-03-21)
+- EditableTrackerForm.tsx: added `inline` + `accentColor` props — when inline=true, renders form rows directly (no Dialog wrapper) with a gradient "Log Entry (+1 PP)" button
+- UnifiedGoalWidget.tsx: replaced quick-log buttons + mini chart with inline EditableTrackerForm as the DEFAULT view when selecting a goal from SpeedDial
+  - Removed: quick-log library buttons, manage mode, add item dialog, Full Log/Edit List footer, Full Log dialog
+  - Removed dead state: manageMode, addItemOpen, newItemName, logTracker
+  - Removed handlers: handleQuickLog, handleAddItem, handleRemoveItem
+  - Cleaned up unused imports: Dialog, DialogTitle, DialogContent, DialogActions, AddIcon, RemoveIcon
+  - Flow is now: SpeedDial → Quick Log → select goal → full tracker form inline + mood + journal + mini chart
+- Files: client/src/components/common/UnifiedGoalWidget.tsx, client/src/features/trackers/EditableTrackerForm.tsx
+- Verification: 0 TypeScript errors, build passes (9.85s)
+- Next: Deploy + test, clear site data after deploy
+- Sign: Claude

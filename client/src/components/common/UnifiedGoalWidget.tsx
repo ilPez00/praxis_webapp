@@ -3,12 +3,9 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Box, Typography, TextField, Button, Chip, LinearProgress, Slider,
-  IconButton, Tooltip, CircularProgress, Dialog, DialogTitle,
-  DialogContent, DialogActions,
+  IconButton, Tooltip, CircularProgress,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import CheckIcon from '@mui/icons-material/Check';
 import GlassCard from './GlassCard';
@@ -136,10 +133,6 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   const [note, setNote] = useState('');
   const [mood, setMood] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [manageMode, setManageMode] = useState(false);
-  const [addItemOpen, setAddItemOpen] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
-  const [logTracker, setLogTracker] = useState<any>(null);
 
   const domain = getNodeDomain(goal.id, allNodes);
   const domainColor = (DOMAIN_COLORS as Record<string, string>)[domain] ?? '#8B5CF6';
@@ -173,51 +166,6 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   const pct = Math.round((goal.progress || 0) * 100);
 
   const bet = activeBets.find((b: any) => b.goal_node_id === goal.id);
-
-  // ── Quick-log a library item ─────────────────────────────────────────────
-  const handleQuickLog = async (item: any) => {
-    if (!effectiveType) return;
-    setSaving(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.post(`${API_URL}/trackers/log`, {
-        type: effectiveType,
-        data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }] },
-      }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
-      const pp = res.data?.ppAwarded || 1;
-      toast.success(`Logged: ${item.name}  (+${pp} PP)`);
-      fetchTrackers();
-    } catch { toast.error('Failed to log'); }
-    finally { setSaving(false); }
-  };
-
-  // ── Add/remove library items ─────────────────────────────────────────────
-  const handleAddItem = async () => {
-    if (!newItemName.trim() || !effectiveTracker?.id) return;
-    const currentGoal = effectiveTracker.goal || {};
-    const newLibrary = [...(currentGoal.library || []), { name: newItemName }];
-    try {
-      const { error } = await supabase.from('trackers')
-        .update({ goal: { ...currentGoal, library: newLibrary } })
-        .eq('id', effectiveTracker.id);
-      if (error) throw error;
-      setAddItemOpen(false);
-      setNewItemName('');
-      fetchTrackers();
-    } catch { toast.error('Failed to add item'); }
-  };
-
-  const handleRemoveItem = async (idx: number) => {
-    if (!effectiveTracker?.id) return;
-    const currentGoal = effectiveTracker.goal || {};
-    const newLibrary = (currentGoal.library || []).filter((_: any, i: number) => i !== idx);
-    try {
-      await supabase.from('trackers')
-        .update({ goal: { ...currentGoal, library: newLibrary } })
-        .eq('id', effectiveTracker.id);
-      fetchTrackers();
-    } catch { toast.error('Failed to remove item'); }
-  };
 
   // ── Save journal entry (dual-write) ──────────────────────────────────────
   const handleSaveJournal = async () => {
@@ -274,7 +222,6 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
 
   const hasTracker = !!effectiveTrackerConfig;
   const effectiveEntries = effectiveTracker?.entries ?? [];
-  const effectiveLibrary = effectiveTracker?.goal?.library || [];
   const effectiveColor = (config?.color || effectiveTrackerConfig?.color) ?? accentColor;
   const anyLoggedToday = effectiveEntries.some(e => e.logged_at.slice(0, 10) === todayKey);
   const effectiveTodayCount = effectiveEntries.filter(e => e.logged_at.slice(0, 10) === todayKey).length;
@@ -416,12 +363,12 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
         )}
       </Box>
 
-      {/* ── Quick-log tracker buttons ── */}
-      {hasTracker && effectiveLibrary.length > 0 && (
-        <Box sx={{ px: 2.5, pb: 1.5 }}>
+      {/* ── Inline Full Log form (default view) ── */}
+      {hasTracker && (
+        <Box sx={{ px: 2.5, pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
             <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              ⚡ Quick Log
+              {effectiveTrackerConfig?.icon} {effectiveTrackerConfig?.label || 'Log'}
             </Typography>
             {effectiveTodayCount > 0 && (
               <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>
@@ -429,50 +376,26 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
               </Typography>
             )}
           </Box>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-            {effectiveLibrary.map((item: any, idx: number) => (
-              <Button
-                key={idx}
-                variant="outlined"
-                size="small"
-                disabled={saving}
-                onClick={() => manageMode ? handleRemoveItem(idx) : handleQuickLog(item)}
-                startIcon={manageMode ? <RemoveIcon sx={{ fontSize: '12px !important' }} /> : undefined}
-                sx={{
-                  borderRadius: '10px', fontWeight: 700, fontSize: '0.7rem',
-                  py: 0.25, minHeight: 28,
-                  color: manageMode ? 'error.main' : accentColor,
-                  borderColor: manageMode ? 'error.main' : `${accentColor}35`,
-                  '&:hover': { bgcolor: manageMode ? 'rgba(239,68,68,0.1)' : `${accentColor}12` },
-                }}
-              >
-                {item.name}
-              </Button>
-            ))}
-            {!manageMode && (
-              <IconButton size="small" onClick={() => setAddItemOpen(true)} sx={{ border: '1px dashed rgba(255,255,255,0.15)', borderRadius: '10px', width: 28, height: 28 }}>
-                <AddIcon sx={{ fontSize: 14 }} />
-              </IconButton>
-            )}
-          </Box>
+          <EditableTrackerForm
+            open={true}
+            onClose={() => {}}
+            inline
+            accentColor={effectiveColor}
+            tracker={effectiveTracker ? { ...effectiveTracker, def: effectiveTrackerConfig! } : { id: '', type: effectiveType || '', def: effectiveTrackerConfig!, goal: {}, entries: [] }}
+            onSave={async (data) => {
+              if (!effectiveType) return;
+              const { data: { session } } = await supabase.auth.getSession();
+              const res = await axios.post(`${API_URL}/trackers/log`, { type: effectiveType, data }, {
+                headers: { Authorization: `Bearer ${session?.access_token}` },
+              });
+              const pp = res.data?.ppAwarded || 1;
+              toast.success(`Logged! +${pp} PP`);
+              fetchTrackers();
+            }}
+            saving={saving}
+          />
         </Box>
       )}
-
-      {/* ── 7-day mini chart ── */}
-      {hasTracker && effectiveEntries.length > 0 && (() => {
-        // Derive chart key: widget config → first numeric field in tracker type → 'value'
-        const chartKey = config?.chartKey
-          || effectiveTrackerConfig?.fields.find(f => f.type === 'number')?.key
-          || 'value';
-        const chartUnit = config?.chartUnit
-          || effectiveTrackerConfig?.fields.find(f => f.type === 'number')?.label
-          || '';
-        return (
-          <Box sx={{ px: 2.5, pb: 1 }}>
-            <MiniChart entries={effectiveEntries} chartKey={chartKey} color={effectiveColor} unit={chartUnit} />
-          </Box>
-        );
-      })()}
 
       {/* ── Mood picker ── */}
       <Box sx={{ px: 2.5, pt: 1 }}>
@@ -535,73 +458,20 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
         </Box>
       </Box>
 
-      {/* ── Footer: Full Log + Edit List ── */}
-      {hasTracker && (
-        <Box sx={{
-          display: 'flex', borderTop: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <Button
-            size="small"
-            onClick={() => setLogTracker({ ...effectiveTracker, def: effectiveTrackerConfig })}
-            sx={{
-              flex: 1, py: 1, fontSize: '0.7rem', fontWeight: 700,
-              color: accentColor, borderRadius: 0,
-              '&:hover': { bgcolor: `${accentColor}08` },
-            }}
-          >
-            Full Log
-          </Button>
-          <Box sx={{ width: 1, bgcolor: 'rgba(255,255,255,0.06)' }} />
-          <Button
-            size="small"
-            onClick={() => setManageMode(!manageMode)}
-            sx={{
-              flex: 1, py: 1, fontSize: '0.7rem', fontWeight: 700,
-              color: manageMode ? '#10B981' : 'rgba(255,255,255,0.4)',
-              borderRadius: 0,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
-            }}
-          >
-            {manageMode ? 'Done' : 'Edit List'}
-          </Button>
-        </Box>
-      )}
-
-      {/* ── Add item dialog ── */}
-      <Dialog open={addItemOpen} onClose={() => setAddItemOpen(false)} PaperProps={{ sx: { borderRadius: '16px' } }}>
-        <DialogTitle sx={{ fontWeight: 800 }}>Add to {effectiveTrackerConfig?.label || 'Tracker'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus label="Item Name" placeholder="e.g. Bench Press"
-            fullWidth value={newItemName} onChange={e => setNewItemName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && newItemName.trim()) handleAddItem(); }}
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={() => setAddItemOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleAddItem} disabled={!newItemName.trim()} sx={{ borderRadius: '10px' }}>Add</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ── Full log form dialog ── */}
-      <EditableTrackerForm
-        open={!!logTracker}
-        onClose={() => setLogTracker(null)}
-        tracker={logTracker}
-        onSave={async (data) => {
-          const logType = logTracker?.def?.id || effectiveType;
-          if (!logType) return;
-          const { data: { session } } = await supabase.auth.getSession();
-          const res = await axios.post(`${API_URL}/trackers/log`, { type: logType, data }, {
-            headers: { Authorization: `Bearer ${session?.access_token}` },
-          });
-          const pp = res.data?.ppAwarded || 1;
-          toast.success(`Logged! +${pp} PP`);
-          fetchTrackers();
-        }}
-        saving={saving}
-      />
+      {/* ── 7-day mini chart (collapsed below form) ── */}
+      {hasTracker && effectiveEntries.length > 0 && (() => {
+        const chartKey = config?.chartKey
+          || effectiveTrackerConfig?.fields.find(f => f.type === 'number')?.key
+          || 'value';
+        const chartUnit = config?.chartUnit
+          || effectiveTrackerConfig?.fields.find(f => f.type === 'number')?.label
+          || '';
+        return (
+          <Box sx={{ px: 2.5, pb: 0.5 }}>
+            <MiniChart entries={effectiveEntries} chartKey={chartKey} color={effectiveColor} unit={chartUnit} />
+          </Box>
+        );
+      })()}
     </GlassCard>
   );
 };

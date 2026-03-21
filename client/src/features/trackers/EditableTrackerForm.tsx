@@ -57,6 +57,10 @@ interface EditableTrackerFormProps {
   tracker: { id: string; type: string; def: TrackerType } | null;
   onSave: (data: any) => Promise<void>;
   saving: boolean;
+  /** Render form rows inline (no Dialog wrapper) */
+  inline?: boolean;
+  /** Accent color for inline mode buttons */
+  accentColor?: string;
 }
 
 // Default rows for common trackers
@@ -91,6 +95,8 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
   tracker,
   onSave,
   saving,
+  inline = false,
+  accentColor,
 }) => {
   const [rows, setRows] = useState<TrackerRow[]>([]);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
@@ -353,6 +359,122 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
 
   if (!tracker) return null;
 
+  // Shared form body — used by both Dialog and inline modes
+  const formBody = (
+    <Stack spacing={2}>
+      {rows.map((row) => (
+        <Box
+          key={row.id}
+          sx={{
+            p: 1.5,
+            borderRadius: inline ? '12px' : '16px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            bgcolor: 'rgba(255,255,255,0.02)',
+            position: 'relative'
+          }}
+        >
+          <Box sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'center' }}>
+            {editingLabel === row.id ? (
+              <Autocomplete
+                freeSolo
+                loading={searching}
+                options={suggestions}
+                getOptionLabel={o => typeof o === 'string' ? o : (o.name || o.title || o.ticker || o.label || '')}
+                value={row.label}
+                onChange={(_, val) => handleSelectSuggestion(row.id, val)}
+                onInputChange={(_, val) => handleUpdateRow(row.id, { label: val })}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    placeholder="Search or type name..."
+                    autoFocus
+                    fullWidth
+                  />
+                )}
+                sx={{ flex: 1 }}
+              />
+            ) : (
+              <Box
+                onClick={() => setEditingLabel(row.id)}
+                sx={{
+                  flex: 1,
+                  p: 1,
+                  borderRadius: '8px',
+                  bgcolor: 'rgba(255,255,255,0.04)',
+                  border: '1px dashed rgba(255,255,255,0.2)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
+                <Typography sx={{ fontSize: '0.9rem', fontWeight: 600 }}>
+                  {row.label || row.subject || 'Click to set item name...'}
+                </Typography>
+                <EditIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+              </Box>
+            )}
+
+            <IconButton
+              size="small"
+              onClick={() => handleRemoveRow(row.id)}
+              disabled={rows.length === 1}
+              sx={{ color: 'rgba(255,255,255,0.3)', '&:hover': { color: 'error.main' } }}
+            >
+              <RemoveIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {renderRowFields(row)}
+        </Box>
+      ))}
+
+      <Button
+        fullWidth
+        variant="outlined"
+        onClick={handleAddRow}
+        startIcon={<AddIcon />}
+        sx={{
+          borderRadius: '12px',
+          border: '1px dashed rgba(255,255,255,0.15)',
+          color: 'text.secondary',
+          py: 1,
+          fontSize: '0.75rem',
+          '&:hover': { border: '1px dashed', borderColor: accentColor || 'primary.main', bgcolor: `${accentColor || 'rgba(139,92,246'}${accentColor ? '0a' : ',0.05)'}` }
+        }}
+      >
+        Add Row
+      </Button>
+    </Stack>
+  );
+
+  // ── Inline mode: render form body + log button directly ──
+  if (inline) {
+    return (
+      <Box>
+        {formBody}
+        <Button
+          fullWidth
+          onClick={handleSave}
+          disabled={saving}
+          sx={{
+            mt: 2, borderRadius: '14px', fontWeight: 800, py: 1.25, fontSize: '0.85rem',
+            background: accentColor
+              ? `linear-gradient(135deg, ${accentColor}, ${accentColor}bb)`
+              : 'linear-gradient(135deg, #A78BFA, #F59E0B)',
+            color: '#0D0E1A',
+            '&:hover': { filter: 'brightness(1.1)' },
+            '&:disabled': { opacity: 0.4 },
+          }}
+        >
+          {saving ? <CircularProgress size={18} color="inherit" /> : `Log Entry (+1 PP)`}
+        </Button>
+      </Box>
+    );
+  }
+
+  // ── Dialog mode (original) ──
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
       <DialogTitle sx={{ pb: 1 }}>
@@ -366,91 +488,7 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ pt: 2 }}>
-        <Stack spacing={2.5}>
-          {rows.map((row) => (
-            <Box
-              key={row.id}
-              sx={{
-                p: 2,
-                borderRadius: '16px',
-                border: '1px solid rgba(255,255,255,0.08)',
-                bgcolor: 'rgba(255,255,255,0.02)',
-                position: 'relative'
-              }}
-            >
-              <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center' }}>
-                {editingLabel === row.id ? (
-                  <Autocomplete
-                    freeSolo
-                    loading={searching}
-                    options={suggestions}
-                    getOptionLabel={o => typeof o === 'string' ? o : (o.name || o.title || o.ticker || o.label || '')}
-                    value={row.label}
-                    onChange={(_, val) => handleSelectSuggestion(row.id, val)}
-                    onInputChange={(_, val) => handleUpdateRow(row.id, { label: val })}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        size="small"
-                        placeholder="Search or type name..."
-                        autoFocus
-                        fullWidth
-                      />
-                    )}
-                    sx={{ flex: 1 }}
-                  />
-                ) : (
-                  <Box
-                    onClick={() => setEditingLabel(row.id)}
-                    sx={{
-                      flex: 1,
-                      p: 1,
-                      borderRadius: '8px',
-                      bgcolor: 'rgba(255,255,255,0.04)',
-                      border: '1px dashed rgba(255,255,255,0.2)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                    }}
-                  >
-                    <Typography sx={{ fontSize: '0.9rem', fontWeight: 600 }}>
-                      {row.label || row.subject || 'Click to set item name...'}
-                    </Typography>
-                    <EditIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                  </Box>
-                )}
-
-                <IconButton
-                  size="small"
-                  onClick={() => handleRemoveRow(row.id)}
-                  disabled={rows.length === 1}
-                  sx={{ color: 'rgba(255,255,255,0.3)', '&:hover': { color: 'error.main' } }}
-                >
-                  <RemoveIcon fontSize="small" />
-                </IconButton>
-              </Box>
-
-              {renderRowFields(row)}
-            </Box>
-          ))}
-
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={handleAddRow}
-            startIcon={<AddIcon />}
-            sx={{
-              borderRadius: '12px',
-              border: '1px dashed rgba(255,255,255,0.2)',
-              color: 'text.secondary',
-              py: 1.5,
-              '&:hover': { border: '1px dashed', borderColor: 'primary.main', bgcolor: 'rgba(139,92,246,0.05)' }
-            }}
-          >
-            Add Another Line
-          </Button>
-        </Stack>
+        {formBody}
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
