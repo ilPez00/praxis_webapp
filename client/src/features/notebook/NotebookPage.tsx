@@ -35,6 +35,7 @@ import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import NoteEditDialog from './NoteEditDialog';
 import ShareDialog from '../../components/common/ShareDialog';
+import ContentRenderer from '../../components/common/ContentRenderer';
 import NoteAttachmentBar from '../../components/common/NoteAttachmentBar';
 import type { Attachment } from '../../components/common/NoteAttachmentBar';
 
@@ -506,14 +507,15 @@ const NotebookPage: React.FC = () => {
                         </Typography>
                       </Box>
                       
-                      <Typography sx={{
-                        fontSize: '0.8rem',
-                        lineHeight: 1.5,
-                        color: 'text.secondary',
-                        mb: entry.tags?.length || entry.entry_type === 'axiom_brief' ? 1 : 0,
-                      }}>
-                        {entry.content}
-                      </Typography>
+                      <ContentRenderer
+                        content={entry.content}
+                        sx={{
+                          fontSize: '0.8rem',
+                          lineHeight: 1.5,
+                          color: 'text.secondary',
+                          mb: entry.tags?.length || entry.entry_type === 'axiom_brief' ? 1 : 0,
+                        }}
+                      />
 
                       {entry.entry_type === 'axiom_brief' && (
                         <Chip
@@ -535,12 +537,18 @@ const NotebookPage: React.FC = () => {
                               key={tag}
                               label={`#${tag}`}
                               size="small"
+                              onClick={() => navigate(`/search?q=%23${tag}`)}
                               sx={{
                                 height: 20,
                                 fontSize: '0.6rem',
                                 bgcolor: 'rgba(139,92,246,0.15)',
                                 color: '#A78BFA',
                                 border: '1px solid rgba(139,92,246,0.3)',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  bgcolor: 'rgba(139,92,246,0.25)',
+                                  border: '1px solid rgba(139,92,246,0.5)',
+                                },
                               }}
                             />
                           ))}

@@ -32,6 +32,7 @@ import { API_URL } from '../../lib/api';
 import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
 import ReferencePicker from '../../components/common/ReferencePicker';
 import ShareButton from '../../components/common/ShareButton';
+import ContentRenderer from '../../components/common/ContentRenderer';
 
 interface Post {
   id: string;
@@ -76,24 +77,6 @@ const formatRelativeTime = (iso: string): string => {
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
   return new Date(iso).toLocaleDateString();
-};
-
-const renderContentWithMentions = (content: string): React.ReactNode => {
-  const parts = content.split(/(@\w+)/g);
-  return parts.map((part, i) => {
-    if (/^@\w+$/.test(part)) {
-      return (
-        <Typography
-          key={i}
-          component="span"
-          sx={{ color: 'primary.main', fontWeight: 600, cursor: 'pointer' }}
-        >
-          {part}
-        </Typography>
-      );
-    }
-    return <span key={i}>{part}</span>;
-  });
 };
 
 const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = false, feedUserId, profileUserId }) => {
@@ -581,9 +564,14 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
 
                 {/* Content */}
                 {post.content && (
-                  <Typography variant="body2" sx={{ mb: post.media_url ? 1.5 : 0, whiteSpace: 'pre-wrap', lineHeight: 1.6, color: post.title ? 'text.secondary' : 'text.primary' }}>
-                    {renderContentWithMentions(post.content)}
-                  </Typography>
+                  <ContentRenderer 
+                    content={post.content}
+                    sx={{ 
+                      mb: post.media_url ? 1.5 : 0, 
+                      whiteSpace: 'pre-wrap', 
+                      color: post.title ? 'text.secondary' : 'text.primary' 
+                    }}
+                  />
                 )}
 
                 {/* Media */}
@@ -700,8 +688,8 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                                 </IconButton>
                               )}
                             </Box>
-                            <Typography variant="body2" sx={{ fontSize: '0.8rem', mt: 0.25, whiteSpace: 'pre-wrap' }}>
-                              {comment.content}
+                            <Typography variant="body2" sx={{ fontSize: '0.8rem', mt: 0.25 }}>
+                              <ContentRenderer content={comment.content} variant="comment" />
                             </Typography>
                           </Box>
                         </Box>

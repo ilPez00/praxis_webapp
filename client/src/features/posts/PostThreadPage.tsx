@@ -23,6 +23,7 @@ import { useUser } from '../../hooks/useUser';
 import { API_URL } from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
 import ReferenceCard from '../../components/common/ReferenceCard';
+import ContentRenderer from '../../components/common/ContentRenderer';
 
 interface Post {
   id: string;
@@ -219,9 +220,15 @@ const PostThreadPage: React.FC = () => {
 
         {/* Content */}
         {post.content && (
-          <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, mb: 1.5, color: post.title ? 'text.secondary' : 'text.primary' }}>
-            {post.content}
-          </Typography>
+          <ContentRenderer 
+            content={post.content}
+            sx={{ 
+              whiteSpace: 'pre-wrap', 
+              lineHeight: 1.7, 
+              mb: 1.5, 
+              color: post.title ? 'text.secondary' : 'text.primary' 
+            }}
+          />
         )}
 
         {/* Media */}
@@ -341,7 +348,7 @@ const PostThreadPage: React.FC = () => {
                       )}
                     </Box>
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                      {comment.content}
+                      <ContentRenderer content={comment.content} variant="comment" />
                     </Typography>
                   </Box>
                   <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>

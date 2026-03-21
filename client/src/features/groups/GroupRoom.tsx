@@ -26,6 +26,7 @@ import ForumIcon from '@mui/icons-material/Forum';
 import PostFeed from '../posts/PostFeed';
 import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
 import ReferencePicker from '../../components/common/ReferencePicker';
+import ContentRenderer from '../../components/common/ContentRenderer';
 
 interface Member {
   user_id: string;
@@ -243,9 +244,14 @@ const GroupRoom: React.FC = () => {
               background: isMine ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' : 'rgba(255,255,255,0.07)',
               border: isMine ? 'none' : '1px solid rgba(255,255,255,0.08)',
             }}>
-              <Typography variant="body2" sx={{ color: isMine ? '#0A0B14' : 'text.primary', wordBreak: 'break-word', fontWeight: isMine ? 500 : 400 }}>
-                {msg.content}
-              </Typography>
+              <ContentRenderer 
+                content={msg.content}
+                variant="chat"
+                sx={{ 
+                  color: isMine ? '#0A0B14' : 'text.primary',
+                  fontWeight: isMine ? 500 : 400,
+                }}
+              />
               <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.25, opacity: 0.55, color: isMine ? '#0A0B14' : 'text.secondary', fontSize: '0.62rem' }}>
                 {ts}
               </Typography>

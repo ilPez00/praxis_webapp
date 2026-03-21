@@ -31,6 +31,7 @@ import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import ReferencePicker, { Reference } from '../../components/common/ReferencePicker';
+import ContentRenderer from '../../components/common/ContentRenderer';
 
 const ENTRY_TYPE_ICONS: Record<string, React.ReactNode> = {
   note: <NoteIcon />,
@@ -511,15 +512,16 @@ const DiaryPage: React.FC = () => {
                         </Box>
                         
                         {entry.content && (
-                          <Typography sx={{
-                            fontSize: '0.8rem',
-                            lineHeight: 1.5,
-                            color: 'text.secondary',
-                            mb: entry.tags?.length ? 1 : 0,
-                            whiteSpace: 'pre-wrap',
-                          }}>
-                            {entry.content}
-                          </Typography>
+                          <ContentRenderer
+                            content={entry.content}
+                            sx={{
+                              fontSize: '0.8rem',
+                              lineHeight: 1.5,
+                              color: 'text.secondary',
+                              mb: entry.tags?.length ? 1 : 0,
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          />
                         )}
                         
                         {entry.tags && entry.tags.length > 0 && (
@@ -529,11 +531,18 @@ const DiaryPage: React.FC = () => {
                                 key={tag}
                                 label={`#${tag}`}
                                 size="small"
+                                onClick={() => navigate(`/search?q=%23${tag}`)}
                                 sx={{
                                   height: 20,
                                   fontSize: '0.6rem',
                                   bgcolor: 'rgba(139,92,246,0.15)',
                                   color: '#A78BFA',
+                                  border: '1px solid rgba(139,92,246,0.3)',
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    bgcolor: 'rgba(139,92,246,0.25)',
+                                    border: '1px solid rgba(139,92,246,0.5)',
+                                  },
                                 }}
                               />
                             ))}
