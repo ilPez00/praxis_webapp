@@ -1056,7 +1056,7 @@ export const triggerAxiomScan = catchAsync(async (_req: Request, res: Response) 
     });
 
   // Don't wait for completion, but track it
-  scanPromise.catch(() => {});
+  scanPromise.catch(err => logger.warn('Fire-and-forget failed:', err?.message));
 
   res.json({ 
     message: 'Global Axiom scan triggered in background. LLM-powered briefs will be generated for all active users.',
@@ -1205,7 +1205,7 @@ export const streakAlerts = catchAsync(async (req: Request, res: Response) => {
       title: `Your ${user.current_streak}-day streak is at risk!`,
       body: "Check in before midnight to keep your streak alive.",
       link: '/dashboard',
-    }).catch(() => {});
+    }).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
     alerted++;
   }
 

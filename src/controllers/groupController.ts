@@ -200,7 +200,7 @@ export const sendRoomMessage = catchAsync(async (req: Request, res: Response, ne
         link: `/communication`,
         actorId: senderId,
         roomId: roomId as string,
-      }).catch(() => {});
+      }).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
     }
   }
 

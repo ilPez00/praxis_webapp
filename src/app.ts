@@ -159,7 +159,7 @@ apiRouter.use('/duels', generalLimiter, duelRoutes);
 apiRouter.use('/trackers', generalLimiter, trackerRoutes);
 apiRouter.use('/dashboard', generalLimiter, dashboardRoutes);
 apiRouter.use('/journal', generalLimiter, journalRoutes);
-apiRouter.use('/axiom', generalLimiter, axiomRoutes);
+// NOTE: /axiom is already registered above with axiomLimiter (line 125) — do NOT re-register here
 apiRouter.use('/axiom-unlock', generalLimiter, axiomUnlockRoutes);
 apiRouter.use('/notebook', generalLimiter, notebookRoutes);
 apiRouter.use('/diary', generalLimiter, diaryRoutes);
@@ -172,9 +172,10 @@ app.use('/api', apiRouter);
 // Root level health check for Vercel functions compatibility
 app.get('/', (_req, res) => res.json({ message: 'Praxis API Entry Point' }));
 
-// Error Handling Middleware - MUST be last
+// Public widget routes (no /api prefix, no auth — embeddable iframe)
 app.use('/public/widget', publicWidgetRoutes);
 
+// Error Handling Middleware - MUST be last
 app.use(notFoundHandler);
 app.use(errorHandler);
 

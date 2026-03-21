@@ -284,7 +284,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     const completedNode = nodes.find((n: any) => n.id === reward.node_id);
     const domain: string | undefined = completedNode?.domain;
     if (domain) {
-      bumpDomainProficiency(userId, domain, 1.0).catch(() => {});
+      bumpDomainProficiency(userId, domain, 1.0).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
     }
   }
 
@@ -293,7 +293,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     const oldNode = existingNodes.find((n: any) => n.id === newNode.id);
     const oldProgress = oldNode?.progress ?? 0;
     if (newNode.progress !== oldProgress) {
-      autoPostMilestone(userId, newNode.id, newNode.name, newNode.domain || '', oldProgress, newNode.progress).catch(() => {});
+      autoPostMilestone(userId, newNode.id, newNode.name, newNode.domain || '', oldProgress, newNode.progress).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
     }
   }
   // --- End Achievement Creation Logic ---
@@ -486,9 +486,9 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
       await supabase.from('profiles')
         .update({ praxis_points: (profile.praxis_points ?? 0) + ppAward })
         .eq('id', userId);
-      if (targetDomain) bumpDomainProficiency(userId as string, targetDomain, 1.0).catch(() => {});
+      if (targetDomain) bumpDomainProficiency(userId as string, targetDomain, 1.0).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
       // Auto-create achievement + community feed post (fire-and-forget)
-      createAchievementFromGoal(node, userId as string, profile.name, profile.avatar_url ?? undefined).catch(() => {});
+      createAchievementFromGoal(node, userId as string, profile.name, profile.avatar_url ?? undefined).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
       
       // ── GRANT REWARD: Free Edit ──
       // Completion grants a fresh edit session by resetting the count
@@ -502,7 +502,7 @@ export const updateNodeProgress = catchAsync(async (req: Request, res: Response,
   // Auto-post milestone to feed (fire-and-forget)
   const updatedNode = updatedNodes.find(n => n.id === nodeId);
   if (updatedNode) {
-    autoPostMilestone(String(userId), String(nodeId), updatedNode.name, targetDomain, oldProgress, progress / 100).catch(() => {});
+    autoPostMilestone(String(userId), String(nodeId), updatedNode.name, targetDomain, oldProgress, progress / 100).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
   }
 
   res.json({ success: true, nodeId, progress });

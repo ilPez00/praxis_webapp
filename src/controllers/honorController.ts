@@ -147,7 +147,7 @@ export const giveHonor = catchAsync(async (req: Request, res: Response, _next: N
       body: `Your honor score is now ${newScore.toFixed(2)}.`,
       link: `/profile/${targetId}`,
       actorId: voterId,
-    }).catch(() => {});
+    }).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
   }
 
   res.json({ message: 'Honor given.', honor_score: newScore ?? 0 });

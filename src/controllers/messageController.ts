@@ -119,7 +119,7 @@ export const sendMessage = catchAsync(async (req: Request, res: Response, next: 
     body: content.length > 80 ? content.slice(0, 80) + '…' : content,
     link: `/communication`,
     actorId: senderId,
-  }).catch(() => {});
+  }).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
 
   res.status(201).json({ message: 'Message sent successfully.', sentMessage: data });
 });

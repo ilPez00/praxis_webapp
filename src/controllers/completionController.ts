@@ -73,7 +73,7 @@ export const createCompletionRequest = catchAsync(async (req: Request, res: Resp
     body: `Someone wants you to verify: "${goalName}"`,
     link: `/communication`,
     actorId: requesterId,
-  }).catch(() => {});
+  }).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
 
   res.status(201).json(request);
 });
@@ -189,7 +189,7 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
       : `"${request.goal_name}" was not approved this time.`,
     link: `/goal-tree`,
     actorId: verifierId,
-  }).catch(() => {});
+  }).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
 
   res.json({ status, requestId: id });
 });

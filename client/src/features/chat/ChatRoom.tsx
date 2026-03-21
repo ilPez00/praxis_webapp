@@ -232,6 +232,7 @@ const ChatRoom: React.FC = () => {
       .subscribe();
 
     return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
