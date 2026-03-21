@@ -521,3 +521,15 @@ Session 80: Full Log as Default Widget View (2026-03-21)
 - Verification: 0 TypeScript errors, build passes (9.85s)
 - Next: Deploy + test, clear site data after deploy
 - Sign: Claude
+
+Session 81: Daily Tracker Limit + Note Attachments (2026-03-21)
+- trackerController.ts: added MAX_TRACKER_LOGS_PER_DAY=3, daily limit check before insert; returns 429 with limitReached:true when exceeded
+- UnifiedGoalWidget.tsx: shows amber "Daily limit reached" card when 3/day tracker cap hit; added NoteAttachmentBar to journal section with attachments in dual-write
+- NoteAttachmentBar.tsx (NEW): reusable file upload + link attachment component — uploads to Supabase Storage `notebook-files` bucket, link dialog with URL+label, attachment chips with click-to-open + delete
+- QuickLogDialog.tsx: added NoteAttachmentBar + freeAttachments state to free diary form, included in dual-write
+- NotebookPage.tsx: added NoteAttachmentBar to inline reply area with replyAttachments state, included in handleReply POST body
+- manual_actions.txt: added "Create notebook-files bucket" manual action
+- Files: src/controllers/trackerController.ts, client/src/components/common/UnifiedGoalWidget.tsx, client/src/components/common/NoteAttachmentBar.tsx (NEW), client/src/components/common/QuickLogDialog.tsx, client/src/features/notebook/NotebookPage.tsx, docs/manual_actions.txt
+- Verification: 0 TypeScript errors (only node_modules/i18next false positives)
+- Next: Create notebook-files Supabase bucket (manual action), deploy + test attachments
+- Sign: Claude

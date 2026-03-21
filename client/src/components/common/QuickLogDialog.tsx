@@ -13,6 +13,8 @@ import { API_URL } from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 import UnifiedGoalWidget from './UnifiedGoalWidget';
+import NoteAttachmentBar from './NoteAttachmentBar';
+import type { Attachment } from './NoteAttachmentBar';
 
 interface RawGoalNode {
   id: string;
@@ -60,6 +62,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   const [mood, setMood] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [activeBets, setActiveBets] = useState<any[]>([]);
+  const [freeAttachments, setFreeAttachments] = useState<Attachment[]>([]);
 
   useEffect(() => {
     if (!open || !user?.id) return;
@@ -68,6 +71,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
     setViewMode('selector');
     setNote('');
     setMood(null);
+    setFreeAttachments([]);
 
     // Fetch goals + bets in parallel
     Promise.all([
@@ -102,6 +106,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
     setViewMode('selector');
     setNote('');
     setMood(null);
+    setFreeAttachments([]);
   };
 
   const handleSaveJournal = async () => {
@@ -126,12 +131,14 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
         body: JSON.stringify({
           entry_type: 'note', content: contentText,
           mood: mood || undefined, source_table: 'journal_entries',
+          attachments: freeAttachments.length > 0 ? freeAttachments : undefined,
         }),
       });
 
       toast.success('Diary entry saved!');
       setNote('');
       setMood(null);
+      setFreeAttachments([]);
       onClose();
     } catch (err: any) {
       toast.error('Failed to save: ' + (err.message || 'Unknown error'));
@@ -182,10 +189,19 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
         value={note}
         onChange={(e) => setNote(e.target.value)}
         sx={{
-          mb: 2,
+          mb: 1,
           '& .MuiOutlinedInput-root': { borderRadius: '14px', bgcolor: 'rgba(255,255,255,0.04)', fontSize: '0.9rem' },
         }}
       />
+
+      {/* Attachments */}
+      <Box sx={{ mb: 1.5 }}>
+        <NoteAttachmentBar
+          attachments={freeAttachments}
+          onChange={setFreeAttachments}
+          userId={user?.id || ''}
+        />
+      </Box>
 
       {/* Save button */}
       <Button

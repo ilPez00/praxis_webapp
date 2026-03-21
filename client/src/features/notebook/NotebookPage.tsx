@@ -35,6 +35,8 @@ import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import NoteEditDialog from './NoteEditDialog';
 import ShareDialog from '../../components/common/ShareDialog';
+import NoteAttachmentBar from '../../components/common/NoteAttachmentBar';
+import type { Attachment } from '../../components/common/NoteAttachmentBar';
 
 const ENTRY_TYPE_ICONS: Record<string, React.ReactNode> = {
   note: <EditNoteIcon />,
@@ -102,6 +104,7 @@ const NotebookPage: React.FC = () => {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [replySaving, setReplySaving] = useState(false);
+  const [replyAttachments, setReplyAttachments] = useState<Attachment[]>([]);
   // Share state
   const [shareEntry, setShareEntry] = useState<NotebookEntry | null>(null);
 
@@ -231,12 +234,14 @@ const NotebookPage: React.FC = () => {
             reply_to_title: parentEntry.title,
             reply_to_type: parentEntry.entry_type,
           },
+          attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
         }),
       });
       if (res.ok) {
         const newEntry = await res.json();
         setEntries(prev => [newEntry, ...prev]);
         setReplyText('');
+        setReplyAttachments([]);
         setReplyingTo(null);
         toast.success('Reply added');
       } else {
@@ -557,26 +562,34 @@ const NotebookPage: React.FC = () => {
                   </Box>
                   {/* Inline reply */}
                   {replyingTo === entry.id && (
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        multiline
-                        maxRows={3}
-                        placeholder="Write a reply..."
-                        value={replyText}
-                        onChange={e => setReplyText(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply(entry); } }}
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.03)', fontSize: '0.82rem' } }}
+                    <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          multiline
+                          maxRows={3}
+                          placeholder="Write a reply..."
+                          value={replyText}
+                          onChange={e => setReplyText(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply(entry); } }}
+                          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.03)', fontSize: '0.82rem' } }}
+                        />
+                        <IconButton
+                          size="small"
+                          onClick={() => handleReply(entry)}
+                          disabled={replySaving || !replyText.trim()}
+                          sx={{ color: '#A78BFA', alignSelf: 'flex-end' }}
+                        >
+                          <SendIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      <NoteAttachmentBar
+                        attachments={replyAttachments}
+                        onChange={setReplyAttachments}
+                        userId={user?.id || ''}
+                        compact
                       />
-                      <IconButton
-                        size="small"
-                        onClick={() => handleReply(entry)}
-                        disabled={replySaving || !replyText.trim()}
-                        sx={{ color: '#A78BFA', alignSelf: 'flex-end' }}
-                      >
-                        <SendIcon fontSize="small" />
-                      </IconButton>
                     </Box>
                   )}
                 </Paper>

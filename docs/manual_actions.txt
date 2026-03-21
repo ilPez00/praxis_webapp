@@ -817,3 +817,11 @@ WHY: Adds `metadata` JSONB column to notebook_entries (for reply threading,
      share context), and relaxes entry_type CHECK to include axiom_brief,
      reply, place, user types.
 SUCCESS: SELECT metadata FROM notebook_entries LIMIT 1; -- should not error
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUPABASE STORAGE: Create notebook-files bucket (Session 79)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHERE: Supabase Dashboard → Storage → New Bucket
+WHAT: Create a public bucket named "notebook-files"
+WHY: NoteAttachmentBar uploads files to notebook-files/{userId}/{timestamp}.{ext}
+SUCCESS: Upload a test file via the QuickLog diary form → chip appears with link

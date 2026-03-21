@@ -16,6 +16,8 @@ import { API_URL } from '../../lib/api';
 import { findWidget } from '../../features/dashboard/components/GoalWidgets';
 import type { WidgetGoalNode } from '../../features/dashboard/components/GoalWidgets';
 import EditableTrackerForm from '../../features/trackers/EditableTrackerForm';
+import NoteAttachmentBar from './NoteAttachmentBar';
+import type { Attachment } from './NoteAttachmentBar';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -133,6 +135,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   const [note, setNote] = useState('');
   const [mood, setMood] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const domain = getNodeDomain(goal.id, allNodes);
   const domainColor = (DOMAIN_COLORS as Record<string, string>)[domain] ?? '#8B5CF6';
@@ -190,12 +193,14 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
           entry_type: 'note', title: goal.name, content: contentText,
           mood: mood || undefined, goal_id: goal.id,
           domain: goal.domain || undefined, source_table: 'node_journal_entries',
+          attachments: attachments.length > 0 ? attachments : undefined,
         }),
       });
 
       toast.success(`Logged on "${goal.name}"!`);
       setNote('');
       setMood(null);
+      setAttachments([]);
       onSaved?.();
     } catch (err: any) {
       toast.error('Failed to save: ' + (err.message || 'Unknown error'));
@@ -435,6 +440,15 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
             />
           ))}
         </Box>
+
+        {/* ── Attachments (link + file) ── */}
+        <NoteAttachmentBar
+          attachments={attachments}
+          onChange={setAttachments}
+          userId={userId}
+          accentColor={accentColor}
+          compact
+        />
 
         {/* ── Journal input + send ── */}
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end', mb: 1.5 }}>
