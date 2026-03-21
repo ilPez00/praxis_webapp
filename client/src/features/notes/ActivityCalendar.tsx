@@ -41,11 +41,11 @@ function buildGrid(weeks: number): string[][] {
 }
 
 const TRACKER_DOMAIN: Record<string, string> = {
-  lift: 'Fitness', cardio: 'Fitness', meal: 'Fitness', steps: 'Fitness',
-  sleep: 'Mental Health', focus: 'Academics', read: 'Academics',
-  meditate: 'Mental Health', journal: 'Mental Health',
-  code: 'Career', apply: 'Career', network: 'Career',
-  save: 'Investing / Financial Growth', invest: 'Investing / Financial Growth',
+  lift: 'Body & Fitness', cardio: 'Body & Fitness', meal: 'Body & Fitness', steps: 'Body & Fitness',
+  sleep: 'Rest & Recovery', focus: 'Mental Balance', read: 'Spirit & Purpose',
+  meditate: 'Mental Balance', journal: 'Mental Balance',
+  code: 'Career & Craft', apply: 'Career & Craft', network: 'Career & Craft',
+  save: 'Financial Security', invest: 'Wealth & Assets',
 };
 
 const TRACKER_EMOJI: Record<string, string> = {
@@ -165,90 +165,33 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({
         };
       };
 
-      await Promise.allSettled([
-        (async () => {
-          const { data: trackers } = await supabase
-            .from('trackers').select('id, type').eq('user_id', userId);
-          if (!trackers?.length) return;
-          const ids = trackers.map(t => t.id);
-          const typeMap = Object.fromEntries(trackers.map(t => [t.id, t.type]));
-          const { data: entries } = await supabase
-            .from('tracker_entries').select('tracker_id, logged_at')
-            .in('tracker_id', ids).gte('logged_at', since);
-          for (const e of entries || []) {
-            const d = e.logged_at.slice(0, 10);
-            ensure(d);
-            map[d].trackerTypes.push(typeMap[e.tracker_id]);
-            map[d].count++;
-          }
-        })(),
-
-        supabase
-          .from('node_journal_entries').select('logged_at')
-          .eq('user_id', userId).gte('logged_at', since)
-          .then(({ data }) => {
-            for (const e of data || []) {
-              const d = e.logged_at.slice(0, 10);
-              ensure(d); map[d].journal = true; map[d].count++;
-            }
-          }),
-
-        supabase
-          .from('checkins').select('checked_in_at')
-          .eq('user_id', userId).gte('checked_in_at', since)
-          .then(({ data }) => {
-            for (const e of data || []) {
-              const d = e.checked_in_at.slice(0, 10);
-              ensure(d); map[d].checkin = true; map[d].count++;
-            }
-          }),
-
-        supabase
-          .from('achievements').select('domain, created_at')
-          .eq('user_id', userId).gte('created_at', since)
-          .then(({ data }) => {
-            for (const e of data || []) {
-              const d = e.created_at.slice(0, 10);
-              ensure(d); map[d].achievement = true; map[d].count++;
-            }
-          }),
-
-        supabase
-          .from('bets').select('created_at')
-          .eq('user_id', userId).gte('created_at', since)
-          .then(({ data }) => {
-            for (const e of data || []) {
-              const d = e.created_at.slice(0, 10);
-              ensure(d); map[d].bet = true; map[d].count++;
-            }
-          }),
-
-        supabase
-          .from('goal_trees').select('nodes').eq('user_id', userId).single()
-          .then(({ data }) => {
-            if (!data?.nodes) return;
-            for (const n of data.nodes as any[]) {
-              if (n.updated_at && n.updated_at >= since) {
-                const d = n.updated_at.slice(0, 10);
-                ensure(d);
-                if (n.domain) map[d].goalDomains.push(n.domain);
-                map[d].count++;
-              }
-            }
-          }),
-
-        supabase
-          .from('event_rsvps').select('event_id, created_at')
+      try {
+        const { data: entries } = await supabase
+          .from('notebook_entries')
+          .select('entry_type, source_table, domain, occurred_at')
           .eq('user_id', userId)
-          .then(({ data }) => {
-            for (const e of data || []) {
-              if (e.created_at && e.created_at >= since) {
-                const d = e.created_at.slice(0, 10);
-                ensure(d); map[d].event = true; map[d].count++;
-              }
-            }
-          }),
-      ]);
+          .gte('occurred_at', since);
+
+        for (const e of entries || []) {
+          const d = e.occurred_at.slice(0, 10);
+          ensure(d);
+          map[d].count++;
+
+          if (e.entry_type === 'note') map[d].journal = true;
+          else if (e.entry_type === 'checkin') map[d].checkin = true;
+          else if (e.entry_type === 'achievement') map[d].achievement = true;
+          else if (e.entry_type === 'bet') map[d].bet = true;
+          else if (e.entry_type === 'event') map[d].event = true;
+          else if (e.entry_type === 'goal') {
+            if (e.domain) map[d].goalDomains.push(e.domain);
+          }
+          else if (e.entry_type === 'tracker') {
+            map[d].trackerTypes.push('generic'); 
+          }
+        }
+      } catch (err) {
+        console.error('ActivityCalendar fetch error:', err);
+      }
 
       const result: Record<string, DayData> = {};
       for (const [date, info] of Object.entries(map)) {

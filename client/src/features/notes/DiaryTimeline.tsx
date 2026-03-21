@@ -67,145 +67,36 @@ const DiaryTimeline: React.FC<DiaryTimelineProps> = ({ userId, days = 30 }) => {
 
     const fetchAll = async () => {
       setLoading(true);
-      const results = await Promise.allSettled([
-        // 1. Tracker entries
-        (async () => {
-          const { data: trackers } = await supabase
-            .from('trackers').select('id, type').eq('user_id', userId);
-          if (!trackers?.length) return [];
-          const ids = trackers.map(t => t.id);
-          const typeMap = Object.fromEntries(trackers.map(t => [t.id, t.type]));
-          const { data: entries } = await supabase
-            .from('tracker_entries').select('id, tracker_id, data, logged_at')
-            .in('tracker_id', ids).gte('logged_at', since).order('logged_at', { ascending: false }).limit(200);
-          return (entries || []).map(e => {
-            const tType = typeMap[e.tracker_id] || 'unknown';
-            const d = e.data as Record<string, any>;
-            let detail = '';
-            if (tType === 'lift' && d.exercise) detail = `${d.exercise} ${d.sets}×${d.reps} @ ${d.weight}kg`;
-            else if (tType === 'cardio' && d.activity) detail = `${d.activity} ${d.duration || ''}min`;
-            else if (tType === 'meal' && d.food) detail = `${d.food} ${d.calories ? d.calories + 'kcal' : ''}`;
-            else if (tType === 'steps') detail = `${d.steps || 0} steps`;
-            else if (tType === 'sleep') detail = `${d.hours || 0}h sleep`;
-            else detail = Object.values(d).filter(Boolean).join(', ');
-            return {
-              id: `tracker-${e.id}`, type: 'tracker' as const, timestamp: e.logged_at,
-              title: `${tType.charAt(0).toUpperCase() + tType.slice(1)} logged`,
-              detail, icon: '📊', color: '#F59E0B',
-            };
-          });
-        })(),
+      try {
+        const { data: entries } = await supabase
+          .from('notebook_entries')
+          .select('id, entry_type, title, content, mood, domain, occurred_at')
+          .eq('user_id', userId)
+          .gte('occurred_at', since)
+          .order('occurred_at', { ascending: false })
+          .limit(300);
 
-        // 2. Journal entries
-        supabase
-          .from('node_journal_entries').select('id, node_id, note, mood, logged_at')
-          .eq('user_id', userId).gte('logged_at', since).order('logged_at', { ascending: false }).limit(100)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `journal-${e.id}`, type: 'journal' as const, timestamp: e.logged_at,
-            title: e.mood ? `Journal: ${e.mood}` : 'Journal entry',
-            detail: e.note?.slice(0, 120) || '', icon: '📓', color: '#8B5CF6',
-          }))),
-
-        // 3. Check-ins
-        supabase
-          .from('checkins').select('id, mood, win_of_the_day, checked_in_at, streak_day')
-          .eq('user_id', userId).gte('checked_in_at', since).order('checked_in_at', { ascending: false }).limit(60)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `checkin-${e.id}`, type: 'checkin' as const, timestamp: e.checked_in_at,
-            title: `Day ${e.streak_day} check-in`,
-            detail: e.win_of_the_day || (e.mood ? `Mood: ${e.mood}` : ''),
-            icon: '✅', color: '#10B981',
-          }))),
-
-        // 4. Bets
-        supabase
-          .from('bets').select('id, goal_name, stake_points, status, created_at')
-          .eq('user_id', userId).gte('created_at', since).order('created_at', { ascending: false }).limit(50)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `bet-${e.id}`, type: 'bet' as const, timestamp: e.created_at,
-            title: `Bet ${e.status === 'won' ? 'won' : e.status === 'lost' ? 'lost' : 'placed'}: ${e.goal_name}`,
-            detail: `${e.stake_points} PP at stake`,
-            icon: e.status === 'won' ? '🎉' : e.status === 'lost' ? '💸' : '🎰',
-            color: e.status === 'won' ? '#10B981' : e.status === 'lost' ? '#EF4444' : '#F59E0B',
-          }))),
-
-        // 5. Achievements
-        supabase
-          .from('achievements').select('id, title, domain, created_at')
-          .eq('user_id', userId).gte('created_at', since).order('created_at', { ascending: false }).limit(30)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `achieve-${e.id}`, type: 'achievement' as const, timestamp: e.created_at,
-            title: `Goal completed: ${e.title}`,
-            detail: e.domain || '',
-            icon: DOMAIN_ICONS[e.domain] || '🏆',
-            color: DOMAIN_COLORS[e.domain] || '#F59E0B',
-          }))),
-
-        // 6. Posts
-        supabase
-          .from('posts').select('id, title, content, created_at')
-          .eq('user_id', userId).gte('created_at', since).order('created_at', { ascending: false }).limit(50)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `post-${e.id}`, type: 'post' as const, timestamp: e.created_at,
-            title: e.title ? `Posted: ${e.title}` : 'Shared a post',
-            detail: e.content?.slice(0, 100) || '', icon: '📝', color: '#3B82F6',
-          }))),
-
-        // 7. Verification requests (sent)
-        supabase
-          .from('completion_requests').select('id, goal_name, status, created_at')
-          .eq('requester_id', userId).gte('created_at', since).order('created_at', { ascending: false }).limit(30)
-          .then(({ data }) => (data || []).map(e => ({
-            id: `verify-${e.id}`, type: 'verification' as const, timestamp: e.created_at,
-            title: `Verification ${e.status === 'approved' ? 'approved' : e.status === 'rejected' ? 'rejected' : 'requested'}`,
-            detail: e.goal_name || '',
-            icon: e.status === 'approved' ? '✅' : e.status === 'rejected' ? '❌' : '🔍',
-            color: e.status === 'approved' ? '#10B981' : e.status === 'rejected' ? '#EF4444' : '#06B6D4',
-          }))),
-
-        // 8. Goal tree updates (from nodes updated_at)
-        supabase
-          .from('goal_trees').select('nodes').eq('user_id', userId).single()
-          .then(({ data }) => {
-            if (!data?.nodes) return [];
-            return (data.nodes as any[])
-              .filter(n => n.updated_at && new Date(n.updated_at) >= new Date(since))
-              .map(n => ({
-                id: `goal-${n.id}`, type: 'goal' as const, timestamp: n.updated_at,
-                title: `${n.name}: ${Math.round((n.progress || 0) * 100)}%`,
-                detail: n.domain || '',
-                icon: DOMAIN_ICONS[n.domain] || '🎯',
-                color: DOMAIN_COLORS[n.domain] || '#A78BFA',
-              }));
-          }),
-
-        // 9. Sparring matches
-        supabase
-          .from('sparring_partners').select('id, partner_id, created_at')
-          .eq('user_id', userId).gte('created_at', since).order('created_at', { ascending: false }).limit(20)
-          .then(async ({ data }) => {
-            if (!data?.length) return [];
-            const partnerIds = data.map(s => s.partner_id);
-            const { data: profiles } = await supabase
-              .from('profiles').select('id, name').in('id', partnerIds);
-            const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.name]));
-            return data.map(s => ({
-              id: `match-${s.id}`, type: 'match' as const, timestamp: s.created_at,
-              title: `Matched with ${nameMap[s.partner_id] || 'a partner'}`,
-              detail: '', icon: '🤝', color: '#EC4899',
-            }));
-          }),
-      ]);
-
-      const allItems: DiaryItem[] = [];
-      for (const r of results) {
-        if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-          allItems.push(...r.value);
-        }
+        const diaryItems: DiaryItem[] = (entries || []).map(e => {
+          const style = TYPE_STYLES[e.entry_type] || TYPE_STYLES.goal;
+          let icon = e.mood || style.icon;
+          if (e.entry_type === 'tracker') icon = '📊';
+          
+          return {
+            id: e.id,
+            type: e.entry_type as any,
+            timestamp: e.occurred_at,
+            title: e.title || 'Note',
+            detail: e.content || '',
+            icon,
+            color: DOMAIN_COLORS[e.domain || ''] || style.color,
+          };
+        });
+        setItems(diaryItems);
+      } catch (err) {
+        console.error('DiaryTimeline fetch error:', err);
+      } finally {
+        setLoading(false);
       }
-      allItems.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-      setItems(allItems);
-      setLoading(false);
     };
 
     fetchAll();

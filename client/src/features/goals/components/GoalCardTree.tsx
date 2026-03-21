@@ -180,7 +180,7 @@ const GoalCardTree: React.FC<GoalCardTreeProps> = ({
           }}
         >
           <Typography sx={{ fontSize: '1.1rem' }}>+</Typography>
-          <Typography>Add new goal</Typography>
+          <Typography>Add new topic</Typography>
         </Box>
       )}
     </Box>

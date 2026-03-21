@@ -347,16 +347,24 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
     // Only count edits AFTER onboarding is complete — during onboarding, edits are free.
     try {
       const streakUpdate = computeStreakUpdate(profile?.last_activity_date, profile?.current_streak ?? 0);
-      const countUpdate = profile?.onboarding_completed ? { goal_tree_edit_count: editCount + 1 } : {};
+      const isReSetup = profile?.onboarding_completed;
+      const countUpdate = isReSetup ? { goal_tree_edit_count: editCount + 1 } : {};
+      
+      // Deduct 150 PP for re-setup
+      const pointsUpdate = (isReSetup && !isAdmin && !isPremium) 
+        ? { praxis_points: Math.max(0, (profile?.praxis_points ?? 0) - 150) } 
+        : {};
+
       await supabase
         .from('profiles')
         .update({
           ...countUpdate,
           ...streakUpdate,
+          ...pointsUpdate,
         })
         .eq('id', userId);
     } catch (incrementErr) {
-      logger.warn('Could not update goal_tree_edit_count/streak (columns may not exist yet):', incrementErr);
+      logger.warn('Could not update goal_tree_edit_count/streak/points:', incrementErr);
     }
 
     res.json(data); // Respond with the updated goal tree

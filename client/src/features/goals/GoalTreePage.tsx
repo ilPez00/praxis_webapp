@@ -327,7 +327,7 @@ const GoalTreePage: React.FC = () => {
           },
           { headers }
         );
-        toast.success(parentId ? 'Sub-goal added! -150 PP' : 'New goal added! -150 PP');
+        toast.success(parentId ? 'Chapter added! -150 PP' : 'New topic added! -150 PP');
         if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
       } else if (editingNode) {
         const bNode = backendNodes.find(n => n.id === editingNode.id);
@@ -348,7 +348,7 @@ const GoalTreePage: React.FC = () => {
             },
             { headers }
           );
-          toast.success('Goal details updated! -50 PP');
+          toast.success('Details updated! -50 PP');
           if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
         }
 
@@ -488,12 +488,12 @@ const GoalTreePage: React.FC = () => {
     <Container component="main" maxWidth="lg" sx={{ mt: 4, px: { xs: 0, sm: 3 } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, px: { xs: 2, sm: 0 }, flexWrap: 'wrap', gap: 1 }}>
         <Typography variant="h4" component="h1" sx={{ color: 'primary.main', fontWeight: 800 }}>
-          {isOwnTree ? 'Your Goals' : 'Goal Tree'}
+          {isOwnTree ? 'Your Notebook' : 'Notebook'}
         </Typography>
         {isOwnTree && praxisPoints !== null && (
           <Chip
             icon={<LocalFireDepartmentIcon sx={{ color: '#F59E0B !important' }} />}
-            label={`${praxisPoints} pts`}
+            label={`${praxisPoints} PP`}
             size="small"
             sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', fontWeight: 700 }}
           />
@@ -503,10 +503,10 @@ const GoalTreePage: React.FC = () => {
       {treeData.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
-            No goals yet
+            Your Notebook is empty
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 4, maxWidth: 400, mx: 'auto', lineHeight: 1.7 }}>
-            Your goal tree is empty. Set up your initial goals to start finding aligned partners.
+            Set up your initial topics to start organizing your life and finding aligned partners.
           </Typography>
           <Button
             variant="contained"
@@ -514,7 +514,7 @@ const GoalTreePage: React.FC = () => {
             onClick={() => navigate('/goal-selection')}
             sx={{ px: 5, py: 1.5, borderRadius: '12px', fontWeight: 700 }}
           >
-            Set Up Your Goals
+            Set Up Your Notebook
           </Button>
         </Box>
       ) : (
@@ -578,7 +578,7 @@ const GoalTreePage: React.FC = () => {
         <DialogTitle sx={{ fontWeight: 700, textAlign: 'center', pt: 3 }}>
           <Typography variant="h2" sx={{ mb: 1 }}>🏆</Typography>
           <Typography variant="h5" sx={{ fontWeight: 800, background: 'linear-gradient(135deg, #F59E0B, #8B5CF6)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Goal Completed!
+            Topic Completed!
           </Typography>
         </DialogTitle>
         <DialogContent>
@@ -707,7 +707,7 @@ const GoalTreePage: React.FC = () => {
         <DialogTitle sx={{ fontWeight: 700 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <LocalFireDepartmentIcon sx={{ color: '#F59E0B' }} />
-            Bet on this Goal
+            Bet on this Topic
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -718,7 +718,7 @@ const GoalTreePage: React.FC = () => {
           </Typography>
           {praxisPoints !== null && (
             <Typography variant="caption" sx={{ mb: 2, display: 'block', color: '#F59E0B', fontWeight: 700 }}>
-              Your balance: {praxisPoints} pts
+              Your balance: {praxisPoints} PP
             </Typography>
           )}
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -745,7 +745,7 @@ const GoalTreePage: React.FC = () => {
             disabled={placingBet || !betDeadline || betStake < 1}
             sx={{ background: 'linear-gradient(135deg, #F59E0B, #EF4444)' }}
           >
-            {placingBet ? 'Placing...' : `Bet ${betStake} pts`}
+            {placingBet ? 'Placing...' : `Bet ${betStake} PP`}
           </Button>
         </DialogActions>
       </Dialog>
@@ -757,8 +757,8 @@ const GoalTreePage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {isBranching ? <AddCircleOutlineIcon sx={{ color: 'primary.main' }} /> : <EditNoteIcon sx={{ color: 'primary.main' }} />}
             {isBranching
-              ? (editingNode ? `Add Sub-goal to: ${editingNode.title}` : 'Add New Goal to Tree')
-              : 'Goal Details'}
+              ? (editingNode ? `Add Chapter to: ${editingNode.title}` : 'Add New Topic')
+              : 'Topic Details'}
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -774,7 +774,7 @@ const GoalTreePage: React.FC = () => {
                 ))}
               </TextField>
             )}
-            <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} placeholder={isBranching ? "What is the new goal?" : "Goal name"} />
+            <TextField fullWidth label="Name" value={editName} onChange={e => setEditName(e.target.value)} placeholder={isBranching ? "What is the new topic/chapter?" : "Topic name"} />
             <TextField fullWidth label="Description" multiline rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Details..." />
             <TextField fullWidth label="Success Metric" multiline rows={2} value={editMetric} onChange={e => setEditMetric(e.target.value)} placeholder="How will you know it's done?" />
             <TextField fullWidth label="Target Date" type="date" InputLabelProps={{ shrink: true }} value={editTargetDate} onChange={e => setEditTargetDate(e.target.value)} inputProps={{ min: new Date().toISOString().slice(0, 10) }} />
@@ -812,7 +812,7 @@ const GoalTreePage: React.FC = () => {
                 }}
                 sx={{ borderRadius: '8px', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.4)' }}
               >
-                Add Sub-goal
+                Add Chapter
               </Button>
               {editingNode.progress < 100 && (
                 <>
@@ -851,7 +851,7 @@ const GoalTreePage: React.FC = () => {
           <Button onClick={() => { setEditingNode(null); setIsBranching(false); }} sx={{ color: 'text.secondary' }}>Cancel</Button>
           <Button variant="contained" onClick={handleSaveEdit} disabled={savingEdit || !editName.trim() || (isBranching && !editingNode && !newGoalDomain)}
             sx={{ borderRadius: '10px' }}>
-            {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Sub-goal (150 PP)' : 'Add New Goal (150 PP)') : (
+            {savingEdit ? 'Saving...' : (isBranching ? (editingNode ? 'Add Chapter (150 PP)' : 'Add New Topic (150 PP)') : (
               (editingNode && (editName.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.name || '') ||
                editDesc.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.customDetails || '') ||
                editMetric.trim() !== (backendNodes.find(n => n.id === editingNode?.id)?.completionMetric || '') ||
@@ -862,9 +862,9 @@ const GoalTreePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ── Suspend goal confirmation ───────────────────────────── */}
+      {/* ── Suspend topic confirmation ───────────────────────────── */}
       <Dialog open={!!suspendNode} onClose={() => setSuspendNode(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Suspend Goal</DialogTitle>
+        <DialogTitle>Suspend Topic</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 1 }}>
             Suspending <strong>{suspendNode?.title}</strong> will pause it without deleting it. Costs <strong>50 PP</strong>.
@@ -885,11 +885,11 @@ const GoalTreePage: React.FC = () => {
                   item: 'suspend_goal',
                   nodeId: suspendNode.id,
                 });
-                toast.success('Goal suspended!');
+                toast.success('Topic suspended!');
                 setSuspendNode(null);
                 window.location.reload();
               } catch (e: any) {
-                toast.error(e.response?.data?.message || 'Failed to suspend goal');
+                toast.error(e.response?.data?.message || 'Failed to suspend topic');
               } finally {
                 setSuspending(false);
               }
@@ -901,12 +901,12 @@ const GoalTreePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ── Delete goal confirmation ────────────────────────────── */}
+      {/* ── Delete topic confirmation ────────────────────────────── */}
       <Dialog open={!!deleteNode} onClose={() => setDeleteNode(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Delete Goal</DialogTitle>
+        <DialogTitle>Delete Topic</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 1 }}>
-            Permanently delete <strong>{deleteNode?.title}</strong>{deleteNode?.children && deleteNode.children.length > 0 ? ' and all its sub-goals' : ''}? Costs <strong>150 PP</strong>.
+            Permanently delete <strong>{deleteNode?.title}</strong>{deleteNode?.children && deleteNode.children.length > 0 ? ' and all its chapters' : ''}? Costs <strong>150 PP</strong>.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
@@ -925,7 +925,7 @@ const GoalTreePage: React.FC = () => {
                   { headers: { Authorization: `Bearer ${session?.access_token}` } }
                 );
                 if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
-                toast.success('Goal deleted! -150 PP');
+                toast.success('Topic deleted! -150 PP');
                 setDeleteNode(null);
                 setSelectedNode(null);
                 setSheetOpen(false);
@@ -935,7 +935,7 @@ const GoalTreePage: React.FC = () => {
                 setBackendNodes(allNodes);
                 setTreeData(buildFrontendTree(allNodes));
               } catch (e: any) {
-                toast.error(e.response?.data?.message || 'Failed to delete goal');
+                toast.error(e.response?.data?.message || 'Failed to delete topic');
               } finally {
                 setDeleting(false);
               }

@@ -1,27 +1,30 @@
 /**
  * @enum Domain
- * @description Represents the nine core life domains that categorize all user goals in Praxis.
- * These domains form the primary branches of a user's Goal Tree.
+ * @description Represents the 14 core life domains that categorize all user goals in Praxis.
+ * These domains are organized based on Maslow's Hierarchy of Needs.
  */
 export enum Domain {
-  /** Advancement in one's professional life. */
-  CAREER = 'Career',
-  /** Wealth accumulation and financial management. */
-  INVESTING = 'Investing / Financial Growth',
-  /** Physical health, strength, and endurance. */
-  FITNESS = 'Fitness',
-  /** Formal and informal education and skill acquisition. */
-  ACADEMICS = 'Academics',
-  /** Emotional well-being and psychological resilience. */
-  MENTAL_HEALTH = 'Mental Health',
-  /** Deepening understanding of existence and core values. */
-  PHILOSOPHICAL_DEVELOPMENT = 'Philosophical Development',
-  /** Engagement with the arts, hobbies, and personal interests. */
-  CULTURE_HOBBIES_CREATIVE_PURSUITS = 'Culture / Hobbies / Creative Pursuits',
-  /** Deep emotional and physical connections with others. */
-  INTIMACY_ROMANTIC_EXPLORATION = 'Intimacy / Romantic Exploration',
-  /** Building and maintaining meaningful platonic relationships. */
-  FRIENDSHIP_SOCIAL_ENGAGEMENT = 'Friendship / Social Engagement',
-  /** Bucket-list experiences, life milestones, and personal adventures. */
-  PERSONAL_GOALS = 'Personal Goals',
+  // Level 1: Physiological Needs
+  BODY_FITNESS = 'Body & Fitness',
+  REST_RECOVERY = 'Rest & Recovery',
+  MENTAL_BALANCE = 'Mental Balance',
+  
+  // Level 2: Safety Needs
+  ENVIRONMENT_HOME = 'Environment & Home',
+  HEALTH_LONGEVITY = 'Health & Longevity',
+  FINANCIAL_SECURITY = 'Financial Security',
+  
+  // Level 3: Love/Belonging
+  FRIENDSHIP_SOCIAL = 'Friendship & Social',
+  ROMANCE_INTIMACY = 'Romance & Intimacy',
+  COMMUNITY_CONTRIBUTION = 'Community & Contribution',
+  
+  // Level 4: Esteem Needs
+  CAREER_CRAFT = 'Career & Craft',
+  WEALTH_ASSETS = 'Wealth & Assets',
+  GAMING_ESPORTS = 'Gaming & Esports',
+  
+  // Level 5: Self-Transcendence
+  IMPACT_LEGACY = 'Impact & Legacy',
+  SPIRIT_PURPOSE = 'Spirit & Purpose'
 }

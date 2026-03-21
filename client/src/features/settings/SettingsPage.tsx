@@ -179,7 +179,7 @@ const SettingsPage: React.FC = () => {
       await axios.post(`${API_URL}/users/me/reset-goals`, {}, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      toast.success('Goal tree reset. Starting fresh!');
+      toast.success('Notebook reset. Starting fresh!');
       setResetDialogOpen(false);
       setConfirmText('');
       navigate('/goals');
@@ -393,9 +393,9 @@ const SettingsPage: React.FC = () => {
         <Stack spacing={2}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
             <Box>
-              <Typography variant="body2" fontWeight={700}>Reset goal tree</Typography>
-              <Typography variant="caption" color="text.secondary">
-                Permanently delete your goal tree and start fresh. Points are kept.
+              <Typography variant="body2" fontWeight={700}>Reset notebook</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                Permanently delete your notebook and start fresh. Points are kept.
               </Typography>
             </Box>
             <Button
@@ -431,10 +431,10 @@ const SettingsPage: React.FC = () => {
 
       {/* Reset Goals Dialog */}
       <Dialog open={resetDialogOpen} onClose={() => setResetDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800, color: 'warning.main' }}>Reset goal tree?</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800, color: 'warning.main' }}>Reset notebook?</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            This will permanently delete your entire goal tree. Type <strong>RESET</strong> to confirm.
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            This will permanently delete your entire notebook. Type <strong>RESET</strong> to confirm.
           </Typography>
           <TextField
             fullWidth size="small"

@@ -24,50 +24,22 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
 
-// Suggested goal categories per domain
+// Suggested topics per domain (Maslow Levels)
 const DOMAIN_CATEGORIES: Record<Domain, string[]> = {
-  [Domain.CAREER]: [
-    'Get Promoted', 'Switch Careers', 'Start a Business',
-    'Build Network', 'Learn New Skills', 'Freelance Work',
-  ],
-  [Domain.INVESTING]: [
-    'Build Portfolio', 'Learn Trading', 'Real Estate',
-    'Retirement Planning', 'Passive Income', 'Budgeting',
-  ],
-  [Domain.FITNESS]: [
-    'Lose Weight', 'Build Muscle', 'Run a Marathon',
-    'Yoga Practice', 'Sports Training', 'Nutrition Plan',
-  ],
-  [Domain.ACADEMICS]: [
-    'Get a Degree', 'Learn a Language', 'Research Project',
-    'Online Courses', 'Certifications', 'Study Group',
-  ],
-  [Domain.MENTAL_HEALTH]: [
-    'Meditation', 'Therapy', 'Stress Management',
-    'Better Sleep', 'Journaling', 'Mindfulness',
-  ],
-  [Domain.PHILOSOPHICAL_DEVELOPMENT]: [
-    'Reading Philosophy', 'Ethical Living', 'Self-Reflection',
-    'Stoicism Practice', 'Writing Essays', 'Discussion Groups',
-  ],
-  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: [
-    'Learn Music', 'Photography', 'Painting',
-    'Creative Writing', 'Film Making', 'Cooking',
-  ],
-  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: [
-    'Dating', 'Strengthen Relationship', 'Communication Skills',
-    'Vulnerability Practice', 'Shared Activities', 'Boundaries',
-  ],
-  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: [
-    'Make New Friends', 'Community Service', 'Social Events',
-    'Reconnect Old Friends', 'Group Activities', 'Mentoring',
-  ],
-  [Domain.PERSONAL_GOALS]: [
-    'Climb a Mountain', 'Go Skydiving', 'Run an Ultramarathon',
-    'Become a Parent', 'Write a Book', 'Learn to Fly',
-    'Travel Every Continent', 'Build My Dream Home', 'Start a Non-Profit',
-    'Speak at a Conference', 'Complete a Bucket List', 'Live Abroad',
-  ],
+  [Domain.BODY_FITNESS]: ['Strength Training', 'Cardio Consistency', 'Mobility & Flexibility', 'Sport Performance'],
+  [Domain.REST_RECOVERY]: ['Sleep Optimization', 'Scheduled Downtime', 'Digital Detox'],
+  [Domain.MENTAL_BALANCE]: ['Daily Meditation', 'Journaling Habit', 'Stress Management'],
+  [Domain.ENVIRONMENT_HOME]: ['Home Organization', 'Workspace Setup', 'Sustainable Living'],
+  [Domain.HEALTH_LONGEVITY]: ['Nutritional Base', 'Supplements & Biohacking', 'Regular Checkups'],
+  [Domain.FINANCIAL_SECURITY]: ['Emergency Fund', 'Debt Elimination', 'Insurance Coverage'],
+  [Domain.FRIENDSHIP_SOCIAL]: ['Expanding Network', 'Deepening Friendships', 'Social Presence'],
+  [Domain.ROMANCE_INTIMACY]: ['Dating Life', 'Relationship Growth', 'Emotional Connection'],
+  [Domain.COMMUNITY_CONTRIBUTION]: ['Volunteering', 'Mentoring Others', 'Local Impact'],
+  [Domain.CAREER_CRAFT]: ['Professional Skillup', 'Project Excellence', 'Job Searching'],
+  [Domain.WEALTH_ASSETS]: ['Investment Portfolio', 'Passive Income', 'Asset Acquisition'],
+  [Domain.GAMING_ESPORTS]: ['Rank Progression', 'Competitive Play', 'Content Creation'],
+  [Domain.IMPACT_LEGACY]: ['Building a Brand', 'Public Speaking', 'Open Source Work'],
+  [Domain.SPIRIT_PURPOSE]: ['Spiritual Practice', 'Philosophy Study', 'Life Alignment'],
 };
 
 const MAX_FREE_GOALS = 3;
@@ -77,9 +49,9 @@ interface SelectedGoal {
   domain: Domain;
   category: string;
   customName: string;
-  description: string;      // required — what this goal is about
-  completionMetric: string; // required — what does success look like?
-  targetDate: string;       // optional — ISO date string
+  description: string;
+  completionMetric: string;
+  targetDate: string;
 }
 
 const GoalSelectionPage: React.FC = () => {
@@ -92,23 +64,19 @@ const GoalSelectionPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [existingTree, setExistingTree] = useState<GoalTree | null>(null);
 
-  // Gate: free re-edit notification and premium gate
   useEffect(() => {
     if (userLoading || !user) return;
-
     const isReEdit = user.onboarding_completed === true;
     const editCount = user.goal_tree_edit_count ?? 0;
 
-    if (isReEdit && editCount >= 1 && !user.is_premium && !user.is_admin) {
-      // Re-edit limit reached — redirect to upgrade
-      toast.error("You've used your free goal tree edit. Upgrade to Premium for unlimited changes.");
+    if (isReEdit && editCount >= 3 && !user.is_premium && !user.is_admin) {
+      toast.error("You've used your free notebook edits. Upgrade to Premium for unlimited changes.");
       navigate('/upgrade');
       return;
     }
 
-    if (isReEdit && editCount === 0 && !user.is_admin) {
-      // Warn: this is the one free re-edit
-      toast('✏️ You have 1 free goal tree edit. Future changes will require Premium.', {
+    if (isReEdit && !user.is_admin) {
+      toast(`✏️ Editing your notebook setup costs 150 PP.`, {
         duration: 6000,
         style: { maxWidth: 400 },
       });
@@ -118,16 +86,14 @@ const GoalSelectionPage: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      const uid = authUser?.id || '1'; // Fallback for dev
+      const uid = authUser?.id || '1';
       setCurrentUserId(uid);
 
-      // Load existing goals if any
       try {
         const res = await axios.get(`${API_URL}/goals/${uid}`);
         const tree: GoalTree = res.data;
         setExistingTree(tree);
 
-        // Convert existing root nodes into selected goals for editing
         if (tree.root_nodes && tree.root_nodes.length > 0) {
           const converted: SelectedGoal[] = tree.root_nodes.map((node: any) => ({
             id: node.id,
@@ -141,17 +107,14 @@ const GoalSelectionPage: React.FC = () => {
           setSelectedGoals(converted);
         }
       } catch (error) {
-        // No existing tree — that's fine for first-time users
-        console.log('No existing goal tree found:', error);
+        console.log('No existing notebook found:', error);
       }
     };
     init();
   }, []);
 
   const handleSelectCategory = (domain: Domain, category: string) => {
-    if (!canAddMore) return; // Prevent adding if max reached
-
-    // Don't add duplicates
+    if (!canAddMore) return;
     if (selectedGoals.some(g => g.domain === domain && g.category === category)) return;
 
     const newGoal: SelectedGoal = {
@@ -165,7 +128,7 @@ const GoalSelectionPage: React.FC = () => {
     };
 
     setSelectedGoals([...selectedGoals, newGoal]);
-    setExpandedDomain(null); // Collapse domain after selection
+    setExpandedDomain(null);
   };
 
   const handleRemoveGoal = (goalId: string) => {
@@ -181,7 +144,6 @@ const GoalSelectionPage: React.FC = () => {
   const handleSave = async () => {
     if (!currentUserId || selectedGoals.length === 0) return;
 
-    // Validate required fields
     const invalid = selectedGoals.find(g => !g.description.trim() || !g.completionMetric.trim());
     if (invalid) {
       toast.error(`Fill in description and success metric for "${invalid.customName || invalid.category}".`);
@@ -191,7 +153,6 @@ const GoalSelectionPage: React.FC = () => {
     setSaving(true);
 
     try {
-      // Build GoalNode array from selected goals
       const nodes: GoalNode[] = selectedGoals.map((g) => ({
         id: g.id,
         domain: g.domain,
@@ -207,9 +168,7 @@ const GoalSelectionPage: React.FC = () => {
         children: [],
       }));
 
-      // Preserve existing sub-goals if we have an existing tree
       const existingSubGoals = (existingTree?.nodes || []).filter(n => n.parentId);
-      // Only keep sub-goals whose parent still exists
       const validSubGoals = existingSubGoals.filter(sub =>
         nodes.some(n => n.id === sub.parentId)
       );
@@ -222,22 +181,16 @@ const GoalSelectionPage: React.FC = () => {
         root_nodes: nodes,
       });
 
-      // Mark onboarding complete if this is the first goal tree setup.
       if (!user?.onboarding_completed) {
-        // 1. Update profiles table (anon client — works if RLS allows own-row update)
-        await supabase
-          .from('profiles')
-          .update({ onboarding_completed: true })
-          .eq('id', currentUserId);
-        // 2. Always write to auth user metadata — this is reliable regardless of RLS/service-role
+        await supabase.from('profiles').update({ onboarding_completed: true }).eq('id', currentUserId);
         await supabase.auth.updateUser({ data: { onboarding_completed: true } });
-        await refetch(); // sync useUser cache before navigating to a guarded route
+        await refetch();
       }
 
-      navigate(`/goals/${currentUserId}`);
+      navigate(`/notes`);
     } catch (err: any) {
-      console.error('Failed to save goals:', err);
-      const msg = err.response?.data?.message || 'Failed to save goals. Please try again.';
+      console.error('Failed to save notebook:', err);
+      const msg = err.response?.data?.message || 'Failed to save notebook. Please try again.';
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -253,22 +206,21 @@ const GoalSelectionPage: React.FC = () => {
   return (
     <Container component="main" maxWidth="md" sx={{ py: 4 }}>
       <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Typography component="h1" variant="h4" gutterBottom sx={{ color: 'primary.main' }}>
-          Choose Your Goals
+        <Typography component="h1" variant="h4" gutterBottom sx={{ color: 'primary.main', fontWeight: 800 }}>
+          Setup your Notebook
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-          Select up to {MAX_FREE_GOALS} primary goals from any domain.
-          You can customize names and add details to refine your matches.
+          Select up to {MAX_FREE_GOALS} primary topics to organize your life and find aligned partners.
         </Typography>
-        <Typography variant="h6" sx={{ color: theme.palette.action.active }}>
-          {selectedGoals.length} / {MAX_FREE_GOALS} Goals Selected
+        <Typography variant="h6" sx={{ color: theme.palette.action.active, fontWeight: 700 }}>
+          {selectedGoals.length} / {MAX_FREE_GOALS} Topics Selected
         </Typography>
       </Box>
 
       {selectedGoals.length > 0 && (
-        <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
-            Selected Goals
+        <Paper elevation={1} sx={{ p: 3, mb: 4, borderRadius: '16px' }}>
+          <Typography variant="h5" gutterBottom sx={{ color: 'primary.main', fontWeight: 800 }}>
+            Selected Topics
           </Typography>
           <Stack spacing={2}>
             {selectedGoals.map((goal) => (
@@ -278,6 +230,7 @@ const GoalSelectionPage: React.FC = () => {
                 alignItems: 'center',
                 borderColor: DOMAIN_COLORS[goal.domain],
                 borderLeft: '8px solid',
+                borderRadius: '12px',
               }}>
                 <Box sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -292,7 +245,7 @@ const GoalSelectionPage: React.FC = () => {
                     <IconButton
                       size="small"
                       onClick={() => handleRemoveGoal(goal.id)}
-                      aria-label="remove goal"
+                      aria-label="remove"
                     >
                       <CloseIcon fontSize="small" />
                     </IconButton>
@@ -301,7 +254,7 @@ const GoalSelectionPage: React.FC = () => {
                     fullWidth
                     variant="outlined"
                     margin="dense"
-                    label="Goal Name"
+                    label="Topic Name"
                     value={goal.customName}
                     onChange={(e) => handleUpdateGoal(goal.id, 'customName', e.target.value)}
                     sx={{ mb: 1 }}
@@ -312,13 +265,11 @@ const GoalSelectionPage: React.FC = () => {
                     variant="outlined"
                     margin="dense"
                     label="Description *"
-                    placeholder="What is this goal about?"
+                    placeholder="What is this topic about?"
                     multiline
                     rows={2}
                     value={goal.description}
                     onChange={(e) => handleUpdateGoal(goal.id, 'description', e.target.value)}
-                    error={!goal.description.trim()}
-                    helperText={!goal.description.trim() ? 'Required' : ''}
                     sx={{ mb: 1 }}
                   />
                   <TextField
@@ -327,25 +278,12 @@ const GoalSelectionPage: React.FC = () => {
                     variant="outlined"
                     margin="dense"
                     label="Success Metric *"
-                    placeholder="How will you know when this goal is complete?"
+                    placeholder="How will you know when this topic is complete?"
                     multiline
                     rows={2}
                     value={goal.completionMetric}
                     onChange={(e) => handleUpdateGoal(goal.id, 'completionMetric', e.target.value)}
-                    error={!goal.completionMetric.trim()}
-                    helperText={!goal.completionMetric.trim() ? 'Required' : ''}
                     sx={{ mb: 1 }}
-                  />
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    margin="dense"
-                    label="Target Date"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={goal.targetDate}
-                    onChange={(e) => handleUpdateGoal(goal.id, 'targetDate', e.target.value)}
-                    inputProps={{ min: new Date().toISOString().slice(0, 10) }}
                   />
                 </Box>
               </Paper>
@@ -355,8 +293,8 @@ const GoalSelectionPage: React.FC = () => {
       )}
 
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
-          {selectedGoals.length > 0 ? 'Add More Goals' : 'Pick a Domain'}
+        <Typography variant="h5" gutterBottom sx={{ color: 'primary.main', fontWeight: 800 }}>
+          {selectedGoals.length > 0 ? 'Add More Topics' : 'Pick a Life Domain'}
         </Typography>
         <Stack spacing={1}>
           {Object.values(Domain).map((domain) => {
@@ -364,7 +302,7 @@ const GoalSelectionPage: React.FC = () => {
             const alreadySelectedCount = selectedGoals.filter(g => g.domain === domain).length;
 
             return (
-              <Paper key={domain} elevation={1} sx={{ p: 2 }}>
+              <Paper key={domain} elevation={1} sx={{ p: 2, borderRadius: '12px' }}>
                 <Button
                   fullWidth
                   variant="text"
@@ -385,7 +323,7 @@ const GoalSelectionPage: React.FC = () => {
                     backgroundColor: DOMAIN_COLORS[domain],
                     mr: 1,
                   }} />
-                  <Typography variant="h6" component="span" sx={{ flexGrow: 1 }}>
+                  <Typography variant="h6" component="span" sx={{ flexGrow: 1, fontWeight: 700 }}>
                     {DOMAIN_ICONS[domain]} {domain}
                     {alreadySelectedCount > 0 && (
                       <Chip
@@ -417,8 +355,9 @@ const GoalSelectionPage: React.FC = () => {
                             color={isAlreadyPicked ? 'primary' : 'default'}
                             sx={{
                               borderColor: DOMAIN_COLORS[domain],
-                              color: isAlreadyPicked ? theme.palette.common.white : DOMAIN_COLORS[domain],
+                              color: isAlreadyPicked ? '#000' : DOMAIN_COLORS[domain],
                               backgroundColor: isAlreadyPicked ? DOMAIN_COLORS[domain] : 'transparent',
+                              fontWeight: 700,
                               '&:hover': {
                                 backgroundColor: isAlreadyPicked ? DOMAIN_COLORS[domain] : `${DOMAIN_COLORS[domain]}15`,
                               },
@@ -438,26 +377,27 @@ const GoalSelectionPage: React.FC = () => {
       <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 4 }}>
         <Button
           variant="outlined"
-          color="primary"
           onClick={() => navigate(-1)}
-          sx={{ borderRadius: 0 }}
+          sx={{ borderRadius: '10px' }}
         >
           Cancel
         </Button>
         <Button
           variant="contained"
-          color="primary"
           onClick={handleSave}
           disabled={selectedGoals.length === 0 || saving}
           sx={{
-            borderRadius: 0,
-            backgroundColor: theme.palette.action.active,
+            borderRadius: '10px',
+            px: 4,
+            fontWeight: 800,
+            backgroundColor: 'primary.main',
+            color: '#000',
             '&:hover': {
-              backgroundColor: theme.palette.primary.dark,
+              backgroundColor: 'primary.light',
             },
           }}
         >
-          {saving ? 'Saving...' : `Save ${selectedGoals.length} Goal${selectedGoals.length !== 1 ? 's' : ''}`}
+          {saving ? 'Saving...' : `Save ${selectedGoals.length} Topics ${user?.onboarding_completed ? '(150 PP)' : '(Free)'}`}
         </Button>
       </Stack>
     </Container>
