@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Dialog, DialogContent, Box, Typography, TextField, Button, Chip,
-  Slide, IconButton, CircularProgress,
+  Slide, IconButton, CircularProgress, Divider,
 } from '@mui/material';
 import { TransitionProps } from '@mui/material/transitions';
 import CloseIcon from '@mui/icons-material/Close';
@@ -11,8 +11,8 @@ import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
-import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
-import UnifiedGoalWidget from './UnifiedGoalWidget';
+import { DOMAIN_COLORS, DOMAIN_ICONS, GoalNode as FrontendGoalNode } from '../../types/goal';
+import NoteGoalDetail from '../../features/notes/NoteGoalDetail';
 import NoteAttachmentBar from './NoteAttachmentBar';
 import type { Attachment } from './NoteAttachmentBar';
 
@@ -29,12 +29,11 @@ interface RawGoalNode {
 }
 
 const MOODS = [
-  { emoji: '🔥', label: 'On fire' },
-  { emoji: '💪', label: 'Strong' },
+  { emoji: '🔥', label: 'Great' },
   { emoji: '😊', label: 'Good' },
-  { emoji: '😐', label: 'Neutral' },
-  { emoji: '😤', label: 'Frustrated' },
-  { emoji: '😴', label: 'Tired' },
+  { emoji: '😐', label: 'Okay' },
+  { emoji: '😔', label: 'Low' },
+  { emoji: '💪', label: 'Strong' },
 ];
 
 const SlideUp = React.forwardRef(function SlideUp(
@@ -115,27 +114,31 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+      const headers: Record<string, string> = { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`
+      };
 
       const contentText = note.trim() || (mood ? `Mood: ${mood}` : '');
 
-      // Legacy write: journal_entries
-      await supabase.from('journal_entries').insert({
-        user_id: user.id, note: contentText, mood, created_at: new Date().toISOString(),
-      });
-
-      // Dual-write: notebook_entries
-      await fetch(`${API_URL}/notebook/entries`, {
-        method: 'POST', headers,
+      // Unified write: notebook_entries
+      const res = await fetch(`${API_URL}/notebook/entries`, {
+        method: 'POST', 
+        headers,
         body: JSON.stringify({
-          entry_type: 'note', content: contentText,
-          mood: mood || undefined, source_table: 'journal_entries',
+          entry_type: 'note', 
+          content: contentText,
+          mood: mood || undefined,
+          goal_id: selectedGoal?.id || null,
+          domain: selectedGoal?.domain || 'Personal',
+          title: selectedGoal ? `Note for ${selectedGoal.name}` : 'Free Note',
           attachments: freeAttachments.length > 0 ? freeAttachments : undefined,
         }),
       });
 
-      toast.success('Diary entry saved!');
+      if (!res.ok) throw new Error('Failed to save to notebook');
+
+      toast.success('Saved to notebook!');
       setNote('');
       setMood(null);
       setFreeAttachments([]);
@@ -149,14 +152,22 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
 
   const domainColor = (domain: string) => DOMAIN_COLORS[domain] || '#A78BFA';
 
+  const toFrontendNode = (raw: RawGoalNode): FrontendGoalNode => ({
+    id: raw.id,
+    title: raw.name,
+    progress: Math.round(raw.progress * 100),
+    children: [], // Simplified for widget view
+    domain: raw.domain as any,
+  });
+
   const headerTitle = viewMode === 'goal' && selectedGoal
     ? selectedGoal.name
     : viewMode === 'free'
-    ? 'Diary Entry'
+    ? 'Free Note'
     : 'Quick Log';
 
-  // Free diary form (mood + note + save)
-  const renderFreeDiaryForm = () => (
+  // Shared journal form
+  const renderJournalForm = (accentColor: string) => (
     <Box sx={{ px: 2.5 }}>
       <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em', textTransform: 'uppercase', mb: 1 }}>
         How are you feeling?
@@ -172,9 +183,9 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
             onClick={() => setMood(mood === m.emoji ? null : m.emoji)}
             sx={{
               fontSize: '0.72rem', fontWeight: 600,
-              bgcolor: mood === m.emoji ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.06)',
-              color: mood === m.emoji ? '#A78BFA' : 'rgba(255,255,255,0.6)',
-              border: mood === m.emoji ? '1px solid rgba(167,139,250,0.4)' : '1px solid transparent',
+              bgcolor: mood === m.emoji ? `${accentColor}33` : 'rgba(255,255,255,0.06)',
+              color: mood === m.emoji ? accentColor : 'rgba(255,255,255,0.6)',
+              border: mood === m.emoji ? `1px solid ${accentColor}66` : '1px solid transparent',
               cursor: 'pointer',
               '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
             }}
@@ -184,8 +195,8 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
 
       {/* Note input */}
       <TextField
-        fullWidth multiline minRows={3} maxRows={6} autoFocus
-        placeholder="What's on your mind today?"
+        fullWidth multiline minRows={3} maxRows={6}
+        placeholder="What's on your mind?"
         value={note}
         onChange={(e) => setNote(e.target.value)}
         sx={{
@@ -194,16 +205,15 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
         }}
       />
 
-      {/* Attachments */}
       <Box sx={{ mb: 1.5 }}>
         <NoteAttachmentBar
           attachments={freeAttachments}
           onChange={setFreeAttachments}
           userId={user?.id || ''}
+          accentColor={accentColor}
         />
       </Box>
 
-      {/* Save button */}
       <Button
         fullWidth variant="contained"
         onClick={handleSaveJournal}
@@ -211,12 +221,13 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
         startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
         sx={{
           borderRadius: '14px', fontWeight: 800, py: 1.5, fontSize: '0.9rem',
-          background: 'linear-gradient(135deg, #A78BFA, #F59E0B)',
-          '&:hover': { filter: 'brightness(1.1)' },
+          bgcolor: accentColor,
+          color: '#0A0B14',
+          '&:hover': { bgcolor: accentColor, filter: 'brightness(1.1)' },
           '&:disabled': { opacity: 0.4 },
         }}
       >
-        {saving ? 'Saving...' : 'Save Diary Entry'}
+        {saving ? 'Saving...' : 'Save to Notebook'}
       </Button>
     </Box>
   );
@@ -231,11 +242,11 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
       PaperProps={{
         sx: {
           bgcolor: '#0F1117',
-          borderRadius: '20px 20px 0 0',
+          borderRadius: '24px 24px 0 0',
           position: 'fixed',
           bottom: 0,
           m: 0,
-          maxHeight: '90vh',
+          maxHeight: '95vh',
           border: '1px solid rgba(255,255,255,0.08)',
           borderBottom: 'none',
           overflowY: 'auto',
@@ -264,7 +275,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
                 }}
               />
             )}
-            <Typography sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
+            <Typography sx={{ fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>
               {headerTitle}
             </Typography>
           </Box>
@@ -280,50 +291,40 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
         ) : viewMode === 'selector' ? (
           /* ── Goal selector + free entry ──────── */
           <Box sx={{ px: 2.5, pb: 3 }}>
-            {/* Free diary entry option */}
             <Box
               onClick={() => setViewMode('free')}
               sx={{
                 display: 'flex', alignItems: 'center', gap: 1.5,
-                p: '12px 14px', borderRadius: '14px', mb: 1.5,
-                bgcolor: 'rgba(167,139,250,0.06)',
+                p: '14px 16px', borderRadius: '16px', mb: 2,
+                bgcolor: 'rgba(167,139,250,0.08)',
                 border: '1px solid rgba(167,139,250,0.15)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
                 '&:hover': { bgcolor: 'rgba(167,139,250,0.12)', borderColor: 'rgba(167,139,250,0.3)' },
-                '&:active': { transform: 'scale(0.98)' },
               }}
             >
-              <MenuBookIcon sx={{ fontSize: '1.3rem', color: '#A78BFA' }} />
+              <MenuBookIcon sx={{ fontSize: '1.4rem', color: '#A78BFA' }} />
               <Box sx={{ flex: 1 }}>
-                <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: '#F3F4F6' }}>
-                  Free diary entry
+                <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, color: '#F3F4F6' }}>
+                  Free Note
                 </Typography>
-                <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>
-                  Write without linking to a goal
+                <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)' }}>
+                  Reflect without linking to a goal
                 </Typography>
               </Box>
-              <Chip
-                label="📝"
-                size="small"
-                sx={{
-                  height: 28, fontSize: '0.85rem',
-                  bgcolor: 'rgba(167,139,250,0.1)',
-                  border: '1px solid rgba(167,139,250,0.2)',
-                }}
-              />
+              <Chip label="📝" size="small" sx={{ bgcolor: 'rgba(167,139,250,0.1)', fontWeight: 800 }} />
             </Box>
 
-            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', mb: 1.5, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-              Or select a goal to log progress
+            <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', mb: 1.5, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Topics
             </Typography>
 
             {goals.length === 0 ? (
               <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem', py: 2, textAlign: 'center' }}>
-                No active goals yet. Create one in Notes first.
+                No active topics yet.
               </Typography>
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
                 {goals.map(goal => {
                   const color = domainColor(goal.domain);
                   const icon = DOMAIN_ICONS[goal.domain] || '🎯';
@@ -334,51 +335,26 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
                       onClick={() => handleSelectGoal(goal)}
                       sx={{
                         display: 'flex', alignItems: 'center', gap: 1.5,
-                        p: '12px 14px', borderRadius: '14px',
-                        bgcolor: 'rgba(255,255,255,0.04)',
+                        p: '12px 16px', borderRadius: '16px',
+                        bgcolor: 'rgba(255,255,255,0.03)',
                         border: `1px solid rgba(255,255,255,0.06)`,
                         cursor: 'pointer',
                         transition: 'all 0.15s',
                         '&:hover': { bgcolor: `${color}12`, borderColor: `${color}30` },
-                        '&:active': { transform: 'scale(0.98)' },
                       }}
                     >
-                      <Typography sx={{ fontSize: '1.2rem' }}>{icon}</Typography>
+                      <Typography sx={{ fontSize: '1.25rem' }}>{icon}</Typography>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{
-                          fontSize: '0.88rem', fontWeight: 700, color: '#F3F4F6',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>
+                        <Typography sx={{ fontSize: '0.9rem', fontWeight: 800, color: '#F3F4F6' }} noWrap>
                           {goal.name}
                         </Typography>
-                        <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>
+                        <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>
                           {goal.domain}
                         </Typography>
                       </Box>
-                      {/* Progress ring */}
-                      <Box sx={{ position: 'relative', width: 36, height: 36 }}>
-                        <CircularProgress
-                          variant="determinate"
-                          value={100}
-                          size={36}
-                          thickness={3}
-                          sx={{ color: 'rgba(255,255,255,0.06)', position: 'absolute' }}
-                        />
-                        <CircularProgress
-                          variant="determinate"
-                          value={pct}
-                          size={36}
-                          thickness={3}
-                          sx={{ color, position: 'absolute' }}
-                        />
-                        <Typography sx={{
-                          position: 'absolute', inset: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '0.55rem', fontWeight: 800, color,
-                        }}>
-                          {pct}%
-                        </Typography>
-                      </Box>
+                      <Typography sx={{ fontSize: '0.85rem', fontWeight: 900, color }}>
+                        {pct}%
+                      </Typography>
                     </Box>
                   );
                 })}
@@ -386,19 +362,31 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
             )}
           </Box>
         ) : viewMode === 'free' ? (
-          /* ── Free diary entry (no goal) ──────── */
+          /* ── Free diary entry ──────── */
           <Box sx={{ pb: 3 }}>
-            {renderFreeDiaryForm()}
+            {renderJournalForm('#A78BFA')}
           </Box>
         ) : selectedGoal ? (
-          /* ── Unified goal widget ──── */
-          <Box sx={{ px: 2, pb: 2.5 }}>
-            <UnifiedGoalWidget
-              goal={selectedGoal}
-              allNodes={rawNodes}
-              userId={user?.id || ''}
-              activeBets={activeBets}
-            />
+          /* ── Goal detail + trackers ──── */
+          <Box sx={{ pb: 2 }}>
+            {/* Quick journal at top */}
+            {renderJournalForm(domainColor(selectedGoal.domain))}
+            
+            <Divider sx={{ my: 3, mx: 2.5, borderColor: 'rgba(255,255,255,0.06)' }} />
+
+            {/* Goal detail and trackers below */}
+            <Box>
+              <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', mb: 1.5, letterSpacing: '0.1em', textTransform: 'uppercase', px: 2.5 }}>
+                Trackers & Progress
+              </Typography>
+              <NoteGoalDetail
+                node={toFrontendNode(selectedGoal)}
+                allNodes={rawNodes}
+                userId={user?.id || ''}
+                activeBets={activeBets}
+                onProgressUpdate={() => {}}
+              />
+            </Box>
           </Box>
         ) : null}
       </DialogContent>
