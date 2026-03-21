@@ -2,6 +2,12 @@
  * Axiom Goal Progress Estimation Service
  * Automatically estimates and updates goal progress based on user activity
  * using AI analysis of notebook entries, tracker logs, and check-ins
+ * 
+ * Enhanced Features:
+ * - Extract explicit progress percentages from notes (e.g., "50% done")
+ * - Detect completion language and auto-complete goals
+ * - Maintain private Axiom summary (admin-only visibility)
+ * - Avoid re-reading same material across multiple scans
  */
 
 import { supabase } from '../lib/supabaseClient';
@@ -91,12 +97,17 @@ export class AxiomProgressEstimationService {
 
       if (updates.length > 0) {
         logger.info(`[AxiomProgress] Updated ${updates.length} goals for user ${userId}`);
-        
+
         // Send notification about progress updates
         await this.sendProgressNotification(userId, updates);
       } else {
         logger.info(`[AxiomProgress] No significant progress changes for user ${userId}`);
       }
+
+      // NEW: Generate private Axiom summary (prevents re-reading same material)
+      await this.generateAxiomSummary(userId, notebookEntries.data || []);
+
+      logger.info(`[AxiomProgress] Completed progress estimation for user ${userId}`);
     } catch (error: any) {
       logger.error(`[AxiomProgress] Error for user ${userId}:`, error.message);
     }
@@ -116,22 +127,33 @@ export class AxiomProgressEstimationService {
     const currentProgress = Math.round((node.progress || 0) * 100);
 
     // Filter activity related to this goal
-    const goalNotebookEntries = notebookEntries.filter(e => 
-      e.goal_id === goalId || 
+    const goalNotebookEntries = notebookEntries.filter(e =>
+      e.goal_id === goalId ||
       (e.content && e.content.toLowerCase().includes(goalName.toLowerCase().split(' ')[0]))
     );
 
     const goalTrackers = trackerEntries.filter(e => {
       // Check if tracker is linked to this goal
       const trackerGoal = (e.data as any)?.goal;
-      return trackerGoal && 
+      return trackerGoal &&
         (trackerGoal.toLowerCase().includes(goalName.toLowerCase()) ||
          goalName.toLowerCase().includes(trackerGoal.toLowerCase()));
     });
 
+    // NEW: Extract explicit progress from note content
+    let extractedProgress: number | null = null;
+    for (const entry of goalNotebookEntries) {
+      const progress = this.extractProgressFromContent(entry.content);
+      if (progress !== null) {
+        extractedProgress = progress;
+        logger.info(`[AxiomProgress] Extracted progress ${progress}% from note for goal ${goalName}`);
+        break; // Use first explicit progress found
+      }
+    }
+
     // Build evidence list
     const evidence: string[] = [];
-    
+
     if (goalNotebookEntries.length > 0) {
       evidence.push(`${goalNotebookEntries.length} notebook entries related to this goal`);
       goalNotebookEntries.slice(0, 3).forEach((e: any) => {
@@ -139,6 +161,11 @@ export class AxiomProgressEstimationService {
           evidence.push(`Note: "${e.title}"`);
         }
       });
+      
+      // Add extracted progress to evidence
+      if (extractedProgress !== null) {
+        evidence.push(`Explicit progress mentioned: ${extractedProgress}%`);
+      }
     }
 
     if (goalTrackers.length > 0) {
@@ -146,7 +173,7 @@ export class AxiomProgressEstimationService {
     }
 
     // Check for completion signals
-    const completionSignals = goalNotebookEntries.filter(e => 
+    const completionSignals = goalNotebookEntries.filter(e =>
       e.content?.includes('100%') ||
       e.content?.includes('completed') ||
       e.content?.includes('finished') ||
@@ -160,7 +187,7 @@ export class AxiomProgressEstimationService {
     }
 
     // Check for struggle signals
-    const struggleSignals = goalNotebookEntries.filter(e => 
+    const struggleSignals = goalNotebookEntries.filter(e =>
       e.mood === '😔' ||
       e.content?.toLowerCase().includes('stuck') ||
       e.content?.toLowerCase().includes('hard') ||
@@ -172,13 +199,19 @@ export class AxiomProgressEstimationService {
       evidence.push('Struggle indicators detected');
     }
 
-    // Use AI to estimate progress
-    const suggestedProgress = await this.aiEstimateProgress(
-      node,
-      goalNotebookEntries,
-      goalTrackers,
-      currentProgress
-    );
+    // Use AI to estimate progress (or use extracted progress if available)
+    let suggestedProgress: number;
+    if (extractedProgress !== null) {
+      suggestedProgress = extractedProgress;
+      logger.info(`[AxiomProgress] Using extracted progress ${extractedProgress}% for goal ${goalName}`);
+    } else {
+      suggestedProgress = await this.aiEstimateProgress(
+        node,
+        goalNotebookEntries,
+        goalTrackers,
+        currentProgress
+      );
+    }
 
     // Calculate confidence based on available evidence
     const confidence = this.calculateConfidence(
@@ -187,6 +220,9 @@ export class AxiomProgressEstimationService {
       checkins.length
     );
 
+    // If we have explicit progress, boost confidence
+    const finalConfidence = extractedProgress !== null ? Math.min(confidence + 0.3, 1.0) : confidence;
+
     // Generate reasoning
     const reasoning = this.generateReasoning(
       currentProgress,
@@ -194,7 +230,8 @@ export class AxiomProgressEstimationService {
       goalNotebookEntries.length,
       goalTrackers.length,
       completionSignals.length,
-      struggleSignals.length
+      struggleSignals.length,
+      extractedProgress
     );
 
     return {
@@ -292,33 +329,39 @@ Respond with ONLY a number between 0 and 100:`;
     notebookCount: number,
     trackerCount: number,
     completionCount: number,
-    struggleCount: number
+    struggleCount: number,
+    extractedProgress: number | null = null
   ): string {
     const change = suggested - current;
-    
+
+    // If progress was explicitly extracted from note
+    if (extractedProgress !== null) {
+      return `Progress explicitly mentioned in note: ${extractedProgress}%`;
+    }
+
     if (completionCount > 0) {
       return 'Completion indicators detected in recent activity';
     }
-    
+
     if (change > 10) {
       return `Significant activity detected (${notebookCount} notes, ${trackerCount} logs) suggests major progress`;
     }
-    
+
     if (change > 5) {
       return `Consistent activity (${notebookCount + trackerCount} entries) indicates steady progress`;
     }
-    
+
     if (change > 0) {
       return 'Some activity detected, small progress increase';
     }
-    
+
     if (change === 0) {
       if (struggleCount > 0) {
         return 'Struggle indicators detected, maintaining current progress';
       }
       return 'Insufficient new activity to update progress';
     }
-    
+
     return 'Lack of recent activity suggests progress may have stalled';
   }
 
@@ -426,6 +469,223 @@ Respond with ONLY a number between 0 and 100:`;
     } catch (error: any) {
       logger.error('[AxiomProgress] Error processing all users:', error.message);
     }
+  }
+
+  /**
+   * Extract explicit progress percentage from note content
+   * Looks for patterns like "50%", "halfway", "3/4 done", "milestone 2 of 5"
+   */
+  private extractProgressFromContent(content: string): number | null {
+    if (!content) return null;
+
+    // Pattern: "XX%" or "XX % "
+    const percentageMatch = content.match(/(\d{1,3})\s*%/);
+    if (percentageMatch) {
+      const progress = parseInt(percentageMatch[1], 10);
+      if (progress >= 0 && progress <= 100) {
+        return progress;
+      }
+    }
+
+    // Pattern: "X of Y" or "X/Y" (e.g., "3 of 5", "2/4")
+    const fractionMatch = content.match(/(\d+)\s*(?:of|\/)\s*(\d+)/);
+    if (fractionMatch) {
+      const numerator = parseInt(fractionMatch[1], 10);
+      const denominator = parseInt(fractionMatch[2], 10);
+      if (denominator > 0) {
+        return Math.round((numerator / denominator) * 100);
+      }
+    }
+
+    // Pattern: "halfway", "half done", "50 percent"
+    const halfwayPatterns = ['halfway', 'half done', 'half complete', '50 percent'];
+    if (halfwayPatterns.some(p => content.toLowerCase().includes(p))) {
+      return 50;
+    }
+
+    // Pattern: "almost done", "nearly there", "90%"
+    const almostDonePatterns = ['almost done', 'nearly there', 'almost complete', 'close to finish'];
+    if (almostDonePatterns.some(p => content.toLowerCase().includes(p))) {
+      return 90;
+    }
+
+    // Pattern: "just started", "beginning", "10%"
+    const justStartedPatterns = ['just started', 'beginning', 'getting started', 'first steps'];
+    if (justStartedPatterns.some(p => content.toLowerCase().includes(p))) {
+      return 10;
+    }
+
+    return null;
+  }
+
+  /**
+   * Generate or update private Axiom summary for a user
+   * This summary is only visible to admins and Axiom itself
+   * Prevents re-reading the same material over multiple scans
+   */
+  async generateAxiomSummary(userId: string, notebookEntries: any[]): Promise<void> {
+    try {
+      logger.info(`[AxiomSummary] Generating summary for user ${userId}`);
+
+      // Get last processed timestamp from previous summary
+      const { data: existingSummary } = await supabase
+        .from('axiom_private_summaries')
+        .select('last_processed_at, summary')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const lastProcessedAt = existingSummary?.last_processed_at 
+        ? new Date(existingSummary.last_processed_at)
+        : new Date(0);
+
+      // Filter entries created/updated since last scan
+      const newEntries = notebookEntries.filter(e => 
+        new Date(e.occurred_at || e.created_at) > lastProcessedAt
+      );
+
+      if (newEntries.length === 0) {
+        logger.info(`[AxiomSummary] No new entries for user ${userId}`);
+        return;
+      }
+
+      logger.info(`[AxiomSummary] Processing ${newEntries.length} new entries for user ${userId}`);
+
+      // Analyze new entries
+      const analysis = await this.analyzeEntriesForSummary(newEntries);
+
+      // Build updated summary
+      const updatedSummary = {
+        last_processed_at: new Date().toISOString(),
+        total_entries_processed: (existingSummary?.summary?.total_entries_processed || 0) + newEntries.length,
+        recent_themes: analysis.themes,
+        recent_achievements: analysis.achievements,
+        recent_challenges: analysis.challenges,
+        goal_progress_updates: analysis.goalUpdates,
+        mood_patterns: analysis.moodPatterns,
+        activity_summary: {
+          checkins: analysis.checkinCount,
+          notes: analysis.noteCount,
+          tracker_logs: analysis.trackerCount,
+        },
+        insights: analysis.insights,
+      };
+
+      // Upsert summary
+      const { error } = await supabase
+        .from('axiom_private_summaries')
+        .upsert({
+          user_id: userId,
+          summary: updatedSummary,
+          last_processed_at: updatedSummary.last_processed_at,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id',
+        });
+
+      if (error) {
+        logger.error(`[AxiomSummary] Failed to save summary for user ${userId}:`, error.message);
+      } else {
+        logger.info(`[AxiomSummary] Summary updated for user ${userId}`);
+      }
+    } catch (error: any) {
+      logger.error(`[AxiomSummary] Error for user ${userId}:`, error.message);
+    }
+  }
+
+  /**
+   * Analyze entries to extract summary information
+   */
+  private async analyzeEntriesForSummary(entries: any[]) {
+    const themes = new Map<string, number>();
+    const achievements: string[] = [];
+    const challenges: string[] = [];
+    const goalUpdates: Array<{ goalId: string; goalName: string; oldProgress: number; newProgress: number }> = [];
+    const moodCounts: Record<string, number> = {};
+    let checkinCount = 0;
+    let noteCount = 0;
+    let trackerCount = 0;
+
+    entries.forEach(entry => {
+      // Count by type
+      if (entry.entry_type === 'checkin') checkinCount++;
+      else if (entry.entry_type === 'note' || entry.entry_type === 'journal') noteCount++;
+      else if (entry.entry_type === 'tracker') trackerCount++;
+
+      // Extract themes from titles
+      if (entry.title && entry.title !== 'Shared Item') {
+        const words: string[] = entry.title.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+        words.forEach((w: string) => themes.set(w, (themes.get(w) || 0) + 1));
+      }
+
+      // Detect achievements
+      if (entry.content?.includes('completed') || 
+          entry.content?.includes('achieved') || 
+          entry.content?.includes('100%') ||
+          entry.title?.includes('✅')) {
+        achievements.push(entry.title || 'Achievement detected');
+      }
+
+      // Detect challenges
+      if (entry.mood === '😔' ||
+          entry.content?.toLowerCase().includes('stuck') ||
+          entry.content?.toLowerCase().includes('struggling')) {
+        challenges.push(entry.title || 'Challenge detected');
+      }
+
+      // Track mood patterns
+      if (entry.mood) {
+        moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+      }
+    });
+
+    // Get top themes
+    const topThemes = Array.from(themes.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([theme, count]) => ({ theme, count }));
+
+    // Calculate dominant mood
+    const dominantMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'neutral';
+
+    // Generate insights
+    const insights: string[] = [];
+    if (checkinCount >= 5) insights.push('High check-in consistency');
+    if (noteCount >= 10) insights.push('Active journaling');
+    if (achievements.length > 0) insights.push(`${achievements.length} achievements detected`);
+    if (challenges.length > 0) insights.push(`${challenges.length} challenges identified`);
+
+    return {
+      themes: topThemes,
+      achievements,
+      challenges,
+      goalUpdates,
+      moodPatterns: { dominant: dominantMood, distribution: moodCounts },
+      checkinCount,
+      noteCount,
+      trackerCount,
+      insights,
+    };
+  }
+
+  /**
+   * Get private Axiom summary for a user (admin-only or Axiom)
+   */
+  async getAxiomSummary(userId: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('axiom_private_summaries')
+      .select('summary, last_processed_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data.summary;
   }
 }
 

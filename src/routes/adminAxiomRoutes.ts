@@ -4,6 +4,7 @@ import { catchAsync, UnauthorizedError } from '../utils/appErrors';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
 import { AxiomScanService } from '../services/AxiomScanService';
+import { AxiomProgressEstimationService } from '../services/AxiomProgressEstimationService';
 import logger from '../utils/logger';
 
 const router = Router();
@@ -156,6 +157,53 @@ router.post('/force-push', authenticateToken, requireAdmin, catchAsync(async (re
   });
 
   return res.json({ success: true, message: 'Global scan triggered in background for all active users' });
+}));
+
+/**
+ * GET /admin/axiom/summaries
+ * Get private Axiom summaries (admin-only)
+ */
+router.get('/summaries', authenticateToken, requireAdmin, catchAsync(async (req: Request, res: Response) => {
+  const { userId, limit = 50 } = req.query;
+  
+  let query = supabase
+    .from('axiom_private_summaries')
+    .select('user_id, summary, last_processed_at, created_at')
+    .order('last_processed_at', { ascending: false })
+    .limit(Number(limit));
+  
+  if (userId) {
+    query = query.eq('user_id', userId as string);
+  }
+  
+  const { data, error } = await query;
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json({ summaries: data || [] });
+}));
+
+/**
+ * GET /admin/axiom/summaries/:userId
+ * Get private Axiom summary for a specific user
+ */
+router.get('/summaries/:userId', authenticateToken, requireAdmin, catchAsync(async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  
+  if (Array.isArray(userId)) {
+    return res.status(400).json({ message: 'Invalid userId' });
+  }
+  
+  const progressService = new AxiomProgressEstimationService();
+  const summary = await progressService.getAxiomSummary(userId);
+  
+  if (!summary) {
+    return res.status(404).json({ message: 'No summary found for this user' });
+  }
+  
+  res.json({ summary });
 }));
 
 export default router;
