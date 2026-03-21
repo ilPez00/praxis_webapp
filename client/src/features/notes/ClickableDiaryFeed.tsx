@@ -58,7 +58,7 @@ const ClickableDiaryFeed: React.FC<ClickableDiaryFeedProps> = ({ userId, days = 
         navigate('/map', { state: { openItem: item.id, itemType: item.type } });
         break;
       
-      case 'journal':
+      case 'note':
         // Open journal for the goal node
         if (item.goalId) {
           navigate('/notes', { 
@@ -163,7 +163,7 @@ const ClickableDiaryFeed: React.FC<ClickableDiaryFeedProps> = ({ userId, days = 
               <ListItemText primary="Open" />
             </MenuItem>
             
-            {(contextMenu.item.type === 'post' || contextMenu.item.type === 'journal') && (
+            {(contextMenu.item.type === 'post' || contextMenu.item.type === 'note') && (
               <MenuItem onClick={() => handleEdit(contextMenu.item!)}>
                 <ListItemIcon>
                   <EditIcon fontSize="small" sx={{ color: '#F59E0B' }} />

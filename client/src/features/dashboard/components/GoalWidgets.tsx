@@ -126,14 +126,17 @@ function MiniChart({ entries, chartKey, color, unit }: {
 // ── Objective display / edit inline ───────────────────────────────────────────
 
 function ObjectiveRow({ config, currentGoal, onSave }: {
-  config: WidgetConfig;
+  config: WidgetConfig | null;
   currentGoal: Record<string, any>;
   onSave: (goal: Record<string, any>) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const hasObjective = config.objectives.some(o => currentGoal[o.key]);
+  
+  if (!config) return null;
+  
+  const hasObjective = (config.objectives || []).some(o => currentGoal[o.key]);
 
   const startEdit = () => {
     const init: Record<string, string> = {};

@@ -255,18 +255,22 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
     if (sortMode === 'emoji') {
       const grouped = groupByEmoji(filtered);
       const keys = Object.keys(grouped).sort((a, b) => grouped[b].length - grouped[a].length);
-      return keys.map(emoji => (
-        <Box key={emoji} sx={{ mb: 2.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75, px: 0.5 }}>
-            <Typography sx={{ fontSize: '1rem' }}>{emoji}</Typography>
-            <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: 'text.disabled', letterSpacing: '0.04em' }}>
-              {TYPE_META[grouped[emoji][0]?.type]?.badge || 'Items'}
-            </Typography>
-            <Chip label={grouped[emoji].length} size="small" sx={{ height: 16, fontSize: '0.5rem', fontWeight: 700, bgcolor: 'rgba(255,255,255,0.06)', color: 'text.secondary' }} />
+      return keys.map(emoji => {
+        const firstItemType = grouped[emoji][0]?.type;
+        const meta = TYPE_META[firstItemType];
+        return (
+          <Box key={emoji} sx={{ mb: 2.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75, px: 0.5 }}>
+              <Typography sx={{ fontSize: '1rem' }}>{emoji}</Typography>
+              <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: 'text.disabled', letterSpacing: '0.04em' }}>
+                {meta?.badge || 'Items'}
+              </Typography>
+              <Chip label={grouped[emoji].length} size="small" sx={{ height: 16, fontSize: '0.5rem', fontWeight: 700, bgcolor: 'rgba(255,255,255,0.06)', color: 'text.secondary' }} />
+            </Box>
+            {grouped[emoji].map(item => renderCard(item))}
           </Box>
-          {grouped[emoji].map(item => renderCard(item))}
-        </Box>
-      ));
+        );
+      });
     }
 
     // Default: time
