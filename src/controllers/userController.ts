@@ -148,6 +148,10 @@ const UPDATABLE_PROFILE_FIELDS = new Set([
 
 export const updateUserProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id } = req.params as { id: string };
+  const requesterId = (req as any).user?.id;
+  if (!requesterId || requesterId !== id) {
+    throw new BadRequestError('You can only update your own profile.');
+  }
 
   // Build update payload from whitelisted fields only
   const payload: Record<string, unknown> = {};

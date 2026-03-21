@@ -68,8 +68,10 @@ export const createCheckoutSession = catchAsync(async (req: Request, res: Respon
 });
 
 export const createPPCheckout = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId, email, tier, currency: rawCurrency } = req.body as { userId?: string; email?: string; tier?: string; currency?: string };
-  if (!userId || !email || !tier) throw new BadRequestError('userId, email, and tier are required');
+  const { email, tier, currency: rawCurrency } = req.body as { email?: string; tier?: string; currency?: string };
+  const userId = (req as any).user?.id;
+  if (!userId) throw new BadRequestError('Authentication required');
+  if (!email || !tier) throw new BadRequestError('email and tier are required');
   if (!PP_TIERS[tier]) throw new BadRequestError(`Invalid tier. Valid: ${Object.keys(PP_TIERS).join(', ')}`);
 
   const currency: SupportedCurrency = SUPPORTED_CURRENCIES.includes(rawCurrency as SupportedCurrency)

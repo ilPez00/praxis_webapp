@@ -14,28 +14,29 @@ import {
   deleteVote,
   setAchievementVideo,
 } from '../controllers/achievementController';
+import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = express.Router();
 
-// Achievement routes
-router.post('/', createAchievement);
-router.get('/:id', getAchievementById);
+// Achievement routes — reads are public, writes require auth
 router.get('/', getAchievements);
-router.put('/:id', updateAchievement);
-router.delete('/:id', deleteAchievement);
+router.get('/:id', getAchievementById);
+router.post('/', authenticateToken, createAchievement);
+router.put('/:id', authenticateToken, updateAchievement);
+router.delete('/:id', authenticateToken, deleteAchievement);
 
 // Comment routes
-router.post('/:id/comments', addCommentToAchievement);
 router.get('/:id/comments', getCommentsForAchievement);
-router.put('/:achievementId/comments/:commentId', updateComment);
-router.delete('/:achievementId/comments/:commentId', deleteComment);
+router.post('/:id/comments', authenticateToken, addCommentToAchievement);
+router.put('/:achievementId/comments/:commentId', authenticateToken, updateComment);
+router.delete('/:achievementId/comments/:commentId', authenticateToken, deleteComment);
 
 // Vote routes
-router.post('/:id/votes', addVoteToAchievement);
-router.put('/:achievementId/votes/:voteId', updateVote);
-router.delete('/:achievementId/votes/:voteId', deleteVote);
+router.post('/:id/votes', authenticateToken, addVoteToAchievement);
+router.put('/:achievementId/votes/:voteId', authenticateToken, updateVote);
+router.delete('/:achievementId/votes/:voteId', authenticateToken, deleteVote);
 
 // Video route
-router.patch('/:id/video', setAchievementVideo);
+router.patch('/:id/video', authenticateToken, setAchievementVideo);
 
 export default router;

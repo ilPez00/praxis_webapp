@@ -18,7 +18,10 @@ import { generateAllBriefs } from '../controllers/adminController';
 
 const router = Router();
 
-// ── curl-only routes (X-Admin-Secret header) ─────────────────────────────────
+// ── curl-only routes (X-Admin-Secret header required) ────────────────────────
+// These routes rely on X-Admin-Secret header checked inside each controller.
+// authenticateToken is NOT applied so they can be called from cron/scripts without JWT.
+// The controllers MUST validate X-Admin-Secret before proceeding.
 router.post('/seed-demo-users', seedDemoUsers);
 router.delete('/delete-demo-users', deleteDemoUsers);
 router.post('/decay-points', decayPoints);             // cron or admin-secret — weekly economy balancer

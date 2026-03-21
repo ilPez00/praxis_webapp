@@ -107,6 +107,20 @@ export const leaveRoom = catchAsync(async (req: Request, res: Response, next: Ne
  */
 export const getRoomMessages = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { roomId } = req.params;
+  const requesterId = (req as any).user?.id;
+
+  // Verify requester is a member of this room
+  if (requesterId) {
+    const { data: membership } = await supabase
+      .from('chat_room_members')
+      .select('id')
+      .eq('room_id', roomId)
+      .eq('user_id', requesterId)
+      .maybeSingle();
+    if (!membership) {
+      return res.status(403).json({ error: 'You must be a member of this room to read messages.' });
+    }
+  }
 
   const { data, error } = await supabase
     .from('messages')

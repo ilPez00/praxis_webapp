@@ -108,7 +108,8 @@ const DEMO_USERS = [
 export const seedDemoUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
-  const isJwtAdmin = !!req.user?.id; // set by authenticateToken + requireAdmin
+  // When called via JWT-secured route (/admin/seed), req.user is set by authenticateToken + requireAdmin
+  const isJwtAdmin = !!(req as any).user?.id;
   if (!isSecretAuth && !isJwtAdmin) {
     throw new UnauthorizedError('Invalid or missing admin secret.');
   }
@@ -201,7 +202,7 @@ export const seedDemoUsers = catchAsync(async (req: Request, res: Response, next
 export const deleteDemoUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
-  const isJwtAdmin = !!req.user?.id;
+  const isJwtAdmin = !!(req as any).user?.id;
   if (!isSecretAuth && !isJwtAdmin) {
     throw new UnauthorizedError('Invalid or missing admin secret.');
   }
@@ -834,7 +835,7 @@ export const listAllCoaches = catchAsync(async (_req: Request, res: Response) =>
 export const decayPoints = catchAsync(async (req: Request, res: Response) => {
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
-  const isJwtAdmin = !!req.user?.id;
+  const isJwtAdmin = !!(req as any).user?.id;
   if (!isSecretAuth && !isJwtAdmin) {
     throw new UnauthorizedError('Admin authentication required.');
   }
@@ -970,7 +971,7 @@ export const togglePremium = catchAsync(async (req: Request, res: Response) => {
 export const leaderboardBonus = catchAsync(async (req: Request, res: Response) => {
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
-  const isJwtAdmin = !!req.user?.id;
+  const isJwtAdmin = !!(req as any).user?.id;
   if (!isSecretAuth && !isJwtAdmin) throw new UnauthorizedError('Admin authentication required.');
 
   // Fetch top 100 by praxis_points
@@ -1168,7 +1169,7 @@ export const generateAllBriefs = catchAsync(async (_req: Request, res: Response)
 export const streakAlerts = catchAsync(async (req: Request, res: Response) => {
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
-  const isJwtAdmin = !!req.user?.id;
+  const isJwtAdmin = !!(req as any).user?.id;
   if (!isSecretAuth && !isJwtAdmin) throw new UnauthorizedError('Admin authentication required.');
 
   const today = new Date().toISOString().slice(0, 10);

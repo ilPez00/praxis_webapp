@@ -23,8 +23,8 @@ router.delete('/me', authenticateToken, deleteMyAccount);
 router.post('/me/reset-goals', authenticateToken, resetMyGoals);
 router.get('/:userId/percentile', getUserPercentile);
 router.get('/:id', getUserProfile);
-router.put('/:id', updateUserProfile);
-router.post('/:id/verify', verifyIdentity);
+router.put('/:id', authenticateToken, updateUserProfile);
+router.post('/:id/verify', authenticateToken, verifyIdentity);
 
 export default router;
 

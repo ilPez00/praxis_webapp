@@ -15,14 +15,14 @@ import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = Router();
 
-router.get('/joined', getJoinedRooms);   // must be before /:roomId
+router.get('/joined', authenticateToken, getJoinedRooms);   // must be before /:roomId
 router.get('/', listRooms);
-router.post('/', createRoom);
+router.post('/', authenticateToken, createRoom);
 router.get('/:roomId', getRoom);
-router.post('/:roomId/join', joinRoom);
-router.delete('/:roomId/leave', leaveRoom);
-router.get('/:roomId/messages', getRoomMessages);
-router.post('/:roomId/messages', sendRoomMessage);
+router.post('/:roomId/join', authenticateToken, joinRoom);
+router.delete('/:roomId/leave', authenticateToken, leaveRoom);
+router.get('/:roomId/messages', authenticateToken, getRoomMessages);
+router.post('/:roomId/messages', authenticateToken, sendRoomMessage);
 router.get('/:roomId/members', getRoomMembers);
 router.post('/:roomId/invite', authenticateToken, inviteMember);
 

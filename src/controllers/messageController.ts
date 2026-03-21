@@ -7,9 +7,15 @@ import { pushNotification } from './notificationController';
 
 export const getMessages = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { user1Id, user2Id } = req.params as { user1Id: string; user2Id: string };
+  const requesterId = (req as any).user?.id;
 
   if (!user1Id || !user2Id) {
     throw new BadRequestError('Both user IDs are required.');
+  }
+
+  // Only allow reading conversations the requester is part of
+  if (requesterId && requesterId !== user1Id && requesterId !== user2Id) {
+    return res.status(403).json({ error: 'You can only read your own conversations.' });
   }
 
   // Log Supabase client configuration (for debugging)
@@ -68,10 +74,15 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
 });
 
 export const sendMessage = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { senderId, receiverId, content, goalNodeId, messageType, mediaUrl, metadata } = req.body;
+  const { receiverId, content, goalNodeId, messageType, mediaUrl, metadata } = req.body;
+  // Use authenticated user's ID as sender — prevents impersonation
+  const senderId = (req as any).user?.id;
+  if (!senderId) {
+    throw new BadRequestError('Authentication required.');
+  }
 
-  if (!senderId || !receiverId || !content) {
-    throw new BadRequestError('Sender ID, receiver ID, and content are required.');
+  if (!receiverId || !content) {
+    throw new BadRequestError('Receiver ID and content are required.');
   }
 
   // Build the insert payload; all extra fields are optional

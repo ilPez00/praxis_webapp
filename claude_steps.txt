@@ -533,3 +533,69 @@ Session 81: Daily Tracker Limit + Note Attachments (2026-03-21)
 - Verification: 0 TypeScript errors (only node_modules/i18next false positives)
 - Next: Create notebook-files Supabase bucket (manual action), deploy + test attachments
 - Sign: Claude
+
+---
+
+# Session: March 21, 2026 — Full Codebase Audit + Phase 1 Security Fixes
+
+## Summary of Changes
+
+### Audit
+- Performed full codebase audit across ~65K lines using 3 parallel analysis agents (backend security, frontend quality, architecture)
+- Wrote comprehensive findings to `docs/audit_2026-03-21.md` — read this file for the full report
+
+### Phase 1 — Security Fixes (CRITICAL)
+
+1. **Message routes: added `authenticateToken`** — DMs were completely unauthenticated (read + send)
+   - Added ownership check: users can only read their own conversations
+   - `sendMessage` now uses `req.user.id` as sender instead of accepting `senderId` from body (prevents impersonation)
+
+2. **Achievement routes: added `authenticateToken`** to all write operations (create, update, delete, comments, votes, video)
+   - Read operations (GET) remain public
+
+3. **User profile update: added `authenticateToken` + ownership check** — previously any authed user could edit any profile
+   - Now enforces `requesterId === id`
+
+4. **Points controller: removed userId fallbacks** — `getBalance` and `spendPoints` now only use `req.user.id`
+   - Previously accepted `req.query.userId` and `req.body.userId` as fallbacks (auth bypass)
+
+5. **Stripe checkout: added `authenticateToken` + uses `req.user.id`** — previously accepted arbitrary `userId` from body
+   - Both `createCheckoutSession` and `createPPCheckout` now require auth
+
+6. **Group routes: added `authenticateToken`** to join, leave, messages, create, and joined-rooms endpoints
+   - `getRoomMessages` now verifies requester is a member of the room
+
+7. **Admin controller: fixed `isJwtAdmin` type safety** — changed `req.user?.id` to `(req as any).user?.id` across 4 occurrences
+   - Added explanatory comments on curl-only routes clarifying X-Admin-Secret requirement
+
+## Files Modified
+1. `src/routes/messageRoutes.ts` — added authenticateToken to all routes
+2. `src/routes/achievementRoutes.ts` — added authenticateToken to write routes
+3. `src/routes/adminRoutes.ts` — added comments clarifying curl-only auth
+4. `src/routes/userRoutes.ts` — added authenticateToken to PUT /:id and POST /:id/verify
+5. `src/routes/stripeRoutes.ts` — added authenticateToken to checkout routes
+6. `src/routes/groupRoutes.ts` — added authenticateToken to write + message routes
+7. `src/controllers/userController.ts` — added ownership check to updateUserProfile
+8. `src/controllers/pointsController.ts` — removed userId fallbacks from getBalance + spendPoints
+9. `src/controllers/stripeController.ts` — uses req.user.id instead of body.userId in createPPCheckout
+10. `src/controllers/groupController.ts` — added membership check to getRoomMessages
+11. `src/controllers/messageController.ts` — sendMessage uses req.user.id; getMessages has ownership check
+12. `src/controllers/adminController.ts` — fixed isJwtAdmin type safety (4 occurrences)
+13. `docs/audit_2026-03-21.md` — NEW: full audit report
+
+## Verification Status
+- Type check: ✅ Passed (0 errors)
+- Build: ✅ Clean compile
+
+## Next Steps (from audit)
+### Phase 2 — Critical bugs:
+1. Fix duplicate `/axiom` route in `app.ts` (delete line 162)
+2. Move `publicWidgetRoutes` before error handlers in `app.ts`
+3. Fix `typingTimerRef` cleanup in `ChatRoom.tsx`
+4. Replace `.catch(() => {})` with `.catch(err => logger.warn(...))` in goalController
+### Phase 3 — Cleanup:
+5. Delete 7 orphaned pages + 10 orphaned note components + 6 unused library files
+6. Lazy-load leaflet, QR scanner
+7. Remove i18n if not needed
+8. Update tsconfig targets
+- Sign: Claude
