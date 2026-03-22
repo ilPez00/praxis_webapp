@@ -503,31 +503,18 @@ export const TRACKER_MAP: Record<string, TrackerType> = Object.fromEntries(
 /**
  * Maps each goal domain to the tracker IDs that are automatically
  * activated when a user has goals in that domain.
- * 
- * Updated for Maslow's Hierarchy-based domain system (2026-03-18)
+ *
+ * Keys MUST match Domain enum values from models/Domain.ts
  */
 export const DOMAIN_TRACKER_MAP: Record<string, string[]> = {
-  // Level 1: Physiological
-  'Body & Fitness':                ['lift', 'cardio', 'meal', 'steps'],
-  'Rest & Recovery':               ['sleep', 'meditation'],
-  'Mental Balance':                ['sleep', 'meditation', 'journal'],
-
-  // Level 2: Safety
-  'Environment & Home':            ['project', 'progress'],
-  'Health & Longevity':            ['meal', 'steps', 'sleep'],
-  'Financial Security':            ['budget', 'expenses', 'investments'],
-
-  // Level 3: Love/Belonging
-  'Friendship & Social':           ['hangout', 'adventure'],
-  'Romance & Intimacy':            ['hangout', 'adventure', 'journal'],
-  'Community & Contribution':      ['hangout', 'project', 'journal'],
-
-  // Level 4: Esteem
-  'Career & Craft':                ['study', 'books', 'project', 'job-apps'],
-  'Wealth & Assets':               ['investments', 'expenses', 'budget'],
-  'Gaming & Esports':              ['gaming', 'achievements', 'rank', 'streaming'],
-
-  // Level 5: Self-Transcendence
-  'Impact & Legacy':               ['project', 'journal', 'study'],
-  'Spirit & Purpose':              ['journal', 'meditation', 'books'],
+  'Fitness':                                  ['lift', 'cardio', 'meal', 'steps'],
+  'Mental Health':                            ['sleep', 'meditation', 'journal'],
+  'Career':                                   ['study', 'books', 'project', 'job-apps'],
+  'Academics':                                ['study', 'books', 'project'],
+  'Investing / Financial Growth':             ['budget', 'expenses', 'investments'],
+  'Culture / Hobbies / Creative Pursuits':    ['music', 'adventure', 'journal', 'project'],
+  'Intimacy / Romantic Exploration':          ['hangout', 'adventure', 'journal'],
+  'Friendship / Social Engagement':           ['hangout', 'adventure'],
+  'Philosophical Development':                ['journal', 'meditation', 'books'],
+  'Personal Goals':                           ['progress', 'project', 'journal'],
 };

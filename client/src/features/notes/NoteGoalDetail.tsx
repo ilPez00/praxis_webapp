@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Box, Typography, Chip, LinearProgress, TextField,
@@ -20,7 +19,7 @@ import GoalActivityGraph from './GoalActivityGraph';
 import { GoalNode as FrontendGoalNode, DOMAIN_COLORS } from '../../types/goal';
 import { DOMAIN_TRACKER_MAP, TRACKER_TYPES } from '../trackers/trackerTypes';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import EditableTrackerForm from '../trackers/EditableTrackerForm';
 import { findWidget } from '../dashboard/components/GoalWidgets';
 import type { WidgetGoalNode } from '../dashboard/components/GoalWidgets';
@@ -249,11 +248,10 @@ function SimplifiedTracker({ trackerConfig, tracker, onLog, userId }: {
   const handleQuickLog = async (item: any) => {
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.post(`${API_URL}/trackers/log`, {
+      await api.post('/trackers/log', {
         type: trackerConfig.id,
         data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }] }
-      }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+      });
       toast.success(`Logged: ${item.name}`);
       onLog();
     } catch { toast.error('Failed to log'); }
@@ -368,10 +366,7 @@ function SimplifiedTracker({ trackerConfig, tracker, onLog, userId }: {
         onClose={() => setLogTracker(null)}
         tracker={logTracker}
         onSave={async (data) => {
-          const { data: { session } } = await supabase.auth.getSession();
-          await axios.post(`${API_URL}/trackers/log`, { type: trackerConfig.id, data }, {
-            headers: { Authorization: `Bearer ${session?.access_token}` },
-          });
+          await api.post('/trackers/log', { type: trackerConfig.id, data });
           onLog();
         }}
         saving={saving}
@@ -404,10 +399,7 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
 
   const fetchTrackers = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.get(`${API_URL}/trackers/my`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      const res = await api.get('/trackers/my');
       setTrackers(Array.isArray(res.data) ? res.data : []);
     } catch { setTrackers([]); }
     finally { setLoading(false); }
@@ -454,10 +446,7 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
 
   const handleObjectiveSaved = async (type: string, goal: Record<string, any>) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.patch(`${API_URL}/trackers/${type}/objective`, { goal }, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      await api.patch(`/trackers/${type}/objective`, { goal });
       setTrackers(prev => prev.map(t => t.type === type ? { ...t, goal } : t));
       toast.success('Objective saved!');
     } catch { toast.error('Failed to save objective.'); }
