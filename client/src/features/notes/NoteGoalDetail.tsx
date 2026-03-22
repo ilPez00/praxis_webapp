@@ -415,7 +415,23 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
 
   useEffect(() => { fetchTrackers(); }, [fetchTrackers]);
 
-  const tracker = config ? trackers.find(t => t.type === config.type) : undefined;
+  // Resolve tracker config: widget types (lose_weight) don't match tracker IDs (lift),
+  // so fall back to the first domain tracker if direct match fails
+  let resolvedTrackerConfig = config ? TRACKER_TYPES.find(t => t.id === config.type) ?? null : null;
+  let resolvedTracker = resolvedTrackerConfig ? trackers.find(t => t.type === resolvedTrackerConfig!.id) : undefined;
+  if (!resolvedTrackerConfig) {
+    const domainIds = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
+    for (const id of domainIds) {
+      const tt = TRACKER_TYPES.find(t => t.id === id);
+      if (tt) {
+        resolvedTrackerConfig = tt;
+        resolvedTracker = trackers.find(t => t.type === id) ?? { id: '', type: id, goal: {}, entries: [] };
+        break;
+      }
+    }
+  }
+
+  const tracker = resolvedTracker;
   const allEntries = tracker?.entries ?? [];
   const loggedToday = (allEntries || []).some(e => e.logged_at.slice(0, 10) === new Date().toISOString().slice(0, 10));
   const currentGoal = tracker?.goal ?? {};
@@ -514,8 +530,8 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
             <MiniChart entries={allEntries} chartKey={config.chartKey} color={accentColor} unit={config.chartUnit} />
             <Box sx={{ mt: 2 }}>
               <SimplifiedTracker
-                trackerConfig={TRACKER_TYPES.find(t => t.id === config.type) || null}
-                tracker={tracker || { id: '', type: config.type, goal: {}, entries: [] }}
+                trackerConfig={resolvedTrackerConfig}
+                tracker={tracker || { id: '', type: resolvedTrackerConfig?.id || config.type, goal: {}, entries: [] }}
                 onLog={fetchTrackers}
                 userId={userId}
               />
