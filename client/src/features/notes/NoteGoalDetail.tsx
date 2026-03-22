@@ -240,6 +240,7 @@ function SimplifiedTracker({ trackerConfig, tracker, onLog, userId }: {
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [newItemName, setNewItemName] = useState('');
 
+  if (!trackerConfig) return null;
   const color = trackerConfig.color || '#A78BFA';
   const todayKey = new Date().toISOString().slice(0, 10);
   const todayEntries = (tracker.entries || []).filter(e => e.logged_at.slice(0, 10) === todayKey);
@@ -513,7 +514,7 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
             <MiniChart entries={allEntries} chartKey={config.chartKey} color={accentColor} unit={config.chartUnit} />
             <Box sx={{ mt: 2 }}>
               <SimplifiedTracker
-                trackerConfig={TRACKER_TYPES.find(t => t.id === config.type)!}
+                trackerConfig={TRACKER_TYPES.find(t => t.id === config.type) || null}
                 tracker={tracker || { id: '', type: config.type, goal: {}, entries: [] }}
                 onLog={fetchTrackers}
                 userId={userId}
