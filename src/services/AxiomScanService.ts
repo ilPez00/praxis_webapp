@@ -788,18 +788,7 @@ CRITICAL RULES:
    - Categories: deep_work, admin, rest, exercise, social, learning, planning, reflection
    - Spread: 4-6 deep_work, 2-3 rest, 1-2 exercise, 1-2 admin, 1 social, 1 planning/reflection
 
-4. **Goal Strategy — ONE ENTRY PER ACTIVE GOAL (UP TO 5)**:
-   - This is NOT optional — you MUST generate goalStrategy array
-   - For EACH goal in their goal tree (up to 5), provide:
-     - goal: Exact name from their list
-     - currentProgress: "X%" based on their data
-     - bottleneck: What's blocking them (be specific, not generic)
-     - nextMilestone: What they can achieve THIS WEEK
-     - tacticalAdvice: 2-3 sentences of concrete steps
-     - weeklyTarget: Measurable outcome by week's end
-   - Example: {"goal": "Career Certification", "currentProgress": "35%", "bottleneck": "Procrastinating on difficult modules", "nextMilestone": "Complete AWS Module 3 quiz", "tacticalAdvice": "Start with 25min Pomodoro on Module 3 video. Take notes. Do 5 practice questions immediately after.", "weeklyTarget": "Finish Module 3 and score 80%+ on quiz"}
-
-5. **Radical Personalization**:
+4. **Radical Personalization**:
    - Every sentence must reference something SPECIFIC about THIS user
    - Mention goals by NAME (not "your goal" but "Career Certification")
    - Reference notebook entries ("I saw your note about feeling overwhelmed")
@@ -821,8 +810,7 @@ CRITICAL RULES:
         routine = Array.isArray(llmData.routine) ? llmData.routine : [];
         challenge = llmData.challenge || null;
         resources = Array.isArray(llmData.resources) ? llmData.resources : [];
-        goalStrategy = Array.isArray(llmData.goalStrategy) ? llmData.goalStrategy : [];
-        networkLeverage = llmData.networkLeverage || null;
+        // goalStrategy and networkLeverage removed from brief
         source = 'llm';
         logger.info(`[AxiomScan] LLM SUCCESS for ${userName} - message: ${axiomMessage.slice(0, 50)}...`);
       } else {
@@ -914,57 +902,7 @@ CRITICAL RULES:
       resources = generateResourcesFromGoals(nodes, metrics);
     }
 
-    // Generate goal strategy if LLM didn't provide one (make it more AI-like)
-    if (goalStrategy.length === 0) {
-      // Try to generate with mini AI call for each goal
-      goalStrategy = await Promise.all(
-        nodes
-          .filter((n: any) => !n.parentId && (n.progress || 0) < 1)
-          .slice(0, 5)
-          .map(async (g: any) => {
-            try {
-              const goalPrompt = `For goal "${g.name}" at ${Math.round((g.progress || 0) * 100)}% progress, provide:
-1. One specific bottleneck
-2. One milestone for this week
-3. One tactical action for today
-
-Respond in 3 short sentences max.`;
-              const aiResponse = await aiCoachingService.runWithFallback(goalPrompt);
-              return {
-                goal: g.name,
-                currentProgress: `${Math.round((g.progress || 0) * 100)}%`,
-                bottleneck: aiResponse.split('\n')[0] || 'Building momentum',
-                nextMilestone: aiResponse.split('\n')[1] || `Reach ${Math.min(100, Math.round((g.progress || 0) * 100) + 15)}% this week`,
-                tacticalAdvice: aiResponse.split('\n')[2] || `Spend 25 minutes today on "${g.name}"`,
-                weeklyTarget: `Move "${g.name}" forward by at least 10%`,
-              };
-            } catch {
-              // Fallback to basic version
-              return {
-                goal: g.name,
-                currentProgress: `${Math.round((g.progress || 0) * 100)}%`,
-                bottleneck: (g.progress || 0) < 0.1 ? 'Getting started — break into first micro-step' :
-                            (g.progress || 0) < 0.5 ? 'Building momentum — maintain daily touchpoints' :
-                            'Final push — focus on completion criteria',
-                nextMilestone: `Reach ${Math.min(100, Math.round((g.progress || 0) * 100) + 15)}% this week`,
-                tacticalAdvice: `Spend 25 minutes today on "${g.name}". Set a timer, eliminate distractions.`,
-                weeklyTarget: `Move "${g.name}" forward by at least 10% by end of week`,
-              };
-            }
-          })
-      );
-    }
-
-    // Generate network leverage if LLM didn't provide one (make it more personalized)
-    if (!networkLeverage) {
-      const topMatchName = match?.name || 'an accountability partner';
-      networkLeverage = {
-        outreach: `Reach out to ${topMatchName} — share your progress on "${nodes[0]?.name || 'your top goal'}" and ask about theirs`,
-        askFor: 'Ask for honest feedback on your approach to your current biggest challenge',
-        offer: `Share one lesson from your recent progress${notebookEntriesRes.data?.[0]?.title ? ` (like "${notebookEntriesRes.data[0].title}")` : ''} that could help someone else`,
-        communityAction: 'Post a short update in a group board about what you learned today — vulnerability builds connection',
-      };
-    }
+    // goalStrategy and networkLeverage removed from brief
 
     // --- Phase 5: Generate daily schedule ---
     let schedule = null;
@@ -1013,8 +951,8 @@ Respond in 3 short sentences max.`;
       challenge: challenge,
       resources: resources,
       routine: routine,
-      goalStrategy: goalStrategy,
-      networkLeverage: networkLeverage,
+      goalStrategy: [],
+      networkLeverage: null,
       schedule: schedule,
       source: source,
       llm_error: llmError,
@@ -1081,15 +1019,6 @@ ${axiomMessage}
 ${recapText ? `## Yesterday's Activity\n${recapText}\n` : ''}
 ## Daily Routine
 ${routine.map((r: any, i: number) => `${i + 1}. **${r.time}**: ${r.task}\n   ${r.alignment}`).join('\n\n')}
-
-## Goal Strategy
-${goalStrategy.map((g: any, i: number) => `${i + 1}. **${g.goal}** (${g.currentProgress})\n   Bottleneck: ${g.bottleneck}\n   Next: ${g.nextMilestone}\n   Advice: ${g.tacticalAdvice}`).join('\n\n')}
-
-## Network Leverage
-- **Outreach**: ${networkLeverage?.outreach || 'N/A'}
-- **Ask For**: ${networkLeverage?.askFor || 'N/A'}
-- **Offer**: ${networkLeverage?.offer || 'N/A'}
-- **Community**: ${networkLeverage?.communityAction || 'N/A'}
 
 ## Challenge
 **${recommendations.challenge?.type?.toUpperCase()}**: ${recommendations.challenge?.target}

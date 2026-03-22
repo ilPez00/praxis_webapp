@@ -21,9 +21,6 @@ import {
   Chip,
   LinearProgress,
   IconButton,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Divider,
   Grid,
   Dialog,
@@ -37,9 +34,6 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SendIcon from '@mui/icons-material/Send';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import FlagIcon from '@mui/icons-material/Flag';
-import PeopleIcon from '@mui/icons-material/People';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -596,29 +590,9 @@ const AICoachPage: React.FC = () => {
           </Box>
         ) : report ? (
           <>
-            <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <SectionHeader icon={<FlagIcon />} label="Goal Strategy" color="#10B981" />
-              <Stack spacing={1.5}>
-                {report.strategy.map((item, i) => (
-                  <Accordion key={i} disableGutters elevation={0} sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: `1px solid ${DOMAIN_COLORS[item.domain] || '#9CA3AF'}33`, borderRadius: '12px !important', '&:before': { display: 'none' } }}>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'text.secondary' }} />} sx={{ px: 2, py: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1 }}>
-                        <Box sx={{ flexGrow: 1 }}><Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{item.goal}</Typography><Chip label={item.domain} size="small" sx={{ height: 18, fontSize: '0.65rem' }} /></Box>
-                        <Typography variant="caption" color="text.disabled">{item.progress}%</Typography>
-                      </Box>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ px: 2, pb: 2 }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{item.insight}</Typography>
-                      <Stack spacing={1}>{item.steps.map((s, j) => <Typography key={j} variant="body2">✓ {s}</Typography>)}</Stack>
-                    </AccordionDetails>
-                  </Accordion>
-                ))}
-              </Stack>
-            </Box>
-            <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <SectionHeader icon={<PeopleIcon />} label="Network Leverage" color="#8B5CF6" />
-              <Typography variant="body1" sx={{ lineHeight: 1.8 }}>{report.network}</Typography>
-            </Box>
+            <GlassCard sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">Strategy report ready. Check your daily brief for details.</Typography>
+            </GlassCard>
           </>
         ) : (
           <GlassCard sx={{ p: 5, textAlign: 'center' }}>
