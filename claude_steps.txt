@@ -665,3 +665,22 @@ Session 85: Centralize API Client — Eliminate Raw Axios + Redundant getSession
 - Verification: `npx tsc --noEmit` — 0 source errors (node_modules type errors are pre-existing)
 - Next: Phase 2 of code quality improvements (error boundaries, loading states, type safety)
 - Sign: Claude
+
+Session 86: Error Boundaries + Skeleton Loading States (2026-03-23)
+- ErrorBoundary (common): added `label` prop → compact inline fallback with "Retry" button
+- AppRouter: per-route ErrorBoundary (one page crash no longer kills navigation)
+- AppRouter: lazy-load fallback now uses PageSkeleton instead of bare CircularProgress
+- PageSkeleton.tsx (NEW): standardized skeleton loading component with card + header variants
+- DashboardPage: 5 independent error boundaries (Morning Brief, Activity Feed, Top Alignments, Leaderboard, Near You)
+- GoalTreePage: 3 boundaries (Goal Tree, Goal Workspace ×2)
+- AnalyticsPage: 6 boundaries (Calendar, Progress, Domain, Feedback, Charts, Leaderboard)
+- ProfilePage: 4 boundaries (Profile Card, Axiom Reports, Achievements, Posts)
+- AICoachPage: 3 boundaries (Daily Protocol, Strategy Report, Ask Axiom)
+- ChatRoom: 2 boundaries (Messages, Input)
+- BettingPage: 2 boundaries (Active Pledges, Bet History)
+- Replaced bare CircularProgress with PageSkeleton in: Analytics, Marketplace, Services, Challenges, Events, Places
+- Files: 15 files changed (AppRouter, ErrorBoundary, PageSkeleton, DashboardPage, GoalTreePage, AnalyticsPage, ProfilePage, AICoachPage, ChatRoom, BettingPage, MarketplacePage, ServicesPage, ChallengesPage, EventsPage, PlacesTab)
+- Verification: `npx tsc --noEmit` — 0 source errors
+- Commits: cfe2e7e
+- Next: Step 3 — Type safety sweep (replace `any` types with proper interfaces)
+- Sign: Claude
