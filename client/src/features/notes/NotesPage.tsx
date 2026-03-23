@@ -15,6 +15,7 @@ import DayDetailView from './DayDetailView';
 import GoalNotesPanel from './GoalNotesPanel';
 import ShareButton from '../../components/common/ShareButton';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
+import AxiomQueryDialog from '../notebook/AxiomQueryDialog';
 import Slider from '@mui/material/Slider';
 
 import {
@@ -100,6 +101,10 @@ const NotesPage: React.FC = () => {
   const [logTrackerOpen, setLogTrackerOpen] = useState(false);
   const [logTrackerData, setLogTrackerData] = useState<{ id: string; type: string; def: any } | null>(null);
   const [logSaving, setLogSaving] = useState(false);
+
+  // Axiom Query
+  const [isPremium, setIsPremium] = useState(false);
+  const [axiomDialogOpen, setAxiomDialogOpen] = useState(false);
 
   // Journal drawer
   const [journalNode, setJournalNode] = useState<FrontendGoalNode | null>(null);
@@ -274,6 +279,7 @@ const NotesPage: React.FC = () => {
           .single();
         if (profile?.current_streak) setStreak(profile.current_streak);
         if (profile?.praxis_points != null) setPraxisPoints(profile.praxis_points);
+        if (profile?.is_premium != null) setIsPremium(profile.is_premium);
 
         const betsRes = await supabase
           .from('bets')
@@ -558,13 +564,37 @@ const NotesPage: React.FC = () => {
         }}>
           {/* Header */}
           <Box sx={{ p: 3, pb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', letterSpacing: '-0.02em' }}>
-                Notebook
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                {treeData.length} TOPICS
-              </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', letterSpacing: '-0.02em' }}>
+                  Notebook
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                  {treeData.length} TOPICS
+                </Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AutoAwesomeIcon />}
+                onClick={() => setAxiomDialogOpen(true)}
+                sx={{
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  px: 1.5,
+                  py: 0.4,
+                  minWidth: 'auto',
+                  border: '1.5px solid #A78BFA',
+                  color: '#A78BFA',
+                  fontSize: '0.75rem',
+                  '&:hover': {
+                    border: '1.5px solid #8B5CF6',
+                    bgcolor: 'rgba(167, 139, 250, 0.08)',
+                  },
+                }}
+              >
+                Ask Axiom
+              </Button>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <ShareButton
@@ -942,6 +972,12 @@ const NotesPage: React.FC = () => {
             <Button onClick={() => setExportDialogOpen(false)} disabled={!!exporting}>Close</Button>
           </DialogActions>
         </Dialog>
+
+        {/* Axiom Query Dialog */}
+        <AxiomQueryDialog
+          open={axiomDialogOpen}
+          onClose={() => setAxiomDialogOpen(false)}
+        />
 
       </Box>
     </ErrorBoundary>
