@@ -115,7 +115,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'personal_4', text: 'What are you proud of today? 🏆', category: 'milestone', priority: 8 },
     { id: 'personal_5', text: 'What challenged you today? 🚧', category: 'obstacle', priority: 7 },
     { id: 'personal_6', text: 'What did you learn about yourself? 🪞', category: 'learning', priority: 8 },
-    { id: 'personal_7', text: 'What's one thing you want to improve tomorrow? 📈', category: 'reflection', priority: 6 },
+    { id: 'personal_7', text: 'What\'s one thing you want to improve tomorrow? 📈', category: 'reflection', priority: 6 },
   ],
 };
 
@@ -125,14 +125,14 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
 export const GENERAL_SUGGESTIONS: LoggingSuggestion[] = [
   { id: 'general_1', text: 'What was the highlight of your day? ⭐', category: 'reflection', priority: 10 },
   { id: 'general_2', text: 'How are you feeling right now, really? 💭', category: 'mood', priority: 10 },
-  { id: 'general_3', text: 'What's one thing you accomplished today? ✅', category: 'milestone', priority: 9 },
-  { id: 'general_4', text: 'What's on your mind that needs attention? 🤔', category: 'obstacle', priority: 8 },
+  { id: 'general_3', text: 'What\'s one thing you accomplished today? ✅', category: 'milestone', priority: 9 },
+  { id: 'general_4', text: 'What\'s on your mind that needs attention? 🤔', category: 'obstacle', priority: 8 },
   { id: 'general_5', text: 'What are you grateful for today? 🙏', category: 'reflection', priority: 8 },
   { id: 'general_6', text: 'What drained your energy today? 🔋', category: 'obstacle', priority: 7 },
   { id: 'general_7', text: 'What gave you energy today? ⚡', category: 'reflection', priority: 7 },
-  { id: 'general_8', text: 'What's worrying you right now? 😟', category: 'obstacle', priority: 7 },
+  { id: 'general_8', text: 'What\'s worrying you right now? 😟', category: 'obstacle', priority: 7 },
   { id: 'general_9', text: 'What made you laugh today? 😂', category: 'reflection', priority: 6 },
-  { id: 'general_10', text: 'What's one lesson from today? 📚', category: 'learning', priority: 6 },
+  { id: 'general_10', text: 'What\'s one lesson from today? 📚', category: 'learning', priority: 6 },
   { id: 'general_11', text: 'How did you show up for yourself today? 💪', category: 'reflection', priority: 8 },
   { id: 'general_12', text: 'What do you need right now? 🤗', category: 'reflection', priority: 7 },
 ];
