@@ -388,8 +388,10 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
             open
             onClose={() => {}}
             tracker={{ ...dt.tracker, def: dt.config, goal: dt.tracker.goal }}
+            entries={dt.tracker.entries || []}
             onSave={async (data) => {
               await api.post('/trackers/log', { type: dt.config.id, data });
+              toast.success('Entry logged!');
               fetchTrackers();
             }}
             saving={false}

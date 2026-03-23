@@ -4,7 +4,7 @@
  * Row templates are persisted in the DB so users configure once.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, TextField, IconButton, Stack, Button,
   Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
@@ -54,6 +54,12 @@ interface TrackerRow {
   type?: string;
 }
 
+interface TrackerEntry {
+  tracker_id: string;
+  data: { items?: Array<Record<string, any>>; [key: string]: any };
+  logged_at: string;
+}
+
 interface EditableTrackerFormProps {
   open: boolean;
   onClose: () => void;
@@ -64,6 +70,8 @@ interface EditableTrackerFormProps {
   inline?: boolean;
   /** Accent color for inline mode buttons */
   accentColor?: string;
+  /** Previously logged entries to display below the form */
+  entries?: TrackerEntry[];
 }
 
 // Default rows for common trackers (used when no saved template exists)
@@ -136,6 +144,7 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
   saving,
   inline = false,
   accentColor,
+  entries = [],
 }) => {
   const [rows, setRows] = useState<TrackerRow[]>([]);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
@@ -146,9 +155,15 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
   const [axiomSuggestions, setAxiomSuggestions] = useState<{ name: string; count: number }[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
-  // Initialize rows from saved template or defaults
+  // Filter entries to today only
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayEntries = (entries || []).filter(e => e.logged_at?.slice(0, 10) === todayStr);
+
+  // Initialize rows from saved template or defaults — only on first open or tracker type change
+  const initedTypeRef = useRef<string | null>(null);
   useEffect(() => {
-    if (open && tracker) {
+    if (open && tracker && initedTypeRef.current !== tracker.type) {
+      initedTypeRef.current = tracker.type;
       const savedTemplate = tracker.goal?.template_rows;
       if (Array.isArray(savedTemplate) && savedTemplate.length > 0) {
         setRows(templateToRows(savedTemplate, tracker.type));
@@ -160,6 +175,8 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
       }
       setEditMode(false);
     }
+    // Reset when dialog closes (non-inline)
+    if (!open) initedTypeRef.current = null;
   }, [open, tracker]);
 
   // Autocomplete search for item labels
@@ -634,6 +651,35 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
           >
             {saving ? <CircularProgress size={18} color="inherit" /> : `Log Entry (+1 PP)`}
           </Button>
+        )}
+
+        {/* Today's logged entries */}
+        {todayEntries.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', textTransform: 'uppercase', mb: 1 }}>
+              Logged today ({todayEntries.length})
+            </Typography>
+            {todayEntries.map((entry, ei) => (
+              <Box key={ei} sx={{ mb: 1, p: 1.25, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', mb: 0.5 }}>
+                  {new Date(entry.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Typography>
+                {(entry.data?.items || []).map((item: any, ii: number) => (
+                  <Box key={ii} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.25 }}>
+                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', flex: 1 }}>
+                      {item.name || item.subject || 'Item'}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: accentColor || '#A78BFA' }}>
+                      {item.value != null && item.value !== 0 ? `${item.value}${item.unit ? ` ${item.unit}` : ''}` : ''}
+                      {item.weight ? ` ${item.weight}kg` : ''}{item.reps ? ` ×${item.reps}` : ''}{item.sets ? ` (${item.sets}s)` : ''}
+                      {item.duration ? ` ${item.duration}min` : ''}{item.distance ? ` ${item.distance}km` : ''}
+                      {item.pages_read ? ` ${item.pages_read}p` : ''}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            ))}
+          </Box>
         )}
       </Box>
     );
