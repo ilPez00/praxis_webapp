@@ -322,6 +322,12 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     };
 
     await onSave(data);
+
+    // Auto-save current rows as template so they persist permanently
+    if (tracker?.type) {
+      api.put(`/trackers/${tracker.type}/template`, { rows: rowsToTemplate(rows) }).catch(() => {});
+    }
+
     // Keep rows as-is after save — user's entries stay visible
     if (!inline) onClose();
   };
