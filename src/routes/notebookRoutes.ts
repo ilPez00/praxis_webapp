@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError, BadRequestError, NotFoundError } from '../utils/appErrors';
 import { authenticateToken } from '../middleware/authenticateToken';
 import logger from '../utils/logger';
+import * as notebookAxiomController from '../controllers/notebookAxiomController';
 
 const router = Router();
 
@@ -297,5 +298,12 @@ router.delete('/tags/:id', authenticateToken, catchAsync(async (req: Request, re
   if (error) throw error;
   res.json({ message: 'Tag deleted' });
 }));
+
+/**
+ * POST /notebook/axiom-query
+ * Ask Axiom a question about your logged notebook data
+ * Cost: 50 PP for free users, unlimited for premium
+ */
+router.post('/axiom-query', authenticateToken, notebookAxiomController.queryNotebookAxiom);
 
 export default router;

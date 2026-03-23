@@ -29,6 +29,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import ReplyIcon from '@mui/icons-material/Reply';
 import ShareIcon from '@mui/icons-material/Share';
 import SendIcon from '@mui/icons-material/Send';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import api from '../../lib/api';
@@ -36,6 +37,7 @@ import NoteEditDialog from './NoteEditDialog';
 import ShareDialog from '../../components/common/ShareDialog';
 import ContentRenderer from '../../components/common/ContentRenderer';
 import NoteAttachmentBar from '../../components/common/NoteAttachmentBar';
+import AxiomQueryDialog from './AxiomQueryDialog';
 import type { Attachment } from '../../components/common/NoteAttachmentBar';
 
 const ENTRY_TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -107,6 +109,10 @@ const NotebookPage: React.FC = () => {
   const [replyAttachments, setReplyAttachments] = useState<Attachment[]>([]);
   // Share state
   const [shareEntry, setShareEntry] = useState<NotebookEntry | null>(null);
+  // Axiom Query state
+  const [axiomDialogOpen, setAxiomDialogOpen] = useState(false);
+  const [userPoints, setUserPoints] = useState<number>(0);
+  const [isPremium, setIsPremium] = useState(false);
 
   const fetchEntries = useCallback(async () => {
     if (!user?.id) return;
@@ -143,6 +149,22 @@ const NotebookPage: React.FC = () => {
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
+
+  // Fetch user profile for Axiom button
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data: profile } = await api.get('/auth/profile');
+        if (profile) {
+          setUserPoints(profile.praxis_points || 0);
+          setIsPremium(profile.is_premium || false);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user profile:', err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleEditClick = (entry: NotebookEntry, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -252,13 +274,38 @@ const NotebookPage: React.FC = () => {
             All your moments, automatically organized
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          sx={{ borderRadius: '12px', fontWeight: 700, px: 3 }}
-        >
-          New Note
-        </Button>
+        <Stack direction="row" spacing={1.5}>
+          <Button
+            variant="outlined"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={() => setAxiomDialogOpen(true)}
+            sx={{
+              borderRadius: '12px',
+              fontWeight: 700,
+              px: 2,
+              border: '2px solid #A78BFA',
+              color: '#A78BFA',
+              '&:hover': {
+                border: '2px solid #8B5CF6',
+                bgcolor: 'rgba(167, 139, 250, 0.08)',
+              },
+            }}
+          >
+            Ask Axiom
+            {!isPremium && (
+              <Typography variant="caption" sx={{ display: 'block', fontSize: '0.6rem', mt: -0.3 }}>
+                {userPoints} PP
+              </Typography>
+            )}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            sx={{ borderRadius: '12px', fontWeight: 700, px: 3 }}
+          >
+            New Note
+          </Button>
+        </Stack>
       </Box>
 
       {/* Stats Cards */}
@@ -624,6 +671,12 @@ const NotebookPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Axiom Query Dialog */}
+      <AxiomQueryDialog
+        open={axiomDialogOpen}
+        onClose={() => setAxiomDialogOpen(false)}
+      />
     </Container>
   );
 };
