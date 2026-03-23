@@ -1,16 +1,38 @@
 import React from 'react';
 import { Box, Typography, Button } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface Props {
   children: React.ReactNode;
   /** Optional fallback UI. Pass null to silently hide a failed widget. */
   fallback?: React.ReactNode;
+  /** Label shown in compact widget fallback (e.g. "Morning Brief") */
+  label?: string;
 }
 
 interface State {
   hasError: boolean;
   error?: Error;
 }
+
+/** Compact fallback for widgets/cards — shows inline retry instead of full-page error */
+export const WidgetFallback: React.FC<{ label?: string; onRetry?: () => void }> = ({ label, onRetry }) => (
+  <Box sx={{
+    p: 2, borderRadius: '16px', textAlign: 'center',
+    border: '1px solid rgba(239,68,68,0.15)',
+    bgcolor: 'rgba(239,68,68,0.04)',
+  }}>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+      {label ? `${label} couldn't load` : 'This section couldn\'t load'}
+    </Typography>
+    {onRetry && (
+      <Button size="small" startIcon={<RefreshIcon />} onClick={onRetry}
+        sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+        Retry
+      </Button>
+    )}
+  </Box>
+);
 
 class ErrorBoundary extends React.Component<Props, State> {
   state: State = { hasError: false };
@@ -23,11 +45,19 @@ class ErrorBoundary extends React.Component<Props, State> {
     console.error('[ErrorBoundary] Uncaught render error:', error, info.componentStack);
   }
 
+  private handleRetry = () => {
+    this.setState({ hasError: false, error: undefined });
+  };
+
   render() {
     if (this.state.hasError) {
       // If a custom fallback is provided (including null), use it
       if (this.props.fallback !== undefined) {
         return this.props.fallback;
+      }
+      // If label is set, show compact widget fallback with retry
+      if (this.props.label) {
+        return <WidgetFallback label={this.props.label} onRetry={this.handleRetry} />;
       }
       // Default full-page error view
       return (

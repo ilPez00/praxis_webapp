@@ -51,6 +51,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 const ChatRoom: React.FC = () => {
   const { user1Id, user2Id } = useParams<{ user1Id: string; user2Id: string }>();
@@ -990,6 +991,7 @@ const ChatRoom: React.FC = () => {
         </Collapse>
 
         {/* Messages list */}
+        <ErrorBoundary label="Chat Messages">
         <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 2, py: 2 }}>
           {messages.length === 0 ? (
             <Box sx={{ textAlign: 'center', mt: 6, opacity: 0.5 }}>
@@ -1015,8 +1017,10 @@ const ChatRoom: React.FC = () => {
           )}
           <div ref={messagesEndRef} />
         </Box>
+        </ErrorBoundary>
 
         {/* Input bar */}
+        <ErrorBoundary label="Message Input">
         <Box
           sx={{
             px: 2, pt: 1.5, pb: 'max(12px, env(safe-area-inset-bottom))',
@@ -1087,6 +1091,7 @@ const ChatRoom: React.FC = () => {
             </IconButton>
           </Stack>
         </Box>
+        </ErrorBoundary>
       </Box>
 
       {/* Goal picker dialog */}

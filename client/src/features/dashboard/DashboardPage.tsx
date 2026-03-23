@@ -12,7 +12,7 @@ import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import QuickActionFAB from '../../components/common/QuickActionFAB';
 
-import CircularProgress from '@mui/material/CircularProgress';
+import PageSkeleton from '../../components/common/PageSkeleton';
 import {
   Container, Box, Typography, Button, Alert, Stack,
   Grid, Avatar, Chip, LinearProgress,
@@ -130,11 +130,7 @@ const DashboardPage: React.FC = () => {
   };
 
   if (userLoading || (loadingContent && !goalTree)) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <CircularProgress color="primary" />
-      </Box>
-    );
+    return <PageSkeleton cards={4} />;
   }
 
   if (error) {
@@ -178,10 +174,9 @@ const DashboardPage: React.FC = () => {
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 12 }}>
       <Container maxWidth="lg">
-        <ErrorBoundary>
-
           {/* ── Axiom Morning Brief (check-in + match/event/place) ── */}
           <Box sx={{ pt: 4 }}>
+            <ErrorBoundary label="Morning Brief">
             {currentUserId && (
               <AxiomMorningBrief
                 userName={userName}
@@ -195,35 +190,27 @@ const DashboardPage: React.FC = () => {
                 onCheckIn={() => {}}
               />
             )}
+            </ErrorBoundary>
           </Box>
-
-          {/* ── Share progress card (moved to Notes page) ── */}
-          {/* ShareSnippetButton relocated to /notes - personal tracking dashboard */}
-
-          {/* ── Balance Intervention (moved to Notes page) ── */}
-          {/* BalanceWidget relocated to /notes - personal tracking dashboard */}
 
           {/* ── Main Grid ── */}
           <Grid container spacing={4}>
-
-            {/* Left column — social feed only */}
             <Grid size={{ xs: 12 }}>
               <Stack spacing={4}>
-
-                {/* Recent Activity feed */}
-                <Box>
-                  <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>
-                    RECENT ACTIVITY · ranked by goals · proximity · honor
-                  </Typography>
-                  <PostFeed context="general" feedUserId={currentUserId} personalized />
-                </Box>
-
+                <ErrorBoundary label="Activity Feed">
+                  <Box>
+                    <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>
+                      RECENT ACTIVITY · ranked by goals · proximity · honor
+                    </Typography>
+                    <PostFeed context="general" feedUserId={currentUserId} personalized />
+                  </Box>
+                </ErrorBoundary>
               </Stack>
             </Grid>
-
           </Grid>
 
           {/* Top Alignments — moved from right column */}
+          <ErrorBoundary label="Top Alignments">
           <Box sx={{ mt: 4 }}>
             <GlassCard sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -282,8 +269,10 @@ const DashboardPage: React.FC = () => {
               </Stack>
             </GlassCard>
           </Box>
+          </ErrorBoundary>
 
           {/* Best Examples — curated leaderboard */}
+          <ErrorBoundary label="Leaderboard">
           <Box sx={{ mt: 4 }}>
             <GlassCard sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
@@ -358,8 +347,10 @@ const DashboardPage: React.FC = () => {
               </Stack>
             </GlassCard>
           </Box>
+          </ErrorBoundary>
 
           {/* Near You — shown only when location data available */}
+          <ErrorBoundary label="Near You">
           {nearbyUsers.length > 0 && (
             <Box sx={{ mt: 6 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
@@ -396,8 +387,7 @@ const DashboardPage: React.FC = () => {
               </Box>
             </Box>
           )}
-
-        </ErrorBoundary>
+          </ErrorBoundary>
       </Container>
 
       <SiteTour

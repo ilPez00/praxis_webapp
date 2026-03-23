@@ -20,6 +20,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import api from '../../lib/api';
+import PageSkeleton from '../../components/common/PageSkeleton';
 import CoachingMarketplace from '../coaching/CoachingMarketplace';
 import { DOMAIN_COLORS } from '../../types/goal';
 import { Domain } from '../../models/Domain';
@@ -347,7 +348,7 @@ const ServicesPage: React.FC = () => {
           </Box>
 
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+            <PageSkeleton cards={3} header={false} />
           ) : listings.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8, color: 'text.disabled' }}>
               <StorefrontIcon sx={{ fontSize: 56, mb: 2, opacity: 0.2 }} />

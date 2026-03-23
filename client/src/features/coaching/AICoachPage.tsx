@@ -40,6 +40,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import HistoryIcon from '@mui/icons-material/History';
 import BetCommitDialog from '../../components/common/BetCommitDialog';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 interface StrategyItem {
   goal: string;
@@ -434,6 +435,7 @@ const AICoachPage: React.FC = () => {
       )}
 
       <Stack spacing={3}>
+        <ErrorBoundary label="Daily Protocol">
         {loadingDaily ? <LinearProgress /> : dailyBrief && (
           <Box sx={{ p: 3, borderRadius: 3, background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(245,158,11,0.06) 100%)', border: '1px solid rgba(139,92,246,0.2)' }}>
             <SectionHeader icon={<AutoAwesomeIcon />} label="Axiom Daily Protocol" color="#A78BFA" />
@@ -545,7 +547,9 @@ const AICoachPage: React.FC = () => {
             </Grid>
           </Box>
         )}
+        </ErrorBoundary>
 
+        <ErrorBoundary label="Strategy Report">
         {loadingReport ? (
           <Box sx={{ py: 10, textAlign: 'center' }}>
             <CircularProgress size={32} sx={{ mb: 2 }} />
@@ -564,7 +568,9 @@ const AICoachPage: React.FC = () => {
             <Button variant="contained" onClick={generateBrief} startIcon={<AutoAwesomeIcon />} sx={{ borderRadius: '12px', fontWeight: 800 }}>Wake Up Axiom</Button>
           </GlassCard>
         )}
+        </ErrorBoundary>
 
+        <ErrorBoundary label="Ask Axiom">
         <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <SectionHeader icon={<Box sx={{ fontSize: '1rem' }}>🥋</Box>} label="Ask Axiom" />
@@ -602,6 +608,7 @@ const AICoachPage: React.FC = () => {
             </IconButton>
           </Box>
         </Box>
+        </ErrorBoundary>
       </Stack>
 
       {dailyBrief?.challenge && (

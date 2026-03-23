@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import PageSkeleton from '../../components/common/PageSkeleton';
 import {
   Box,
   Typography,
@@ -205,7 +206,7 @@ const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) =>
 
   const typeCfg = (type: string) => OFFER_TYPES.find(t => t.value === type) ?? OFFER_TYPES[0];
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+  if (loading) return <PageSkeleton cards={3} header={false} />;
 
   return (
     <Box>
@@ -438,11 +439,7 @@ const MarketplacePage: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageSkeleton cards={4} />;
   }
 
   const points = user?.praxis_points ?? 0;

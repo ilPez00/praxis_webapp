@@ -1,11 +1,11 @@
 import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
-import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
+import PageSkeleton from './components/common/PageSkeleton';
 import Navbar from './components/common/Navbar';
 import InstallPwaBanner from './components/common/InstallPwaBanner';
 import PrivateRoute from './features/auth/PrivateRoute';
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import QuickActionFAB from './components/common/QuickActionFAB';
 import { Toaster } from 'react-hot-toast';
 import routes from './config/routes';
@@ -13,11 +13,7 @@ import { useLocationSync } from './hooks/useLocationSync';
 import { useUser } from './hooks/useUser';
 import { useOfflineSync } from './hooks/useOfflineSync';
 
-const PageLoader = () => (
-  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-    <CircularProgress />
-  </Box>
-);
+const PageLoader = () => <PageSkeleton cards={3} />;
 
 const isElectron = /electron/i.test(navigator.userAgent);
 const Router = isElectron ? HashRouter : BrowserRouter;
@@ -62,21 +58,23 @@ const AppRouter: React.FC = () => {
       {!isWidget && <QuickActionFAB />}
       <Toaster position="top-right" />
       
-      {/* ErrorBoundary moved deep to catch route-level crashes only */}
       <Suspense fallback={<PageLoader />}>
-        <ErrorBoundary>
-          <Routes>
-            {routes.map((route, index) => (
-              route.private ? (
-                <Route key={index} element={<PrivateRoute />}>
-                  <Route path={route.path} element={<route.element />} />
-                </Route>
-              ) : (
-                <Route key={index} path={route.path} element={<route.element />} />
-              )
-            ))}
-          </Routes>
-        </ErrorBoundary>
+        <Routes>
+          {routes.map((route, index) => {
+            const page = (
+              <ErrorBoundary>
+                <route.element />
+              </ErrorBoundary>
+            );
+            return route.private ? (
+              <Route key={index} element={<PrivateRoute />}>
+                <Route path={route.path} element={page} />
+              </Route>
+            ) : (
+              <Route key={index} path={route.path} element={page} />
+            );
+          })}
+        </Routes>
       </Suspense>
     </Router>
   );

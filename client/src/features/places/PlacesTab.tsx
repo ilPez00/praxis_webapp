@@ -20,6 +20,7 @@ import PublicIcon from '@mui/icons-material/Public';
 import ShareIcon from '@mui/icons-material/Share';
 import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 import GlassCard from '../../components/common/GlassCard';
+import PageSkeleton from '../../components/common/PageSkeleton';
 import ShareDialog from '../../components/common/ShareDialog';
 import LocationMap from '../../components/common/LocationMap';
 import { supabase } from '../../lib/supabase';
@@ -307,7 +308,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
     } catch { toast.error('Failed to delete place.'); }
   };
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+  if (loading) return <PageSkeleton cards={3} />;
 
   return (
     <Box sx={compact ? {} : { py: 4 }}>

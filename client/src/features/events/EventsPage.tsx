@@ -26,6 +26,7 @@ import { supabase } from '../../lib/supabase';
 import ShareDialog from '../../components/common/ShareDialog';
 import api from '../../lib/api';
 import { useEvents } from '../../hooks/useFetch';
+import PageSkeleton from '../../components/common/PageSkeleton';
 import GlassCard from '../../components/common/GlassCard';
 import LocationMap from '../../components/common/LocationMap';
 import { PRAXIS_DOMAINS, getDomainConfig } from '../../types/Domain';
@@ -261,7 +262,7 @@ const EventsPage: React.FC<{ compact?: boolean; hideMap?: boolean }> = ({ compac
   const minDateStr = new Date().toISOString().slice(0, 10);
 
   if (loading && rawEvents.length === 0) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+    return <PageSkeleton cards={3} />;
   }
 
   return (

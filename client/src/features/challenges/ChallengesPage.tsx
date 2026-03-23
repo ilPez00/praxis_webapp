@@ -17,6 +17,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import TuneIcon from '@mui/icons-material/Tune';
 import GlassCard from '../../components/common/GlassCard';
+import PageSkeleton from '../../components/common/PageSkeleton';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
@@ -467,7 +468,7 @@ const ChallengesPage: React.FC = () => {
           </Stack>
 
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+            <PageSkeleton cards={3} header={false} />
           ) : duels.length === 0 ? (
             <GlassCard sx={{ p: 6, textAlign: 'center' }}>
               <EmojiEventsIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
@@ -495,7 +496,7 @@ const ChallengesPage: React.FC = () => {
       {mainTab === 1 && (
         <Box>
           {myLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+            <PageSkeleton cards={3} header={false} />
           ) : myDuels.length === 0 ? (
             <GlassCard sx={{ p: 6, textAlign: 'center' }}>
               <SwordIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />

@@ -39,6 +39,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 function buildFrontendTree(backendNodes: any[]): FrontendGoalNode[] {
   const nodeMap = new Map<string, FrontendGoalNode>();
@@ -514,31 +515,35 @@ const GoalTreePage: React.FC = () => {
             overflowY: 'auto',
             borderRight: { xs: 'none', md: '1px solid rgba(255,255,255,0.06)' },
           }}>
-            <GoalCardTree
-              nodes={treeData}
-              selectedNodeId={selectedNode?.id ?? null}
-              onNodeSelect={handleNodeSelect}
-              onAddGoal={handleRootClick}
-              readOnly={!isOwnTree}
-            />
+            <ErrorBoundary label="Goal Tree">
+              <GoalCardTree
+                nodes={treeData}
+                selectedNodeId={selectedNode?.id ?? null}
+                onNodeSelect={handleNodeSelect}
+                onAddGoal={handleRootClick}
+                readOnly={!isOwnTree}
+              />
+            </ErrorBoundary>
           </Box>
 
           {/* Desktop: right panel workspace */}
           {!isMobile && selectedNode && (
             <Box sx={{ width: '60%' }}>
-              <GoalWorkspaceSheet
-                node={selectedNode}
-                allNodes={backendNodes}
-                open={true}
-                onClose={() => setSelectedNode(null)}
-                onProgressChange={handleProgressUpdate}
-                onNodeSelect={handleNodeSelect}
-                onAddSubgoal={handleAddSubgoal}
-                onLogTracker={handleLogTracker}
-                onAction={handleAction}
-                userId={currentUserId || ''}
-                readOnly={!isOwnTree}
-              />
+              <ErrorBoundary label="Goal Workspace">
+                <GoalWorkspaceSheet
+                  node={selectedNode}
+                  allNodes={backendNodes}
+                  open={true}
+                  onClose={() => setSelectedNode(null)}
+                  onProgressChange={handleProgressUpdate}
+                  onNodeSelect={handleNodeSelect}
+                  onAddSubgoal={handleAddSubgoal}
+                  onLogTracker={handleLogTracker}
+                  onAction={handleAction}
+                  userId={currentUserId || ''}
+                  readOnly={!isOwnTree}
+                />
+              </ErrorBoundary>
             </Box>
           )}
         </Box>
@@ -546,19 +551,21 @@ const GoalTreePage: React.FC = () => {
 
       {/* Mobile: bottom sheet */}
       {isMobile && (
-        <GoalWorkspaceSheet
-          node={selectedNode}
-          allNodes={backendNodes}
-          open={sheetOpen}
-          onClose={() => setSheetOpen(false)}
-          onProgressChange={handleProgressUpdate}
-          onNodeSelect={handleNodeSelect}
-          onAddSubgoal={handleAddSubgoal}
-          onLogTracker={handleLogTracker}
-          onAction={handleAction}
-          userId={currentUserId || ''}
-          readOnly={!isOwnTree}
-        />
+        <ErrorBoundary label="Goal Workspace">
+          <GoalWorkspaceSheet
+            node={selectedNode}
+            allNodes={backendNodes}
+            open={sheetOpen}
+            onClose={() => setSheetOpen(false)}
+            onProgressChange={handleProgressUpdate}
+            onNodeSelect={handleNodeSelect}
+            onAddSubgoal={handleAddSubgoal}
+            onLogTracker={handleLogTracker}
+            onAction={handleAction}
+            userId={currentUserId || ''}
+            readOnly={!isOwnTree}
+          />
+        </ErrorBoundary>
       )}
 
       {/* ── Achievement celebration dialog ──────────────────────── */}

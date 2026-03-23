@@ -52,6 +52,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DuelDialog from '../duels/components/DuelDialog';
 import { DOMAIN_COLORS } from '../../types/goal';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
 import toast from 'react-hot-toast';
 import CodeIcon from '@mui/icons-material/Code';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -539,6 +540,7 @@ const ProfilePage: React.FC = () => {
   return (
     <Container maxWidth="md" sx={{ mt: 4, pb: 6 }}>
       {/* Hero card */}
+      <ErrorBoundary label="Profile Card">
       <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ overflow: 'hidden', mb: 3 }}>
         {/* Banner strip */}
         <Box
@@ -935,6 +937,7 @@ const ProfilePage: React.FC = () => {
           )}
         </Box>
       </GlassCard>
+      </ErrorBoundary>
 
       {/* Friends dialog */}
       <Dialog
@@ -999,6 +1002,7 @@ const ProfilePage: React.FC = () => {
 
       {/* Latest Reports (Own profile only) */}
       {isOwnProfile && (profile.latest_axiom_report || profile.latest_ai_narrative) && (
+        <ErrorBoundary label="Axiom Reports">
         <GlassCard glowColor="rgba(167,139,250,0.12)" sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
             <AutoAwesomeIcon sx={{ color: '#A78BFA' }} />
@@ -1061,6 +1065,7 @@ const ProfilePage: React.FC = () => {
             )}
           </Stack>
         </GlassCard>
+        </ErrorBoundary>
       )}
 
       {/* Goal Tree shortcut */}
@@ -1095,6 +1100,7 @@ const ProfilePage: React.FC = () => {
 
       {/* Achievements (trophies) */}
       {achievements.length > 0 && (
+        <ErrorBoundary label="Achievements">
         <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
             <EmojiEventsIcon sx={{ color: '#F59E0B' }} />
@@ -1146,9 +1152,11 @@ const ProfilePage: React.FC = () => {
             })}
           </Box>
         </GlassCard>
+        </ErrorBoundary>
       )}
 
       {/* Posts timeline */}
+      <ErrorBoundary label="Posts">
       <GlassCard glowColor="rgba(245,158,11,0.08)" sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
           <ArticleIcon sx={{ color: 'primary.main' }} />
@@ -1163,6 +1171,7 @@ const ProfilePage: React.FC = () => {
         </Box>
         <PostFeed context="general" profileUserId={paramId || user?.id} />
       </GlassCard>
+      </ErrorBoundary>
 
       {/* Duel Dialog */}
       {paramId && profile && (

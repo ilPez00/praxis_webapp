@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import GlassCard from '../../components/common/GlassCard';
 import CircularProgress from '@mui/material/CircularProgress';
+import PageSkeleton from '../../components/common/PageSkeleton';
 import {
   Container,
   Box,
@@ -40,6 +41,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { DOMAIN_COLORS } from '../../types/goal';
 import ProBanner from '../../components/common/ProBanner';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
 import {
   ChartContainer,
   LineChart,
@@ -471,12 +473,7 @@ const AnalyticsPage: React.FC = () => {
   }, [user, userLoading, navigate]);
 
   if (userLoading) {
-    return (
-      <Container sx={{ mt: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-        <CircularProgress />
-        <Typography color="text.secondary">Loading analytics...</Typography>
-      </Container>
-    );
+    return <PageSkeleton cards={4} />;
   }
 
   if (error) {
@@ -598,37 +595,39 @@ const AnalyticsPage: React.FC = () => {
       </Box>
 
       {/* ── Habit Calendar — visible to all users ── */}
-      {calendarLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress size={24} />
-        </Box>
-      ) : (
-        <Box sx={{ mb: 3 }}>
-          {/* Filter toggles */}
-          <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Chip
-              label="📊 Trackers"
-              color={filters.trackers ? 'primary' : 'default'}
-              onClick={() => setFilters(f => ({ ...f, trackers: !f.trackers }))}
-              sx={{ fontWeight: 600 }}
-            />
-            <Chip
-              label="📓 Notes"
-              color={filters.notes ? 'primary' : 'default'}
-              onClick={() => setFilters(f => ({ ...f, notes: !f.notes }))}
-              sx={{ fontWeight: 600 }}
-            />
-            <Chip
-              label="🎯 Goals"
-              color={filters.goals ? 'primary' : 'default'}
-              onClick={() => setFilters(f => ({ ...f, goals: !f.goals }))}
-              sx={{ fontWeight: 600 }}
-            />
+      <ErrorBoundary label="Habit Calendar">
+        {calendarLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={24} />
           </Box>
-          
-          <HabitCalendar dayData={calendarDays} goalDates={goalDates} />
-        </Box>
-      )}
+        ) : (
+          <Box sx={{ mb: 3 }}>
+            {/* Filter toggles */}
+            <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Chip
+                label="📊 Trackers"
+                color={filters.trackers ? 'primary' : 'default'}
+                onClick={() => setFilters(f => ({ ...f, trackers: !f.trackers }))}
+                sx={{ fontWeight: 600 }}
+              />
+              <Chip
+                label="📓 Notes"
+                color={filters.notes ? 'primary' : 'default'}
+                onClick={() => setFilters(f => ({ ...f, notes: !f.notes }))}
+                sx={{ fontWeight: 600 }}
+              />
+              <Chip
+                label="🎯 Goals"
+                color={filters.goals ? 'primary' : 'default'}
+                onClick={() => setFilters(f => ({ ...f, goals: !f.goals }))}
+                sx={{ fontWeight: 600 }}
+              />
+            </Box>
+
+            <HabitCalendar dayData={calendarDays} goalDates={goalDates} />
+          </Box>
+        )}
+      </ErrorBoundary>
 
       {/* ── Premium analytics gate ── */}
       {!isPremium ? (
@@ -639,6 +638,7 @@ const AnalyticsPage: React.FC = () => {
       <>
       <Stack spacing={3}>
         {/* Row 1: Progress + Achievement Rate */}
+        <ErrorBoundary label="Goal Progress">
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, md: 7 }}>
             <StatCard icon={<TrendingUpIcon />} title="Goal Progress" glowColor="rgba(245,158,11,0.15)">
@@ -713,8 +713,10 @@ const AnalyticsPage: React.FC = () => {
             </StatCard>
           </Grid>
         </Grid>
+        </ErrorBoundary>
 
         {/* Row 2: Domain Performance */}
+        <ErrorBoundary label="Domain Performance">
         <StatCard icon={<InsightsIcon />} title="Domain Performance" glowColor="rgba(139,92,246,0.15)">
           {domainPerformance.length > 0 ? (
             <Grid container spacing={2}>
@@ -747,8 +749,10 @@ const AnalyticsPage: React.FC = () => {
             <Typography color="text.secondary" variant="body2">No domain data yet.</Typography>
           )}
         </StatCard>
+        </ErrorBoundary>
 
         {/* Row 3: Feedback Trends + Comparison */}
+        <ErrorBoundary label="Feedback & Comparison">
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, md: 6 }}>
             <StatCard icon={<FeedbackIcon />} title="Feedback Trends" glowColor="rgba(59,130,246,0.15)">
@@ -827,10 +831,12 @@ const AnalyticsPage: React.FC = () => {
             </StatCard>
           </Grid>
         </Grid>
+        </ErrorBoundary>
       </Stack>
 
       {/* NEW: Enhanced Charts Section */}
       {isPremium && progressData.length > 0 && (
+        <ErrorBoundary label="Visual Analytics">
         <Box sx={{ mt: 3 }}>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
             <ShowChartIcon sx={{ color: 'primary.main' }} />
@@ -968,9 +974,11 @@ const AnalyticsPage: React.FC = () => {
             </Grid>
           </Grid>
         </Box>
+        </ErrorBoundary>
       )}
 
       {/* Leaderboard */}
+      <ErrorBoundary label="Leaderboard">
       <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ p: 3, mt: 3 }}>
 
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
@@ -1058,6 +1066,7 @@ const AnalyticsPage: React.FC = () => {
           </Stack>
         )}
       </GlassCard>
+      </ErrorBoundary>
       </>
       )}  {/* end premium block */}
     </Container>

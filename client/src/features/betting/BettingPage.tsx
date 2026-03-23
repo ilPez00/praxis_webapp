@@ -20,6 +20,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import ShareIcon from '@mui/icons-material/Share';
 import { GoalNode } from '../../models/GoalNode';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 interface Bet {
   id: string;
@@ -206,6 +207,7 @@ const BettingPage: React.FC = () => {
         </Grid>
 
         {/* Active Bets */}
+        <ErrorBoundary label="Active Pledges">
         <GlassCard sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>
             Active Pledges ({activeBets.length})
@@ -314,9 +316,11 @@ const BettingPage: React.FC = () => {
             </Stack>
           )}
         </GlassCard>
+        </ErrorBoundary>
 
         {/* Bet history */}
         {historyBets.length > 0 && (
+          <ErrorBoundary label="Bet History">
           <GlassCard sx={{ p: 3 }}>
             <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>History</Typography>
             <Stack spacing={1.5}>
@@ -357,6 +361,7 @@ const BettingPage: React.FC = () => {
               })}
             </Stack>
           </GlassCard>
+          </ErrorBoundary>
         )}
       </Container>
 
