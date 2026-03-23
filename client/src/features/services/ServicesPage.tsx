@@ -19,9 +19,8 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import SchoolIcon from '@mui/icons-material/School';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import CoachingMarketplace from '../coaching/CoachingMarketplace';
-import { supabase } from '../../lib/supabase';
 import { DOMAIN_COLORS } from '../../types/goal';
 import { Domain } from '../../models/Domain';
 
@@ -68,19 +67,6 @@ function priceLabel(listing: ServiceListing) {
   return `${sym}${listing.price}`;
 }
 
-const getToken = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token;
-};
-
-const authFetch = async (url: string, opts?: RequestInit) => {
-  const token = await getToken();
-  return fetch(url, {
-    ...opts,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts?.headers ?? {}) },
-  });
-};
-
 // ── Empty form ────────────────────────────────────────────────────────────────
 
 const emptyForm = () => ({
@@ -113,15 +99,15 @@ const ServicesPage: React.FC = () => {
       const params = new URLSearchParams();
       if (typeFilter) params.set('type', typeFilter);
       if (search.trim()) params.set('q', search.trim());
-      const res = await fetch(`${API_URL}/services?${params}`);
-      if (res.ok) setListings(await res.json());
+      const res = await api.get(`/services?${params}`);
+      setListings(res.data);
     } catch { /* ignore */ } finally { setLoading(false); }
   }, [typeFilter, search]);
 
   const fetchMine = useCallback(async () => {
     try {
-      const res = await authFetch(`${API_URL}/services/mine`);
-      if (res.ok) setMyListings(await res.json());
+      const res = await api.get('/services/mine');
+      setMyListings(res.data);
     } catch { /* ignore */ }
   }, []);
 
@@ -162,35 +148,31 @@ const ServicesPage: React.FC = () => {
         contact_info: form.contact_info || null,
       };
 
-      let res: Response;
+      let res;
       if (editTarget) {
-        res = await authFetch(`${API_URL}/services/${editTarget.id}`, { method: 'PUT', body: JSON.stringify(body) });
+        res = await api.put(`/services/${editTarget.id}`, body);
       } else {
-        res = await authFetch(`${API_URL}/services`, { method: 'POST', body: JSON.stringify(body) });
+        res = await api.post('/services', body);
       }
 
-      if (res.ok) {
-        const data = await res.json();
-        if (editTarget) {
-          setMyListings(prev => prev.map(l => l.id === data.id ? data : l));
-          toast.success('Listing updated.');
-        } else {
-          setMyListings(prev => [data, ...prev]);
-          toast.success('Listing published!');
-        }
-        setFormOpen(false);
+      const data = res.data;
+      if (editTarget) {
+        setMyListings(prev => prev.map(l => l.id === data.id ? data : l));
+        toast.success('Listing updated.');
       } else {
-        const b = await res.json().catch(() => ({}));
-        toast.error((b as any).message || 'Failed to save listing.');
+        setMyListings(prev => [data, ...prev]);
+        toast.success('Listing published!');
       }
-    } catch { toast.error('Failed to save.'); } finally { setSaving(false); }
+      setFormOpen(false);
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to save.'); } finally { setSaving(false); }
   };
 
   // ── Delete ─────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
     try {
-      const res = await authFetch(`${API_URL}/services/${id}`, { method: 'DELETE' });
-      if (res.ok) { setMyListings(prev => prev.filter(l => l.id !== id)); toast.success('Listing removed.'); }
+      await api.delete(`/services/${id}`);
+      setMyListings(prev => prev.filter(l => l.id !== id));
+      toast.success('Listing removed.');
     } catch { toast.error('Failed to delete.'); }
   };
 

@@ -8,8 +8,7 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import ChatIcon from '@mui/icons-material/Chat';
 import { supabase } from '../../../lib/supabase';
-import axios from 'axios';
-import { API_URL } from '../../../lib/api';
+import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 import { getAxiomQuote } from '../../../utils/axiomQuotes';
 
@@ -25,14 +24,11 @@ const DesktopWidget: React.FC = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-
         const [userRes, checkinRes, trackersRes, axiomRes] = await Promise.allSettled([
-          axios.get(`${API_URL}/users/${user.id}`, { headers }),
-          axios.get(`${API_URL}/checkins/today`, { headers }),
-          axios.get(`${API_URL}/trackers/summary/today`, { headers }),
-          axios.get(`${API_URL}/axiom/last-response`, { headers }),
+          api.get(`/users/${user.id}`),
+          api.get('/checkins/today'),
+          api.get('/trackers/summary/today'),
+          api.get('/axiom/last-response'),
         ]);
 
         if (userRes.status === 'fulfilled') setUserData(userRes.value.data);
@@ -92,9 +88,7 @@ const DesktopWidget: React.FC = () => {
     if (checkedInToday || checkingIn) return;
     setCheckingIn(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-      await axios.post(`${API_URL}/checkins`, {}, { headers });
+      await api.post('/checkins', {});
       setCheckedInToday(true);
       // Refresh user data to show updated streak/points
       fetchData();

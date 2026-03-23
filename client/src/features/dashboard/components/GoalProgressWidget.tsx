@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../lib/supabase';
-import { API_URL } from '../../../lib/api';
-import axios from 'axios';
+import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 import {
   Box,
@@ -64,11 +62,9 @@ const GoalProgressWidget: React.FC<Props> = ({ userId, nodes, onProgressUpdate }
     const newPct = Math.min(100, Math.round(node.progress * 100) + 10);
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.patch(
-        `${API_URL}/goals/${userId}/node/${node.id}/progress`,
+      await api.patch(
+        `/goals/${userId}/node/${node.id}/progress`,
         { progress: newPct },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } },
       );
       onProgressUpdate(node.id, newPct / 100);
       toast.success(`+10% → ${newPct}%`);
@@ -83,11 +79,9 @@ const GoalProgressWidget: React.FC<Props> = ({ userId, nodes, onProgressUpdate }
     if (!activeNode) return;
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.patch(
-        `${API_URL}/goals/${userId}/node/${activeNode.id}/progress`,
+      await api.patch(
+        `/goals/${userId}/node/${activeNode.id}/progress`,
         { progress: sliderVal },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } },
       );
       onProgressUpdate(activeNode.id, sliderVal / 100);
       toast.success(`Updated "${activeNode.name}" to ${sliderVal}%`);

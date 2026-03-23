@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
@@ -107,26 +107,15 @@ const AICoachPage: React.FC = () => {
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session?.access_token}`,
-    };
-  };
-
   const loadCachedBrief = useCallback(async () => {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/ai-coaching/brief`, { headers });
-    if (!res.ok) return null;
-    return res.json() as Promise<{ brief: CoachingReport; generated_at: string } | null>;
+    const res = await api.get('/ai-coaching/brief');
+    return res.data as { brief: CoachingReport; generated_at: string } | null;
   }, []);
 
   const loadDailyBrief = useCallback(async () => {
     if (!user?.id) return;
     setLoadingDaily(true);
     try {
-      const headers = await getAuthHeaders();
       // Fetch latest axiom daily brief
       const { data: briefData, error: supabaseError } = await supabase
         .from('axiom_daily_briefs')
@@ -148,17 +137,16 @@ const AICoachPage: React.FC = () => {
       }
 
       // Also try API endpoint
-      const res = await fetch(`${API_URL}/ai-coaching/daily-brief`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.brief) {
-          setDailyBrief(data.brief);
-          if (data.brief.message && !lastAxiomMessage) {
-            setLastAxiomMessage(data.brief.message);
+      try {
+        const apiRes = await api.get('/ai-coaching/daily-brief');
+        if (apiRes.data?.brief) {
+          setDailyBrief(apiRes.data.brief);
+          if (apiRes.data.brief.message && !lastAxiomMessage) {
+            setLastAxiomMessage(apiRes.data.brief.message);
           }
         }
-      } else {
-        console.warn('API daily brief endpoint returned non-OK status:', res.status);
+      } catch (apiErr: any) {
+        console.warn('API daily brief endpoint returned non-OK status:', apiErr.response?.status);
       }
     } catch (err: any) {
       console.error('Failed to load daily brief:', err);
@@ -173,17 +161,13 @@ const AICoachPage: React.FC = () => {
     setReportError(null);
     setDetailedError(null);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/ai-coaching/report`, { method: 'POST', headers });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setDetailedError(body.detailed || null);
-        throw new Error(body.message || `Error ${res.status}`);
-      }
-      setReport(body);
+      const res = await api.post('/ai-coaching/report');
+      setReport(res.data);
       setGeneratedAt(new Date().toISOString());
     } catch (err: any) {
-      setReportError(err.message || 'Failed to generate coaching report.');
+      const body = err.response?.data || {};
+      setDetailedError(body.detailed || null);
+      setReportError(body.message || err.message || 'Failed to generate coaching report.');
     } finally {
       setLoadingReport(false);
     }
@@ -198,12 +182,9 @@ const AICoachPage: React.FC = () => {
     setReportError(null);
     setDetailedError(null);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/ai-coaching/generate-axiom-brief?force=1`, {
-        method: 'POST', headers,
-      });
-      const data = await res.json().catch(() => null);
-      if (res.ok && data?.brief) {
+      const res = await api.post('/ai-coaching/generate-axiom-brief?force=1');
+      const data = res.data;
+      if (data?.brief) {
         setDailyBrief(data.brief);
         setLastAxiomMessage(data.brief.message || null);
         setGeneratedAt(data.generated_at || new Date().toISOString());
@@ -309,12 +290,8 @@ const AICoachPage: React.FC = () => {
   const loadSavedNarratives = async () => {
     setLoadingNarratives(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/narratives?limit=20`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setSavedNarratives(data);
-      }
+      const res = await api.get('/narratives?limit=20');
+      setSavedNarratives(res.data);
     } catch (err) {
       console.error('Failed to load narratives:', err);
     } finally {
@@ -324,18 +301,15 @@ const AICoachPage: React.FC = () => {
   
   const handleDownloadNarrative = async (id: string, title: string) => {
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/narratives/${id}/download`, { headers });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title || 'axiom-narrative'}.md`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success('Narrative downloaded!');
-      }
+      const res = await api.get(`/narratives/${id}/download`, { responseType: 'blob' });
+      const blob = new Blob([res.data]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title || 'axiom-narrative'}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Narrative downloaded!');
     } catch (err: any) {
       toast.error('Failed to download: ' + err.message);
     }
@@ -352,23 +326,12 @@ const AICoachPage: React.FC = () => {
     setAsking(true);
     setChat(prev => [...prev, { role: 'user', text: q }]);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/ai-coaching/request`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ userPrompt: q, useBoost: true }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (res.status === 402) {
-        setChat(prev => [...prev, { role: 'coach', text: `${body.message}` }]);
-        return;
-      }
-      if (!res.ok) {
-        throw new Error(body.detailed ? `${body.message} (${body.detailed})` : (body.message || `Error ${res.status}`));
-      }
-      setChat(prev => [...prev, { role: 'coach', text: body.response }]);
+      const res = await api.post('/ai-coaching/request', { userPrompt: q, useBoost: true });
+      setChat(prev => [...prev, { role: 'coach', text: res.data.response }]);
     } catch (err: any) {
-      setChat(prev => [...prev, { role: 'coach', text: `Sorry, I couldn't respond. ${err.message}` }]);
+      const body = err.response?.data || {};
+      const msg = body.detailed ? `${body.message} (${body.detailed})` : (body.message || err.message);
+      setChat(prev => [...prev, { role: 'coach', text: `Sorry, I couldn't respond. ${msg}` }]);
     } finally {
       setAsking(false);
     }

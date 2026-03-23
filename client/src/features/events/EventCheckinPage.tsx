@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { Container, Box, Typography, CircularProgress, Button } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 
 type State = 'loading' | 'success' | 'already' | 'error';
@@ -29,18 +28,17 @@ const EventCheckinPage: React.FC = () => {
     }
 
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
         // Redirect to login, preserving the check-in URL
         navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
         return;
       }
 
       try {
-        const res = await axios.post(
-          `${API_URL}/events/${eventId}/checkin`,
+        const res = await api.post(
+          `/events/${eventId}/checkin`,
           { token },
-          { headers: { Authorization: `Bearer ${session.access_token}` } }
         );
         const { alreadyCheckedIn, newBalance: bal } = res.data as { alreadyCheckedIn: boolean; newBalance: number };
         setNewBalance(bal);

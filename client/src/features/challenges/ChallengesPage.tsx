@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Container, Box, Typography, Tabs, Tab, Button, Stack, Chip, Grid,
@@ -19,7 +18,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import TuneIcon from '@mui/icons-material/Tune';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { useNavigate } from 'react-router-dom';
 
@@ -99,16 +98,10 @@ const DuelCard: React.FC<{
   const myClaim = isCreator ? duel.creator_claimed : isOpponent ? duel.opponent_claimed : false;
   const days = daysLeft(duel.deadline);
 
-  const getHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-  };
-
   const doAction = async (endpoint: string, method: 'post' | 'delete' = 'post') => {
     setLoading(true);
     try {
-      const headers = await getHeaders();
-      await axios[method](`${API_URL}/duels/${duel.id}/${endpoint}`, {}, { headers });
+      await api[method](`/duels/${duel.id}/${endpoint}`, {});
       toast.success(endpoint === 'accept' ? 'Challenge accepted! Game on.' :
                     endpoint === 'decline' ? 'Challenge declined.' :
                     endpoint === 'claim' ? 'Win claimed! Waiting for opponent.' :
@@ -333,32 +326,25 @@ const ChallengesPage: React.FC = () => {
   const [resolvedOpponentId, setResolvedOpponentId] = useState<string | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
 
-  const getHeaders = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-  }, []);
-
   const fetchFeed = useCallback(async () => {
     setLoading(true);
     try {
-      const headers = await getHeaders();
       const params = filterCategory ? `?category=${encodeURIComponent(filterCategory)}` : '';
-      const { data } = await axios.get(`${API_URL}/duels${params}`, { headers });
+      const { data } = await api.get(`/duels${params}`);
       setDuels(Array.isArray(data) ? data : []);
     } catch { setDuels([]); }
     finally { setLoading(false); }
-  }, [filterCategory, getHeaders]);
+  }, [filterCategory]);
 
   const fetchMine = useCallback(async () => {
     if (!user) return;
     setMyLoading(true);
     try {
-      const headers = await getHeaders();
-      const { data } = await axios.get(`${API_URL}/duels/mine`, { headers });
+      const { data } = await api.get('/duels/mine');
       setMyDuels(Array.isArray(data) ? data : []);
     } catch { setMyDuels([]); }
     finally { setMyLoading(false); }
-  }, [user, getHeaders]);
+  }, [user]);
 
   useEffect(() => { fetchFeed(); }, [fetchFeed]);
   useEffect(() => { if (mainTab === 1) fetchMine(); }, [mainTab, fetchMine]);
@@ -386,15 +372,14 @@ const ChallengesPage: React.FC = () => {
     if (!formTitle.trim()) { toast.error('Title is required.'); return; }
     setSaving(true);
     try {
-      const headers = await getHeaders();
-      await axios.post(`${API_URL}/duels`, {
+      await api.post('/duels', {
         title: formTitle.trim(),
         description: formDesc.trim() || undefined,
         category: formCategory,
         stakePP: formStake,
         deadlineDays: formDays,
         opponentId: resolvedOpponentId || undefined,
-      }, { headers });
+      });
       toast.success(resolvedOpponentId ? 'Challenge sent!' : 'Open challenge posted!');
       setDialogOpen(false);
       setFormTitle(''); setFormDesc(''); setFormCategory('Fitness'); setFormStake(50);

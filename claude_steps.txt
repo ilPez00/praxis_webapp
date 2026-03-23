@@ -634,3 +634,34 @@ Session 83: Security Audit + Production Crash Fix (2026-03-21)
 - Verification: 0 app-level TypeScript errors (node_modules type errors are pre-existing from i18next + MUI x-internals)
 - Next: Deploy and verify crash is resolved in production; Phase 3 cleanup (delete dead components) if needed
 - Sign: Claude
+
+Session 84: Production Crash Fix + Domain Tracker Map Alignment + Axiom Cleanup (2026-03-22)
+- NoteGoalDetail.tsx: fixed TypeError crash — added null guard in SimplifiedTracker, removed unsafe `!` non-null assertion on TRACKER_TYPES.find()
+- NoteGoalDetail.tsx: added domain-based fallback for tracker resolution — widget types (lose_weight) don't match tracker IDs (lift), so falls back to DOMAIN_TRACKER_MAP like UnifiedGoalWidget already does
+- trackerTypes.ts: CRITICAL FIX — DOMAIN_TRACKER_MAP keys were old Maslow hierarchy names ('Body & Fitness', 'Career & Craft') that never matched actual Domain enum values ('Fitness', 'Career'). Remapped all keys to match Domain enum. This was why trackers never rendered anywhere using domain-based lookup.
+- AxiomScanService.ts: removed goalStrategy section (LLM prompt, algorithmic fallback with ~5 extra LLM calls/user, narrative markdown)
+- AxiomScanService.ts: removed networkLeverage section (LLM prompt, algorithmic fallback, narrative markdown)
+- AICoachingService.ts: updated Axiom identity prompt — removed "goal strategy" and "network leverage" mentions
+- AICoachPage.tsx: removed Goal Strategy accordion + Network Leverage section from coaching report UI; cleaned up unused imports
+- Files: client/src/features/notes/NoteGoalDetail.tsx, client/src/features/trackers/trackerTypes.ts, src/services/AxiomScanService.ts, src/services/AICoachingService.ts, client/src/features/coaching/AICoachPage.tsx
+- Verification: Build passes, 0 app-level errors
+- Commits: bf9f314, 7b8b0dc, 88e81cd, 96da43c
+- Next: Verify trackers render in production after deploy; test SpeedDial → Notebook → tracker flow end-to-end
+- Sign: Claude
+
+Session 85: Centralize API Client — Eliminate Raw Axios + Redundant getSession (2026-03-23)
+- SECURITY/ARCHITECTURE: Migrated entire frontend to centralized `api` client (client/src/lib/api.ts)
+- Removed raw `import axios from 'axios'` from all files (only api.ts imports axios now)
+- Removed ~50 redundant `supabase.auth.getSession()` calls that were only building Authorization headers
+- The `api` client's request interceptor auto-attaches Supabase JWT on every call
+- Net result: 63 files changed, -808 lines of boilerplate auth code
+- Remaining legitimate getSession calls (7 total):
+  - api.ts (the interceptor itself)
+  - LoginForm.tsx (auth state check)
+  - ReferencePicker.tsx, ShareDialog.tsx, AxiomReply.tsx (need session.user.id for supabase queries)
+  - adminTypes.ts (shared authHeaders helper for 11 admin tab files using raw fetch)
+- Also fixed: DebugTab.tsx missing CircularProgress import (production crash)
+- Files: 63 files across components/common, features/*, admin/tabs
+- Verification: `npx tsc --noEmit` — 0 source errors (node_modules type errors are pre-existing)
+- Next: Phase 2 of code quality improvements (error boundaries, loading states, type safety)
+- Sign: Claude

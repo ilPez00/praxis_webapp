@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../lib/supabase';
-import { API_URL } from '../../../lib/api';
+import api from '../../../lib/api';
 import GlassCard from '../../../components/common/GlassCard';
 import AxiomReply from '../../../components/common/AxiomReply';
 import BetCommitDialog from '../../../components/common/BetCommitDialog';
@@ -115,26 +114,12 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
     
     setUnlocking(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API_URL}/axiom-unlock/unlock-daily`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-      });
-      
-      const result = await res.json();
-      
-      if (res.ok) {
-        setData(result.brief);
-        setUserPoints(result.newBalance);
-        toast.success('Daily brief unlocked! ✨');
-      } else {
-        toast.error(result.message || 'Failed to unlock');
-      }
+      const res = await api.post('/axiom-unlock/unlock-daily');
+      setData(res.data.brief);
+      setUserPoints(res.data.newBalance);
+      toast.success('Daily brief unlocked! ✨');
     } catch (err: any) {
-      toast.error('Failed to unlock: ' + err.message);
+      toast.error(err.response?.data?.message || 'Failed to unlock: ' + err.message);
     } finally {
       setUnlocking(false);
     }

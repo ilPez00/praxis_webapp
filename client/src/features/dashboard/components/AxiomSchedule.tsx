@@ -26,8 +26,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import PersonIcon from '@mui/icons-material/Person';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EventIcon from '@mui/icons-material/Event';
-import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import GlassCard from '../../components/common/GlassCard';
 
@@ -132,18 +131,9 @@ const AxiomSchedule: React.FC<AxiomScheduleProps> = ({ userId, selectedDate, onS
   const fetchSchedule = useCallback(async () => {
     setLoading(true);
     try {
-      const token = await supabase.auth.getSession().then(s => s.session?.access_token);
-      if (!token) return;
-
-      const response = await fetch(`${API_URL}/schedule/${date}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.schedule) {
-          setSchedule(data.schedule);
-        }
+      const { data } = await api.get(`/schedule/${date}`);
+      if (data.schedule) {
+        setSchedule(data.schedule);
       }
     } catch (err: any) {
       console.error('Failed to fetch schedule:', err);
@@ -168,23 +158,15 @@ const AxiomSchedule: React.FC<AxiomScheduleProps> = ({ userId, selectedDate, onS
   const handleCompleteSlot = async (slot: TimeSlot, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    const token = await supabase.auth.getSession().then(s => s.session?.access_token);
-    if (!token || !schedule?.id) return;
+    if (!schedule?.id) return;
 
     try {
-      const response = await fetch(`${API_URL}/schedule/${schedule.id}/slots/${slot.hour}/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          note: noteText || undefined,
-          mood: noteMood || undefined,
-        }),
+      const response = await api.post(`/schedule/${schedule.id}/slots/${slot.hour}/complete`, {
+        note: noteText || undefined,
+        mood: noteMood || undefined,
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         toast.success(slot.isCompleted ? 'Marked as incomplete' : 'Slot completed! 🎯');
         fetchSchedule();
         onSlotComplete?.(slot);
@@ -200,22 +182,12 @@ const AxiomSchedule: React.FC<AxiomScheduleProps> = ({ userId, selectedDate, onS
     
     setSavingNote(true);
     try {
-      const token = await supabase.auth.getSession().then(s => s.session?.access_token);
-      if (!token) return;
-
-      const response = await fetch(`${API_URL}/schedule/${schedule.id}/slots/${selectedSlot.hour}/note`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          note: noteText,
-          mood: noteMood,
-        }),
+      const response = await api.post(`/schedule/${schedule.id}/slots/${selectedSlot.hour}/note`, {
+        note: noteText,
+        mood: noteMood,
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         toast.success('Note saved to diary! 📓');
         setNoteDialogOpen(false);
         fetchSchedule();
@@ -232,18 +204,11 @@ const AxiomSchedule: React.FC<AxiomScheduleProps> = ({ userId, selectedDate, onS
     e.stopPropagation();
     
     try {
-      const token = await supabase.auth.getSession().then(s => s.session?.access_token);
-      if (!token || !schedule?.id) return;
+      if (!schedule?.id) return;
 
-      const response = await fetch(`${API_URL}/schedule/${schedule.id}/slots/${slot.hour}/share`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setShareableSlot(data);
-        setShareDialogOpen(true);
-      }
+      const { data } = await api.get(`/schedule/${schedule.id}/slots/${slot.hour}/share`);
+      setShareableSlot(data);
+      setShareDialogOpen(true);
     } catch (err: any) {
       toast.error('Failed to load share data');
     }
@@ -253,19 +218,9 @@ const AxiomSchedule: React.FC<AxiomScheduleProps> = ({ userId, selectedDate, onS
   const handleRegenerate = async () => {
     setRegenerating(true);
     try {
-      const token = await supabase.auth.getSession().then(s => s.session?.access_token);
-      if (!token) return;
+      const response = await api.post('/schedule/generate', { date });
 
-      const response = await fetch(`${API_URL}/schedule/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ date }),
-      });
-
-      if (response.ok) {
+      if (response.status === 200) {
         toast.success('Schedule regenerated! ✨');
         fetchSchedule();
       }
@@ -281,9 +236,6 @@ const AxiomSchedule: React.FC<AxiomScheduleProps> = ({ userId, selectedDate, onS
     if (!shareableSlot) return;
     
     try {
-      const token = await supabase.auth.getSession().then(s => s.session?.access_token);
-      if (!token) return;
-
       // Create diary entry with quoted schedule item
       const content = `📅 **Scheduled: ${shareableSlot.slot.timeLabel}**
 
@@ -302,29 +254,22 @@ ${shareableSlot.suggestions.event ? `🎯 **Suggested Event:** ${shareableSlot.s
 
 *From Axiom's daily schedule for ${shareableSlot.schedule.date}*`;
 
-      const response = await fetch(`${API_URL}/diary/entries`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const response = await api.post('/diary/entries', {
+        entry_type: 'schedule_share',
+        title: `Schedule: ${shareableSlot.slot.timeLabel} - ${shareableSlot.slot.task}`,
+        content,
+        source_table: 'axiom_schedules',
+        source_id: shareableSlot.schedule.id,
+        metadata: {
+          slot_id: shareableSlot.slot.id,
+          hour: shareableSlot.slot.hour,
+          category: shareableSlot.slot.category,
+          priority: shareableSlot.slot.priority,
         },
-        body: JSON.stringify({
-          entry_type: 'schedule_share',
-          title: `Schedule: ${shareableSlot.slot.timeLabel} - ${shareableSlot.slot.task}`,
-          content,
-          source_table: 'axiom_schedules',
-          source_id: shareableSlot.schedule.id,
-          metadata: {
-            slot_id: shareableSlot.slot.id,
-            hour: shareableSlot.slot.hour,
-            category: shareableSlot.slot.category,
-            priority: shareableSlot.slot.priority,
-          },
-          is_private: false, // Shareable to accountability network
-        }),
+        is_private: false, // Shareable to accountability network
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         toast.success('Shared to diary! 📓');
         setShareDialogOpen(false);
       }

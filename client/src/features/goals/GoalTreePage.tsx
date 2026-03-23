@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { supabase } from '../../lib/supabase';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
 import GoalCardTree from './components/GoalCardTree';
 import GoalWorkspaceSheet from './components/GoalWorkspaceSheet';
@@ -157,7 +155,7 @@ const GoalTreePage: React.FC = () => {
           return;
         }
 
-        const response = await axios.get(`${API_URL}/goals/${userId}`);
+        const response = await api.get(`/goals/${userId}`);
         const allNodes: any[] = response.data.nodes || [];
         setBackendNodes(allNodes);
         setTreeData(buildFrontendTree(allNodes));
@@ -211,11 +209,9 @@ const GoalTreePage: React.FC = () => {
   const handleProgressUpdate = async (nodeId: string, progress: number) => {
     if (!currentUserId) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.patch(
-        `${API_URL}/goals/${currentUserId}/node/${nodeId}/progress`,
+      await api.patch(
+        `/goals/${currentUserId}/node/${nodeId}/progress`,
         { progress },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } }
       );
       toast.success(`Progress updated to ${progress}%`);
       if (progress === 100) {
@@ -223,7 +219,7 @@ const GoalTreePage: React.FC = () => {
         if (node) setTimeout(() => setAchieveNode({ ...node, progress: 100 }), 400);
       }
       // Refresh tree
-      const response = await axios.get(`${API_URL}/goals/${currentUserId}`);
+      const response = await api.get(`/goals/${currentUserId}`);
       const allNodes: any[] = response.data.nodes || [];
       setBackendNodes(allNodes);
       const freshTree = buildFrontendTree(allNodes);
@@ -309,14 +305,11 @@ const GoalTreePage: React.FC = () => {
     }
     setSavingEdit(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { Authorization: `Bearer ${session?.access_token}` };
-
       if (isBranching) {
         const domain = editingNode ? editingNode.domain : (newGoalDomain as Domain);
         const parentId = editingNode ? editingNode.id : undefined;
-        const res = await axios.post(
-          `${API_URL}/goals/${currentUserId}/node`,
+        const res = await api.post(
+          `/goals/${currentUserId}/node`,
           {
             name: editName.trim(),
             description: editDesc.trim() || undefined,
@@ -325,7 +318,6 @@ const GoalTreePage: React.FC = () => {
             parentId,
             domain,
           },
-          { headers }
         );
         toast.success(parentId ? 'Chapter added! -150 PP' : 'New topic added! -150 PP');
         if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
@@ -338,25 +330,23 @@ const GoalTreePage: React.FC = () => {
           (editTargetDate || undefined) !== bNode?.targetDate;
 
         if (metadataChanged) {
-          const res = await axios.patch(
-            `${API_URL}/goals/${currentUserId}/node/${editingNode.id}`,
+          const res = await api.patch(
+            `/goals/${currentUserId}/node/${editingNode.id}`,
             {
               name: editName.trim(),
               description: editDesc.trim() || undefined,
               completionMetric: editMetric.trim() || undefined,
               targetDate: editTargetDate || undefined,
             },
-            { headers }
           );
           toast.success('Details updated! -50 PP');
           if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
         }
 
         if (editProgress !== editingNode.progress) {
-          await axios.patch(
-            `${API_URL}/goals/${currentUserId}/node/${editingNode.id}/progress`,
+          await api.patch(
+            `/goals/${currentUserId}/node/${editingNode.id}/progress`,
             { progress: editProgress },
-            { headers }
           );
           if (!metadataChanged) toast.success(`Progress updated to ${editProgress}%`);
           if (editProgress === 100) {
@@ -378,7 +368,7 @@ const GoalTreePage: React.FC = () => {
     if (!betNode || !currentUserId || !betDeadline || betStake < 1) return;
     setPlacingBet(true);
     try {
-      await axios.post(`${API_URL}/bets`, {
+      await api.post(`/bets`, {
         userId: currentUserId,
         goalNodeId: betNode.id,
         goalName: betNode.title,
@@ -401,9 +391,8 @@ const GoalTreePage: React.FC = () => {
     if (!achieveNode || !currentUserId) return;
     setClaimingAchievement(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const { data: profile } = await supabase.from('profiles').select('name, avatar_url').eq('id', currentUserId).single();
-      await axios.post(`${API_URL}/achievements`, {
+      await api.post(`/achievements`, {
         userId: currentUserId,
         userName: profile?.name || 'Praxis User',
         userAvatarUrl: profile?.avatar_url || undefined,
@@ -411,7 +400,7 @@ const GoalTreePage: React.FC = () => {
         title: achieveNode.title,
         description: achieveNode.description,
         domain: achieveNode.domain,
-      }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+      });
       toast.success('Achievement posted to the community feed!');
       setAchieveNode(null);
       navigate('/dashboard');
@@ -449,7 +438,7 @@ const GoalTreePage: React.FC = () => {
 
     setSubmittingClaim(true);
     try {
-      await axios.post(`${API_URL}/completions`, {
+      await api.post(`/completions`, {
         requesterId: currentUserId,
         verifierId: selectedVerifier.userId,
         goalNodeId: claimNode.id,
@@ -880,7 +869,7 @@ const GoalTreePage: React.FC = () => {
               if (!suspendNode || !currentUserId) return;
               setSuspending(true);
               try {
-                await axios.post(`${API_URL}/points/spend`, {
+                await api.post(`/points/spend`, {
                   userId: currentUserId,
                   item: 'suspend_goal',
                   nodeId: suspendNode.id,
@@ -919,10 +908,8 @@ const GoalTreePage: React.FC = () => {
               if (!deleteNode || !currentUserId) return;
               setDeleting(true);
               try {
-                const { data: { session } } = await supabase.auth.getSession();
-                const res = await axios.delete(
-                  `${API_URL}/goals/${currentUserId}/node/${deleteNode.id}`,
-                  { headers: { Authorization: `Bearer ${session?.access_token}` } }
+                const res = await api.delete(
+                  `/goals/${currentUserId}/node/${deleteNode.id}`,
                 );
                 if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
                 toast.success('Topic deleted! -150 PP');
@@ -930,7 +917,7 @@ const GoalTreePage: React.FC = () => {
                 setSelectedNode(null);
                 setSheetOpen(false);
                 // Refresh tree
-                const response = await axios.get(`${API_URL}/goals/${currentUserId}`);
+                const response = await api.get(`/goals/${currentUserId}`);
                 const allNodes: any[] = response.data.nodes || [];
                 setBackendNodes(allNodes);
                 setTreeData(buildFrontendTree(allNodes));

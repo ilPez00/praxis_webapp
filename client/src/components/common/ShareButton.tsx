@@ -10,7 +10,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 
 // Goal domain categories
 const GOAL_DOMAINS = [
@@ -106,10 +106,8 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   }, [userId, shareDialogOpen]);
 
   const fetchAvailableUsers = async () => {
+    if (!userId) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-
       // Fetch matches
       const { data: matches } = await supabase
         .rpc('match_users_by_goals', { query_user_id: userId, match_limit: 50 });
@@ -203,14 +201,6 @@ const ShareButton: React.FC<ShareButtonProps> = ({
 
     setUploading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Not authenticated');
-
-      const headers = {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      };
-
       // Build content with reply
       let fullContent = reply ? `${reply}\n\n---\n\n` : '';
       fullContent += `**${title}**\n`;
@@ -297,20 +287,8 @@ const ShareButton: React.FC<ShareButtonProps> = ({
 
       // Use the API endpoint instead of direct Supabase insert
       console.log('[ShareButton] Saving to notebook:', { userId, entry_type: 'note', title, sourceTable });
-      const res = await fetch(`${API_URL}/notebook/entries`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(insertPayload),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error('[ShareButton] API error:', errorData);
-        throw new Error(errorData.message || 'Failed to save entry');
-      }
-
-      const savedEntry = await res.json();
-      console.log('[ShareButton] Entry saved successfully:', savedEntry.id);
+      const res = await api.post('/notebook/entries', insertPayload);
+      console.log('[ShareButton] Entry saved successfully:', res.data.id);
 
       // Notify tagged users (optional - could add notification system)
       if (taggedUsers.length > 0) {

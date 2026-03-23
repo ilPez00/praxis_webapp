@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
-import axios from 'axios';
+import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
 import NotesCardTree from './NotesCardTree';
@@ -153,12 +152,8 @@ const NotesPage: React.FC = () => {
     if (!currentUserId) return;
     setExporting('plain');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API_URL}/diary/export/plain`, {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-      });
-      if (!res.ok) throw new Error('Export failed');
-      const text = await res.text();
+      const res = await api.get('/diary/export/plain', { responseType: 'text' });
+      const text = res.data;
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -179,16 +174,8 @@ const NotesPage: React.FC = () => {
     if (!currentUserId) return;
     setExporting('notes');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API_URL}/diary/export/notes`, {
-        method: 'POST',
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Export failed');
-      }
-      const blob = await res.blob();
+      const res = await api.post('/diary/export/notes', {}, { responseType: 'blob' });
+      const blob = res.data;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -210,10 +197,7 @@ const NotesPage: React.FC = () => {
     setExporting('axiom');
     setAxiomNarrative(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.post(`${API_URL}/diary/export/axiom`, {}, {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-      });
+      const res = await api.post('/diary/export/axiom');
       setAxiomNarrative(res.data.narrative);
       setPraxisPoints(prev => (prev ?? 0) - 500);
       toast.success(`Axiom diary created! (${res.data.entryCount} entries)`);
@@ -348,11 +332,9 @@ const NotesPage: React.FC = () => {
       return;
     }
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.patch(
-        `${API_URL}/goals/${currentUserId}/node/${nodeId}/progress`,
+      await api.patch(
+        `/goals/${currentUserId}/node/${nodeId}/progress`,
         { progress },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } }
       );
       toast.success(`Progress updated to ${progress}%`);
       if (progress === 100) {
@@ -392,24 +374,19 @@ const NotesPage: React.FC = () => {
     
     setLogSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { Authorization: `Bearer ${session?.access_token}` };
-      
-      await axios.post(`${API_URL}/trackers/log`, {
+      await api.post(`/trackers/log`, {
         type: logTrackerData.type,
         data: data.items ? { items: data.items } : data,
         goalNodeId: selectedNode?.id,
-      }, { headers });
-      
+      });
+
       toast.success('Logged! +1⚡');
       setLogTrackerOpen(false);
       setLogTrackerData(null);
-      
+
       // Refresh to show updated tracker
       if (selectedNode) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers = { Authorization: `Bearer ${session?.access_token}` };
-        const res = await axios.get(`${API_URL}/goals/${currentUserId}/nodes`, { headers });
+        const res = await api.get(`/goals/${currentUserId}/nodes`);
         setBackendNodes(res.data);
       }
     } catch (err: any) {
@@ -470,16 +447,14 @@ const NotesPage: React.FC = () => {
     }
     setSavingEdit(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { Authorization: `Bearer ${session?.access_token}` };
       if (isBranching) {
         const domain = editingNode ? editingNode.domain : (newGoalDomain as Domain);
         const parentId = editingNode ? editingNode.id : undefined;
-        const res = await axios.post(`${API_URL}/goals/${currentUserId}/node`, {
+        const res = await api.post(`/goals/${currentUserId}/node`, {
           name: editName.trim(), description: editDesc.trim() || undefined,
           completionMetric: editMetric.trim() || undefined, targetDate: editTargetDate || undefined,
           parentId, domain,
-        }, { headers });
+        });
         toast.success(parentId ? 'Chapter added!' : 'Topic added!');
         if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
       } else if (editingNode) {
@@ -487,15 +462,15 @@ const NotesPage: React.FC = () => {
         const metadataChanged = editName.trim() !== bNode?.name || (editDesc.trim() || undefined) !== bNode?.customDetails ||
           (editMetric.trim() || undefined) !== bNode?.completionMetric || (editTargetDate || undefined) !== bNode?.targetDate;
         if (metadataChanged) {
-          const res = await axios.patch(`${API_URL}/goals/${currentUserId}/node/${editingNode.id}`, {
+          const res = await api.patch(`/goals/${currentUserId}/node/${editingNode.id}`, {
             name: editName.trim(), description: editDesc.trim() || undefined,
             completionMetric: editMetric.trim() || undefined, targetDate: editTargetDate || undefined,
-          }, { headers });
+          });
           toast.success('Updated!');
           if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
         }
         if (editProgress !== editingNode.progress) {
-          await axios.patch(`${API_URL}/goals/${currentUserId}/node/${editingNode.id}/progress`, { progress: editProgress }, { headers });
+          await api.patch(`/goals/${currentUserId}/node/${editingNode.id}/progress`, { progress: editProgress });
           if (editProgress === 100) setTimeout(() => setAchieveNode({ ...editingNode, progress: 100 }), 400);
         }
       }
@@ -513,7 +488,7 @@ const NotesPage: React.FC = () => {
     if (!betNode || !currentUserId || !betDeadline || betStake < 1) return;
     setPlacingBet(true);
     try {
-      await axios.post(`${API_URL}/bets`, {
+      await api.post(`/bets`, {
         userId: currentUserId, goalNodeId: betNode.id, goalName: betNode.title,
         deadline: new Date(betDeadline).toISOString(), stakePoints: betStake,
       });
@@ -528,12 +503,11 @@ const NotesPage: React.FC = () => {
     if (!achieveNode || !currentUserId) return;
     setClaimingAchievement(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const { data: profile } = await supabase.from('profiles').select('name, avatar_url').eq('id', currentUserId).single();
-      await axios.post(`${API_URL}/achievements`, {
+      await api.post(`/achievements`, {
         userId: currentUserId, userName: profile?.name || 'User', userAvatarUrl: profile?.avatar_url || undefined,
         goalNodeId: achieveNode.id, title: achieveNode.title, description: achieveNode.description, domain: achieveNode.domain,
-      }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+      });
       toast.success('Posted!'); setAchieveNode(null);
     } catch { toast.error('Failed to post.'); }
     finally { setClaimingAchievement(false); }
@@ -548,7 +522,7 @@ const NotesPage: React.FC = () => {
       await supabase.storage.from('goal-evidence').upload(path, evidenceFile, { upsert: true });
       const { data: urlData } = supabase.storage.from('goal-evidence').getPublicUrl(path);
       setSubmittingClaim(true);
-      await axios.post(`${API_URL}/completions`, {
+      await api.post(`/completions`, {
         requesterId: currentUserId, verifierId: selectedVerifier.userId,
         goalNodeId: claimNode.id, goalName: claimNode.title, evidenceUrl: urlData.publicUrl,
       });

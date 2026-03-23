@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_URL } from './lib/api';
-import axios from 'axios';
+import api from './lib/api';
 import './App.css';
 import './styles/pages.css'; // This imports ALL page styles at once
 
@@ -8,7 +7,7 @@ function App() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    axios.get(`${API_URL}`)
+    api.get('/')
       .then(response => {
         setMessage(response.data);
       })

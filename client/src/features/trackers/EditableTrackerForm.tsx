@@ -26,8 +26,7 @@ import { searchAssets } from './investmentsLibrary';
 import { searchCompanies } from './companiesLibrary';
 import { searchSubjects } from './subjectsLibrary';
 import { searchInstruments } from './musicLibrary';
-import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 
 interface TrackerRow {
   id: string;
@@ -209,14 +208,8 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     if (!tracker?.type) return;
     setLoadingSuggestions(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API_URL}/trackers/${tracker.type}/suggestions`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAxiomSuggestions(data.suggestions || []);
-      }
+      const res = await api.get(`/trackers/${tracker.type}/suggestions`);
+      setAxiomSuggestions(res.data.suggestions || []);
     } catch { /* ignore */ }
     finally { setLoadingSuggestions(false); }
   };
@@ -266,16 +259,8 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     if (!tracker?.type) return;
     setTemplateSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API_URL}/trackers/${tracker.type}/template`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ rows: rowsToTemplate(rows) }),
-      });
-      if (res.ok) {
+      const res = await api.put(`/trackers/${tracker.type}/template`, { rows: rowsToTemplate(rows) });
+      if (res.status === 200) {
         toast.success('Template saved! This layout will load next time.');
         setEditMode(false);
       } else {
@@ -320,10 +305,8 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
     };
 
     await onSave(data);
-    // Re-initialize rows from template (zero out values, keep labels)
-    const template = rowsToTemplate(rows);
-    setRows(templateToRows(template, tracker?.type || ''));
-    onClose();
+    // Keep rows as-is after save — user's entries stay visible
+    if (!inline) onClose();
   };
 
   const renderRowFields = (row: TrackerRow) => {

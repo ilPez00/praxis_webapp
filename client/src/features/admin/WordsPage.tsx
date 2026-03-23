@@ -5,8 +5,7 @@ import {
 } from '@mui/material';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import { useUser } from '../../hooks/useUser';
-import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { DOMAIN_COLORS } from '../../types/goal';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -20,13 +19,6 @@ interface WordsData {
   words: WordEntry[];
   byDomain: Record<string, Record<string, number>>;
 }
-
-// ── Auth helper ────────────────────────────────────────────────────────────────
-
-const getToken = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token;
-};
 
 // ── Color palette for word cloud ───────────────────────────────────────────────
 
@@ -48,19 +40,10 @@ const WordsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const res = await fetch(`${API_URL}/words/frequency`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      } else {
-        setError('Failed to load word frequency data.');
-      }
+      const res = await api.get('/words/frequency');
+      setData(res.data);
     } catch {
-      setError('Network error.');
+      setError('Failed to load word frequency data.');
     } finally {
       setLoading(false);
     }

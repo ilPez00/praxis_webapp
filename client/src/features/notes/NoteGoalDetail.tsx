@@ -225,155 +225,6 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
   );
 }
 
-// ── Simplified tracker component (Enumerate + Increment) ────────────────────
-
-function SimplifiedTracker({ trackerConfig, tracker, onLog, userId }: {
-  trackerConfig: any;
-  tracker: Tracker;
-  onLog: () => void;
-  userId: string;
-}) {
-  const [saving, setSaving] = useState(false);
-  const [logTracker, setLogTracker] = useState<any>(null);
-  const [manageMode, setManageMode] = useState(false);
-  const [addItemOpen, setAddItemOpen] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
-
-  if (!trackerConfig) return null;
-  const color = trackerConfig.color || '#A78BFA';
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const todayEntries = (tracker.entries || []).filter(e => e.logged_at.slice(0, 10) === todayKey);
-  const library = tracker.goal?.library || [];
-
-  const handleQuickLog = async (item: any) => {
-    setSaving(true);
-    try {
-      await api.post('/trackers/log', {
-        type: trackerConfig.id,
-        data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }] }
-      });
-      toast.success(`Logged: ${item.name}`);
-      onLog();
-    } catch { toast.error('Failed to log'); }
-    finally { setSaving(false); }
-  };
-
-  const handleAddItem = async () => {
-    if (!newItemName.trim()) return;
-    const currentGoal = tracker.goal || {};
-    const newLibrary = [...(currentGoal.library || []), { name: newItemName }];
-    try {
-      const { error } = await supabase.from('trackers').update({ goal: { ...currentGoal, library: newLibrary } }).eq('id', tracker.id);
-      if (error) throw error;
-      setAddItemOpen(false);
-      setNewItemName('');
-      onLog();
-    } catch { toast.error('Failed to add item'); }
-  };
-
-  const handleRemoveItem = async (idx: number) => {
-    const currentGoal = tracker.goal || {};
-    const newLibrary = (currentGoal.library || []).filter((_: any, i: number) => i !== idx);
-    try {
-      await supabase.from('trackers').update({ goal: { ...currentGoal, library: newLibrary } }).eq('id', tracker.id);
-      onLog();
-    } catch { toast.error('Failed to remove item'); }
-  };
-
-  return (
-    <GlassCard sx={{
-      p: 2, borderRadius: '18px', mb: 2,
-      border: `1px solid ${todayEntries.length > 0 ? color + '50' : 'rgba(255,255,255,0.08)'}`,
-      bgcolor: todayEntries.length > 0 ? `${color}08` : 'rgba(255,255,255,0.02)',
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-        <Box 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', flex: 1 }}
-          onClick={() => setLogTracker({ ...tracker, def: trackerConfig })}
-        >
-          <Typography sx={{ fontSize: '1.2rem' }}>{trackerConfig.icon}</Typography>
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: todayEntries.length > 0 ? color : 'text.primary' }}>
-              {trackerConfig.label}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {todayEntries.length} logged today
-            </Typography>
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <Button 
-            size="small" 
-            variant="contained"
-            onClick={() => setLogTracker({ ...tracker, def: trackerConfig })} 
-            sx={{ 
-              bgcolor: color, 
-              color: '#0D0E1A',
-              fontSize: '0.65rem', 
-              fontWeight: 800,
-              minWidth: 0,
-              height: 24,
-              borderRadius: '6px',
-              '&:hover': { bgcolor: color, opacity: 0.9 }
-            }}
-          >
-            Full Log
-          </Button>
-          <Button size="small" onClick={() => setManageMode(!manageMode)} sx={{ color: 'text.secondary', fontSize: '0.65rem', minWidth: 0 }}>
-            {manageMode ? 'Done' : 'Edit List'}
-          </Button>
-        </Box>
-      </Box>
-
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-        {library.map((item: any, idx: number) => (
-          <Button
-            key={idx}
-            variant="outlined"
-            size="small"
-            onClick={() => manageMode ? handleRemoveItem(idx) : handleQuickLog(item)}
-            startIcon={manageMode ? <RemoveIcon sx={{ fontSize: '12px !important' }} /> : undefined}
-            sx={{
-              borderRadius: '10px', fontWeight: 700, fontSize: '0.7rem',
-              color: manageMode ? 'error.main' : color,
-              borderColor: manageMode ? 'error.main' : `${color}40`,
-              '&:hover': { bgcolor: manageMode ? 'rgba(239,68,68,0.1)' : `${color}15` }
-            }}
-          >
-            {item.name}
-          </Button>
-        ))}
-        {!manageMode && (
-          <IconButton size="small" onClick={() => setAddItemOpen(true)} sx={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '10px' }}>
-            <AddIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-        )}
-      </Box>
-
-      <Dialog open={addItemOpen} onClose={() => setAddItemOpen(false)} PaperProps={{ sx: { borderRadius: '16px' } }}>
-        <DialogTitle sx={{ fontWeight: 800 }}>Add to {trackerConfig.label}</DialogTitle>
-        <DialogContent>
-          <TextField autoFocus label="Item Name" placeholder="e.g. Protein Shake" fullWidth value={newItemName} onChange={e => setNewItemName(e.target.value)} sx={{ mt: 1 }} />
-        </DialogContent>
-        <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={() => setAddItemOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleAddItem} disabled={!newItemName.trim()} sx={{ borderRadius: '10px' }}>Add</Button>
-        </DialogActions>
-      </Dialog>
-
-      <EditableTrackerForm
-        open={!!logTracker}
-        onClose={() => setLogTracker(null)}
-        tracker={logTracker}
-        onSave={async (data) => {
-          await api.post('/trackers/log', { type: trackerConfig.id, data });
-          onLog();
-        }}
-        saving={saving}
-      />
-    </GlassCard>
-  );
-}
 
 // ── Main component ──────────────────────────────────────────────────────────
 
@@ -517,26 +368,37 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 2 }} />
             <ObjectiveRow config={config} currentGoal={currentGoal} onSave={goal => handleObjectiveSaved(config.type, goal)} />
             <MiniChart entries={allEntries} chartKey={config.chartKey} color={accentColor} unit={config.chartUnit} />
-            <Box sx={{ mt: 2 }}>
-              <SimplifiedTracker
-                trackerConfig={resolvedTrackerConfig}
-                tracker={tracker || { id: '', type: resolvedTrackerConfig?.id || config.type, goal: {}, entries: [] }}
-                onLog={fetchTrackers}
-                userId={userId}
-              />
-            </Box>
           </Box>
         )}
       </GlassCard>
 
-      {domainTrackers.filter(dt => dt.config.id !== config?.type).map(dt => (
-        <SimplifiedTracker
-          key={dt.config.id}
-          trackerConfig={dt.config}
-          tracker={dt.tracker}
-          onLog={fetchTrackers}
-          userId={userId}
-        />
+      {/* Inline editable tracker forms for all domain trackers */}
+      {domainTrackers.map(dt => (
+        <GlassCard key={dt.config.id} sx={{
+          p: 2, borderRadius: '18px', mb: 2,
+          border: `1px solid ${dt.config.color}30`,
+          bgcolor: 'rgba(255,255,255,0.02)',
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+            <Typography sx={{ fontSize: '1.2rem' }}>{dt.config.icon}</Typography>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: dt.config.color }}>{dt.config.label}</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+              {(dt.tracker.entries || []).filter(e => e.logged_at.slice(0, 10) === new Date().toISOString().slice(0, 10)).length} today
+            </Typography>
+          </Box>
+          <EditableTrackerForm
+            inline
+            open
+            onClose={() => {}}
+            tracker={{ ...dt.tracker, def: dt.config, goal: dt.tracker.goal }}
+            onSave={async (data) => {
+              await api.post('/trackers/log', { type: dt.config.id, data });
+              fetchTrackers();
+            }}
+            saving={false}
+            accentColor={dt.config.color}
+          />
+        </GlassCard>
       ))}
 
       <GlassCard sx={{ mt: 2, p: 2 }}>

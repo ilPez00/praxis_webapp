@@ -4,11 +4,10 @@ import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import TrackerSection from '../trackers/TrackerSection';
 import PostFeed from '../posts/PostFeed';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
 import FriendButton from '../../components/common/FriendButton';
 import ReferralWidget from '../referral/ReferralWidget';
-import axios from 'axios';
 import {
   Container,
   Box,
@@ -297,32 +296,24 @@ const ProfilePage: React.FC = () => {
         setBannerPreviewUrl(data.banner_url ?? null);
         // Fetch percentile for own profile
         if (!paramId || paramId === user?.id) {
-          fetch(`${API_URL}/users/${targetId}/percentile`)
-            .then(r => r.ok ? r.json() : null)
-            .then(d => d && setPercentileData(d))
+          api.get(`/users/${targetId}/percentile`)
+            .then(r => r.data && setPercentileData(r.data))
             .catch(() => {});
         }
         // Fetch achievements (visible on any profile)
-        fetch(`${API_URL}/achievements?userId=${targetId}`)
-          .then(r => r.ok ? r.json() : [])
-          .then(d => setAchievements(Array.isArray(d) ? d : []))
+        api.get(`/achievements?userId=${targetId}`)
+          .then(r => setAchievements(Array.isArray(r.data) ? r.data : []))
           .catch(() => {});
         // Fetch honor status for other users' profiles
         if (paramId && paramId !== user?.id) {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!session?.access_token) return;
-            fetch(`${API_URL}/honor/${targetId}`, {
-              headers: { Authorization: `Bearer ${session.access_token}` },
+          api.get(`/honor/${targetId}`)
+            .then(r => {
+              if (r.data) {
+                setHonorScore(r.data.honor_score ?? 0);
+                setHasHonored(r.data.has_honored ?? false);
+              }
             })
-              .then(r => r.ok ? r.json() : null)
-              .then(d => {
-                if (d) {
-                  setHonorScore(d.honor_score ?? 0);
-                  setHasHonored(d.has_honored ?? false);
-                }
-              })
-              .catch(() => {});
-          });
+            .catch(() => {});
         }
       } catch (err: any) {
         toast.error(`Failed to fetch profile: ${err.message}`);
@@ -495,10 +486,7 @@ const ProfilePage: React.FC = () => {
     setFriendsLoading(true);
     try {
       const targetId = paramId || user?.id;
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.get(`${API_URL}/friends/of/${targetId}`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      const res = await api.get(`/friends/of/${targetId}`);
       setFriends(Array.isArray(res.data) ? res.data : []);
     } catch {
       toast.error('Could not load friends.');
@@ -511,15 +499,13 @@ const ProfilePage: React.FC = () => {
     if (!user || !paramId) return;
     setHonorLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { Authorization: `Bearer ${session?.access_token}` };
       if (hasHonored) {
-        await axios.delete(`${API_URL}/honor/${paramId}`, { headers });
+        await api.delete(`/honor/${paramId}`);
         setHasHonored(false);
         setHonorScore(s => (s ?? 1) - 1);
         toast.success('Honor removed.');
       } else {
-        await axios.post(`${API_URL}/honor/${paramId}`, {}, { headers });
+        await api.post(`/honor/${paramId}`);
         setHasHonored(true);
         setHonorScore(s => (s ?? 0) + 1);
         toast.success('Honor given! +20 PP awarded to them (−5 PP net cost to you).');

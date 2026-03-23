@@ -18,7 +18,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 
 interface ShareDialogProps {
   open: boolean;
@@ -115,13 +115,6 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
   const handleShareToDiary = async () => {
     setSharing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      const headers = {
-        'Authorization': `Bearer ${session?.access_token}`,
-        'Content-Type': 'application/json',
-      };
-
       const tagArray = diaryTags.split(',').map(t => t.trim()).filter(Boolean);
 
       // Build content with note
@@ -148,32 +141,24 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
       }
 
       // Use notebook endpoint instead of diary
-      const res = await fetch(`${API_URL}/notebook/entries`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          entry_type: 'note',
-          title: title || 'Shared Item',
-          content: fullContent,
-          source_table: sourceTable,
-          source_id: sourceId,
-          tags: tagArray.length > 0 ? tagArray : null,
-          metadata: location_name ? { latitude, longitude, location_name } : undefined,
-        }),
+      await api.post('/notebook/entries', {
+        entry_type: 'note',
+        title: title || 'Shared Item',
+        content: fullContent,
+        source_table: sourceTable,
+        source_id: sourceId,
+        tags: tagArray.length > 0 ? tagArray : null,
+        metadata: location_name ? { latitude, longitude, location_name } : undefined,
       });
 
-      if (res.ok) {
-        toast.success('Saved to notebook!');
-        if (onSuccess) {
-          onSuccess();
-        }
-        handleClose();
-      } else {
-        const error = await res.json();
-        toast.error(error.message || 'Failed to save to notebook');
+      toast.success('Saved to notebook!');
+      if (onSuccess) {
+        onSuccess();
       }
+      handleClose();
     } catch (err: any) {
-      toast.error('Failed to save to notebook: ' + err.message);
+      const message = err.response?.data?.message || err.message;
+      toast.error('Failed to save to notebook: ' + message);
     } finally {
       setSharing(false);
     }

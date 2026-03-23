@@ -20,8 +20,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 
 interface Tracker { id: string; type: string; goal: any; }
 
@@ -157,13 +156,10 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
     
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-
-      await axios.post(`${API_URL}/trackers/log`, {
+      await api.post('/trackers/log', {
         type: tracker.type,
         data: logData,
-      }, { headers });
+      });
 
       toast.success(`Logged: ${item.name}`);
       loadData();
@@ -208,13 +204,10 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
     if (!logTracker) return;
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-
-      await axios.post(`${API_URL}/trackers/log`, {
+      await api.post('/trackers/log', {
         type: logTracker.type,
         data: data,
-      }, { headers });
+      });
 
       toast.success('Logged!');
       loadData();

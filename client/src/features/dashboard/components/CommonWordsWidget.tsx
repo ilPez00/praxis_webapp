@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Box, Typography, Chip, CircularProgress, Tooltip } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import GlassCard from '../../../components/common/GlassCard';
-import { API_URL } from '../../../lib/api';
-import { supabase } from '../../../lib/supabase';
+import api from '../../../lib/api';
 
 interface WordFreq {
   word: string;
@@ -18,10 +16,7 @@ const CommonWordsWidget: React.FC = () => {
   useEffect(() => {
     const fetchWords = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await axios.get(`${API_URL}/words/user-frequency`, {
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        });
+        const res = await api.get('/words/user-frequency');
         setWords(res.data.words || []);
       } catch (err) {
         console.error('Failed to fetch user word frequency:', err);

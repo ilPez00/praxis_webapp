@@ -9,7 +9,7 @@ import EventIcon from '@mui/icons-material/Event';
 import PlaceIcon from '@mui/icons-material/LocationOn';
 import SearchIcon from '@mui/icons-material/Search';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 
 export interface Reference {
   type: 'person' | 'event' | 'place';
@@ -50,12 +50,11 @@ const ReferencePicker: React.FC<ReferencePickerProps> = ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const headers = { Authorization: `Bearer ${session.access_token}` };
       let data: any[] = [];
 
       if (tab === 'people') {
-        const { data: matches } = await fetch(`${API_URL}/matches?userId=${session.user.id}`, { headers })
-          .then(r => r.json()).catch(() => null);
+        const res = await api.get(`/matches?userId=${session.user.id}`).catch(() => null);
+        const matches = res?.data;
         data = (matches || []).map((m: any) => ({
           type: 'person',
           id: m.id,

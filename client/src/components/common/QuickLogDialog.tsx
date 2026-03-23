@@ -9,7 +9,7 @@ import SendIcon from '@mui/icons-material/Send';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { DOMAIN_COLORS, DOMAIN_ICONS, GoalNode as FrontendGoalNode } from '../../types/goal';
 import NoteGoalDetail from '../../features/notes/NoteGoalDetail';
@@ -113,30 +113,18 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
     if (!note.trim() && !mood) { toast.error('Write a note or pick a mood.'); return; }
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token}`
-      };
-
       const contentText = note.trim() || (mood ? `Mood: ${mood}` : '');
 
       // Unified write: notebook_entries
-      const res = await fetch(`${API_URL}/notebook/entries`, {
-        method: 'POST', 
-        headers,
-        body: JSON.stringify({
-          entry_type: 'note', 
-          content: contentText,
-          mood: mood || undefined,
-          goal_id: selectedGoal?.id || null,
-          domain: selectedGoal?.domain || 'Personal',
-          title: selectedGoal ? `Note for ${selectedGoal.name}` : 'Free Note',
-          attachments: freeAttachments.length > 0 ? freeAttachments : undefined,
-        }),
+      await api.post('/notebook/entries', {
+        entry_type: 'note',
+        content: contentText,
+        mood: mood || undefined,
+        goal_id: selectedGoal?.id || null,
+        domain: selectedGoal?.domain || 'Personal',
+        title: selectedGoal ? `Note for ${selectedGoal.name}` : 'Free Note',
+        attachments: freeAttachments.length > 0 ? freeAttachments : undefined,
       });
-
-      if (!res.ok) throw new Error('Failed to save to notebook');
 
       toast.success('Saved to notebook!');
       setNote('');

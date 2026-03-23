@@ -3,10 +3,9 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import PostFeed from '../posts/PostFeed';
 import {
@@ -129,9 +128,9 @@ const GroupChatRoom: React.FC = () => {
     const init = async () => {
       try {
         const [roomRes, msgsRes, membersRes] = await Promise.all([
-          axios.get(`${API_URL}/groups/${roomId}`),
-          axios.get(`${API_URL}/groups/${roomId}/messages`),
-          axios.get(`${API_URL}/groups/${roomId}/members`),
+          api.get(`/groups/${roomId}`),
+          api.get(`/groups/${roomId}/messages`),
+          api.get(`/groups/${roomId}/members`),
         ]);
         setRoom(roomRes.data);
         setMessages(Array.isArray(msgsRes.data) ? msgsRes.data : []);
@@ -153,9 +152,7 @@ const GroupChatRoom: React.FC = () => {
     // Check mute status
     (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
-        const res = await axios.get(`${API_URL}/mutes`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const res = await api.get('/mutes');
         const mutedRooms: string[] = res.data?.mutedRooms ?? [];
         setRoomMuted(mutedRooms.includes(roomId!));
       } catch { /* ignore */ }
@@ -218,8 +215,8 @@ const GroupChatRoom: React.FC = () => {
     } : {};
     setReplyTo(null);
     try {
-      await axios.post(`${API_URL}/groups/${roomId}/messages`, { 
-        senderId: currentUserId, 
+      await api.post(`/groups/${roomId}/messages`, {
+        senderId: currentUserId,
         content,
         ...replyData
       });
@@ -240,7 +237,7 @@ const GroupChatRoom: React.FC = () => {
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('chat-media').getPublicUrl(path);
       const isImage = file.type.startsWith('image/');
-      await axios.post(`${API_URL}/groups/${roomId}/messages`, {
+      await api.post(`/groups/${roomId}/messages`, {
         senderId: currentUserId,
         content: isImage ? '📷 Image' : `📎 ${file.name}`,
         messageType: isImage ? 'image' : 'file',
@@ -259,11 +256,9 @@ const GroupChatRoom: React.FC = () => {
     setAxiomLoading(true);
     setAxiomResponse('');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.post(
-        `${API_URL}/ai-coaching/request`,
+      const res = await api.post(
+        '/ai-coaching/request',
         { prompt: axiomPrompt },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } },
       );
       setAxiomResponse(res.data.response || res.data.message || JSON.stringify(res.data));
     } catch (err: any) {
@@ -277,7 +272,7 @@ const GroupChatRoom: React.FC = () => {
     if (!currentUserId || !roomId) return;
     if (!window.confirm('Leave this group? You can rejoin later.')) return;
     try {
-      await axios.delete(`${API_URL}/groups/${roomId}/leave`, { data: { userId: currentUserId } });
+      await api.delete(`/groups/${roomId}/leave`, { data: { userId: currentUserId } });
       toast.success('You left the group.');
       navigate('/communication');
     } catch (err: any) {
@@ -288,10 +283,7 @@ const GroupChatRoom: React.FC = () => {
   const fetchFriendsForInvite = async () => {
     setInviteLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.get(`${API_URL}/friends`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      const res = await api.get('/friends');
       const data = Array.isArray(res.data) ? res.data : [];
       setFriends(data.map((f: any) => ({
         id: f.id ?? f.friend_id ?? f.user_id,
@@ -309,11 +301,9 @@ const GroupChatRoom: React.FC = () => {
     if (!roomId) return;
     setInvitingIds(prev => new Set(Array.from(prev).concat(friendId)));
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.post(
-        `${API_URL}/groups/${roomId}/invite`,
+      await api.post(
+        `/groups/${roomId}/invite`,
         { userId: friendId },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } },
       );
       toast.success('Friend invited!');
     } catch (err: any) {

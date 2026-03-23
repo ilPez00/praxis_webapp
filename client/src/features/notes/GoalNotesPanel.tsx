@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
 import {
   Box, Typography, CircularProgress, IconButton, TextField, Button, Stack, Chip,
 } from '@mui/material';
@@ -8,7 +7,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 
 interface NotebookNote {
   id: string;
@@ -54,22 +53,14 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { 'Authorization': `Bearer ${session?.access_token}` };
-      
-      let url = `${API_URL}/notebook/entries?entry_type=note&limit=100`;
+      let url = `/notebook/entries?entry_type=note&limit=100`;
       // If we have a valid UUID nodeId, filter by it
       if (nodeId && nodeId !== 'free-notes' && nodeId.length > 10) {
         url += `&goal_id=${nodeId}`;
-      } else {
-        // For free notes, the API currently returns all notes if goal_id is not provided.
-        // We'll filter the "unlinked" ones in frontend for now to be safe, 
-        // or just show all if no node is selected.
       }
 
-      const res = await fetch(url, { headers });
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
+      const res = await api.get(url);
+      const data = res.data;
       
       // If we are in "Free Notes" mode (nodeId is null/free-notes), only show entries with NO goal_id
       if (!nodeId || nodeId === 'free-notes') {
@@ -95,14 +86,6 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
 
     setAdding(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Not authenticated');
-
-      const headers = { 
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      };
-
       const isFreeNote = !nodeId || nodeId === 'free-notes';
 
       const payload = {
@@ -116,16 +99,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
         source_id: 'manual',
       };
 
-      const res = await fetch(`${API_URL}/notebook/entries`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Failed to save');
-      }
+      await api.post('/notebook/entries', payload);
 
       toast.success('Note saved to notebook!');
       setNewNote('');
@@ -140,15 +114,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
 
   const handleDeleteNote = async (noteId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { 'Authorization': `Bearer ${session?.access_token}` };
-      
-      const res = await fetch(`${API_URL}/notebook/entries/${noteId}`, {
-        method: 'DELETE',
-        headers
-      });
-      
-      if (!res.ok) throw new Error('Failed to delete');
+      await api.delete(`/notebook/entries/${noteId}`);
       
       toast.success('Note deleted');
       await fetchNotes();

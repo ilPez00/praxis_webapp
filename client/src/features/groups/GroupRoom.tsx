@@ -4,10 +4,9 @@
  * - Tab 1 "Chat":  real-time discussion with WhatsApp-style replies + content references
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Box, Typography, TextField, IconButton, Stack, Avatar,
@@ -95,9 +94,9 @@ const GroupRoom: React.FC = () => {
     const init = async () => {
       try {
         const [roomRes, msgsRes, membersRes] = await Promise.all([
-          axios.get(`${API_URL}/groups/${roomId}`),
-          axios.get(`${API_URL}/groups/${roomId}/messages`),
-          axios.get(`${API_URL}/groups/${roomId}/members`),
+          api.get(`/groups/${roomId}`),
+          api.get(`/groups/${roomId}/messages`),
+          api.get(`/groups/${roomId}/members`),
         ]);
         setRoom(roomRes.data);
         setMessages(Array.isArray(msgsRes.data) ? msgsRes.data : []);
@@ -144,7 +143,7 @@ const GroupRoom: React.FC = () => {
     setReplyTo(null);
     setChatRef(null);
     try {
-      await axios.post(`${API_URL}/groups/${roomId}/messages`, {
+      await api.post(`/groups/${roomId}/messages`, {
         senderId: currentUserId,
         content,
         replyToId:    replySnapshot?.id,
@@ -171,7 +170,7 @@ const GroupRoom: React.FC = () => {
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('chat-media').getPublicUrl(path);
       const isImage = file.type.startsWith('image/');
-      await axios.post(`${API_URL}/groups/${roomId}/messages`, {
+      await api.post(`/groups/${roomId}/messages`, {
         senderId:    currentUserId,
         content:     isImage ? '📷 Image' : `📎 ${file.name}`,
         messageType: isImage ? 'image' : 'file',

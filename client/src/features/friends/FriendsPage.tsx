@@ -18,8 +18,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import toast from 'react-hot-toast';
-import axios from 'axios';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
 import GlassCard from '../../components/common/GlassCard';
@@ -60,16 +59,10 @@ const FriendsPage: React.FC = () => {
     getUser();
   }, []);
 
-  const getAuthHeader = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return { Authorization: `Bearer ${session?.access_token}` };
-  };
-
   const fetchFriends = useCallback(async () => {
     setLoadingFriends(true);
     try {
-      const headers = await getAuthHeader();
-      const res = await axios.get(`${API_URL}/friends`, { headers });
+      const res = await api.get('/friends');
       const data = Array.isArray(res.data) ? res.data : [];
       setFriends(data.map((f: any) => ({
         id: f.id ?? f.friend_id ?? f.user_id,
@@ -88,8 +81,7 @@ const FriendsPage: React.FC = () => {
   const fetchRequests = useCallback(async () => {
     setLoadingRequests(true);
     try {
-      const headers = await getAuthHeader();
-      const res = await axios.get(`${API_URL}/friends/requests/incoming`, { headers });
+      const res = await api.get('/friends/requests/incoming');
       const data = Array.isArray(res.data) ? res.data : [];
       setRequests(data.map((r: any) => ({
         id: r.id,
@@ -123,8 +115,7 @@ const FriendsPage: React.FC = () => {
   const handleUnfriend = async (friend: Friend) => {
     setActing(friend.id, true);
     try {
-      const headers = await getAuthHeader();
-      await axios.delete(`${API_URL}/friends/${friend.id}`, { headers });
+      await api.delete(`/friends/${friend.id}`);
       setFriends(prev => prev.filter(f => f.id !== friend.id));
       toast.success(`Removed ${friend.name} from friends.`);
     } catch (err: any) {
@@ -137,8 +128,7 @@ const FriendsPage: React.FC = () => {
   const handleAccept = async (request: FriendRequest) => {
     setActing(request.id, true);
     try {
-      const headers = await getAuthHeader();
-      await axios.post(`${API_URL}/friends/accept/${request.id}`, {}, { headers });
+      await api.post(`/friends/accept/${request.id}`);
       setRequests(prev => prev.filter(r => r.id !== request.id));
       toast.success(`You are now friends with ${request.name}!`);
       if (tab === 0) fetchFriends();
@@ -152,8 +142,7 @@ const FriendsPage: React.FC = () => {
   const handleDecline = async (request: FriendRequest) => {
     setActing(request.id, true);
     try {
-      const headers = await getAuthHeader();
-      await axios.delete(`${API_URL}/friends/requests/${request.id}`, { headers });
+      await api.delete(`/friends/requests/${request.id}`);
       setRequests(prev => prev.filter(r => r.id !== request.id));
       toast.success('Request declined.');
     } catch (err: any) {

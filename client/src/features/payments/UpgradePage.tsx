@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Container, Box, Typography, Button, CircularProgress, Alert, Stack, Divider, Chip } from '@mui/material';
-import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -43,7 +42,7 @@ const UpgradePage: React.FC = () => {
     setLoadingCheckout(true);
     setError(null);
     try {
-      const response = await axios.post(`${API_URL}/stripe/create-checkout-session`, {
+      const response = await api.post('/stripe/create-checkout-session', {
         userId: user.id,
         email: user.email,
       });
@@ -62,7 +61,7 @@ const UpgradePage: React.FC = () => {
     setLoadingPP(tierId);
     setError(null);
     try {
-      const { data } = await axios.post(`${API_URL}/stripe/create-pp-checkout`, {
+      const { data } = await api.post('/stripe/create-pp-checkout', {
         userId: user.id,
         tierId,
       });

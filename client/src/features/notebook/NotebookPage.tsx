@@ -31,8 +31,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import SendIcon from '@mui/icons-material/Send';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
-import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import NoteEditDialog from './NoteEditDialog';
 import ShareDialog from '../../components/common/ShareDialog';
 import ContentRenderer from '../../components/common/ContentRenderer';
@@ -113,11 +112,6 @@ const NotebookPage: React.FC = () => {
     if (!user?.id) return;
     setLoading(true);
     try {
-      const headers = {
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        'Content-Type': 'application/json',
-      };
-
       const params = new URLSearchParams({
         user_id: user.id,
         limit: '100',
@@ -128,18 +122,14 @@ const NotebookPage: React.FC = () => {
       if (filterTag !== 'all') params.append('tag', filterTag);
       if (searchQuery) params.append('search', searchQuery);
 
-      const res = await fetch(`${API_URL}/notebook/entries?${params.toString()}`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setEntries(data);
-      }
+      const res = await api.get(`/notebook/entries?${params.toString()}`);
+      setEntries(res.data);
 
       // Fetch stats
-      const statsRes = await fetch(`${API_URL}/notebook/stats`, { headers });
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      } else {
+      try {
+        const statsRes = await api.get('/notebook/stats');
+        setStats(statsRes.data);
+      } catch {
         setStats({ total_entries: 0, streak_days: 0, recent_tags: [] });
       }
     } catch (err) {
@@ -166,20 +156,9 @@ const NotebookPage: React.FC = () => {
     if (!confirm('Delete this notebook entry?')) return;
     
     try {
-      const headers = {
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-      };
-      const res = await fetch(`${API_URL}/notebook/entries/${entry.id}`, {
-        method: 'DELETE',
-        headers,
-      });
-      
-      if (res.ok) {
-        setEntries(prev => prev.filter(e => e.id !== entry.id));
-        toast.success('Entry deleted');
-      } else {
-        toast.error('Failed to delete');
-      }
+      await api.delete(`/notebook/entries/${entry.id}`);
+      setEntries(prev => prev.filter(e => e.id !== entry.id));
+      toast.success('Entry deleted');
     } catch (err) {
       toast.error('Failed to delete');
     }
@@ -187,22 +166,11 @@ const NotebookPage: React.FC = () => {
 
   const handlePinClick = async (entry: NotebookEntry) => {
     try {
-      const headers = {
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        'Content-Type': 'application/json',
-      };
-      const res = await fetch(`${API_URL}/notebook/entries/${entry.id}/pin`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ is_pinned: !entry.is_pinned }),
-      });
-      
-      if (res.ok) {
-        setEntries(prev => prev.map(e => 
-          e.id === entry.id ? { ...e, is_pinned: !e.is_pinned } : e
-        ));
-        toast.success(entry.is_pinned ? 'Unpinned' : 'Pinned');
-      }
+      await api.patch(`/notebook/entries/${entry.id}/pin`, { is_pinned: !entry.is_pinned });
+      setEntries(prev => prev.map(e =>
+        e.id === entry.id ? { ...e, is_pinned: !e.is_pinned } : e
+      ));
+      toast.success(entry.is_pinned ? 'Unpinned' : 'Pinned');
     } catch (err) {
       toast.error('Failed to update');
     }
@@ -218,36 +186,23 @@ const NotebookPage: React.FC = () => {
     if (!replyText.trim() || !user?.id) return;
     setReplySaving(true);
     try {
-      const headers = {
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        'Content-Type': 'application/json',
-      };
-      const res = await fetch(`${API_URL}/notebook/entries`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          user_id: user.id,
-          entry_type: 'note',
-          title: `Re: ${parentEntry.title || parentEntry.entry_type}`,
-          content: replyText.trim(),
-          metadata: {
-            reply_to: parentEntry.id,
-            reply_to_title: parentEntry.title,
-            reply_to_type: parentEntry.entry_type,
-          },
-          attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
-        }),
+      const res = await api.post('/notebook/entries', {
+        user_id: user.id,
+        entry_type: 'note',
+        title: `Re: ${parentEntry.title || parentEntry.entry_type}`,
+        content: replyText.trim(),
+        metadata: {
+          reply_to: parentEntry.id,
+          reply_to_title: parentEntry.title,
+          reply_to_type: parentEntry.entry_type,
+        },
+        attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
       });
-      if (res.ok) {
-        const newEntry = await res.json();
-        setEntries(prev => [newEntry, ...prev]);
-        setReplyText('');
-        setReplyAttachments([]);
-        setReplyingTo(null);
-        toast.success('Reply added');
-      } else {
-        toast.error('Failed to reply');
-      }
+      setEntries(prev => [res.data, ...prev]);
+      setReplyText('');
+      setReplyAttachments([]);
+      setReplyingTo(null);
+      toast.success('Reply added');
     } catch { toast.error('Failed to reply'); }
     finally { setReplySaving(false); }
   };

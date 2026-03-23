@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { TRACKER_TYPES, TRACKER_MAP, TrackerType } from './trackerTypes';
 import EditableTrackerForm from './EditableTrackerForm';
 import GlassCard from '../../components/common/GlassCard';
@@ -205,14 +205,7 @@ const TrackerSection: React.FC<TrackerSectionProps> = ({ userId, filterTypes, in
     setLogTracker(null);
     loadData();
     // Tracker log counts as a check-in (fire-and-forget)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.access_token) return;
-      fetch(`${API_URL}/checkins`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ userId }),
-      }).catch(() => {});
-    });
+    api.post('/checkins', { userId }).catch(() => {});
   };
 
   // ── already-active type ids ─────────────────────────────────────────────────

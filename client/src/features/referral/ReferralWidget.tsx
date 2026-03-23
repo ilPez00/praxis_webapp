@@ -3,8 +3,7 @@
  * Placed on the Dashboard. Each successful referral awards +100 PP to both parties.
  */
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../../lib/api';
-import { supabase } from '../../lib/supabase';
+import api from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
 import {
   Box, Typography, Button, TextField, InputAdornment, IconButton,
@@ -15,7 +14,6 @@ import ShareIcon from '@mui/icons-material/Share';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import toast from 'react-hot-toast';
-import axios from 'axios';
 
 const APP_URL = 'https://praxis-app.vercel.app'; // update to production URL
 
@@ -34,9 +32,7 @@ const ReferralWidget: React.FC<Props> = ({ userId }) => {
   useEffect(() => {
     const fetchCode = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-        const res = await axios.get(`${API_URL}/referrals/my-code`, { headers });
+        const res = await api.get('/referrals/my-code');
         setCode(res.data.code);
         setReferralCount(res.data.referralCount ?? 0);
       } catch {
@@ -68,9 +64,7 @@ const ReferralWidget: React.FC<Props> = ({ userId }) => {
     if (!claimInput.trim() || claiming) return;
     setClaiming(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-      const res = await axios.post(`${API_URL}/referrals/claim`, { code: claimInput.trim() }, { headers });
+      const res = await api.post('/referrals/claim', { code: claimInput.trim() });
       toast.success(res.data.message || '+100 PP awarded!');
       setClaimed(true);
       setClaimInput('');

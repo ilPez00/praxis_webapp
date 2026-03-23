@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
 import CircularProgress from '@mui/material/CircularProgress';
 import {
     Container,
@@ -26,7 +25,7 @@ import ForumIcon from '@mui/icons-material/Forum';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PersonIcon from '@mui/icons-material/Person';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import GlassCard from '../../components/common/GlassCard';
 
@@ -184,11 +183,9 @@ const ChatPage: React.FC = () => {
         if (dmConvs.length === 0 || !currentUser) return;
         (async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
                 const results = await Promise.allSettled(
                     dmConvs.map(conv =>
-                        axios.get(`${API_URL}/checkins/mutual`, { params: { partnerId: conv.id }, headers })
+                        api.get('/checkins/mutual', { params: { partnerId: conv.id } })
                             .then(r => ({ id: conv.id, streak: r.data.mutualStreak as number }))
                     )
                 );

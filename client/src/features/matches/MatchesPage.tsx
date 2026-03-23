@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
-import { supabase } from '../../lib/supabase';
 import GlassCard from '../../components/common/GlassCard';
 import CircularProgress from '@mui/material/CircularProgress';
 import {
@@ -72,9 +70,9 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
       setLoading(true);
       try {
         const url = selectedDomain
-          ? `${API_URL}/matches/${user.id}?domain=${encodeURIComponent(selectedDomain)}`
-          : `${API_URL}/matches/${user.id}`;
-        const matchRes = await axios.get(url);
+          ? `/matches/${user.id}?domain=${encodeURIComponent(selectedDomain)}`
+          : `/matches/${user.id}`;
+        const matchRes = await api.get(url);
         const enrichedMatches: MatchProfile[] = (matchRes.data ?? []).map((m: any) => ({
           userId: m.userId,
           score: m.score,
@@ -129,9 +127,7 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const handleSpar = async (match: MatchProfile) => {
     if (!user) return;
     try {
-      await axios.post(`${API_URL}/sparring/request`, { targetUserId: match.userId }, {
-        headers: { Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
-      });
+      await api.post('/sparring/request', { targetUserId: match.userId });
       toast.success(`Sparring request sent to ${match.name}!`);
     } catch (e: any) {
       toast.error(e.response?.data?.message ?? 'Failed to send sparring request');

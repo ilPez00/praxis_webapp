@@ -50,13 +50,12 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
       // Fetch user points directly from Supabase
       const fetchUserPoints = async () => {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session?.user?.id) return;
+          if (!user?.id) return;
 
           const { data: profile, error } = await supabase
             .from('profiles')
             .select('praxis_points')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
           if (error) {

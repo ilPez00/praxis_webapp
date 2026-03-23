@@ -4,7 +4,6 @@ import ReplyIcon from '@mui/icons-material/Reply';
 import CloseIcon from '@mui/icons-material/Close';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
 
 // Goal domains for categorization
 const GOAL_DOMAINS = [

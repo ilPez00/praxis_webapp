@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import {
   AppBar,
   Toolbar,
@@ -110,15 +110,12 @@ const Navbar: React.FC = () => {
 
     const fetchNotifs = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
-        const headers = { Authorization: `Bearer ${session.access_token}` };
         const [notifsRes, countRes] = await Promise.all([
-          fetch(`${API_URL}/notifications`, { headers }),
-          fetch(`${API_URL}/notifications/unread-count`, { headers }),
+          api.get('/notifications'),
+          api.get('/notifications/unread-count'),
         ]);
-        if (notifsRes.ok) setNotifications(await notifsRes.json());
-        if (countRes.ok) { const d = await countRes.json(); setUnreadCount(d.count ?? 0); }
+        if (notifsRes.data) setNotifications(notifsRes.data);
+        if (countRes.data) setUnreadCount(countRes.data.count ?? 0);
       } catch (err) {
         console.error('Failed to fetch notifications:', err);
       }
@@ -155,12 +152,7 @@ const Navbar: React.FC = () => {
     // Mark all as read on open
     if (unreadCount > 0) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
-        await fetch(`${API_URL}/notifications/read-all`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
+        await api.post('/notifications/read-all');
         setUnreadCount(0);
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       } catch (err) {
@@ -172,12 +164,7 @@ const Navbar: React.FC = () => {
   const handleDeleteNotif = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-      await fetch(`${API_URL}/notifications/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+      await api.delete(`/notifications/${id}`);
       setNotifications(prev => prev.filter(n => n.id !== id));
     } catch { /* ignore */ }
   };
@@ -452,9 +439,7 @@ const Navbar: React.FC = () => {
                       {notifications.some(n => !n.read) && (
                         <Tooltip title="Mark all read">
                           <IconButton size="small" sx={{ color: 'text.secondary' }} onClick={async () => {
-                            const { data: { session } } = await supabase.auth.getSession();
-                            if (!session?.access_token) return;
-                            await fetch(`${API_URL}/notifications/read-all`, { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } });
+                            await api.post('/notifications/read-all');
                             setUnreadCount(0);
                             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
                           }}>

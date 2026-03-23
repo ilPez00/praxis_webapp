@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { nuclearReset } from '../../utils/versionControl';
 import ContributionGraph from '../../components/common/ContributionGraph';
@@ -131,7 +130,7 @@ const LoginForm: React.FC = () => {
 
       // Sync language to backend if possible
       if (data.user) {
-        axios.put(`${API_URL}/users/${data.user.id}`, { language: i18n.language })
+        api.put(`/users/${data.user.id}`, { language: i18n.language })
           .catch(e => console.warn('Lang sync failed', e));
       }
 

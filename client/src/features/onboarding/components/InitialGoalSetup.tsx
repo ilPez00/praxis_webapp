@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { API_URL } from '../../../lib/api';
-import axios from 'axios';
+import api from '../../../lib/api';
 import { GoalNode } from '../../../models/GoalNode';
 import { Domain } from '../../../models/Domain';
 
@@ -44,7 +43,7 @@ const InitialGoalSetup: React.FC<InitialGoalSetupProps> = ({ userId, onGoalsCrea
     setLoading(true);
     setError(null);
     try {
-      await axios.post(`${API_URL}/goals`, {
+      await api.post('/goals', {
         user_id: userId,
         nodes: goals,
         root_nodes: goals, // All initial goals are root goals

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
@@ -92,7 +91,7 @@ const CoachingMarketplace: React.FC = () => {
   const fetchCoaches = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/coaches`, {
+      const res = await api.get('/coaches', {
         params: currentUserId ? { userId: currentUserId } : {},
       });
       setCoaches(Array.isArray(res.data) ? res.data : []);
@@ -107,7 +106,7 @@ const CoachingMarketplace: React.FC = () => {
     if (!currentUserId) return;
     setCheckingMyProfile(true);
     try {
-      const res = await axios.get(`${API_URL}/coaches/${currentUserId}`);
+      const res = await api.get(`/coaches/${currentUserId}`);
       setMyProfile(res.data);
     } catch {
       setMyProfile(null);
@@ -148,7 +147,7 @@ const CoachingMarketplace: React.FC = () => {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
-      await axios.post(`${API_URL}/coaches`, {
+      await api.post('/coaches', {
         userId: currentUserId,
         bio: formBio.trim(),
         skills,
@@ -170,7 +169,7 @@ const CoachingMarketplace: React.FC = () => {
   const handleDelete = async () => {
     if (!currentUserId) return;
     try {
-      await axios.delete(`${API_URL}/coaches/${currentUserId}`);
+      await api.delete(`/coaches/${currentUserId}`);
       toast.success('Coach profile removed.');
       setMyProfile(null);
       fetchCoaches();

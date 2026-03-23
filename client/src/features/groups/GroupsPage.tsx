@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
@@ -78,8 +77,8 @@ const GroupsPage: React.FC = () => {
     setLoading(true);
     try {
       const [allRes, joinedRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/groups`),
-        axios.get(`${API_URL}/groups/joined?userId=${userId}`),
+        api.get('/groups'),
+        api.get(`/groups/joined?userId=${userId}`),
       ]);
       if (allRes.status === 'fulfilled') {
         setAllRooms(Array.isArray(allRes.value.data) ? allRes.value.data : []);
@@ -111,7 +110,7 @@ const GroupsPage: React.FC = () => {
     if (!userId) return;
     setJoiningRoom(roomId);
     try {
-      await axios.post(`${API_URL}/groups/${roomId}/join`, { userId });
+      await api.post(`/groups/${roomId}/join`, { userId });
       toast.success('Joined room!');
       await fetchRooms();
       navigate(`/groups/${roomId}`);
@@ -130,7 +129,7 @@ const GroupsPage: React.FC = () => {
     }
     setCreating(true);
     try {
-      const { data } = await axios.post(`${API_URL}/groups`, {
+      const { data } = await api.post('/groups', {
         name: roomName.trim(),
         description: roomDesc.trim() || undefined,
         domain: roomDomain || undefined,
@@ -156,10 +155,7 @@ const GroupsPage: React.FC = () => {
     if (!currentUser?.is_admin) return;
     if (!window.confirm('Permanently delete this room and all its messages?')) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.delete(`${API_URL}/admin/groups/${roomId}`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      await api.delete(`/admin/groups/${roomId}`);
       toast.success('Room deleted.');
       setAllRooms(prev => prev.filter(r => r.id !== roomId));
       setJoinedRooms(prev => prev.filter(r => r.id !== roomId));

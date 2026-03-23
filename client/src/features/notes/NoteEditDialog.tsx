@@ -4,8 +4,7 @@ import {
   Button, TextField, Box, Typography, IconButton, Chip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 interface FeedItem {
@@ -33,26 +32,11 @@ const NoteEditDialog: React.FC<NoteEditDialogProps> = ({ item, open, onClose, on
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { 
-        'Authorization': `Bearer ${session?.access_token}`,
-        'Content-Type': 'application/json'
-      };
-
       // Strip prefixes like "j-" or "t-" if present
       const cleanId = item.id.includes('-') && item.id.length > 30 ? item.id.split('-').slice(1).join('-') : item.id;
 
       // Use the unified notebook API for updates
-      const res = await fetch(`${API_URL}/notebook/entries/${cleanId}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ content: note }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Failed to update');
-      }
+      await api.patch(`/notebook/entries/${cleanId}`, { content: note });
       
       toast.success('Note updated!');
       onUpdated({ ...item, detail: note });
@@ -69,17 +53,9 @@ const NoteEditDialog: React.FC<NoteEditDialogProps> = ({ item, open, onClose, on
     
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { 'Authorization': `Bearer ${session?.access_token}` };
-      
       const cleanId = item.id.includes('-') && item.id.length > 30 ? item.id.split('-').slice(1).join('-') : item.id;
 
-      const res = await fetch(`${API_URL}/notebook/entries/${cleanId}`, {
-        method: 'DELETE',
-        headers
-      });
-
-      if (!res.ok) throw new Error('Failed to delete');
+      await api.delete(`/notebook/entries/${cleanId}`);
       
       toast.success('Deleted');
       onUpdated({ ...item, detail: '[DELETED]' });

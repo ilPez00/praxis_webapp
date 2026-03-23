@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useUser } from '../../hooks/useUser';
-import { supabase } from '../../lib/supabase';
 import GlassCard from '../../components/common/GlassCard';
 import CircularProgress from '@mui/material/CircularProgress';
 import {
@@ -376,13 +374,10 @@ const AnalyticsPage: React.FC = () => {
     const load = async () => {
       setCalendarLoading(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const authH = { headers: { Authorization: `Bearer ${session?.access_token}` } };
-
         // Fetch combined calendar data from new endpoint
         const [calendarRes, goalRes] = await Promise.allSettled([
-          axios.get(`${API_URL}/trackers/calendar?days=112`, authH),
-          axios.get(`${API_URL}/goals/tree/${user.id}`, authH),
+          api.get('/trackers/calendar?days=112'),
+          api.get(`/goals/tree/${user.id}`),
         ]);
 
         // Build day map from combined data
@@ -446,15 +441,12 @@ const AnalyticsPage: React.FC = () => {
       try {
         const userId = user.id;
         // Auth header required — analytics endpoints are protected by authenticateToken middleware
-        const { data: { session } } = await supabase.auth.getSession();
-        const authHeaders = { headers: { Authorization: `Bearer ${session?.access_token}` } };
-
         const [progressRes, domainRes, feedbackRes, achievementRes, comparisonRes] = await Promise.allSettled([
-          axios.get(`${API_URL}/analytics/progress-over-time/${userId}`, authHeaders),
-          axios.get(`${API_URL}/analytics/domain-performance/${userId}`, authHeaders),
-          axios.get(`${API_URL}/analytics/feedback-trends/${userId}`, authHeaders),
-          axios.get(`${API_URL}/analytics/achievement-rate/${userId}`, authHeaders),
-          axios.get(`${API_URL}/analytics/comparison-data/${userId}`, authHeaders),
+          api.get(`/analytics/progress-over-time/${userId}`),
+          api.get(`/analytics/domain-performance/${userId}`),
+          api.get(`/analytics/feedback-trends/${userId}`),
+          api.get(`/analytics/achievement-rate/${userId}`),
+          api.get(`/analytics/comparison-data/${userId}`),
         ]);
 
         if (progressRes.status === 'fulfilled') setProgressData(progressRes.value.data);
@@ -465,7 +457,7 @@ const AnalyticsPage: React.FC = () => {
 
         // Leaderboard
         try {
-          const lbRes = await axios.get(`${API_URL}/users/leaderboard`, { params: { userId } });
+          const lbRes = await api.get('/users/leaderboard', { params: { userId } });
           setLeaderboardEntries(Array.isArray(lbRes.data) ? lbRes.data : []);
         } catch { /* non-fatal */ }
       } catch (err) {
@@ -501,15 +493,12 @@ const AnalyticsPage: React.FC = () => {
   const handleExportAnalytics = async () => {
     setExporting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { Authorization: `Bearer ${session?.access_token}` };
-      
       // Fetch all analytics data
       const [progressRes, domainRes, feedbackRes, achievementRes] = await Promise.all([
-        axios.get(`${API_URL}/analytics/goal-progress`, { headers }),
-        axios.get(`${API_URL}/analytics/domain-performance`, { headers }),
-        axios.get(`${API_URL}/analytics/feedback-trends`, { headers }),
-        axios.get(`${API_URL}/analytics/achievement-rate`, { headers }),
+        api.get('/analytics/goal-progress'),
+        api.get('/analytics/domain-performance'),
+        api.get('/analytics/feedback-trends'),
+        api.get('/analytics/achievement-rate'),
       ]);
 
       // Build CSV content

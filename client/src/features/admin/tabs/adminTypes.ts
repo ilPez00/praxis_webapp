@@ -1,5 +1,5 @@
-import { supabase } from '../../../lib/supabase';
 import { API_URL } from '../../../lib/api';
+import { supabase } from '../../../lib/supabase';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -112,14 +112,9 @@ export type ConfirmAction =
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-export const getToken = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token;
-};
-
 export const authHeaders = async () => {
-  const token = await getToken();
-  return { Authorization: `Bearer ${token}` };
+  const { data: { session } } = await supabase.auth.getSession();
+  return { Authorization: `Bearer ${session?.access_token}` };
 };
 
 export const apiFetch = async (path: string, opts?: RequestInit) => {

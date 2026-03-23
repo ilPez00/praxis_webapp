@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
-import { API_URL } from '../../../lib/api';
+import api from '../../../lib/api';
 import { Box, Typography, Button, Chip, Stack, Tooltip, TextField } from '@mui/material';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -58,11 +57,8 @@ const CheckInWidget: React.FC<Props> = ({
     if (!userId) return;
     (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-        const res = await axios.get(`${API_URL}/checkins/today`, {
+        const res = await api.get('/checkins/today', {
           params: { userId },
-          headers,
         });
         setCheckedIn(res.data.checkedIn);
 
@@ -92,9 +88,7 @@ const CheckInWidget: React.FC<Props> = ({
     if (loading || checkedIn) return;
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-      const res = await axios.post(`${API_URL}/checkins`, { userId, mood, winOfTheDay: winText }, { headers });
+      const res = await api.post('/checkins', { userId, mood, winOfTheDay: winText });
       const { alreadyCheckedIn, streak, totalPoints, shieldConsumed } = res.data;
       if (!alreadyCheckedIn) {
         setCheckedIn(true);

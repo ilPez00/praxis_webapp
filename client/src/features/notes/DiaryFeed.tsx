@@ -4,7 +4,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import SortIcon from '@mui/icons-material/Sort';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 import NoteEditDialog from './NoteEditDialog';
 
@@ -144,9 +144,6 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
       setLoading(true);
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers = { 'Authorization': `Bearer ${session?.access_token}` };
-        
         // 1. Fetch goal nodes for name mapping (used for the 'By Goal' sort mode)
         const { data: treeData } = await supabase
           .from('goal_trees').select('nodes').eq('user_id', userId).single();
@@ -157,12 +154,8 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
         }
 
         // 2. Fetch everything from the unified notebook API
-        // We use entry_type=all (or just omit it) to get trackers, notes, checkins, etc.
-        const url = `${API_URL}/notebook/entries?since=${since}&limit=300`;
-        const res = await fetch(url, { headers });
-        if (!res.ok) throw new Error('Failed to fetch notebook');
-        
-        const entries = await res.json();
+        const res = await api.get(`/notebook/entries?since=${since}&limit=300`);
+        const entries = res.data;
 
         // 3. Map to FeedItem format
         const feedItems: FeedItem[] = (entries || []).map((e: any) => {

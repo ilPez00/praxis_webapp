@@ -29,7 +29,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import ReferencePicker, { Reference } from '../../components/common/ReferencePicker';
 import ContentRenderer from '../../components/common/ContentRenderer';
 
@@ -110,22 +110,14 @@ const DiaryPage: React.FC = () => {
     if (!user?.id) return;
     setLoading(true);
     try {
-      const headers = {
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-      };
-
-      const res = await fetch(`${API_URL}/diary/entries?limit=100`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setEntries(data);
-      }
+      const res = await api.get('/diary/entries?limit=100');
+      setEntries(res.data);
 
       // Fetch stats
-      const statsRes = await fetch(`${API_URL}/diary/stats`, { headers });
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      }
+      try {
+        const statsRes = await api.get('/diary/stats');
+        setStats(statsRes.data);
+      } catch {}
     } catch (err) {
       console.error('Failed to fetch diary entries:', err);
     } finally {
@@ -194,11 +186,6 @@ const DiaryPage: React.FC = () => {
 
     setUploading(true);
     try {
-      const headers = {
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        'Content-Type': 'application/json',
-      };
-
       const tagArray = tags.split(',').map(t => t.trim()).filter(Boolean);
       let mediaUrl: string | null = null;
       let mediaType: string | null = null;
@@ -207,17 +194,17 @@ const DiaryPage: React.FC = () => {
       if (selectedFile) {
         const ext = selectedFile.name.split('.').pop() ?? 'bin';
         const path = `diary/${user?.id}/${Date.now()}.${ext}`;
-        
+
         const { error: uploadError } = await supabase.storage
           .from('chat-media')
           .upload(path, selectedFile);
-        
+
         if (uploadError) throw uploadError;
-        
+
         const { data: { publicUrl } } = supabase.storage
           .from('chat-media')
           .getPublicUrl(path);
-        
+
         mediaUrl = publicUrl;
         mediaType = selectedFile.type.startsWith('image/') ? 'image' : 'file';
       }
@@ -228,41 +215,32 @@ const DiaryPage: React.FC = () => {
         metadata.reference = reference;
       }
 
-      const res = await fetch(`${API_URL}/diary/entries`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          entry_type: selectedType,
-          title: title.trim() || `${selectedType} entry`,
-          content: content.trim(),
-          tags: tagArray.length > 0 ? tagArray : null,
-          mood: mood || null,
-          latitude: location.lat || null,
-          longitude: location.lng || null,
-          location_name: location.name || null,
-          is_private: isPrivate,
-          media_url: mediaUrl,
-          media_type: mediaType,
-          metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-        }),
+      await api.post('/diary/entries', {
+        entry_type: selectedType,
+        title: title.trim() || `${selectedType} entry`,
+        content: content.trim(),
+        tags: tagArray.length > 0 ? tagArray : null,
+        mood: mood || null,
+        latitude: location.lat || null,
+        longitude: location.lng || null,
+        location_name: location.name || null,
+        is_private: isPrivate,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       });
 
-      if (res.ok) {
-        toast.success('Entry added to diary!');
-        setQuickAddOpen(false);
-        setTitle('');
-        setContent('');
-        setTags('');
-        setMood('');
-        setLocation({});
-        setSelectedFile(null);
-        setFilePreview(null);
-        setReference(null);
-        fetchEntries();
-      } else {
-        const error = await res.json();
-        toast.error(error.message || 'Failed to add entry');
-      }
+      toast.success('Entry added to diary!');
+      setQuickAddOpen(false);
+      setTitle('');
+      setContent('');
+      setTags('');
+      setMood('');
+      setLocation({});
+      setSelectedFile(null);
+      setFilePreview(null);
+      setReference(null);
+      fetchEntries();
     } catch (err: any) {
       toast.error('Failed to add entry: ' + err.message);
     } finally {
@@ -272,22 +250,11 @@ const DiaryPage: React.FC = () => {
 
   const handlePinClick = async (entry: DiaryEntry) => {
     try {
-      const headers = {
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        'Content-Type': 'application/json',
-      };
-      const res = await fetch(`${API_URL}/diary/entries/${entry.id}/pin`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ is_pinned: !entry.is_pinned }),
-      });
-      
-      if (res.ok) {
-        setEntries(prev => prev.map(e => 
-          e.id === entry.id ? { ...e, is_pinned: !e.is_pinned } : e
-        ));
-        toast.success(entry.is_pinned ? 'Unpinned' : 'Pinned');
-      }
+      await api.patch(`/diary/entries/${entry.id}/pin`, { is_pinned: !entry.is_pinned });
+      setEntries(prev => prev.map(e =>
+        e.id === entry.id ? { ...e, is_pinned: !e.is_pinned } : e
+      ));
+      toast.success(entry.is_pinned ? 'Unpinned' : 'Pinned');
     } catch (err) {
       toast.error('Failed to update');
     }
@@ -297,20 +264,9 @@ const DiaryPage: React.FC = () => {
     if (!confirm('Delete this diary entry?')) return;
     
     try {
-      const headers = {
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-      };
-      const res = await fetch(`${API_URL}/diary/entries/${entry.id}`, {
-        method: 'DELETE',
-        headers,
-      });
-      
-      if (res.ok) {
-        setEntries(prev => prev.filter(e => e.id !== entry.id));
-        toast.success('Entry deleted');
-      } else {
-        toast.error('Failed to delete');
-      }
+      await api.delete(`/diary/entries/${entry.id}`);
+      setEntries(prev => prev.filter(e => e.id !== entry.id));
+      toast.success('Entry deleted');
     } catch (err) {
       toast.error('Failed to delete');
     }

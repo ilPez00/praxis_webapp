@@ -33,9 +33,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import WorkIcon from '@mui/icons-material/Work';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CloseIcon from '@mui/icons-material/Close';
-import axios from 'axios';
 import hotToast from 'react-hot-toast';
-import { supabase } from '../../lib/supabase';
 import SportsKabaddiIcon from '@mui/icons-material/SportsKabaddi';
 import ShieldIcon from '@mui/icons-material/Shield';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
@@ -51,7 +49,7 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import BoltIcon from '@mui/icons-material/Bolt';
 import { useUser } from '../../hooks/useUser';
-import { API_URL } from '../../lib/api';
+import api, { API_URL } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import BettingPage from '../betting/BettingPage';
 import ChallengesPage from '../challenges/ChallengesPage';
@@ -167,16 +165,10 @@ const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) =>
   const [formReqs, setFormReqs] = useState('');
   const [formContact, setFormContact] = useState('');
 
-  const getAuthHeader = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-  };
-
   const fetchOffers = useCallback(async () => {
     try {
-      const headers = await getAuthHeader();
       const params = filterType ? `?type=${filterType}` : '';
-      const { data } = await axios.get(`${API_URL}/offers${params}`, { headers });
+      const { data } = await api.get(`/offers${params}`);
       setOffers(Array.isArray(data) ? data : []);
     } catch { setOffers([]); }
     finally { setLoading(false); }
@@ -188,13 +180,12 @@ const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) =>
     if (!formTitle.trim()) { hotToast.error('Title is required.'); return; }
     setSaving(true);
     try {
-      const headers = await getAuthHeader();
-      await axios.post(`${API_URL}/offers`, {
+      await api.post('/offers', {
         title: formTitle.trim(), description: formDesc.trim() || undefined,
         type: formType, domain: formDomain || undefined, city: formCity.trim() || undefined,
         compensation: formComp.trim() || undefined, remote: formRemote,
         requirements: formReqs.trim() || undefined, contact: formContact.trim() || undefined,
-      }, { headers });
+      });
       hotToast.success('Offer posted!');
       setDialogOpen(false);
       setFormTitle(''); setFormDesc(''); setFormType('job'); setFormDomain('');
@@ -206,8 +197,7 @@ const OffersPanel: React.FC<{ currentUserId?: string }> = ({ currentUserId }) =>
 
   const handleDelete = async (id: string) => {
     try {
-      const headers = await getAuthHeader();
-      await axios.delete(`${API_URL}/offers/${id}`, { headers });
+      await api.delete(`/offers/${id}`);
       hotToast.success('Offer removed.');
       fetchOffers();
     } catch { hotToast.error('Failed to remove offer.'); }
@@ -435,7 +425,7 @@ const MarketplacePage: React.FC = () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) return;
     try {
-      const res = await axios.post(`${API_URL}/stripe/create-pp-checkout`, {
+      const res = await api.post('/stripe/create-pp-checkout', {
         userId: authUser.id,
         email: authUser.email,
         tier,

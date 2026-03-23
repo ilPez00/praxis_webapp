@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import axios from 'axios';
 import { FeedbackGrade } from '../../models/FeedbackGrade';
 import { GoalTree } from '../../models/GoalTree';
 import { GoalNode } from '../../models/GoalNode';
@@ -144,14 +143,14 @@ const ChatRoom: React.FC = () => {
 
   useEffect(() => {
     if (!currentUserId) return;
-    axios.get(`${API_URL}/goals/${currentUserId}`)
+    api.get(`/goals/${currentUserId}`)
       .then(r => setUserGoalTree(r.data))
       .catch(() => {});
   }, [currentUserId]);
 
   useEffect(() => {
     if (!user2Id) return;
-    axios.get(`${API_URL}/goals/${user2Id}`)
+    api.get(`/goals/${user2Id}`)
       .then(r => setReceiverGoalTree(r.data))
       .catch(() => {});
   }, [user2Id]);
@@ -165,7 +164,7 @@ const ChatRoom: React.FC = () => {
     const fetchMessages = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_URL}/messages/${user1Id}/${user2Id}`);
+        const response = await api.get(`/messages/${user1Id}/${user2Id}`);
         setMessages(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Fetch messages error:', error);
@@ -179,9 +178,8 @@ const ChatRoom: React.FC = () => {
     // Check mute status for this user
     (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token || !user2Id) return;
-        const res = await axios.get(`${API_URL}/mutes`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        if (!user2Id) return;
+        const res = await api.get('/mutes');
         const mutedUsers: string[] = res.data?.mutedUsers ?? [];
         setMuted(mutedUsers.includes(user2Id));
       } catch (err) {
@@ -283,7 +281,7 @@ const ChatRoom: React.FC = () => {
     setNewMessage('');
     setPendingRef(null);
     try {
-      const response = await axios.post(`${API_URL}/messages/send`, {
+      const response = await api.post('/messages/send', {
         senderId: currentUserId,
         receiverId: user2Id,
         content,
@@ -317,14 +315,13 @@ const ChatRoom: React.FC = () => {
     }
     setSubmittingFeedback(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.post(`${API_URL}/feedback`, {
+      await api.post('/feedback', {
         giverId: currentUserId,
         receiverId: user2Id,
         goalNodeId: selectedGoalNode,
         grade: selectedGrade,
         comment: feedbackComment,
-      }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+      });
       // Notify partner via broadcast
       channelRef.current?.send({
         type: 'broadcast',
@@ -360,7 +357,7 @@ const ChatRoom: React.FC = () => {
         .getPublicUrl(path);
 
       const isImage = file.type.startsWith('image/');
-      await axios.post(`${API_URL}/messages/send`, {
+      await api.post('/messages/send', {
         senderId: currentUserId,
         receiverId: user2Id,
         content: isImage ? '📷 Image' : `📎 ${file.name}`,
@@ -380,7 +377,7 @@ const ChatRoom: React.FC = () => {
   const handleCompletionResponse = async (requestId: string, approved: boolean) => {
     if (!currentUserId) return;
     try {
-      await axios.patch(`${API_URL}/completions/${requestId}/respond`, {
+      await api.patch(`/completions/${requestId}/respond`, {
         verifierId: currentUserId,
         approved,
       });
@@ -421,11 +418,9 @@ const ChatRoom: React.FC = () => {
     setAxiomLoading(true);
     setAxiomResponse('');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.post(
-        `${API_URL}/ai-coaching/request`,
+      const res = await api.post(
+        '/ai-coaching/request',
         { userPrompt: axiomPrompt.trim() },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } },
       );
       setAxiomResponse(res.data.response || '…');
     } catch (err: any) {
@@ -443,15 +438,12 @@ const ChatRoom: React.FC = () => {
     }
     setSubmittingFeedback(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.post(`${API_URL}/feedback`, {
+      await api.post('/feedback', {
         giverId: currentUserId,
         receiverId: user2Id,
         goalNodeId: selectedGoalNode,
         grade: selectedGrade,
         comment: feedbackComment,
-      }, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       toast.success('Feedback submitted! Their goal weights have been updated.');
       setShowFeedbackForm(false);
@@ -893,11 +885,8 @@ const ChatRoom: React.FC = () => {
                 disabled={nudgeSent}
                 onClick={async () => {
                   try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (!session?.access_token || !user2Id) return;
-                    await axios.post(`${API_URL}/notifications/nudge/${user2Id}`, {}, {
-                      headers: { Authorization: `Bearer ${session.access_token}` },
-                    });
+                    if (!user2Id) return;
+                    await api.post(`/notifications/nudge/${user2Id}`);
                     setNudgeSent(true);
                     toast.success(`Nudge sent to ${receiverName}!`);
                   } catch (e: any) {
@@ -916,15 +905,13 @@ const ChatRoom: React.FC = () => {
               size="small"
               onClick={async () => {
                 try {
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (!session?.access_token || !user2Id) return;
-                  const headers = { Authorization: `Bearer ${session.access_token}` };
+                  if (!user2Id) return;
                   if (muted) {
-                    await axios.delete(`${API_URL}/mutes/user/${user2Id}`, { headers });
+                    await api.delete(`/mutes/user/${user2Id}`);
                     setMuted(false);
                     toast('Unmuted', { icon: '🔔' });
                   } else {
-                    await axios.post(`${API_URL}/mutes/user/${user2Id}`, {}, { headers });
+                    await api.post(`/mutes/user/${user2Id}`);
                     setMuted(true);
                     toast('Muted — you won\'t get notifications from this user', { icon: '🔕' });
                   }

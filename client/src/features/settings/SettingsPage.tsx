@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Container, Box, Typography, Divider, Switch, FormControlLabel,
@@ -18,7 +17,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import LanguageIcon from '@mui/icons-material/Language';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { useNavigate } from 'react-router-dom';
 
@@ -123,13 +122,12 @@ const SettingsPage: React.FC = () => {
           );
           const geo = await resp.json();
           const city = geo.address?.city || geo.address?.town || geo.address?.village || '';
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token && user) {
-            await axios.put(`${API_URL}/users/${user.id}`, {
+          if (user) {
+            await api.put(`/users/${user.id}`, {
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
               city,
-            }, { headers: { Authorization: `Bearer ${session.access_token}` } });
+            });
             setGeoCity(city);
             toast.success(`Location set to ${city || 'your position'}`);
           }
@@ -143,11 +141,8 @@ const SettingsPage: React.FC = () => {
 
   const clearLocation = async () => {
     if (!user) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
-    await axios.put(`${API_URL}/users/${user.id}`,
+    await api.put(`/users/${user.id}`,
       { latitude: null, longitude: null, city: null },
-      { headers: { Authorization: `Bearer ${session.access_token}` } }
     );
     setGeoCity('');
     toast.success('Location data cleared.');
@@ -157,14 +152,12 @@ const SettingsPage: React.FC = () => {
     if (!user) return;
     setPrivacySaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.put(`${API_URL}/users/${user.id}`,
-        { 
-          is_public: profilePublic, 
+      await api.put(`/users/${user.id}`,
+        {
+          is_public: profilePublic,
           match_visibility: matchVisibility,
           share_notes_publicly: shareNotesPublicly,
         },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } }
       );
       toast.success('Privacy settings saved.');
     } catch { toast.error('Failed to save settings.'); }
@@ -175,10 +168,7 @@ const SettingsPage: React.FC = () => {
     if (confirmText !== 'RESET') return;
     setDangerLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.post(`${API_URL}/users/me/reset-goals`, {}, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      await api.post('/users/me/reset-goals', {});
       toast.success('Notebook reset. Starting fresh!');
       setResetDialogOpen(false);
       setConfirmText('');
@@ -191,10 +181,7 @@ const SettingsPage: React.FC = () => {
     if (confirmText !== 'DELETE') return;
     setDangerLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.delete(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      await api.delete('/users/me');
       await supabase.auth.signOut();
       toast.success('Account deleted. Goodbye!');
       navigate('/');

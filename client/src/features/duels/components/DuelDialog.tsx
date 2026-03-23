@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../../lib/api';
 import {
   Dialog,
   DialogTitle,
@@ -20,7 +20,6 @@ import {
 } from '@mui/material';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import { API_URL } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
 import toast from 'react-hot-toast';
 import { Domain } from '../../../models/Domain';
@@ -65,8 +64,8 @@ const DuelDialog: React.FC<DuelDialogProps> = ({ open, onClose, opponentId, oppo
       if (!user) return;
 
       const [oppRes, myRes, profRes] = await Promise.all([
-        axios.get(`${API_URL}/goals/${opponentId}`),
-        axios.get(`${API_URL}/goals/${user.id}`),
+        api.get(`/goals/${opponentId}`),
+        api.get(`/goals/${user.id}`),
         supabase.from('profiles').select('praxis_points').eq('id', user.id).single(),
       ]);
 
@@ -110,16 +109,13 @@ const DuelDialog: React.FC<DuelDialogProps> = ({ open, onClose, opponentId, oppo
 
     setSubmitting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.post(`${API_URL}/duels`, {
+      await api.post('/duels', {
         opponentId,
         title: selectedGoal ? `Duel: ${selectedGoal.name}` : customTitle,
         category: selectedGoal?.domain || 'Personal Goals',
         stakePP: stake,
         deadlineDays: days,
         goalNodeId: selectedGoal?.id,
-      }, {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
       });
 
       toast.success('Challenge sent!');

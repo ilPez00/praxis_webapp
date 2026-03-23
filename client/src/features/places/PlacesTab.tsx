@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -24,7 +23,7 @@ import GlassCard from '../../components/common/GlassCard';
 import ShareDialog from '../../components/common/ShareDialog';
 import LocationMap from '../../components/common/LocationMap';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { PRAXIS_DOMAINS, getDomainConfig } from '../../types/Domain';
 
 interface Place {
@@ -157,20 +156,14 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
     }
   }, [searchParams, userGeo]);
 
-  const getAuthHeader = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-  };
-
   const fetchPlaces = useCallback(async (geo?: { lat: number; lng: number }) => {
     try {
-      const headers = await getAuthHeader();
       const params = new URLSearchParams();
       // Only filter by type on the backend if it's an exact match
       // But we will also use frontend filtering for better responsiveness
       if (filterType) params.set('type', filterType);
       if (geo) { params.set('lat', String(geo.lat)); params.set('lng', String(geo.lng)); params.set('radius', '100'); }
-      const { data } = await axios.get(`${API_URL}/places?${params}`, { headers });
+      const { data } = await api.get(`/places?${params}`);
       setPlaces(Array.isArray(data) ? data : []);
     } catch { setPlaces([]); }
     finally { setLoading(false); }
@@ -241,7 +234,6 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
     if (!bookmarkName.trim()) { toast.error('Name is required.'); return; }
     setSaving(true);
     try {
-      const headers = await getAuthHeader();
       const payload = {
         name: bookmarkName.trim(),
         type: bookmarkType || 'personal',
@@ -253,7 +245,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
         owner_id: currentUserId,
       };
 
-      await axios.post(`${API_URL}/places`, payload, { headers });
+      await api.post('/places', payload);
       toast.success('Place bookmarked!');
       setBookmarkDialogOpen(false);
       resetBookmarkForm();
@@ -269,7 +261,6 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
     if (!formName.trim()) { toast.error('Name is required.'); return; }
     setSaving(true);
     try {
-      const headers = await getAuthHeader();
       const payload = {
         name: formName.trim(), type: formType || null,
         address: formAddress.trim() || null, city: formCity.trim() || null,
@@ -279,10 +270,10 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
       };
 
       if (editingId) {
-        await axios.put(`${API_URL}/places/${editingId}`, payload, { headers });
+        await api.put(`/places/${editingId}`, payload);
         toast.success('Place updated!');
       } else {
-        await axios.post(`${API_URL}/places`, payload, { headers });
+        await api.post('/places', payload);
         toast.success('Place added!');
       }
       
@@ -294,14 +285,13 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
   };
 
   const handleJoin = async (place: Place) => {
-    const headers = await getAuthHeader();
     const isMember = place.members.some(m => m.user_id === currentUserId);
     try {
       if (isMember) {
-        await axios.delete(`${API_URL}/places/${place.id}/join`, { headers });
+        await api.delete(`/places/${place.id}/join`);
         toast.success('Left place.');
       } else {
-        await axios.post(`${API_URL}/places/${place.id}/join`, {}, { headers });
+        await api.post(`/places/${place.id}/join`, {});
         toast.success('Joined place!');
       }
       fetchPlaces(nearbyMode && userGeo ? userGeo : undefined);
@@ -311,8 +301,7 @@ const PlacesTab: React.FC<PlacesTabProps> = ({ currentUserId, compact = false, h
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this place?')) return;
     try {
-      const headers = await getAuthHeader();
-      await axios.delete(`${API_URL}/places/${id}`, { headers });
+      await api.delete(`/places/${id}`);
       toast.success('Place removed.');
       fetchPlaces(nearbyMode && userGeo ? userGeo : undefined);
     } catch { toast.error('Failed to delete place.'); }

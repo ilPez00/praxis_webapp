@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
-import { API_URL } from '../../../lib/api';
+import api from '../../../lib/api';
 import GlassCard from '../../../components/common/GlassCard';
 import ContributionGraph from '../../../components/common/ContributionGraph';
 import {
@@ -125,9 +124,6 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-
         const [briefsRes, checkinRes] = await Promise.all([
           supabase
             .from('axiom_daily_briefs')
@@ -135,14 +131,14 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
             .eq('user_id', userId)
             .order('date', { ascending: false })
             .limit(14),
-          axios.get(`${API_URL}/checkins/today`, { params: { userId }, headers }),
+          api.get('/checkins/today', { params: { userId } }),
         ]);
 
         let briefData = briefsRes.data as BriefRecord[];
 
         if (!briefData || briefData.length === 0) {
           try {
-            const genRes = await axios.post(`${API_URL}/ai-coaching/generate-axiom-brief`, {}, { headers });
+            const genRes = await api.post('/ai-coaching/generate-axiom-brief', {});
             if (genRes.data) briefData = [genRes.data];
           } catch (genErr) {
             console.warn('Axiom brief generation failed:', genErr);
@@ -167,10 +163,7 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
     if (checkinLoading || checkedIn) return;
     setCheckinLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.post(`${API_URL}/checkins`, { userId }, {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-      });
+      const res = await api.post('/checkins', { userId });
       const { alreadyCheckedIn, streak: newStreak, totalPoints } = res.data;
       setCheckedIn(true);
       if (!alreadyCheckedIn) {

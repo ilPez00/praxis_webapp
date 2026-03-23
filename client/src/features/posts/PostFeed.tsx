@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../lib/api';
 import {
   Box,
   Typography,
@@ -151,12 +151,9 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
   useEffect(() => {
     if (!posts.length) return;
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const headers = { Authorization: `Bearer ${session.access_token}` };
       const results = await Promise.all(
         posts.slice(0, 20).map(p =>
-          axios.get(`${API_URL}/posts/${p.id}/vote`, { headers })
+          api.get(`/posts/${p.id}/vote`)
             .then(r => [p.id, r.data] as [string, { score: number; userVote: number }])
             .catch(() => [p.id, { score: 0, userVote: 0 }] as [string, { score: number; userVote: number }])
         )
@@ -169,9 +166,6 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
   }, [postIds]);
 
   const handleVote = async (postId: string, value: 1 | -1) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { toast.error('Sign in to vote'); return; }
-
     const previous = postVotes[postId] ?? { score: 0, userVote: 0 };
     const currentVote = previous.userVote;
     const currentScore = previous.score;
@@ -184,10 +178,9 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
     setPostVotes(prev => ({ ...prev, [postId]: optimistic }));
 
     try {
-      const res = await axios.post(
-        `${API_URL}/posts/${postId}/vote`,
+      const res = await api.post(
+        `/posts/${postId}/vote`,
         { value },
-        { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
       setPostVotes(prev => ({ ...prev, [postId]: res.data }));
     } catch {
@@ -287,11 +280,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
         });
       } else {
         // Admin delete — bypass ownership check via admin endpoint
-        const { data: { session } } = await supabase.auth.getSession();
-        await fetch(`${API_URL}/admin/posts/${postId}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        });
+        await api.delete(`/admin/posts/${postId}`);
       }
     } catch (err) {
       console.error('Delete post error:', err);

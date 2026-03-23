@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
 import toast from 'react-hot-toast';
@@ -90,7 +89,7 @@ const GoalSelectionPage: React.FC = () => {
       setCurrentUserId(uid);
 
       try {
-        const res = await axios.get(`${API_URL}/goals/${uid}`);
+        const res = await api.get(`/goals/${uid}`);
         const tree: GoalTree = res.data;
         setExistingTree(tree);
 
@@ -175,7 +174,7 @@ const GoalSelectionPage: React.FC = () => {
 
       const allNodes = [...nodes, ...validSubGoals];
 
-      await axios.post(`${API_URL}/goals`, {
+      await api.post('/goals', {
         user_id: currentUserId,
         nodes: allNodes,
         root_nodes: nodes,

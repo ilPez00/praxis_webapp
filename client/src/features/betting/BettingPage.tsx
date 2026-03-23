@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
 import GlassCard from '../../components/common/GlassCard';
@@ -69,7 +68,7 @@ const BettingPage: React.FC = () => {
   const fetchBets = useCallback(async () => {
     if (!currentUserId) return;
     try {
-      const res = await axios.get(`${API_URL}/bets/${currentUserId}`);
+      const res = await api.get(`/bets/${currentUserId}`);
       setBets(Array.isArray(res.data) ? res.data : []);
     } catch {
       setBets([]);
@@ -79,7 +78,7 @@ const BettingPage: React.FC = () => {
   const fetchGoalNodes = useCallback(async () => {
     if (!currentUserId) return;
     try {
-      const res = await axios.get(`${API_URL}/goals/${currentUserId}`);
+      const res = await api.get(`/goals/${currentUserId}`);
       const tree = res.data;
       const nodes: GoalNode[] = Array.isArray(tree?.nodes) ? tree.nodes : [];
       setGoalNodes(nodes.filter(n => n.progress < 1));
@@ -102,7 +101,7 @@ const BettingPage: React.FC = () => {
     if (!node) return;
     setCreating(true);
     try {
-      await axios.post(`${API_URL}/bets`, {
+      await api.post('/bets', {
         userId: currentUserId,
         goalNodeId: selectedNodeId,
         goalName: node.name,
@@ -113,7 +112,7 @@ const BettingPage: React.FC = () => {
 
       // Auto-post public accountability message to the feed
       try {
-        await axios.post(`${API_URL}/posts`, {
+        await api.post('/posts', {
           userId: currentUserId,
           userName: user?.name || 'A Praxis member',
           userAvatarUrl: (user as any)?.avatar_url || null,
@@ -137,10 +136,8 @@ const BettingPage: React.FC = () => {
   const handleCancel = async (betId: string) => {
     if (!currentUserId) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.delete(`${API_URL}/bets/${betId}`, {
+      await api.delete(`/bets/${betId}`, {
         data: { userId: currentUserId },
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       });
       toast.success('Pledge cancelled. 90% of stake refunded (10% house fee).');
       await fetchBets();

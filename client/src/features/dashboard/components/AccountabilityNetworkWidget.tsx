@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import { API_URL } from '../../../lib/api';
-import axios from 'axios';
+import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 import {
   Box,
@@ -58,11 +57,7 @@ const AccountabilityNetworkWidget: React.FC<Props> = ({ userId }) => {
   useEffect(() => {
     const fetchFriends = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
-        const res = await axios.get(`${API_URL}/friends/of/${userId}`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
+        const res = await api.get(`/friends/of/${userId}`);
         const list: any[] = Array.isArray(res.data) ? res.data : [];
         // Batch-fetch profiles for all friends to get check-in data
         if (list.length === 0) return;
@@ -91,11 +86,7 @@ const AccountabilityNetworkWidget: React.FC<Props> = ({ userId }) => {
 
   const handleNudge = async (targetId: string, name: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-      await axios.post(`${API_URL}/notifications/nudge/${targetId}`, {}, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+      await api.post(`/notifications/nudge/${targetId}`, {});
       setNudgedIds(prev => new Set(Array.from(prev).concat(targetId)));
       toast.success(`Nudge sent to ${name}!`);
     } catch (e: any) {

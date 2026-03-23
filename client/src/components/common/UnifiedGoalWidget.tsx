@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, Component, ErrorInfo } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Box, Typography, TextField, Button, Chip, LinearProgress, Slider,
@@ -12,7 +11,7 @@ import GlassCard from './GlassCard';
 import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 import { DOMAIN_TRACKER_MAP, TRACKER_TYPES } from '../../features/trackers/trackerTypes';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { findWidget } from '../../features/dashboard/components/GoalWidgets';
 import type { WidgetGoalNode } from '../../features/dashboard/components/GoalWidgets';
 import EditableTrackerForm from '../../features/trackers/EditableTrackerForm';
@@ -153,10 +152,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   // Fetch trackers
   const fetchTrackers = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.get(`${API_URL}/trackers/my`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      const res = await api.get('/trackers/my');
       setTrackers(Array.isArray(res.data) ? res.data : []);
     } catch { setTrackers([]); }
     finally { setLoading(false); }
@@ -175,9 +171,6 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
     if (!note.trim() && !mood) { toast.error('Write a note or pick a mood.'); return; }
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
       const contentText = note.trim() || (mood ? `Mood: ${mood}` : '');
 
       // Legacy write
@@ -187,14 +180,11 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
       });
 
       // Dual-write to notebook_entries
-      await fetch(`${API_URL}/notebook/entries`, {
-        method: 'POST', headers,
-        body: JSON.stringify({
-          entry_type: 'note', title: goal.name, content: contentText,
-          mood: mood || undefined, goal_id: goal.id,
-          domain: goal.domain || undefined, source_table: 'node_journal_entries',
-          attachments: attachments.length > 0 ? attachments : undefined,
-        }),
+      await api.post('/notebook/entries', {
+        entry_type: 'note', title: goal.name, content: contentText,
+        mood: mood || undefined, goal_id: goal.id,
+        domain: goal.domain || undefined, source_table: 'node_journal_entries',
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
 
       toast.success(`Logged on "${goal.name}"!`);
@@ -252,13 +242,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   const handleSaveProgress = async (newPct: number) => {
     setSavingProgress(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-      await fetch(`${API_URL}/goals/${userId}/node/${goal.id}/progress`, {
-        method: 'PATCH', headers,
-        body: JSON.stringify({ progress: newPct / 100 }),
-      });
+      await api.patch(`/goals/${userId}/node/${goal.id}/progress`, { progress: newPct / 100 });
       toast.success(`Progress updated to ${newPct}%`);
       setProgressDraft(null);
     } catch { toast.error('Failed to update progress'); }
@@ -402,10 +386,7 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
               tracker={effectiveTracker ? { ...effectiveTracker, def: effectiveTrackerConfig!, goal: effectiveTracker.goal } : { id: '', type: effectiveType || '', def: effectiveTrackerConfig!, goal: {} }}
               onSave={async (data) => {
                 if (!effectiveType) return;
-                const { data: { session } } = await supabase.auth.getSession();
-                const res = await axios.post(`${API_URL}/trackers/log`, { type: effectiveType, data }, {
-                  headers: { Authorization: `Bearer ${session?.access_token}` },
-                });
+                const res = await api.post('/trackers/log', { type: effectiveType, data });
                 if (res.data?.limitReached) {
                   toast.error('Daily limit reached (3 per goal)');
                   return;

@@ -10,8 +10,7 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import ChatIcon from '@mui/icons-material/Chat';
 import { supabase } from '../../lib/supabase';
-import axios from 'axios';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { getAxiomQuote } from '../../utils/axiomQuotes';
 
@@ -48,15 +47,12 @@ const MobileWidget: React.FC = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-
       const [userRes, checkinRes, goalsRes, trackersRes, axiomRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/users/${user.id}`, { headers }),
-        axios.get(`${API_URL}/checkins/today`, { headers }),
-        axios.get(`${API_URL}/goals/${user.id}`, { headers }),
-        axios.get(`${API_URL}/trackers/summary/today`, { headers }),
-        axios.get(`${API_URL}/axiom/last-response`, { headers }),
+        api.get(`/users/${user.id}`),
+        api.get('/checkins/today'),
+        api.get(`/goals/${user.id}`),
+        api.get('/trackers/summary/today'),
+        api.get('/axiom/last-response'),
       ]);
 
       let widgetData: WidgetData = { name: '', streak: 0, praxisPoints: 0, trackerCount: 0 };
@@ -130,9 +126,7 @@ const MobileWidget: React.FC = () => {
     if (checkedInToday || checkingIn) return;
     setCheckingIn(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-      await axios.post(`${API_URL}/checkins`, {}, { headers });
+      await api.post('/checkins');
       setCheckedInToday(true);
       toast.success('Streak kept! 🔥');
       fetchData();

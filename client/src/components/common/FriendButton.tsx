@@ -10,9 +10,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PeopleIcon from '@mui/icons-material/People';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import toast from 'react-hot-toast';
-import axios from 'axios';
-import { API_URL } from '../../lib/api';
-import { supabase } from '../../lib/supabase';
+import api from '../../lib/api';
 
 interface Props {
   targetUserId: string;
@@ -34,17 +32,12 @@ const FriendButton: React.FC<Props> = ({ targetUserId, targetName, size = 'small
   const [acting, setActing] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
-  const getAuthHeader = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return { Authorization: `Bearer ${session?.access_token}` };
-  };
 
   useEffect(() => {
     const fetchStatus = async () => {
       setLoading(true);
       try {
-        const headers = await getAuthHeader();
-        const res = await axios.get(`${API_URL}/friends/status/${targetUserId}`, { headers });
+        const res = await api.get(`/friends/status/${targetUserId}`);
         setStatusData(res.data);
       } catch {
         setStatusData({ status: 'none' });
@@ -58,8 +51,7 @@ const FriendButton: React.FC<Props> = ({ targetUserId, targetName, size = 'small
   const handleSendRequest = async () => {
     setActing(true);
     try {
-      const headers = await getAuthHeader();
-      const res = await axios.post(`${API_URL}/friends/request/${targetUserId}`, {}, { headers });
+      const res = await api.post(`/friends/request/${targetUserId}`);
       setStatusData({ status: 'pending', requestId: res.data.id, iAmRequester: true });
       toast.success(`Friend request sent to ${targetName || 'user'}!`);
     } catch (err: any) {
@@ -73,8 +65,7 @@ const FriendButton: React.FC<Props> = ({ targetUserId, targetName, size = 'small
     if (!statusData.requestId) return;
     setActing(true);
     try {
-      const headers = await getAuthHeader();
-      await axios.post(`${API_URL}/friends/accept/${statusData.requestId}`, {}, { headers });
+      await api.post(`/friends/accept/${statusData.requestId}`);
       setStatusData({ status: 'accepted' });
       toast.success(`You are now friends with ${targetName || 'this user'}!`);
     } catch (err: any) {
@@ -89,8 +80,7 @@ const FriendButton: React.FC<Props> = ({ targetUserId, targetName, size = 'small
     setMenuAnchor(null);
     setActing(true);
     try {
-      const headers = await getAuthHeader();
-      await axios.delete(`${API_URL}/friends/requests/${statusData.requestId}`, { headers });
+      await api.delete(`/friends/requests/${statusData.requestId}`);
       setStatusData({ status: 'none' });
       toast.success(statusData.iAmRequester ? 'Friend request cancelled.' : 'Request declined.');
     } catch (err: any) {
@@ -104,8 +94,7 @@ const FriendButton: React.FC<Props> = ({ targetUserId, targetName, size = 'small
     setMenuAnchor(null);
     setActing(true);
     try {
-      const headers = await getAuthHeader();
-      await axios.delete(`${API_URL}/friends/${targetUserId}`, { headers });
+      await api.delete(`/friends/${targetUserId}`);
       setStatusData({ status: 'none' });
       toast.success(`Removed ${targetName || 'user'} from friends.`);
     } catch (err: any) {

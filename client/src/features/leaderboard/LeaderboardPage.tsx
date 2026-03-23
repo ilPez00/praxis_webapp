@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { DOMAIN_COLORS } from '../../types/goal';
 import GlassCard from '../../components/common/GlassCard';
@@ -55,8 +54,8 @@ const LeaderboardPage: React.FC = () => {
   useEffect(() => {
     if (!user?.id) return;
     setLoading(true);
-    axios
-      .get(`${API_URL}/users/leaderboard`, { params: { userId: user.id } })
+    api
+      .get('/users/leaderboard', { params: { userId: user.id } })
       .then(r => setEntries(Array.isArray(r.data) ? r.data : []))
       .catch(() => setEntries([]))
       .finally(() => setLoading(false));

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate, Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import {
   Box,
   Typography,
@@ -35,7 +34,7 @@ const SignupForm: React.FC = () => {
     e.preventDefault();
     setMessage('');
     try {
-      const response = await axios.post(`${API_URL}/auth/signup`, {
+      const response = await api.post('/auth/signup', {
         email, password, name, age: parseInt(age), bio,
         referralCode: referralCode ?? undefined,
       });

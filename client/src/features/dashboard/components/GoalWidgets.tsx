@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import CircularProgress from '@mui/material/CircularProgress';
 import {
@@ -21,7 +20,7 @@ import FlagIcon from '@mui/icons-material/Flag';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import GlassCard from '../../../components/common/GlassCard';
 import { supabase } from '../../../lib/supabase';
-import { API_URL } from '../../../lib/api';
+import api from '../../../lib/api';
 import { DOMAIN_COLORS } from '../../../types/goal';
 import { FieldConfig, ObjectiveField, WidgetConfig, findWidget } from './widgetConfigs';
 
@@ -269,11 +268,10 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
     if (!config) return;
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.post(`${API_URL}/trackers/log`, {
+      await api.post('/trackers/log', {
         type: config.type,
         data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }] }
-      }, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+      });
       toast.success(`${config.emoji} Logged: ${item.name}`);
       onLogged();
     } catch { toast.error('Failed to log.'); }
@@ -303,11 +301,9 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
   const handleProgressSave = async () => {
     setProgressSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.patch(
-        `${API_URL}/goals/${userId}/node/${node.id}/progress`,
+      await api.patch(
+        `/goals/${userId}/node/${node.id}/progress`,
         { progress: sliderVal },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } },
       );
       onProgressUpdate(node.id, sliderVal / 100);
       toast.success(`Updated to ${sliderVal}%`);
@@ -663,10 +659,7 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
             onClose={() => setLogTracker(null)}
             tracker={logTracker ? { id: tracker?.id || '', type: config.type, def: config } : null}
             onSave={async (data) => {
-              const { data: { session } } = await supabase.auth.getSession();
-              await axios.post(`${API_URL}/trackers/log`, { type: config.type, data }, {
-                headers: { Authorization: `Bearer ${session?.access_token}` },
-              });
+              await api.post('/trackers/log', { type: config.type, data });
               onLogged();
             }}
             saving={saving}
@@ -687,10 +680,7 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], onPro
 
   const fetchTrackers = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.get(`${API_URL}/trackers/my`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      const res = await api.get('/trackers/my');
       setTrackers(Array.isArray(res.data) ? res.data : []);
     } catch { setTrackers([]); }
     finally { setLoading(false); }
@@ -700,10 +690,7 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], onPro
 
   const handleObjectiveSaved = async (type: string, goal: Record<string, any>) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.patch(`${API_URL}/trackers/${type}/objective`, { goal }, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      await api.patch(`/trackers/${type}/objective`, { goal });
       setTrackers(prev => prev.map(t => t.type === type ? { ...t, goal } : t));
       toast.success('Objective saved!');
     } catch { toast.error('Failed to save objective.'); }
