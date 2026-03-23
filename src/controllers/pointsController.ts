@@ -2,8 +2,6 @@ import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, BadRequestError, NotFoundError } from '../utils/appErrors';
 
-// ── Spend catalogue ───────────────────────────────────────────────────────────
-
 const SPEND_CATALOGUE: Record<string, { cost: number; label: string }> = {
   boost_visibility:    { cost: 150, label: '24h Boosted Visibility'                      },
   goal_slot:           { cost: 200, label: 'Extra Root Goal Slot'                        },
@@ -17,23 +15,14 @@ const SPEND_CATALOGUE: Record<string, { cost: number; label: string }> = {
   suspend_goal:        { cost:  50, label: 'Suspend a Goal (pause without deleting)'     },
 };
 
-/**
- * GET /points/catalogue
- * Returns the full list of spendable items.
- */
 export const getCatalogue = (_req: Request, res: Response) => {
-  res.setHeader('Cache-Control', 'public, max-age=3600'); // static — 1 hr
+  res.setHeader('Cache-Control', 'public, max-age=3600');
   return res.json(
     Object.entries(SPEND_CATALOGUE).map(([id, item]) => ({ id, ...item }))
   );
 };
 
-/**
- * GET /points/balance?userId=<uuid>
- * Returns current balance + recent transaction log.
- */
 export const getBalance = catchAsync(async (req: Request, res: Response) => {
-  // Only use authenticated user's ID — never accept userId from query params
   const userId: string = (req as any).user?.id;
   if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
@@ -59,14 +48,8 @@ export const getBalance = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-/**
- * POST /points/spend
- * Body: { userId, item }
- * Deducts points and applies the purchased effect.
- */
 export const spendPoints = catchAsync(async (req: Request, res: Response) => {
   const { item, nodeId } = req.body as { item?: string; nodeId?: string };
-  // Only use authenticated user's ID — never accept userId from request body
   const userId: string = (req as any).user?.id;
   if (!userId) return res.status(401).json({ error: 'Authentication required' });
   if (!item || !SPEND_CATALOGUE[item]) {
@@ -75,34 +58,6 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
 
   const { cost } = SPEND_CATALOGUE[item];
 
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('praxis_points, profile_boosted_until')
-    .eq('id', userId)
-    .single();
-
-  if (error || !profile) throw new NotFoundError('User profile not found');
-
-  const currentPoints: number = profile.praxis_points ?? 0;
-  if (currentPoints < cost) {
-    return res.status(402).json({
-      error: 'INSUFFICIENT_POINTS',
-      message: `You need ${cost} PP but only have ${currentPoints} PP.`,
-      needed: cost,
-      have: currentPoints,
-    });
-  }
-
-  // Apply effect
-  const updates: Record<string, unknown> = { praxis_points: currentPoints - cost };
-
-  if (item === 'boost_visibility') {
-    // Extend boost: stack on existing if active, otherwise start fresh
-    const now = Date.now();
-    const existing = profile.profile_boosted_until ? new Date(profile.profile_boosted_until).getTime() : now;
-    const base = Math.max(existing, now);
-    updates.profile_boosted_until = new Date(base + 24 * 3600 * 1000).toISOString();
-  }
   if (item === 'suspend_goal') {
     if (!nodeId) throw new BadRequestError('nodeId is required for suspend_goal');
 
@@ -115,17 +70,12 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
     if (!treeRow?.nodes) throw new NotFoundError('Goal tree not found');
     const nodes: any[] = Array.isArray(treeRow.nodes) ? treeRow.nodes : [];
     const nodeIndex = nodes.findIndex((n: any) => n.id === nodeId);
-    if (nodeIndex === -1) throw new BadRequestError('Node not found in goal tree');
+    if (nodeIndex === -1) throw new NotFoundError('Node not found in goal tree');
     nodes[nodeIndex] = { ...nodes[nodeIndex], status: 'suspended' };
 
     await supabase.from('goal_trees').update({ nodes }).eq('user_id', userId);
   }
 
-  // Other items (goal_slot, coaching_session, super_match, etc.) are logged but
-  // their enforcement lives in the respective controllers. The transaction record
-  // is the source of truth for "has the user purchased this."
-
-  // Record transaction
   await supabase.from('marketplace_transactions').insert({
     user_id: userId,
     item_type: item,
@@ -133,14 +83,34 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
     metadata: { label: SPEND_CATALOGUE[item].label },
   });
 
-  // Update profile
-  await supabase.from('profiles').update(updates).eq('id', userId);
+  const { data: newBalance, error: rpcError } = await supabase.rpc('spend_points', {
+    p_user_id: userId,
+    p_amount: cost,
+    p_boost_until: item === 'boost_visibility' ? new Date(Date.now() + 24 * 3600 * 1000).toISOString() : null,
+  });
+
+  if (rpcError || newBalance === null) {
+    const { data: lastTxn } = await supabase
+      .from('marketplace_transactions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('item_type', item)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    if (lastTxn) await supabase.from('marketplace_transactions').delete().eq('id', lastTxn.id);
+
+    return res.status(402).json({
+      error: 'INSUFFICIENT_POINTS',
+      message: 'Transaction failed. Insufficient balance.',
+      needed: cost,
+    });
+  }
 
   return res.json({
     success: true,
     item,
     spent: cost,
-    balance: currentPoints - cost,
-    effect: updates,
+    balance: newBalance,
   });
 });

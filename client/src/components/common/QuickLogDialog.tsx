@@ -7,11 +7,13 @@ import { TransitionProps } from '@mui/material/transitions';
 import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { DOMAIN_COLORS, DOMAIN_ICONS, GoalNode as FrontendGoalNode } from '../../types/goal';
+import { getGeneralSuggestions, getSuggestionsForDomain, LoggingSuggestion } from '../../utils/loggingSuggestions';
 import NoteGoalDetail from '../../features/notes/NoteGoalDetail';
 import NoteAttachmentBar from './NoteAttachmentBar';
 import type { Attachment } from './NoteAttachmentBar';
@@ -62,6 +64,8 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [activeBets, setActiveBets] = useState<any[]>([]);
   const [freeAttachments, setFreeAttachments] = useState<Attachment[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<LoggingSuggestion[]>([]);
 
   useEffect(() => {
     if (!open || !user?.id) return;
@@ -94,6 +98,22 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
       setLoading(false);
     });
   }, [open, user?.id]);
+
+  // Update suggestions when goal selection changes
+  useEffect(() => {
+    if (selectedGoal) {
+      setSuggestions(getSuggestionsForDomain(selectedGoal.domain));
+    } else if (viewMode === 'free') {
+      setSuggestions(getGeneralSuggestions());
+    }
+  }, [selectedGoal, viewMode]);
+
+  const handleInsertSuggestion = (text: string) => {
+    setNote(prev => {
+      if (prev) return prev + '\n\n' + text;
+      return text;
+    });
+  };
 
   const handleSelectGoal = (goal: RawGoalNode) => {
     setSelectedGoal(goal);
@@ -157,6 +177,63 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   // Shared journal form
   const renderJournalForm = (accentColor: string) => (
     <Box sx={{ px: 2.5 }}>
+      {/* Smart Suggestions Toggle */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <LightbulbIcon sx={{ fontSize: 14 }} />
+          {selectedGoal ? `Track ${selectedGoal.name}` : 'What to track?'}
+        </Typography>
+        <Button
+          size="small"
+          onClick={() => setShowSuggestions(!showSuggestions)}
+          sx={{
+            fontSize: '0.65rem',
+            color: showSuggestions ? accentColor : 'rgba(255,255,255,0.5)',
+            fontWeight: 700,
+            minWidth: 'auto',
+            px: 1,
+          }}
+        >
+          {showSuggestions ? 'Hide' : 'Show'}
+        </Button>
+      </Box>
+
+      {/* Smart Suggestions */}
+      {showSuggestions && (
+        <Box sx={{ mb: 1.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+          {suggestions.map(s => (
+            <Chip
+              key={s.id}
+              label={s.text}
+              size="small"
+              onClick={() => handleInsertSuggestion(s.text)}
+              sx={{
+                justifyContent: 'flex-start',
+                textAlign: 'left',
+                height: 'auto',
+                minHeight: 32,
+                py: 0.5,
+                px: 1,
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                bgcolor: `${accentColor}15`,
+                color: accentColor,
+                border: `1px solid ${accentColor}40`,
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: `${accentColor}25`,
+                  border: `1px solid ${accentColor}60`,
+                },
+                '& .MuiChip-label': {
+                  whiteSpace: 'normal',
+                  padding: '4px 8px',
+                },
+              }}
+            />
+          ))}
+        </Box>
+      )}
+
       <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em', textTransform: 'uppercase', mb: 1 }}>
         How are you feeling?
       </Typography>

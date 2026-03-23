@@ -318,6 +318,7 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
   if (!userId) throw new BadRequestError('userId is required.');
   if (!userName) throw new BadRequestError('userName is required.');
   if (!content || !content.trim()) throw new BadRequestError('content is required.');
+  if (content.length > 10000) throw new BadRequestError('Content exceeds maximum length of 10,000 characters.');
 
   logger.info('[createPost] Validation passed, attempting insert...');
 
@@ -473,6 +474,7 @@ export const addComment = catchAsync(async (req: Request, res: Response, _next: 
   if (!userId) throw new BadRequestError('userId is required.');
   if (!userName) throw new BadRequestError('userName is required.');
   if (!content || !content.trim()) throw new BadRequestError('content is required.');
+  if (content.length > 10000) throw new BadRequestError('Content exceeds maximum length of 10,000 characters.');
 
   const { data, error } = await supabase
     .from('post_comments')

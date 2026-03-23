@@ -177,7 +177,8 @@ app.use('/api', apiRouter);
 app.get('/', (_req, res) => res.json({ message: 'Praxis API Entry Point' }));
 
 // Public widget routes (no /api prefix, no auth — embeddable iframe)
-app.use('/public/widget', publicWidgetRoutes);
+// Rate limited to prevent user enumeration attacks
+app.use('/public/widget', generalLimiter, publicWidgetRoutes);
 
 // Error Handling Middleware - MUST be last
 app.use(notFoundHandler);

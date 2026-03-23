@@ -263,6 +263,12 @@ export const completeOnboarding = catchAsync(async (req: Request, res: Response,
  */
 export const verifyIdentity = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id } = req.params;
+  const requesterId = (req as any).user?.id;
+
+  if (id !== requesterId) {
+    return res.status(403).json({ error: 'You can only verify your own identity.' });
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update({ is_verified: true })

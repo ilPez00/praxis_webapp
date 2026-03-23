@@ -151,15 +151,26 @@ export const getAchievements = catchAsync(async (req: Request, res: Response, ne
  * @param res - The Express response object.
  */
 export const updateAchievement = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.params; // Achievement ID to update
-  const { title, description, domain } = req.body; // Fields to update
+  const { id } = req.params;
+  const requesterId = (req as any).user?.id;
+  const { title, description, domain } = req.body;
 
-  // Update the achievement record in Supabase
+  const { data: existing } = await supabase
+    .from('achievements')
+    .select('user_id')
+    .eq('id', id)
+    .single();
+
+  if (!existing) throw new NotFoundError('Achievement not found.');
+  if (existing.user_id !== requesterId) {
+    return res.status(403).json({ error: 'You can only update your own achievements.' });
+  }
+
   const { data, error } = await supabase
     .from('achievements')
     .update({ title, description, domain })
     .eq('id', id)
-    .select(); // Select the updated record
+    .select();
 
   if (error) {
     handleSupabaseError(error);

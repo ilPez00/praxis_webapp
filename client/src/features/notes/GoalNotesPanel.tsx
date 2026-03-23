@@ -5,9 +5,11 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
+import { getGeneralSuggestions, getSuggestionsForDomain, LoggingSuggestion } from '../../utils/loggingSuggestions';
 
 interface NotebookNote {
   id: string;
@@ -31,6 +33,8 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
   const [newNote, setNewNote] = useState('');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<LoggingSuggestion[]>([]);
 
   const MOODS = [
     { emoji: '😊', label: 'Good' },
@@ -39,8 +43,26 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
     { emoji: '🔥', label: 'Great' },
     { emoji: '💪', label: 'Strong' },
   ];
-  
+
   const QUICK_EMOJIS = ['🎯', '⭐', '💡', '✅', '❌', '📝', '🚀', '💭', '❤️', '🤔', '👍', '🎉'];
+
+  // Load suggestions based on context
+  useEffect(() => {
+    if (nodeId) {
+      // Goal-specific: extract domain from nodeTitle (simplified - in real app, pass domain as prop)
+      setSuggestions(getSuggestionsForDomain('Personal')); // Default, will be improved
+    } else {
+      setSuggestions(getGeneralSuggestions());
+    }
+  }, [nodeId, nodeTitle]);
+
+  const handleInsertSuggestion = (text: string) => {
+    setNewNote(prev => {
+      if (prev) return prev + '\n\n' + text;
+      return text;
+    });
+    setShowSuggestions(false);
+  };
 
   const handleInsertEmoji = (emoji: string) => {
     setNewNote(prev => prev + emoji);
@@ -153,6 +175,62 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
 
       {/* Add Note Form */}
       <GlassCard sx={{ p: 2, mb: 2, bgcolor: 'rgba(255,255,255,0.03)' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+            <LightbulbIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
+            {nodeId ? `Prompt for ${nodeTitle}` : 'What would be most useful to track?'}
+          </Typography>
+          <Button
+            size="small"
+            onClick={() => setShowSuggestions(!showSuggestions)}
+            sx={{
+              fontSize: '0.65rem',
+              color: showSuggestions ? 'primary.main' : 'text.secondary',
+              fontWeight: 700,
+            }}
+          >
+            {showSuggestions ? 'Hide' : 'Show'} Prompts
+          </Button>
+        </Box>
+
+        {/* Smart Suggestions */}
+        {showSuggestions && (
+          <Box sx={{ mb: 2 }}>
+            <Stack spacing={0.75}>
+              {suggestions.map((suggestion) => (
+                <Chip
+                  key={suggestion.id}
+                  label={suggestion.text}
+                  size="small"
+                  onClick={() => handleInsertSuggestion(suggestion.text)}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    height: 'auto',
+                    minHeight: 32,
+                    py: 0.5,
+                    px: 1,
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    bgcolor: 'rgba(167,139,250,0.08)',
+                    color: '#A78BFA',
+                    border: '1px solid rgba(167,139,250,0.2)',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      bgcolor: 'rgba(167,139,250,0.15)',
+                      border: '1px solid rgba(167,139,250,0.4)',
+                    },
+                    '& .MuiChip-label': {
+                      whiteSpace: 'normal',
+                      padding: '4px 8px',
+                    },
+                  }}
+                />
+              ))}
+            </Stack>
+          </Box>
+        )}
+
         <TextField
           fullWidth
           multiline

@@ -1,9 +1,17 @@
-import { Request, Response, NextFunction } from 'express'; // Import NextFunction
-import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
-import logger from '../utils/logger'; // Import the logger
-import { catchAsync, BadRequestError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
+import { Request, Response, NextFunction } from 'express';
+import { supabase } from '../lib/supabaseClient';
+import logger from '../utils/logger';
+import { catchAsync, BadRequestError, InternalServerError } from '../utils/appErrors';
 import { pushNotification } from './notificationController';
-// import { Message } from '../models/Message'; // Message model type is not directly used after Supabase integration
+
+function sanitizeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 export const getMessages = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { user1Id, user2Id } = req.params as { user1Id: string; user2Id: string };
@@ -18,10 +26,8 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
     return res.status(403).json({ error: 'You can only read your own conversations.' });
   }
 
-  // Log Supabase client configuration (for debugging)
-  const supabaseUrl = process.env.SUPABASE_URL || 'NOT_SET';
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'NOT_SET';
-  logger.info(`[getMessages] Supabase URL set: ${supabaseUrl !== 'NOT_SET'}, Key set: ${supabaseKey !== 'NOT_SET'}, Key starts with: ${supabaseKey.slice(0, 10)}...`);
+  // Log for debugging (without sensitive data)
+  logger.info('[getMessages] Fetching messages between users');
 
   // Fetch messages between two users (bidirectional)
   // Split into two queries and combine results (more reliable than .or() with and())
@@ -86,10 +92,11 @@ export const sendMessage = catchAsync(async (req: Request, res: Response, next: 
   }
 
   // Build the insert payload; all extra fields are optional
+  // Sanitize content to prevent XSS
   const insertPayload: Record<string, any> = {
     sender_id: senderId,
     receiver_id: receiverId,
-    content,
+    content: sanitizeHtml(content),
   };
 
   if (goalNodeId !== undefined) insertPayload.goal_node_id = goalNodeId;

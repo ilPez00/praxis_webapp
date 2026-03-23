@@ -1,14 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
-import { catchAsync } from '../utils/appErrors';
+import { catchAsync, BadRequestError } from '../utils/appErrors';
+
+const VALID_SEARCH_TYPES = ['all', 'users', 'coaches', 'groups', 'events', 'places', 'notes'];
+const MAX_QUERY_LENGTH = 100;
 
 // GET /search?q=<query>&type=users|coaches|groups|events|places|notes|all
 export const search = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { q = '', type = 'all' } = req.query as { q?: string; type?: string };
-  const query = q.trim();
+  const query = q.trim().slice(0, MAX_QUERY_LENGTH);
 
   if (!query) {
     return res.status(200).json({ users: [], coaches: [], groups: [], events: [], places: [], notes: [] });
+  }
+
+  if (!VALID_SEARCH_TYPES.includes(type)) {
+    throw new BadRequestError(`Invalid type. Valid types: ${VALID_SEARCH_TYPES.join(', ')}`);
   }
 
   const results: { users?: any[]; coaches?: any[]; groups?: any[]; events?: any[]; places?: any[]; notes?: any[] } = {};
