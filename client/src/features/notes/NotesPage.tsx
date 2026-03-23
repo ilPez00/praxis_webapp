@@ -106,6 +106,7 @@ const NotesPage: React.FC = () => {
   // Axiom Query
   const [isPremium, setIsPremium] = useState(false);
   const [axiomDialogOpen, setAxiomDialogOpen] = useState(false);
+  const [userPoints, setUserPoints] = useState(0);
 
   // Journal drawer
   const [journalNode, setJournalNode] = useState<FrontendGoalNode | null>(null);
