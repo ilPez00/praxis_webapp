@@ -15,6 +15,7 @@ import {
   Chip,
   Divider,
   Alert,
+  IconButton,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
