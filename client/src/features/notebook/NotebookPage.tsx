@@ -265,39 +265,39 @@ const NotebookPage: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, pb: 8 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 900, mb: 0.5 }}>
-            📓 Smart Notebook
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            All your moments, automatically organized
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1.5}>
-          <Button
-            variant="outlined"
-            startIcon={<AutoAwesomeIcon />}
-            onClick={() => setAxiomDialogOpen(true)}
-            sx={{
-              borderRadius: '12px',
-              fontWeight: 700,
-              px: 2,
-              border: '2px solid #A78BFA',
-              color: '#A78BFA',
-              '&:hover': {
-                border: '2px solid #8B5CF6',
-                bgcolor: 'rgba(167, 139, 250, 0.08)',
-              },
-            }}
-          >
-            Ask Axiom
-            {!isPremium && (
-              <Typography variant="caption" sx={{ display: 'block', fontSize: '0.6rem', mt: -0.3 }}>
-                {userPoints} PP
-              </Typography>
-            )}
-          </Button>
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="h4" sx={{ fontWeight: 900 }}>
+              📓 Smart Notebook
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={() => setAxiomDialogOpen(true)}
+              sx={{
+                borderRadius: '12px',
+                fontWeight: 700,
+                px: 2,
+                py: 0.5,
+                border: '2px solid #A78BFA',
+                color: '#A78BFA',
+                fontSize: '0.85rem',
+                '&:hover': {
+                  border: '2px solid #8B5CF6',
+                  bgcolor: 'rgba(167, 139, 250, 0.08)',
+                },
+              }}
+            >
+              Ask Axiom
+              {!isPremium && (
+                <Typography variant="caption" sx={{ display: 'block', fontSize: '0.6rem', mt: -0.3 }}>
+                  {userPoints} PP
+                </Typography>
+              )}
+            </Button>
+          </Box>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -305,7 +305,10 @@ const NotebookPage: React.FC = () => {
           >
             New Note
           </Button>
-        </Stack>
+        </Box>
+        <Typography variant="body2" color="text.secondary">
+          All your moments, automatically organized
+        </Typography>
       </Box>
 
       {/* Stats Cards */}
