@@ -2,10 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
   Box, Typography, Chip, LinearProgress, TextField,
-  Button, IconButton, Tooltip, Stack, Divider, Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, IconButton, Tooltip, Stack, Divider,
 } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
-import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
@@ -13,12 +12,10 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import FlagIcon from '@mui/icons-material/Flag';
 import HistoryIcon from '@mui/icons-material/History';
-import RemoveIcon from '@mui/icons-material/Remove';
 import GlassCard from '../../components/common/GlassCard';
 import GoalActivityGraph from './GoalActivityGraph';
 import { GoalNode as FrontendGoalNode, DOMAIN_COLORS } from '../../types/goal';
 import { DOMAIN_TRACKER_MAP, TRACKER_TYPES } from '../trackers/trackerTypes';
-import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 import EditableTrackerForm from '../trackers/EditableTrackerForm';
 import { findWidget } from '../dashboard/components/GoalWidgets';

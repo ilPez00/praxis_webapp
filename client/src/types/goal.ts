@@ -22,48 +22,30 @@ export const generateUniqueId = (): string => {
     return `node-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 };
 
-// Domain color mapping for styling (Maslow Levels)
+// Domain color mapping for styling
 export const DOMAIN_COLORS: Record<string, string> = {
-    // Level 1: Physiological
-    [Domain.BODY_FITNESS]: '#EF4444',
-    [Domain.REST_RECOVERY]: '#3B82F6',
-    [Domain.MENTAL_BALANCE]: '#10B981',
-    
-    // Level 2: Safety
-    [Domain.ENVIRONMENT_HOME]: '#F59E0B',
-    [Domain.HEALTH_LONGEVITY]: '#10B981',
-    [Domain.FINANCIAL_SECURITY]: '#3B82F6',
-    
-    // Level 3: Love/Belonging
-    [Domain.FRIENDSHIP_SOCIAL]: '#06B6D4',
-    [Domain.ROMANCE_INTIMACY]: '#F97316',
-    [Domain.COMMUNITY_CONTRIBUTION]: '#8B5CF6',
-    
-    // Level 4: Esteem
-    [Domain.CAREER_CRAFT]: '#F59E0B',
-    [Domain.WEALTH_ASSETS]: '#3B82F6',
-    [Domain.GAMING_ESPORTS]: '#8B5CF6',
-    
-    // Level 5: Self-Transcendence
-    [Domain.IMPACT_LEGACY]: '#F43F5E',
-    [Domain.SPIRIT_PURPOSE]: '#EC4899',
-    
+    [Domain.FITNESS]: '#EF4444',
+    [Domain.MENTAL_HEALTH]: '#10B981',
+    [Domain.CAREER]: '#F59E0B',
+    [Domain.ACADEMICS]: '#3B82F6',
+    [Domain.INVESTING]: '#3B82F6',
+    [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '#8B5CF6',
+    [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '#F97316',
+    [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '#06B6D4',
+    [Domain.PHILOSOPHICAL_DEVELOPMENT]: '#EC4899',
+    [Domain.PERSONAL_GOALS]: '#9CA3AF',
     'defaultDomain': '#9CA3AF',
 };
 
 export const DOMAIN_ICONS: Record<string, string> = {
-    [Domain.BODY_FITNESS]: '💪',
-    [Domain.REST_RECOVERY]: '🛌',
-    [Domain.MENTAL_BALANCE]: '🧘',
-    [Domain.ENVIRONMENT_HOME]: '🏠',
-    [Domain.HEALTH_LONGEVITY]: '🥗',
-    [Domain.FINANCIAL_SECURITY]: '🛡️',
-    [Domain.FRIENDSHIP_SOCIAL]: '🤝',
-    [Domain.ROMANCE_INTIMACY]: '❤️',
-    [Domain.COMMUNITY_CONTRIBUTION]: '🏛️',
-    [Domain.CAREER_CRAFT]: '💼',
-    [Domain.WEALTH_ASSETS]: '📈',
-    [Domain.GAMING_ESPORTS]: '🎮',
-    [Domain.IMPACT_LEGACY]: '🌟',
-    [Domain.SPIRIT_PURPOSE]: '🔮',
+    [Domain.FITNESS]: '💪',
+    [Domain.MENTAL_HEALTH]: '🧘',
+    [Domain.CAREER]: '💼',
+    [Domain.ACADEMICS]: '📚',
+    [Domain.INVESTING]: '📈',
+    [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: '🎨',
+    [Domain.INTIMACY_ROMANTIC_EXPLORATION]: '❤️',
+    [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: '🤝',
+    [Domain.PHILOSOPHICAL_DEVELOPMENT]: '🔮',
+    [Domain.PERSONAL_GOALS]: '🎯',
 };
