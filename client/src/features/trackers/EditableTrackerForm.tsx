@@ -659,34 +659,6 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
           </Button>
         )}
 
-        {/* Today's logged entries */}
-        {todayEntries.length > 0 && (
-          <Box sx={{ mt: 2 }}>
-            <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', textTransform: 'uppercase', mb: 1 }}>
-              Logged today ({todayEntries.length})
-            </Typography>
-            {todayEntries.map((entry, ei) => (
-              <Box key={ei} sx={{ mb: 1, p: 1.25, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', mb: 0.5 }}>
-                  {new Date(entry.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </Typography>
-                {(entry.data?.items || []).map((item: any, ii: number) => (
-                  <Box key={ii} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.25 }}>
-                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', flex: 1 }}>
-                      {item.name || item.subject || 'Item'}
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: accentColor || '#A78BFA' }}>
-                      {item.value != null && item.value !== 0 ? `${item.value}${item.unit ? ` ${item.unit}` : ''}` : ''}
-                      {item.weight ? ` ${item.weight}kg` : ''}{item.reps ? ` ×${item.reps}` : ''}{item.sets ? ` (${item.sets}s)` : ''}
-                      {item.duration ? ` ${item.duration}min` : ''}{item.distance ? ` ${item.distance}km` : ''}
-                      {item.pages_read ? ` ${item.pages_read}p` : ''}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            ))}
-          </Box>
-        )}
       </Box>
     );
   }
