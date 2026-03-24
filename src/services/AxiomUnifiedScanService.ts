@@ -288,18 +288,22 @@ export class AxiomUnifiedScanService {
   }
 
   /**
-   * Estimate progress using pre-fetched data
+   * Estimate progress - currently refetches data internally
+   * TODO: Implement withUserData variant to use pre-fetched userData
+   *       See: AxiomProgressEstimationService.estimateAllGoalProgress()
    */
   private async estimateProgress(userId: string, userData: UserData): Promise<void> {
-    // Use the progress service - TODO: implement withUserData method
+    // Currently refetches: goalTree, notebookEntries, trackerEntries, checkins
     await this.progressService.estimateAllGoalProgress(userId);
   }
 
   /**
-   * Generate daily summary using pre-fetched data
+   * Generate daily summary - currently refetches data internally
+   * TODO: Implement withUserData variant to use pre-fetched userData
+   *       See: AxiomDailySummaryService.generateAndPostSummary()
    */
   private async generateSummary(userId: string, userData: UserData): Promise<void> {
-    // Use the summary service - TODO: implement withUserData method
+    // Currently refetches: yesterday's notebook entries
     await this.summaryService.generateAndPostSummary(userId);
   }
 
