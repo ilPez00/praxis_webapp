@@ -379,7 +379,6 @@ const ChatRoom: React.FC = () => {
     if (!currentUserId) return;
     try {
       await api.patch(`/completions/${requestId}/respond`, {
-        verifierId: currentUserId,
         approved,
       });
       toast.success(approved ? '✅ Goal verified!' : '❌ Verification declined.');

@@ -11,8 +11,8 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import toast from 'react-hot-toast';
-import { API_URL } from '../../../lib/api';
-import { AdminUser, authHeaders } from './adminTypes';
+import api from '../../../lib/api';
+import { AdminUser } from './adminTypes';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,9 +46,8 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
   // Handlers
   const fetchAxiomPrompt = useCallback(async () => {
     try {
-      const headers = await authHeaders();
-      const res = await fetch(`${API_URL}/admin/config`, { headers });
-      const configs: SystemConfig[] = await res.json();
+      const res = await api.get('/admin/config');
+      const configs: SystemConfig[] = res.data;
 
       const prompt = configs.find(c => c.key === 'axiom_prompt');
       if (prompt) setAxiomPrompt(prompt.value);
@@ -63,12 +62,8 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
   const fetchAxiomStats = useCallback(async () => {
     setLoadingAxiomStats(true);
     try {
-      const headers = await authHeaders();
-      const res = await fetch(`${API_URL}/admin/axiom/stats`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setAxiomStats(data);
-      }
+      const res = await api.get('/admin/axiom/stats');
+      setAxiomStats(res.data);
     } catch (err) {
       console.error('Failed to fetch Axiom stats:', err);
     } finally {
@@ -79,12 +74,7 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
   const handleUpdateStrategy = async (newStrategy: 'first' | 'last' | 'random') => {
     setUpdatingStrategy(true);
     try {
-      const headers = await authHeaders();
-      await fetch(`${API_URL}/admin/config/axiom_key_strategy`, {
-        method: 'PUT',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: newStrategy }),
-      });
+      await api.put('/admin/config/axiom_key_strategy', { value: newStrategy });
       setAxiomStrategy(newStrategy);
       toast.success(`Strategy set to ${newStrategy}`);
     } catch {
@@ -97,12 +87,7 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
   const handleUpdatePrompt = async () => {
     setSavingPrompt(true);
     try {
-      const headers = await authHeaders();
-      await fetch(`${API_URL}/admin/config/axiom_prompt`, {
-        method: 'PUT',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: axiomPrompt }),
-      });
+      await api.put('/admin/config/axiom_prompt', { value: axiomPrompt });
       toast.success('Axiom prompt updated!');
     } catch {
       toast.error('Failed to update prompt.');
@@ -115,8 +100,7 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
     if (!window.confirm('Trigger global midnight scan now? This will generate daily recommendations for all active users.')) return;
     setTriggeringScan(true);
     try {
-      const headers = await authHeaders();
-      await fetch(`${API_URL}/admin/axiom/trigger-scan`, { method: 'POST', headers });
+      await api.post('/admin/axiom/trigger-scan');
       toast.success('Axiom scan triggered in background. Check logs for progress.');
     } catch {
       toast.error('Failed to trigger scan.');
@@ -130,12 +114,8 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
     setGeneratingBriefs(true);
     setGenerateResult(null);
     try {
-      const headers = await authHeaders();
-      const res = await fetch(`${API_URL}/admin/axiom/generate-all-briefs`, {
-        method: 'POST',
-        headers,
-      });
-      const data = await res.json();
+      const res = await api.post('/admin/axiom/generate-all-briefs');
+      const data = res.data;
       setGenerateResult(data);
       if (data.llm_briefs > 0) {
         toast.success(`Generated ${data.generated} briefs (${data.llm_briefs} via LLM)!`);
@@ -154,25 +134,16 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
     if (isAll && !window.confirm('Force-push Axiom briefs to ALL active users? This will overwrite today\'s briefs.')) return;
     setForcePushing(true);
     try {
-      const headers = await authHeaders();
-      const res = await fetch(`${API_URL}/admin/axiom/force-push`, {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(targetUserId ? { userId: targetUserId } : {}),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        if (data.source === 'algorithm' && data.llm_error) {
-          toast.error(`LLM FAILED: ${data.llm_error}\nBrief was generated using algorithm fallback.`, { duration: 8000 });
-        } else if (data.source === 'llm') {
-          toast.success(`${data.message} ✨`, { duration: 5000 });
-        } else {
-          toast.success(data.message || 'Brief generated!');
-        }
-        fetchAxiomStats();
+      const res = await api.post('/admin/axiom/force-push', targetUserId ? { userId: targetUserId } : {});
+      const data = res.data;
+      if (data.source === 'algorithm' && data.llm_error) {
+        toast.error(`LLM FAILED: ${data.llm_error}\nBrief was generated using algorithm fallback.`, { duration: 8000 });
+      } else if (data.source === 'llm') {
+        toast.success(`${data.message} ✨`, { duration: 5000 });
       } else {
-        toast.error(data.error || 'Failed to force-push.');
+        toast.success(data.message || 'Brief generated!');
       }
+      fetchAxiomStats();
     } catch {
       toast.error('Failed to force-push brief.');
     } finally {

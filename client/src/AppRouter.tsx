@@ -37,7 +37,7 @@ const AppRouter: React.FC = () => {
     if (isPrivileged && eruda) {
       try {
         eruda.init();
-        console.log('[Debug] Eruda initialized for privileged user.');
+        console.debug('[Debug] Eruda initialized for privileged user.');
       } catch (e) {
         console.warn('[Debug] Eruda init failed', e);
       }

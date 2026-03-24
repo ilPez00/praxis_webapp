@@ -50,7 +50,7 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import BoltIcon from '@mui/icons-material/Bolt';
 import { useUser } from '../../hooks/useUser';
-import api, { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import BettingPage from '../betting/BettingPage';
 import ChallengesPage from '../challenges/ChallengesPage';
@@ -388,11 +388,11 @@ const MarketplacePage: React.FC = () => {
     const fetchData = async () => {
       try {
         const [itemsRes, coachesRes] = await Promise.all([
-          fetch(`${API_URL}/marketplace/items`),
-          fetch(`${API_URL}/coaches`),
+          api.get('/marketplace/items').catch(() => null),
+          api.get('/coaches').catch(() => null),
         ]);
-        if (itemsRes.ok)   setCatalogue(await itemsRes.json());
-        if (coachesRes.ok) setCoaches(await coachesRes.json());
+        if (itemsRes) setCatalogue(itemsRes.data);
+        if (coachesRes) setCoaches(coachesRes.data);
       } finally {
         setLoading(false);
       }
@@ -406,17 +406,11 @@ const MarketplacePage: React.FC = () => {
     setPurchasing(key);
     setToast(null);
     try {
-      const res = await fetch(`${API_URL}/marketplace/purchase`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, itemType, coachUserId, cost }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Purchase failed.');
-      setToast({ type: 'success', message: `Purchased! New balance: ${data.newBalance} pts` });
+      const res = await api.post('/marketplace/purchase', { itemType, coachUserId, cost });
+      setToast({ type: 'success', message: `Purchased! New balance: ${res.data.newBalance} pts` });
       refetch();
     } catch (err: any) {
-      setToast({ type: 'error', message: err.message ?? 'Purchase failed.' });
+      setToast({ type: 'error', message: err.response?.data?.message ?? err.message ?? 'Purchase failed.' });
     } finally {
       setPurchasing(null);
     }

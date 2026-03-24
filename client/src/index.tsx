@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import './i18n'; // Initialize i18n
 import AppRouter from './AppRouter';
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBoundary from './components/RootErrorBoundary';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { enforceFreshContent } from './utils/versionControl';

@@ -32,31 +32,7 @@ import ReferenceCard, { Reference } from '../../components/common/ReferenceCard'
 import ReferencePicker from '../../components/common/ReferencePicker';
 import ShareButton from '../../components/common/ShareButton';
 import ContentRenderer from '../../components/common/ContentRenderer';
-
-interface Post {
-  id: string;
-  user_id: string;
-  user_name: string;
-  user_avatar_url: string | null;
-  title: string | null;
-  content: string;
-  media_url: string | null;
-  media_type: string | null;
-  context: string;
-  reference: Reference | null;
-  created_at: string;
-  comment_count: number;
-}
-
-interface PostComment {
-  id: string;
-  post_id: string;
-  user_id: string;
-  user_name: string;
-  user_avatar_url: string | null;
-  content: string;
-  created_at: string;
-}
+import { Post, PostComment } from '../../types/api';
 
 interface Props {
   context: string; // 'general' | 'coaching' | 'marketplace' | roomId UUID

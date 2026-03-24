@@ -286,9 +286,9 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       }
 
       // Use the API endpoint instead of direct Supabase insert
-      console.log('[ShareButton] Saving to notebook:', { userId, entry_type: 'note', title, sourceTable });
+      console.debug('[ShareButton] Saving to notebook:', { userId, entry_type: 'note', title, sourceTable });
       const res = await api.post('/notebook/entries', insertPayload);
-      console.log('[ShareButton] Entry saved successfully:', res.data.id);
+      console.debug('[ShareButton] Entry saved successfully:', res.data.id);
 
       // Notify tagged users (optional - could add notification system)
       if (taggedUsers.length > 0) {

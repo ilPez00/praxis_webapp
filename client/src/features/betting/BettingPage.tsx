@@ -103,7 +103,6 @@ const BettingPage: React.FC = () => {
     setCreating(true);
     try {
       await api.post('/bets', {
-        userId: currentUserId,
         goalNodeId: selectedNodeId,
         goalName: node.name,
         deadline,
@@ -136,9 +135,7 @@ const BettingPage: React.FC = () => {
   const handleCancel = async (betId: string) => {
     if (!currentUserId) return;
     try {
-      await api.delete(`/bets/${betId}`, {
-        data: { userId: currentUserId },
-      });
+      await api.delete(`/bets/${betId}`);
       toast.success('Pledge cancelled. 90% of stake refunded (10% house fee).');
       await fetchBets();
     } catch (err: any) {

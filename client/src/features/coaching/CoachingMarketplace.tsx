@@ -148,7 +148,6 @@ const CoachingMarketplace: React.FC = () => {
         .map((s) => s.trim())
         .filter(Boolean);
       await api.post('/coaches', {
-        userId: currentUserId,
         bio: formBio.trim(),
         skills,
         domains: formDomains,

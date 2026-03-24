@@ -65,13 +65,17 @@ async function findDuelOpponent(userId: string, goalName: string): Promise<strin
  * Body: { userId, goalNodeId, goalName, deadline, stakePoints, opponentType: 'self' | 'duel' }
  */
 export const createBet = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId, goalNodeId, goalName, deadline, stakePoints, opponentType } = req.body;
+  const userId = (req as any).user?.id;
+  const { goalNodeId, goalName, deadline, stakePoints, opponentType } = req.body;
 
   logger.info('[createBet] Received:', { userId, goalName, deadline, stakePoints, opponentType });
 
-  if (!userId || !goalName || !deadline || !stakePoints) {
+  if (!userId) {
+    throw new BadRequestError('Authentication required.');
+  }
+  if (!goalName || !deadline || !stakePoints) {
     logger.warn('[createBet] Missing required fields');
-    throw new BadRequestError('userId, goalName, deadline, and stakePoints are required.');
+    throw new BadRequestError('goalName, deadline, and stakePoints are required.');
   }
   if (typeof stakePoints !== 'number' || stakePoints < 1) {
     throw new BadRequestError('stakePoints must be a positive integer.');
@@ -200,9 +204,9 @@ export const getBetById = catchAsync(async (req: Request, res: Response, _next: 
  */
 export const cancelBet = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { betId } = req.params;
-  const { userId } = req.body;
+  const userId = (req as any).user?.id;
 
-  if (!userId) throw new BadRequestError('userId is required.');
+  if (!userId) throw new BadRequestError('Authentication required.');
 
   const { data: bet, error: fetchError } = await supabase
     .from('bets')

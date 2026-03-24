@@ -25,7 +25,7 @@ export const useOfflineSync = () => {
 
       if (pending.length === 0) return;
 
-      console.log(`[OfflineSync] Syncing ${pending.length} journal entries...`);
+      console.debug(`[OfflineSync] Syncing ${pending.length} journal entries...`);
 
       for (const entry of pending) {
         try {
@@ -36,7 +36,7 @@ export const useOfflineSync = () => {
           });
 
           await db.journalEntries.update(entry.id!, { sync_status: 'synced' });
-          console.log(`[OfflineSync] Journal entry ${entry.id} synced`);
+          console.debug(`[OfflineSync] Journal entry ${entry.id} synced`);
         } catch (err: any) {
           if (err.response?.status === 401 || err.response?.status === 403) {
             console.warn('[OfflineSync] Unauthorized, skipping journal sync.');
@@ -59,7 +59,7 @@ export const useOfflineSync = () => {
 
       if (pending.length === 0) return;
 
-      console.log(`[OfflineSync] Syncing ${pending.length} tracker entries...`);
+      console.debug(`[OfflineSync] Syncing ${pending.length} tracker entries...`);
 
       let syncedCount = 0;
       for (const entry of pending) {
@@ -72,7 +72,7 @@ export const useOfflineSync = () => {
 
           await db.trackerEntries.update(entry.id!, { sync_status: 'synced' });
           syncedCount++;
-          console.log(`[OfflineSync] Tracker entry ${entry.id} synced`);
+          console.debug(`[OfflineSync] Tracker entry ${entry.id} synced`);
         } catch (err: any) {
           if (err.response?.status === 401 || err.response?.status === 403) {
             console.warn('[OfflineSync] Unauthorized, skipping tracker sync.');

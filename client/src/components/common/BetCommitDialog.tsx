@@ -63,7 +63,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
             setUserPoints(0);
           } else {
             const points = profile?.praxis_points ?? 0;
-            console.log('[BetCommitDialog] User points:', points);
+            console.debug('[BetCommitDialog] User points:', points);
             setUserPoints(points);
           }
         } catch (err) {
@@ -90,7 +90,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
       return;
     }
 
-    console.log('[BetCommitDialog] Committing bet:', { 
+    console.debug('[BetCommitDialog] Committing bet:', { 
       userId: user.id, 
       goalName: challenge.target, 
       deadline, 
@@ -103,14 +103,13 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
       const finalDeadline = deadline.includes('T') ? deadline : `${deadline}T23:59:59Z`;
 
       const res = await api.post('/bets', {
-        userId: user.id,
         goalName: challenge.target,
         deadline: finalDeadline,
         stakePoints: stake,
         opponentType: createDuel ? 'duel' : 'self',
       });
 
-      console.log('[BetCommitDialog] Bet created:', res.data);
+      console.debug('[BetCommitDialog] Bet created:', res.data);
       toast.success(`Commitment made! ${stake} PP pledged. 🎯`);
 
       // Post to community feed

@@ -370,7 +370,6 @@ const GoalTreePage: React.FC = () => {
     setPlacingBet(true);
     try {
       await api.post(`/bets`, {
-        userId: currentUserId,
         goalNodeId: betNode.id,
         goalName: betNode.title,
         deadline: new Date(betDeadline).toISOString(),
@@ -440,7 +439,6 @@ const GoalTreePage: React.FC = () => {
     setSubmittingClaim(true);
     try {
       await api.post(`/completions`, {
-        requesterId: currentUserId,
         verifierId: selectedVerifier.userId,
         goalNodeId: claimNode.id,
         goalName: claimNode.title,

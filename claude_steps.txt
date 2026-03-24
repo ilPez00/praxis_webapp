@@ -806,3 +806,32 @@ Key finding: 81 of 259 routes (31%) had NO authentication middleware.
 - Split mega-components (ChatRoom 1334 lines, ProfilePage 1199 lines)
 
 - Sign: Claude
+
+---
+
+Session 88: Security sweep part 2 + code quality fixes
+- Fix 1: Switched 5 remaining controllers from req.body.userId to req.user.id (bettingController, challengeController, marketplaceController, coachController, completionController)
+- Fix 1 frontend: Removed userId from request bodies in 7+ frontend callers (NotesPage, DashboardPage, ChatRoom, GoalTreePage, CoachingMarketplace, MarketplacePage, BetCommitDialog)
+- Fix 2: Added authenticateToken to GET /search route (searchRoutes.ts)
+- Fix 3: Migrated remaining raw fetch() calls to centralized api client (SearchPage, HomePage, AxiomTab, MarketplacePage)
+- Fix 4: Created client/src/types/api.ts with shared Post, PostComment, UserProfile, CheckIn, ChatMessage, ChatRoom, Service, AppEvent types; updated PostFeed.tsx and PostThreadPage.tsx
+- Fix 5: Renamed ErrorBoundary.tsx → RootErrorBoundary.tsx; updated index.tsx import
+- Fix 6: Converted console.log → console.debug across 11 frontend files (stripped in prod builds)
+
+## Files Modified:
+- Backend: bettingController, challengeController, coachController, completionController, marketplaceController, searchRoutes
+- Frontend: SearchPage, HomePage, AxiomTab, MarketplacePage, PostFeed, PostThreadPage, BettingPage, BetCommitDialog, NotesPage, DashboardPage, ChatRoom, GoalTreePage, CoachingMarketplace, GoalSelectionPage, GettingStartedPage, InitialGoalSetup, AppRouter, index.tsx, useLocationSync, useOfflineSync, ClickableDiaryFeed, versionControl, serviceWorker, InstallPwaBanner, ShareButton, ShareDialog
+- New: client/src/types/api.ts, client/src/components/RootErrorBoundary.tsx
+- Deleted: client/src/components/ErrorBoundary.tsx (replaced by RootErrorBoundary.tsx)
+- Updated: fixes.txt
+
+## Verification:
+- Backend + Frontend type checks pass clean ✅
+- All 6 fixes from fixes.txt completed ✅
+
+## Next Steps:
+- Split mega-components (ChatRoom 1334 lines, ProfilePage 1199 lines)
+- Add input validation/sanitization at API boundaries
+- Consider rate limiting on public endpoints
+
+- Sign: Claude

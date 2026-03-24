@@ -8,14 +8,14 @@ export function registerServiceWorker() {
     window.addEventListener('load', () => {
       // Only register on HTTPS or localhost (SW requirement)
       if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        console.log('ℹ️ Service Worker skipped: requires HTTPS or localhost');
+        console.debug('ℹ️ Service Worker skipped: requires HTTPS or localhost');
         return;
       }
 
       navigator.serviceWorker
         .register('/service-worker.js', { scope: '/' })
         .then((registration) => {
-          console.log('✅ Service Worker registered:', registration.scope);
+          console.debug('✅ Service Worker registered:', registration.scope);
 
           // Check for updates
           registration.addEventListener('updatefound', () => {
@@ -24,7 +24,7 @@ export function registerServiceWorker() {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                   // New content available
-                  console.log('🔄 New content available, refresh to update');
+                  console.debug('🔄 New content available, refresh to update');
                   if (confirm('New version available! Refresh to update?')) {
                     window.location.reload();
                   }
@@ -50,7 +50,7 @@ export async function unregisterServiceWorker() {
     for (const registration of registrations) {
       await registration.unregister();
     }
-    console.log('Service Worker unregistered');
+    console.debug('Service Worker unregistered');
   }
 }
 

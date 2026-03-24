@@ -106,7 +106,7 @@ const GoalSelectionPage: React.FC = () => {
           setSelectedGoals(converted);
         }
       } catch (error) {
-        console.log('No existing notebook found:', error);
+        console.debug('No existing notebook found:', error);
       }
     };
     init();

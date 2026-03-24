@@ -122,7 +122,7 @@ const DashboardPage: React.FC = () => {
   const handleJoinChallenge = async (challengeId: string) => {
     if (!currentUserId) return;
     try {
-      await api.post(`/challenges/${challengeId}/join`, { userId: currentUserId });
+      await api.post(`/challenges/${challengeId}/join`, {});
       toast.success('Joined challenge!');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to join challenge.');

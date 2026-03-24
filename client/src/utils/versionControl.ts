@@ -8,7 +8,7 @@ export function enforceFreshContent() {
   try {
     const storedVersion = localStorage.getItem('praxis_app_version');
     if (storedVersion !== CURRENT_VERSION) {
-      console.log(`[VersionControl] App version mismatch detected in JS layer.`);
+      console.debug(`[VersionControl] App version mismatch detected in JS layer.`);
       // We don't reload here anymore to avoid flickering; index.html handled it.
       // But we update the key just in case.
       localStorage.setItem('praxis_app_version', CURRENT_VERSION);
@@ -19,7 +19,7 @@ export function enforceFreshContent() {
 }
 
 export async function nuclearReset() {
-  console.log('[VersionControl] Performing manual nuclear reset...');
+  console.debug('[VersionControl] Performing manual nuclear reset...');
   
   try {
     if ('serviceWorker' in navigator) {

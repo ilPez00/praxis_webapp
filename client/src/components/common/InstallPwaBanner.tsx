@@ -41,7 +41,7 @@ const InstallPwaBanner: React.FC = () => {
     deferredPrompt.prompt();
     // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
+    console.debug(`User response to the install prompt: ${outcome}`);
     // We've used the prompt, and can't use it again, throw it away
     setDeferredPrompt(null);
     setOpen(false);

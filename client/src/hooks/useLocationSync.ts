@@ -29,7 +29,7 @@ export function useLocationSync() {
                 .update({ latitude, longitude })
                 .eq('id', user.id);
               sessionStorage.setItem('praxis_last_geo_sync', now.toString());
-              console.log('[GeoSync] Updated coordinates.');
+              console.debug('[GeoSync] Updated coordinates.');
             } catch (err) {
               console.warn('[GeoSync] Non-fatal DB error:', err);
             }
@@ -56,7 +56,7 @@ export function useLocationSync() {
             // Only prompt if they haven't been asked in a while, or just don't auto-prompt at all
             // for "prompt" state to be extremely conservative.
             // Let's only auto-sync if already granted.
-            console.log('[GeoSync] Permission state is \"prompt\". Skipping auto-request to avoid intrusion.');
+            console.debug('[GeoSync] Permission state is \"prompt\". Skipping auto-request to avoid intrusion.');
           }
         } catch (e) {
           // Fallback for browsers where permissions query fails

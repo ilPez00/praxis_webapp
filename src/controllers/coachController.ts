@@ -95,12 +95,13 @@ export const getCoachByUserId = catchAsync(async (req: Request, res: Response, _
 // ---------------------------------------------------------------------------
 // POST /coaches
 // Creates or updates (upserts) the authenticated user's coach profile.
-// Body: { userId, bio, skills, domains, hourlyRate, isAvailable }
+// Body: { bio, skills, domains, hourlyRate, isAvailable }
 // ---------------------------------------------------------------------------
 export const upsertCoachProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId, bio, skills, domains, hourlyRate, isAvailable } = req.body;
+  const userId = (req as any).user?.id;
+  const { bio, skills, domains, hourlyRate, isAvailable } = req.body;
 
-  if (!userId) throw new BadRequestError('userId is required.');
+  if (!userId) throw new BadRequestError('Authentication required.');
   if (!bio) throw new BadRequestError('bio is required.');
 
   const { data, error } = await supabase
@@ -131,7 +132,8 @@ export const upsertCoachProfile = catchAsync(async (req: Request, res: Response,
 // Partial update of a coach profile.
 // ---------------------------------------------------------------------------
 export const updateCoachProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId } = req.params;
+  const userId = (req as any).user?.id;
+  if (!userId) throw new BadRequestError('Authentication required.');
   const { bio, skills, domains, hourlyRate, isAvailable } = req.body;
 
   const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() };
@@ -158,7 +160,8 @@ export const updateCoachProfile = catchAsync(async (req: Request, res: Response,
 // DELETE /coaches/:userId
 // ---------------------------------------------------------------------------
 export const deleteCoachProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId } = req.params;
+  const userId = (req as any).user?.id;
+  if (!userId) throw new BadRequestError('Authentication required.');
 
   const { error } = await supabase
     .from('coach_profiles')

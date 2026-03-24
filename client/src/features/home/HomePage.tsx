@@ -3,7 +3,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { Container, Box, Typography, Button, Stack, Chip } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import BoltIcon from '@mui/icons-material/Bolt';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import TestimonialStrip from './TestimonialStrip';
 
 // Decorative floating orb — pure CSS animation, no dependencies
@@ -36,9 +36,8 @@ const HomePage: React.FC = () => {
   const [stats, setStats] = useState<{ userCount: number; goalsTracked: number; checkInsThisWeek: number } | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/users/stats/public`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setStats(d); })
+    api.get('/users/stats/public')
+      .then(r => { if (r.data) setStats(r.data); })
       .catch(() => {});
   }, []);
 

@@ -109,7 +109,7 @@ const ClickableDiaryFeed: React.FC<ClickableDiaryFeedProps> = ({ userId, days = 
       
       default:
         // For unknown types, just log it
-        console.log('Unknown item type:', item.type, item);
+        console.debug('Unknown item type:', item.type, item);
     }
   };
 

@@ -136,7 +136,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
           longitude = position.coords.longitude;
           location_name = 'Current Location';
         } catch (err) {
-          console.log('Location not available');
+          console.debug('Location not available');
         }
       }
 

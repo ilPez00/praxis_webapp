@@ -12,10 +12,14 @@ import { pushNotification } from './notificationController';
  * 'completion_request' message in the requester→verifier DM thread.
  */
 export const createCompletionRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { requesterId, verifierId, goalNodeId, goalName, evidenceUrl } = req.body;
+  const requesterId = (req as any).user?.id;
+  const { verifierId, goalNodeId, goalName, evidenceUrl } = req.body;
 
-  if (!requesterId || !verifierId || !goalNodeId || !goalName) {
-    throw new BadRequestError('requesterId, verifierId, goalNodeId, and goalName are required.');
+  if (!requesterId) {
+    throw new BadRequestError('Authentication required.');
+  }
+  if (!verifierId || !goalNodeId || !goalName) {
+    throw new BadRequestError('verifierId, goalNodeId, and goalName are required.');
   }
   if (!evidenceUrl) {
     throw new BadRequestError('evidenceUrl is required — attach a photo or video of the completed goal.');
@@ -85,10 +89,14 @@ export const createCompletionRequest = catchAsync(async (req: Request, res: Resp
  */
 export const respondToCompletionRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
-  const { verifierId, approved } = req.body;
+  const verifierId = (req as any).user?.id;
+  const { approved } = req.body;
 
-  if (!verifierId || approved === undefined) {
-    throw new BadRequestError('verifierId and approved (boolean) are required.');
+  if (!verifierId) {
+    throw new BadRequestError('Authentication required.');
+  }
+  if (approved === undefined) {
+    throw new BadRequestError('approved (boolean) is required.');
   }
 
   const { data: request, error: fetchError } = await supabase
@@ -195,12 +203,12 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
 });
 
 /**
- * GET /completions/pending?userId=xxx
- * Returns pending completion_requests where the user is the verifier.
+ * GET /completions/pending
+ * Returns pending completion_requests where the authenticated user is the verifier.
  */
 export const getPendingRequests = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { userId } = req.query;
-  if (!userId) throw new BadRequestError('userId query param is required.');
+  const userId = (req as any).user?.id;
+  if (!userId) throw new BadRequestError('Authentication required.');
 
   const { data, error } = await supabase
     .from('completion_requests')

@@ -1,0 +1,38 @@
+# Praxis Webapp — Fixes Plan (2026-03-24)
+# Generated from re-evaluation audit (score: 6/10)
+
+## Tier 1 — High impact, low effort
+
+### Fix 1: Switch remaining controllers from req.body.userId to req.user.id
+Controllers that now have authenticateToken on their routes but still read userId from body:
+- bettingController.ts
+- challengeController.ts
+- marketplaceController.ts
+- coachController.ts
+- completionController.ts
+Status: DONE — 5 controllers updated (bettingController, challengeController, marketplaceController, coachController, completionController) + 7 frontend callers cleaned
+
+### Fix 2: Add auth to search route
+GET /search is completely open — anyone can enumerate users/posts/goals.
+Status: DONE — authenticateToken added to searchRoutes.ts
+
+### Fix 3: Remaining raw fetch() calls in frontend
+Files still using fetch() + API_URL instead of centralized api client.
+Status: DONE — Migrated SearchPage, HomePage, AxiomTab, MarketplacePage from raw fetch() to centralized api client
+
+## Tier 2 — Medium effort, high maintainability
+
+### Fix 4: Shared API response types
+Created client/src/types/api.ts with Post, PostComment, UserProfile, CheckIn, ChatMessage, ChatRoom, Service, AppEvent.
+Updated PostFeed.tsx and PostThreadPage.tsx to use shared types.
+Status: DONE
+
+### Fix 5: Rename root ErrorBoundary
+Renamed components/ErrorBoundary.tsx → components/RootErrorBoundary.tsx
+Updated import in index.tsx.
+Status: DONE
+
+### Fix 6: Console.log cleanup
+Converted all console.log → console.debug across 11 frontend files (22 occurrences).
+console.debug is stripped in production builds, reducing noise.
+Status: DONE

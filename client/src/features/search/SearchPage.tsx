@@ -19,7 +19,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import EventIcon from '@mui/icons-material/Event';
 import PlaceIcon from '@mui/icons-material/Place';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 
 interface UserResult {
   id: string;
@@ -104,11 +104,8 @@ const SearchPage: React.FC = () => {
     if (!query.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}&type=${type}`);
-      if (res.ok) {
-        const data = await res.json();
-        setResults(data);
-      }
+      const res = await api.get('/search', { params: { q: query, type } });
+      setResults(res.data);
     } catch (err) {
       console.error('Search error:', err);
     } finally {

@@ -24,31 +24,7 @@ import api from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
 import ReferenceCard from '../../components/common/ReferenceCard';
 import ContentRenderer from '../../components/common/ContentRenderer';
-
-interface Post {
-  id: string;
-  user_id: string;
-  user_name: string;
-  user_avatar_url: string | null;
-  title: string | null;
-  content: string;
-  media_url: string | null;
-  media_type: string | null;
-  reference: any;
-  created_at: string;
-  like_count: number;
-  comment_count: number;
-  user_liked: boolean;
-}
-
-interface Comment {
-  id: string;
-  user_id: string;
-  user_name: string;
-  user_avatar_url: string | null;
-  content: string;
-  created_at: string;
-}
+import { Post, PostComment } from '../../types/api';
 
 const formatRelativeTime = (iso: string): string => {
   const diff = Date.now() - new Date(iso).getTime();
@@ -68,7 +44,7 @@ const PostThreadPage: React.FC = () => {
   const { user } = useUser();
 
   const [post, setPost] = useState<Post | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<PostComment[]>([]);
   const [loadingPost, setLoadingPost] = useState(true);
   const [loadingComments, setLoadingComments] = useState(true);
   const [commentText, setCommentText] = useState('');
@@ -124,7 +100,7 @@ const PostThreadPage: React.FC = () => {
         userAvatarUrl: user.avatarUrl ?? null,
         content: commentText.trim(),
       });
-      const newComment: Comment = res.data;
+      const newComment: PostComment = res.data;
       setComments(prev => [...prev, newComment]);
       setPost(prev => prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev);
       setCommentText('');
