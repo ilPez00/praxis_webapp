@@ -16,6 +16,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import ReplayIcon from '@mui/icons-material/Replay';
 import toast from 'react-hot-toast';
 import { TrackerType } from './trackerTypes';
 import { searchExercises } from './exerciseLibrary';
@@ -126,6 +127,33 @@ function templateToRows(template: any[], trackerType: string): TrackerRow[] {
   });
 }
 
+/** Convert entry items back into editable rows (for "Repeat last" feature) */
+function entryItemsToRows(items: any[], trackerType: string): TrackerRow[] {
+  return items.map((item, i) => {
+    const row = makeEmptyRow(trackerType);
+    row.id = `repeat-${i}-${Date.now()}`;
+    row.label = item.name || item.subject || '';
+    if (item.value != null) row.value = item.value;
+    if (item.unit) row.unit = item.unit;
+    if (item.weight != null) row.weight = item.weight;
+    if (item.reps != null) row.reps = item.reps;
+    if (item.sets != null) row.sets = item.sets;
+    if (item.duration != null) row.duration = item.duration;
+    if (item.distance != null) row.distance = item.distance;
+    if (item.category) row.category = item.category;
+    if (item.merchant) row.merchant = item.merchant;
+    if (item.amount != null) row.amount = item.amount;
+    if (item.subject) row.subject = item.subject;
+    if (item.author) row.author = item.author;
+    if (item.pages_read != null) row.pages_read = item.pages_read;
+    if (item.total_pages != null) row.total_pages = item.total_pages;
+    if (item.instrument) row.instrument = item.instrument;
+    if (item.person) row.person = item.person;
+    if (item.type) row.type = item.type;
+    return row;
+  });
+}
+
 /** Extract saveable template data from rows (just labels + metadata, no values) */
 function rowsToTemplate(rows: TrackerRow[]): any[] {
   return rows.map(r => ({
@@ -158,6 +186,17 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
   // Filter entries to today only
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayEntries = (entries || []).filter(e => e.logged_at?.slice(0, 10) === todayStr);
+
+  // Most recent entry (for "Repeat last" feature)
+  const sortedEntries = [...(entries || [])].sort((a, b) => b.logged_at.localeCompare(a.logged_at));
+  const lastEntry = sortedEntries[0];
+  const lastEntryItems = lastEntry?.data?.items;
+  const canRepeat = Array.isArray(lastEntryItems) && lastEntryItems.length > 0;
+
+  const handleRepeatLast = () => {
+    if (!canRepeat || !tracker) return;
+    setRows(entryItemsToRows(lastEntryItems, tracker.type));
+  };
 
   // Initialize rows from saved template or defaults — only on first open or tracker type change
   const initedTypeRef = useRef<string | null>(null);
@@ -637,6 +676,26 @@ const EditableTrackerForm: React.FC<EditableTrackerFormProps> = ({
             </Tooltip>
           )}
         </Box>
+
+        {/* Repeat last entry button */}
+        {canRepeat && !editMode && (
+          <Button
+            size="small"
+            onClick={handleRepeatLast}
+            startIcon={<ReplayIcon sx={{ fontSize: 14 }} />}
+            sx={{
+              mb: 1, fontSize: '0.72rem', fontWeight: 700,
+              color: accentColor || '#A78BFA',
+              textTransform: 'none',
+              borderRadius: '10px',
+              border: `1px solid ${accentColor || '#A78BFA'}30`,
+              bgcolor: `${accentColor || '#A78BFA'}10`,
+              '&:hover': { bgcolor: `${accentColor || '#A78BFA'}20` },
+            }}
+          >
+            Repeat last entry
+          </Button>
+        )}
 
         {formBody}
 
