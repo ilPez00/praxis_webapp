@@ -4,11 +4,12 @@ import {
   respondToCompletionRequest,
   getPendingRequests,
 } from '../controllers/completionController';
+import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = Router();
 
-router.get('/pending', getPendingRequests);
-router.post('/', createCompletionRequest);
-router.patch('/:id/respond', respondToCompletionRequest);
+router.get('/pending', authenticateToken, getPendingRequests);
+router.post('/', authenticateToken, createCompletionRequest);
+router.patch('/:id/respond', authenticateToken, respondToCompletionRequest);
 
 export default router;

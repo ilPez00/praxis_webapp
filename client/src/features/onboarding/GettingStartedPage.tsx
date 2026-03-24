@@ -83,7 +83,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
   const handleFinish = async () => {
     setCompleting(true);
     try {
-      await api.post('/users/complete-onboarding', { userId });
+      await api.post('/users/complete-onboarding', {});
       // Also update auth metadata for faster client-side resolution
       await supabase.auth.updateUser({ data: { onboarding_completed: true } });
       await refetch();

@@ -158,12 +158,12 @@ export const getGoalTree = catchAsync(async (req: Request, res: Response, next: 
  * @param res - The Express response object.
  */
 export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.body.user_id || req.body.userId;
+  const userId = (req as any).user?.id;
   const nodes = req.body.nodes;
   const rootNodes = req.body.root_nodes || req.body.rootNodes;
 
   if (!userId) {
-    throw new BadRequestError('User ID is required.');
+    throw new BadRequestError('Authentication required.');
   }
 
   // Fetch user's premium status and edit count

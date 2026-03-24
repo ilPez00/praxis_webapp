@@ -756,3 +756,53 @@ Session 86: Error Boundaries + Skeleton Loading States (2026-03-23)
 
 Next: Optional Phase 3 cleanup
 - Sign: Claude
+
+# Session 87: Backend Auth Sweep + Frontend Security (2026-03-24)
+
+## Re-evaluation Score: 4/10 → 5.5/10
+After Steps 1-2 (API centralization, error boundaries, skeletons), re-evaluated entire project.
+Key finding: 81 of 259 routes (31%) had NO authentication middleware.
+
+## Changes Made
+
+### Backend Routes — Added `authenticateToken` middleware:
+- `postRoutes.ts`: createPost, deletePost, toggleLike, addComment, deleteComment (kept GETs public)
+- `userRoutes.ts`: completeOnboarding, getNearbyUsers
+- `goalRoutes.ts`: createOrUpdateGoalTree
+- `bettingRoutes.ts`: createBet, getUserBets, getBetById, cancelBet (kept resolve-webhook unauthenticated for cron)
+- `coachRoutes.ts`: upsertCoachProfile, updateCoachProfile, deleteCoachProfile
+- `challengeRoutes.ts`: joinChallenge, leaveChallenge
+- `completionRoutes.ts`: getPendingRequests, createCompletionRequest, respondToCompletionRequest
+- `marketplaceRoutes.ts`: purchase
+
+### Backend Controllers — Switched `req.body.userId` → `req.user.id`:
+- `postController.ts`: createPost, deletePost, toggleLike, addComment, deleteComment
+- `userController.ts`: completeOnboarding
+- `goalController.ts`: createOrUpdateGoalTree
+
+### Frontend — Migrated raw `fetch()` to centralized `api` client:
+- `PostThreadPage.tsx`: fetchPost, fetchComments, handleLike, handleAddComment, handleDeleteComment
+- `PostFeed.tsx`: fetchPosts, handleAddComment, handleDeleteComment, handleSubmitPost, handleDeletePost
+- Removed unused `API_URL` imports from PostFeed + PostThreadPage
+- Removed `userId` from request bodies in BettingPage, BetCommitDialog, GettingStartedPage, InitialGoalSetup, GoalSelectionPage
+
+### Remaining Unauthenticated Write Routes (intentionally):
+- `authRoutes.ts`: login/signup (must be unauthenticated)
+- `adminRoutes.ts`: seed/decay/cron routes (use X-Admin-Secret header)
+- `axiomRoutes.ts`: 4 routes (check req.user?.id inside handler, throw if missing)
+- `aiCoachingRoutes.ts`: /report (uses requirePro middleware which checks auth)
+
+## Files Modified:
+- Backend: postRoutes, userRoutes, goalRoutes, bettingRoutes, coachRoutes, challengeRoutes, completionRoutes, marketplaceRoutes, postController, userController, goalController
+- Frontend: PostThreadPage, PostFeed, BettingPage, BetCommitDialog, GettingStartedPage, InitialGoalSetup, GoalSelectionPage
+
+## Verification:
+- Backend: `npx tsc --noEmit` — clean ✅
+- Frontend: `npx tsc --noEmit` — only pre-existing node_modules type errors (MUI/i18next) ✅
+- Unauthenticated write routes reduced from 81 → ~10 (intentional exceptions only)
+
+## Next Steps:
+- Type the API layer (shared response types for top endpoints)
+- Split mega-components (ChatRoom 1334 lines, ProfilePage 1199 lines)
+
+- Sign: Claude

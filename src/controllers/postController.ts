@@ -305,7 +305,8 @@ export const getUserPosts = catchAsync(async (req: Request, res: Response, _next
 // Body: { userId, userName, userAvatarUrl?, content, mediaUrl?, mediaType?, context }
 // ---------------------------------------------------------------------------
 export const createPost = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId, userName, userAvatarUrl, title, content, mediaUrl, mediaType, context, reference } = req.body;
+  const userId = (req as any).user?.id;
+  const { userName, userAvatarUrl, title, content, mediaUrl, mediaType, context, reference } = req.body;
 
   logger.info('[createPost] Received request:', {
     userId,
@@ -315,7 +316,7 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
     hasReference: !!reference,
   });
 
-  if (!userId) throw new BadRequestError('userId is required.');
+  if (!userId) throw new BadRequestError('Authentication required.');
   if (!userName) throw new BadRequestError('userName is required.');
   if (!content || !content.trim()) throw new BadRequestError('content is required.');
   if (content.length > 10000) throw new BadRequestError('Content exceeds maximum length of 10,000 characters.');
@@ -380,9 +381,9 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
 // ---------------------------------------------------------------------------
 export const deletePost = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id } = req.params;
-  const { userId } = req.body;
+  const userId = (req as any).user?.id;
 
-  if (!userId) throw new BadRequestError('userId is required.');
+  if (!userId) throw new BadRequestError('Authentication required.');
 
   const { error } = await supabase
     .from('posts')
@@ -401,9 +402,9 @@ export const deletePost = catchAsync(async (req: Request, res: Response, _next: 
 // ---------------------------------------------------------------------------
 export const toggleLike = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id: postId } = req.params;
-  const { userId } = req.body;
+  const userId = (req as any).user?.id;
 
-  if (!userId) throw new BadRequestError('userId is required.');
+  if (!userId) throw new BadRequestError('Authentication required.');
 
   const { data: existing, error: fetchError } = await supabase
     .from('post_likes')
@@ -469,9 +470,10 @@ export const getComments = catchAsync(async (req: Request, res: Response, _next:
 // ---------------------------------------------------------------------------
 export const addComment = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id: postId } = req.params;
-  const { userId, userName, userAvatarUrl, content } = req.body;
+  const userId = (req as any).user?.id;
+  const { userName, userAvatarUrl, content } = req.body;
 
-  if (!userId) throw new BadRequestError('userId is required.');
+  if (!userId) throw new BadRequestError('Authentication required.');
   if (!userName) throw new BadRequestError('userName is required.');
   if (!content || !content.trim()) throw new BadRequestError('content is required.');
   if (content.length > 10000) throw new BadRequestError('Content exceeds maximum length of 10,000 characters.');
@@ -500,9 +502,9 @@ export const addComment = catchAsync(async (req: Request, res: Response, _next: 
 // ---------------------------------------------------------------------------
 export const deleteComment = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { commentId } = req.params;
-  const { userId } = req.body;
+  const userId = (req as any).user?.id;
 
-  if (!userId) throw new BadRequestError('userId is required.');
+  if (!userId) throw new BadRequestError('Authentication required.');
 
   const { error } = await supabase
     .from('post_comments')

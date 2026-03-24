@@ -28,7 +28,6 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
-import { API_URL } from '../../lib/api';
 import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
 import ReferencePicker from '../../components/common/ReferencePicker';
 import ShareButton from '../../components/common/ShareButton';
@@ -110,15 +109,15 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
     try {
       let url: string;
       if (profileUserId) {
-        url = `${API_URL}/posts/by-user/${profileUserId}`;
+        url = `/posts/by-user/${profileUserId}`;
       } else if (personalized && feedUserId) {
-        url = `${API_URL}/posts/feed?userId=${feedUserId}`;
+        url = `/posts/feed?userId=${feedUserId}`;
       } else {
         const userId = user?.id ? `&userId=${user.id}` : '';
-        url = `${API_URL}/posts?context=${context}${userId}`;
+        url = `/posts?context=${context}${userId}`;
       }
-      const res = await fetch(url);
-      if (res.ok) setPosts(await res.json());
+      const res = await api.get(url);
+      setPosts(res.data);
     } catch (err) {
       console.error('Failed to fetch posts:', err);
     } finally {
@@ -230,27 +229,18 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
         mediaType = file.type.startsWith('image/') ? 'image' : 'file';
       }
 
-      const res = await fetch(`${API_URL}/posts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          userName: user.name || user.email || 'User',
-          userAvatarUrl: user.avatarUrl ?? null,
-          title: isBoard ? title.trim() : null,
-          content: text.trim(),
-          mediaUrl,
-          mediaType,
-          context,
-          reference: postRef ?? undefined,
-        }),
+      const res = await api.post('/posts', {
+        userName: user.name || user.email || 'User',
+        userAvatarUrl: user.avatarUrl ?? null,
+        title: isBoard ? title.trim() : null,
+        content: text.trim(),
+        mediaUrl,
+        mediaType,
+        context,
+        reference: postRef ?? undefined,
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || 'Failed to create post');
-      }
-      const newPost: Post = await res.json();
+      const newPost: Post = res.data;
       setPosts(prev => [newPost, ...prev]);
       setTitle('');
       setText('');
@@ -273,11 +263,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
     setPosts(prev => prev.filter(p => p.id !== postId));
     try {
       if (isOwn) {
-        await fetch(`${API_URL}/posts/${postId}`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
-        });
+        await api.delete(`/posts/${postId}`);
       } else {
         // Admin delete — bypass ownership check via admin endpoint
         await api.delete(`/admin/posts/${postId}`);
@@ -303,11 +289,8 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
     if (!comments[postId]) {
       setCommentLoading(prev => ({ ...prev, [postId]: true }));
       try {
-        const res = await fetch(`${API_URL}/posts/${postId}/comments`);
-        if (res.ok) {
-          const data = await res.json();
-          setComments(prev => ({ ...prev, [postId]: data }));
-        }
+        const res = await api.get(`/posts/${postId}/comments`);
+        setComments(prev => ({ ...prev, [postId]: res.data }));
       } catch (err) {
         console.error('Fetch comments error:', err);
       } finally {
@@ -320,23 +303,15 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
     if (!user || !commentText[postId]?.trim()) return;
     setCommentSubmitting(prev => ({ ...prev, [postId]: true }));
     try {
-      const res = await fetch(`${API_URL}/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          userName: user.name,
-          userAvatarUrl: user.avatarUrl ?? null,
-          content: commentText[postId].trim(),
-        }),
+      const res = await api.post(`/posts/${postId}/comments`, {
+        userName: user.name,
+        userAvatarUrl: user.avatarUrl ?? null,
+        content: commentText[postId].trim(),
       });
-      if (res.ok) {
-        const newComment: PostComment = await res.json();
-        setComments(prev => ({ ...prev, [postId]: [...(prev[postId] ?? []), newComment] }));
-        setCommentText(prev => ({ ...prev, [postId]: '' }));
-        // Increment comment count
-        setPosts(prev => prev.map(p => p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p));
-      }
+      const newComment: PostComment = res.data;
+      setComments(prev => ({ ...prev, [postId]: [...(prev[postId] ?? []), newComment] }));
+      setCommentText(prev => ({ ...prev, [postId]: '' }));
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p));
     } catch (err) {
       console.error('Add comment error:', err);
     } finally {
@@ -349,11 +324,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
     setComments(prev => ({ ...prev, [postId]: (prev[postId] ?? []).filter(c => c.id !== commentId) }));
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, comment_count: Math.max(0, p.comment_count - 1) } : p));
     try {
-      await fetch(`${API_URL}/posts/${postId}/comments/${commentId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
+      await api.delete(`/posts/${postId}/comments/${commentId}`);
     } catch (err) {
       console.error('Delete comment error:', err);
     }

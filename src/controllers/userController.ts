@@ -235,8 +235,8 @@ export const getNearbyUsers = catchAsync(async (req: Request, res: Response, _ne
  * Marks onboarding_completed = true for the given userId.
  */
 export const completeOnboarding = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { userId } = req.body;
-  if (!userId) throw new BadRequestError('userId is required.');
+  const userId = (req as any).user?.id;
+  if (!userId) throw new BadRequestError('Authentication required.');
   // Check if already onboarded (idempotent — don't double-grant PP)
   const { data: existing } = await supabase
     .from('profiles')

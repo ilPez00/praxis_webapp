@@ -20,7 +20,7 @@ import SendIcon from '@mui/icons-material/Send';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
-import { API_URL } from '../../lib/api';
+import api from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
 import ReferenceCard from '../../components/common/ReferenceCard';
 import ContentRenderer from '../../components/common/ContentRenderer';
@@ -79,9 +79,8 @@ const PostThreadPage: React.FC = () => {
     setLoadingPost(true);
     try {
       const userId = user?.id ? `?userId=${user.id}` : '';
-      const res = await fetch(`${API_URL}/posts/${postId}${userId}`);
-      if (!res.ok) throw new Error('Not found');
-      setPost(await res.json());
+      const res = await api.get(`/posts/${postId}${userId}`);
+      setPost(res.data);
     } catch {
       toast.error('Post not found.');
     } finally {
@@ -93,8 +92,8 @@ const PostThreadPage: React.FC = () => {
     if (!postId) return;
     setLoadingComments(true);
     try {
-      const res = await fetch(`${API_URL}/posts/${postId}/comments`);
-      if (res.ok) setComments(await res.json());
+      const res = await api.get(`/posts/${postId}/comments`);
+      setComments(res.data);
     } finally {
       setLoadingComments(false);
     }
@@ -110,11 +109,7 @@ const PostThreadPage: React.FC = () => {
     const liked = !post.user_liked;
     setPost(prev => prev ? { ...prev, user_liked: liked, like_count: prev.like_count + (liked ? 1 : -1) } : prev);
     try {
-      await fetch(`${API_URL}/posts/${post.id}/likes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
+      await api.post(`/posts/${post.id}/likes`);
     } catch {
       setPost(prev => prev ? { ...prev, user_liked: !liked, like_count: prev.like_count + (liked ? -1 : 1) } : prev);
     }
@@ -124,22 +119,15 @@ const PostThreadPage: React.FC = () => {
     if (!user || !post || !commentText.trim()) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/posts/${post.id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          userName: user.name,
-          userAvatarUrl: user.avatarUrl ?? null,
-          content: commentText.trim(),
-        }),
+      const res = await api.post(`/posts/${post.id}/comments`, {
+        userName: user.name,
+        userAvatarUrl: user.avatarUrl ?? null,
+        content: commentText.trim(),
       });
-      if (res.ok) {
-        const newComment: Comment = await res.json();
-        setComments(prev => [...prev, newComment]);
-        setPost(prev => prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev);
-        setCommentText('');
-      }
+      const newComment: Comment = res.data;
+      setComments(prev => [...prev, newComment]);
+      setPost(prev => prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev);
+      setCommentText('');
     } catch {
       toast.error('Failed to add comment.');
     } finally {
@@ -152,11 +140,7 @@ const PostThreadPage: React.FC = () => {
     setComments(prev => prev.filter(c => c.id !== commentId));
     setPost(prev => prev ? { ...prev, comment_count: Math.max(0, prev.comment_count - 1) } : prev);
     try {
-      await fetch(`${API_URL}/posts/${post.id}/comments/${commentId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
+      await api.delete(`/posts/${post.id}/comments/${commentId}`);
     } catch { /* ignore */ }
   };
 

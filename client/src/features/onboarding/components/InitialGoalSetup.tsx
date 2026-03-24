@@ -44,7 +44,6 @@ const InitialGoalSetup: React.FC<InitialGoalSetupProps> = ({ userId, onGoalsCrea
     setError(null);
     try {
       await api.post('/goals', {
-        user_id: userId,
         nodes: goals,
         root_nodes: goals, // All initial goals are root goals
       });

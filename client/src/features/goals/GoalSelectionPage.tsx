@@ -175,7 +175,6 @@ const GoalSelectionPage: React.FC = () => {
       const allNodes = [...nodes, ...validSubGoals];
 
       await api.post('/goals', {
-        user_id: currentUserId,
         nodes: allNodes,
         root_nodes: nodes,
       });

@@ -114,7 +114,6 @@ const BettingPage: React.FC = () => {
       // Auto-post public accountability message to the feed
       try {
         await api.post('/posts', {
-          userId: currentUserId,
           userName: user?.name || 'A Praxis member',
           userAvatarUrl: (user as any)?.avatar_url || null,
           content: `🎯 I just pledged ${stake} PP on completing my goal: "${node.name}" by ${new Date(deadline).toLocaleDateString()}. Hold me accountable! 💪`,

@@ -12,7 +12,7 @@ import { authenticateToken } from '../middleware/authenticateToken';
 const router = Router();
 
 router.get('/:userId', getGoalTree);
-router.post('/', createOrUpdateGoalTree);
+router.post('/', authenticateToken, createOrUpdateGoalTree);
 router.patch('/:userId/node/:nodeId/progress', authenticateToken, updateNodeProgress);
 
 // Per-node CRUD (25 PP gate on create/edit; free delete)

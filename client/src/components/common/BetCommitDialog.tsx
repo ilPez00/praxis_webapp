@@ -116,7 +116,6 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
       // Post to community feed
       try {
         await api.post('/posts', {
-          userId: user.id,
           userName: user.name || 'A Praxis member',
           userAvatarUrl: user.avatar_url || null,
           content: `🎯 I just committed to an Axiom Challenge: "${challenge.target}" with ${stake} PP on the line. Accountability activated! 💪`,

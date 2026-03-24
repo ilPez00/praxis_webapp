@@ -16,9 +16,9 @@ import { authenticateToken } from '../middleware/authenticateToken';
 const router = Router();
 
 router.get('/stats/public', getPublicStats);
-router.post('/complete-onboarding', completeOnboarding);
+router.post('/complete-onboarding', authenticateToken, completeOnboarding);
 router.get('/leaderboard', getLeaderboard);
-router.get('/nearby', getNearbyUsers);
+router.get('/nearby', authenticateToken, getNearbyUsers);
 router.delete('/me', authenticateToken, deleteMyAccount);
 router.post('/me/reset-goals', authenticateToken, resetMyGoals);
 router.get('/:userId/percentile', getUserPercentile);
