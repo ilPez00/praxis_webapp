@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Dialog, DialogContent, Box, Typography, TextField, Button, Chip,
   Slide, IconButton, CircularProgress, Divider,
@@ -107,6 +107,27 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
       setSuggestions(getGeneralSuggestions());
     }
   }, [selectedGoal, viewMode]);
+
+  // Time-of-day smart sorting: boost domains relevant to current time
+  const sortedGoals = useMemo(() => {
+    const hour = new Date().getHours();
+    // Priority domains by time slot (higher = shown first)
+    const timePriority: Record<string, number> = {};
+    if (hour >= 5 && hour < 11) {
+      // Morning: fitness, mental health, meal prep
+      Object.assign(timePriority, { 'Fitness': 3, 'Mental Health': 2, 'Personal Goals': 1 });
+    } else if (hour >= 11 && hour < 17) {
+      // Midday: career, academics, investing
+      Object.assign(timePriority, { 'Career': 3, 'Academics': 2, 'Investing / Financial Growth': 1 });
+    } else if (hour >= 17 && hour < 21) {
+      // Evening: fitness, hobbies, social
+      Object.assign(timePriority, { 'Fitness': 3, 'Culture / Hobbies / Creative Pursuits': 2, 'Friendship / Social Engagement': 1 });
+    } else {
+      // Night: reflection, philosophy, personal
+      Object.assign(timePriority, { 'Mental Health': 3, 'Philosophical Development': 2, 'Personal Goals': 1 });
+    }
+    return [...goals].sort((a, b) => (timePriority[b.domain] || 0) - (timePriority[a.domain] || 0));
+  }, [goals]);
 
   const handleInsertSuggestion = (text: string) => {
     setNote(prev => {
@@ -390,7 +411,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
               </Typography>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-                {goals.map(goal => {
+                {sortedGoals.map(goal => {
                   const color = domainColor(goal.domain);
                   const icon = DOMAIN_ICONS[goal.domain] || '🎯';
                   const pct = Math.round((goal.progress || 0) * 100);
