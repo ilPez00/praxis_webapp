@@ -873,19 +873,31 @@ Performed comprehensive audit of 12 open Dependabot PRs, categorized by risk, an
 - No open Dependabot PRs remain
 - Pulled 7 new commits from webapp/main (CI workflow + dependency updates)
 
+## Phase 2: TODO Investigation - COMPLETED
+- `AxiomUnifiedScanService.ts` TODOs are optimization opportunities, not bugs
+- Service works as-is, just refetches data redundantly
+- Clarified TODOs with comments documenting what data is refetched
+- TODO: Implement `withUserData` variants for progress/summary services (deferred)
+
 ## Remaining Work (Next Session)
-1. **TODO Comments**: `src/services/AxiomUnifiedScanService.ts:294,302`
-   - Implement or remove dead code
+1. **TODO Comments**: Clarified as known optimizations - not blocking
+   - Could implement `estimateAllGoalProgressWithUserData()` variant
+   - Could implement `generateAndPostSummaryWithUserData()` variant
 2. **@types/jest 27→30**: Update, run `npm test`, verify
 3. **nodemon**: Rebase and merge (minor)
 4. **google-auth-library**: Rebase and merge (minor)
 5. **@types/node major jump**: Test before merging
-6. **React 19 upgrade path**: When ready for React 19, upgrade then re-open:
+6. **React 19 upgrade path**: When ready, upgrade and re-open:
    - react-leaflet 5.0.0
    - @vitejs/plugin-react 6.0.1 (requires Vite 8)
 
 ## Verification
-- Git status: Clean (fast-forward pulled)
+- Git status: Clean
 - No open PRs on ilPez00/praxis_webapp
+- Backend TypeScript: ✅ Passes
+
+## Commits
+- fe8d10b: docs: add Session 89
+- 41b064c: chore: clarify AxiomUnifiedScanService TODOs
 
 - Sign: Claude
