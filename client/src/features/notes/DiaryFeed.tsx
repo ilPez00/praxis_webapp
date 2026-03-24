@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Box, Typography, CircularProgress, Avatar, Chip, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Box, Typography, CircularProgress, Avatar, Chip, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, TextField, InputAdornment } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SortIcon from '@mui/icons-material/Sort';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
@@ -118,9 +120,10 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
   const [editingItem, setEditingItem] = useState<FeedItem | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  // Sort / filter state
+  // Sort / filter / search state
   const [sortMode, setSortMode] = useState<SortMode>('time');
   const [filterType, setFilterType] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [sortAnchor, setSortAnchor] = useState<null | HTMLElement>(null);
   const [filterAnchor, setFilterAnchor] = useState<null | HTMLElement>(null);
 
@@ -194,11 +197,20 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
     fetchAll();
   }, [userId, days]);
 
-  // Derived: filtered items
+  // Derived: filtered items (by type + search query)
   const filtered = useMemo(() => {
-    if (!filterType) return items;
-    return items.filter(i => i.type === filterType);
-  }, [items, filterType]);
+    let result = items;
+    if (filterType) result = result.filter(i => i.type === filterType);
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(i =>
+        (i.title?.toLowerCase().includes(q)) ||
+        (i.detail?.toLowerCase().includes(q)) ||
+        (i.goalName?.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [items, filterType, searchQuery]);
 
   // Derived: unique types and goals for filter menu
   const uniqueTypes = useMemo(() => {
@@ -374,6 +386,42 @@ const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
 
   return (
     <Box sx={{ mt: 2 }}>
+      {/* Search bar */}
+      <TextField
+        fullWidth
+        size="small"
+        placeholder="Search entries..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.3)' }} />
+              </InputAdornment>
+            ),
+            endAdornment: searchQuery ? (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setSearchQuery('')} sx={{ color: 'rgba(255,255,255,0.3)' }}>
+                  <ClearIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
+          },
+        }}
+        sx={{
+          mb: 1.5,
+          '& .MuiOutlinedInput-root': {
+            borderRadius: '12px',
+            bgcolor: 'rgba(255,255,255,0.04)',
+            fontSize: '0.82rem',
+            '& fieldset': { borderColor: 'rgba(255,255,255,0.08)' },
+            '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
+            '&.Mui-focused fieldset': { borderColor: '#A78BFA' },
+          },
+        }}
+      />
+
       {/* Section header with sort/filter */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, px: 0.5 }}>
         <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.06em', color: 'text.disabled', textTransform: 'uppercase' }}>
