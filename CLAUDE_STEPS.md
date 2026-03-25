@@ -87,6 +87,61 @@ app.use(
 
 **Commit:** `88d2fc4` - "feat: add pre-commit hooks, security headers, and rate limiting"
 
+#### ✅ Priority 1.3: Add Sentry Error Logging (DONE)
+
+**Date:** March 25, 2026  
+**Effort:** 1.5 hours  
+**Impact:** Production debugging, faster incident response
+
+**Installed:**
+
+- `@sentry/node` - Backend error tracking
+- `@sentry/react` - Frontend error tracking
+- `@sentry/profiling-node` - CPU profiling
+
+**Configuration:**
+
+- Backend: `src/lib/sentry.ts` - Auto-captures errors, HTTP requests, performance
+- Frontend: `client/src/lib/sentry.ts` - Auto-captures React errors, session replay
+- Environment: Configurable DSN via `.env`
+
+**Features Enabled:**
+
+- ✓ Unhandled exception capture
+- ✓ Promise rejection tracking
+- ✓ HTTP error monitoring
+- ✓ Performance transactions (10% sample rate)
+- ✓ CPU profiling (10% sample rate)
+- ✓ Session replay for frontend (10% sample rate)
+- ✓ Error sampling to reduce noise
+- ✓ Ignore patterns for browser extensions
+
+**Files Created:**
+
+- `src/lib/sentry.ts` - Backend configuration
+- `client/src/lib/sentry.ts` - Frontend configuration
+- `.env.example` - Updated with Sentry DSN placeholders
+
+**Commit:** `fe5d581` - "feat: add Sentry error tracking"
+
+---
+
+## 🚧 In Progress (v1.3.0 Professional Improvements)
+
+### Priority 2.1: Add Input Validation with Zod (IN PROGRESS)
+
+**Status:** Next up - implementing validation schemas for priority endpoints
+
+**Priority Endpoints to Validate:**
+
+1. `POST /auth/register` - email, password, name
+2. `POST /auth/login` - email, password
+3. `POST /trackers/entries` - tracker_id, data
+4. `POST /messages/send` - receiverId, content
+5. `POST /goals` - name, domain
+
+**Estimated Completion:** 4 hours
+
 ---
 
 ## ✅ Completed (v1.0.0 MVP)

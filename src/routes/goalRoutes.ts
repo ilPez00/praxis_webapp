@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import { authenticateToken } from '../middleware/authenticateToken';
+import { validateBody } from '../middleware/validateRequest';
+import { createGoalSchema } from '../schemas/goalSchemas';
 import {
   getGoalTree,
   createOrUpdateGoalTree,
@@ -7,7 +10,6 @@ import {
   updateGoalNode,
   deleteGoalNode,
 } from '../controllers/goalController';
-import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = Router();
 
@@ -16,7 +18,7 @@ router.post('/', authenticateToken, createOrUpdateGoalTree);
 router.patch('/:userId/node/:nodeId/progress', authenticateToken, updateNodeProgress);
 
 // Per-node CRUD (25 PP gate on create/edit; free delete)
-router.post('/:userId/node', authenticateToken, createGoalNode);
+router.post('/:userId/node', authenticateToken, validateBody(createGoalSchema), createGoalNode);
 router.patch('/:userId/node/:nodeId', authenticateToken, updateGoalNode);
 router.delete('/:userId/node/:nodeId', authenticateToken, deleteGoalNode);
 
