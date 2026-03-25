@@ -1,0 +1,375 @@
+# Praxis Webapp - Professional Improvements Plan
+
+Date: 2026-03-25
+Last Updated: Session 92
+
+## Overview
+This document outlines recommendations to make the Praxis webapp more professional, marketable, and maintainable. Items are organized by priority and effort.
+
+---
+
+## Priority 1: Quick Wins (1-2 hours each)
+
+### 1.1 Fix 5 Failing Backend Tests
+**Effort**: 2 hours  
+**Impact**: Technical debt reduction, CI/CD reliability
+
+- Location: `src/__tests__/api.test.ts`
+- Issue: 5 pre-existing test failures (assertion issues)
+- Action: Fix assertion messages to match current API responses
+
+**Steps**:
+1. Run `npm test` to see failures
+2. Update assertion messages to match actual API behavior
+3. Add test for the `/auth/login` email validation
+
+---
+
+### 1.2 Add Pre-commit Hooks (Husky + lint-staged)
+**Effort**: 1 hour  
+**Impact**: Catches issues before CI, faster feedback loop
+
+**Install**:
+```bash
+npm install -D husky lint-staged
+npx husky install
+```
+
+**Configure** `.lintstagedrc`:
+```json
+{
+  "*.{ts,tsx}": ["eslint --fix", "tsc --noEmit"],
+  "*.{css,scss}": "stylelint"
+}
+```
+
+**Add to `package.json`**:
+```json
+"lint-staged": {
+  "*.{ts,tsx}": ["eslint --fix", "tsc --noEmit"]
+}
+```
+
+---
+
+### 1.3 Add Structured Error Logging (Sentry)
+**Effort**: 2 hours  
+**Impact**: Production debugging, faster incident response
+
+**Backend** (Express):
+```bash
+npm install @sentry/node
+```
+
+**Frontend** (React):
+```bash
+cd client && npm install @sentry/react
+```
+
+**Action**: Set up Sentry projects for both frontend and backend with appropriate sampling rates.
+
+---
+
+## Priority 2: Security (4-6 hours total)
+
+### 2.1 Add Input Validation (Zod)
+**Effort**: 4 hours  
+**Impact**: Security hardening, API reliability
+
+**Install**:
+```bash
+npm install zod
+cd client && npm install zod
+```
+
+**Priority Endpoints to Validate**:
+1. `POST /auth/register` - email, password, name
+2. `POST /trackers/entries` - tracker_id, data
+3. `POST /messages/send` - receiverId, content
+4. `POST /goals` - name, domain
+
+**Example Schema** (`src/schemas/userSchemas.ts`):
+```typescript
+import { z } from 'zod';
+
+export const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  name: z.string().min(1).max(100),
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+```
+
+---
+
+### 2.2 Add Rate Limiting
+**Effort**: 2 hours  
+**Impact**: DDoS protection, cost control
+
+**Install**:
+```bash
+npm install express-rate-limit
+```
+
+**Apply to Public Endpoints** (`src/app.ts`):
+```typescript
+import rateLimit from 'express-rate-limit';
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests, please try again later.',
+});
+
+app.use('/api/', apiLimiter);
+```
+
+**Stricter limits for auth endpoints**:
+```typescript
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+});
+
+app.use('/api/auth/', authLimiter);
+```
+
+---
+
+### 2.3 Add Security Headers
+**Effort**: 1 hour  
+**Impact**: XSS protection, clickjacking prevention
+
+**Install**:
+```bash
+npm install helmet
+```
+
+**Apply** (`src/app.ts`):
+```typescript
+import helmet from 'helmet';
+
+app.use(helmet());
+```
+
+---
+
+## Priority 3: Code Quality (8-12 hours total)
+
+### 3.1 Complete Mega-Component Splitting
+
+#### ChatRoom.tsx (Current: 1315 LOC, Target: <800 LOC)
+**Status**: Started - MessageList extracted  
+**Remaining**:
+1. Integrate dialog stubs (GradingDialog, AxiomDialog, IncomingCallDialog)
+2. Extract MessageComposer component
+3. Extract FeedbackForm component
+
+#### ProfilePage.tsx (Current: 1199 LOC, Target: <600 LOC)
+**Status**: Not started
+
+**Suggested Split**:
+```
+ProfilePage/
+├── ProfileHeader.tsx          # Avatar, name, stats summary
+├── ProfileTabs.tsx            # Tab navigation
+├── ProfileAboutTab.tsx        # Bio, goals, activity
+├── ProfileHistoryTab.tsx       # Timeline, achievements
+├── ProfileSettingsTab.tsx      # Account settings
+└── ProfileStatsTab.tsx         # Detailed analytics
+```
+
+---
+
+### 3.2 Add Frontend Unit Tests
+**Effort**: 6 hours  
+**Impact**: Catch regressions, confidence in refactoring
+
+**Install**:
+```bash
+npm install -D jest @testing-library/react @testing-library/jest-dom
+```
+
+**Priority Components to Test**:
+1. `QuickLogDialog` - critical user flow
+2. `EditableTrackerForm` - core feature
+3. `GoalTree` - visualization component
+4. `DiaryFeed` - main content feed
+
+**Example Test** (`client/src/features/trackers/__tests__/QuickLogDialog.test.tsx`):
+```typescript
+import { render, screen, fireEvent } from '@testing-library/react';
+import { QuickLogDialog } from '../QuickLogDialog';
+
+describe('QuickLogDialog', () => {
+  it('renders without crashing', () => {
+    render(<QuickLogDialog open={true} onClose={() => {}} />);
+    expect(screen.getByText('Quick Log')).toBeInTheDocument();
+  });
+});
+```
+
+---
+
+### 3.3 Add API Documentation
+**Effort**: 4 hours  
+**Impact**: Developer adoption, integrations
+
+**Option A: OpenAPI/Swagger**
+```bash
+npm install swagger-jsdoc swagger-ui-express
+```
+
+**Option B: Postman Collection**
+Export existing endpoints to Postman, add descriptions
+
+**Priority Endpoints to Document**:
+1. Authentication (`/auth/*`)
+2. Notebook entries (`/notebook/*`)
+3. Goals (`/goals/*`)
+4. Messages (`/messages/*`)
+
+---
+
+## Priority 4: Marketability (8-12 hours total)
+
+### 4.1 Public Landing Page
+**Effort**: 8 hours  
+**Impact**: User acquisition, first impression
+
+**Suggested Sections**:
+1. Hero - "Your Daily Accountability Partner"
+2. Features - Goal tracking, AI insights, community
+3. How it Works - 3-step process
+4. Testimonials - Social proof
+5. CTA - "Start Free Today"
+
+**Tech**: Could be static site (Next.js/Vite) or subdomain
+
+---
+
+### 4.2 Demo Mode
+**Effort**: 4 hours  
+**Impact**: Conversion, reduced signup friction
+
+**Features**:
+1. "Try without signing up" button
+2. Load demo user data (pre-populated goals/entries)
+3. Clear demo mode indicator
+4. Upsell prompt after 5 actions
+
+**Implementation**:
+- Add `isDemoMode` flag in localStorage
+- Load demo data from `/demo/seed.json`
+- Disable auth-dependent features in demo mode
+
+---
+
+### 4.3 Embeddable Streak Widget
+**Effort**: 4 hours  
+**Impact**: Virality, backlinks
+
+**Implementation**:
+1. Create `/embed/streak-widget` route
+2. Return iframe-embeddable HTML/JS
+3. Add customization options (theme, size)
+4. Document on landing page
+
+---
+
+## Priority 5: Observability (4 hours)
+
+### 5.1 Add Product Analytics
+**Effort**: 2 hours  
+**Impact**: Data-driven decisions
+
+**Options**:
+- PostHog (open source, self-hostable)
+- Mixpanel (free tier available)
+- Plausible (privacy-focused)
+
+**Priority Events**:
+1. User signups
+2. Goal created/completed
+3. Daily check-in
+4. Feature adoption
+
+---
+
+### 5.2 Add Uptime Monitoring
+**Effort**: 1 hour  
+**Impact**: SLA visibility, incident detection
+
+**Options**:
+- UptimeRobot (free tier)
+- Better Uptime
+- Custom health endpoint (`GET /health`)
+
+---
+
+## Priority 6: Technical Debt (Ongoing)
+
+### 6.1 Implement AxiomUnifiedScanService Optimization
+**Status**: Known optimization, not blocking  
+**Issue**: Refetches data redundantly in `estimateProgress()` and `generateSummary()`
+
+**Action**: Implement `withUserData` variants:
+- `AxiomProgressEstimationService.estimateAllGoalProgressWithUserData()`
+- `AxiomDailySummaryService.generateAndPostSummaryWithUserData()`
+
+---
+
+### 6.2 React 19 Upgrade Path
+**Blocked**: Waiting for ecosystem maturity
+
+**Dependencies Blocked**:
+- `react-leaflet` 5.0.0
+- `@vitejs/plugin-react` 6.0.1 (requires Vite 8)
+
+**Action**: Plan upgrade when:
+- Major dependencies support React 19
+- Vite 8 is stable
+
+---
+
+## Implementation Timeline
+
+### Week 1: Quick Wins
+- [ ] Fix 5 failing tests
+- [ ] Add pre-commit hooks
+- [ ] Add rate limiting
+- [ ] Add security headers
+
+### Week 2: Security Hardening
+- [ ] Add Zod validation to priority endpoints
+- [ ] Set up Sentry
+- [ ] Review and fix any exposed secrets
+
+### Week 3: Code Quality
+- [ ] Complete ChatRoom.tsx split
+- [ ] Add 5 key component tests
+- [ ] Start ProfilePage.tsx split
+
+### Week 4: Marketability
+- [ ] Create demo mode
+- [ ] Add health endpoint
+- [ ] Document 10 priority API endpoints
+
+---
+
+## Notes
+
+- Some items may be blocked by other work (e.g., React 19 upgrade blocks some deps)
+- Prioritize items that impact user trust and security first
+- Consider A/B testing for marketability features
+- Document any breaking changes for existing users
+
+---
+
+## Status Legend
+- [ ] Not started
+- [x] Completed
+- [~] In progress
+- [!] Blocked
+
