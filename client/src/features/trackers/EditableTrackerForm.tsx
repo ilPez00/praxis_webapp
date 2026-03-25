@@ -91,14 +91,62 @@ const DEFAULT_ROWS: Record<string, TrackerRow[]> = {
     { id: '4', label: 'Shoulder Press', value: 0, weight: 0, reps: 0, sets: 0 },
   ],
   expenses: [
-    { id: '1', label: 'Groceries', category: 'Food', amount: 0, merchant: '' }
+    { id: '1', label: 'Groceries', category: 'Food', amount: 0, merchant: '' },
+    { id: '2', label: 'Transport', category: 'Transport', amount: 0, merchant: '' },
+    { id: '3', label: 'Subscriptions', category: 'Entertainment', amount: 0, merchant: '' },
   ],
   cardio: [
-    { id: '1', label: 'Running', duration: 30, distance: 5 }
+    { id: '1', label: 'Running', value: 0, duration: 30, distance: 5 },
+    { id: '2', label: 'Walking', value: 0, duration: 20, distance: 2 },
   ],
   study: [
-    { id: '1', label: 'Focus Session', subject: '', duration: 60 }
-  ]
+    { id: '1', label: 'Focus Session', value: 0, subject: '', duration: 60 },
+    { id: '2', label: 'Review', value: 0, subject: '', duration: 30 },
+  ],
+  sleep: [
+    { id: '1', label: 'Night Sleep', value: 8 },
+  ],
+  meditation: [
+    { id: '1', label: 'Morning Meditation', value: 15 },
+  ],
+  books: [
+    { id: '1', label: 'Current Book', value: 0, pages_read: 0, total_pages: 0 },
+  ],
+  hangout: [
+    { id: '1', label: 'Coffee', value: 0, person: '' },
+  ],
+  budget: [
+    { id: '1', label: 'Food & Groceries', value: 0, category: 'Food', amount: 0 },
+    { id: '2', label: 'Transport', value: 0, category: 'Transport', amount: 0 },
+    { id: '3', label: 'Entertainment', value: 0, category: 'Entertainment', amount: 0 },
+  ],
+  investments: [
+    { id: '1', label: 'Stock/ETF', value: 0, action: 'Buy', price: 0, quantity: 0 },
+  ],
+  music: [
+    { id: '1', label: 'Practice Session', value: 0, instrument: '', duration: 30 },
+  ],
+  project: [
+    { id: '1', label: 'Current Project', value: 0, duration: 60 },
+  ],
+  journal: [
+    { id: '1', label: 'Daily Reflection', value: 0 },
+  ],
+  adventure: [
+    { id: '1', label: 'New Experience', value: 0 },
+  ],
+  gaming: [
+    { id: '1', label: 'Session', value: 0, duration: 60 },
+  ],
+  steps: [
+    { id: '1', label: 'Daily Steps', value: 0 },
+  ],
+  'job-apps': [
+    { id: '1', label: 'Application', value: 0 },
+  ],
+  streaming: [
+    { id: '1', label: 'Stream', value: 0, duration: 120 },
+  ],
 };
 
 /** Build a new empty row for a tracker type */
@@ -107,9 +155,17 @@ function makeEmptyRow(trackerType: string): TrackerRow {
   switch (trackerType) {
     case 'lift': return { ...base, weight: 0, reps: 0, sets: 0 };
     case 'meal': return { ...base, unit: 'g' };
-    case 'expenses': return { ...base, category: 'Food', amount: 0, merchant: '' };
+    case 'expenses': return { ...base, category: '', amount: 0, merchant: '' };
     case 'cardio': return { ...base, duration: 0, distance: 0 };
     case 'study': return { ...base, subject: '', duration: 0 };
+    case 'books': return { ...base, pages_read: 0, total_pages: 0, author: '' };
+    case 'music': return { ...base, instrument: '', duration: 0 };
+    case 'hangout': return { ...base, person: '' };
+    case 'budget': return { ...base, category: '', amount: 0 };
+    case 'investments': return { ...base, action: 'Buy', price: 0, quantity: 0 };
+    case 'gaming': return { ...base, duration: 0 };
+    case 'streaming': return { ...base, duration: 0 };
+    case 'project': return { ...base, duration: 0 };
     default: return base;
   }
 }
