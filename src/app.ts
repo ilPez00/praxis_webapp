@@ -2,6 +2,7 @@
 require('dotenv').config();
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
@@ -85,6 +86,15 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Secret'],
   exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
 }));
+
+// Security headers with Helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable for now, can enable with custom config
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+}));
+
 app.use(express.json());
 
 // Apply request tracing middleware (after CORS, before routes)
