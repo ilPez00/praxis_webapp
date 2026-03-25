@@ -3,6 +3,10 @@ require('dotenv').config();
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { initSentry } from './lib/sentry';
+
+// Initialize Sentry error tracking
+initSentry();
 
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';

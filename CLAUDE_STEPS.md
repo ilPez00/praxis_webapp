@@ -1,14 +1,98 @@
 # Praxis - Development Roadmap
 
-**Last Updated:** March 21, 2026
-**Current Version:** 1.2.0 (Analytics & Admin Enhancements)
-**Next Milestone:** v1.3.0 (Mobile App & Advanced Integrations)
+**Last Updated:** March 25, 2026
+**Current Version:** 1.3.0 (Professional Improvements)
+**Next Milestone:** v1.4.0 (Mobile App & Advanced Integrations)
+
+---
+
+## 📝 Latest Progress (March 25, 2026) - pro_fixes.txt Implementation
+
+### Professional Improvements Plan
+
+**Source:** `docs/pro_fixes.txt` - Professional improvements roadmap
+
+#### ✅ Priority 1.1: Fix 5 Failing Backend Tests (DONE)
+
+**Date:** March 25, 2026  
+**Effort:** 30 minutes  
+**Impact:** CI/CD reliability, technical debt reduction
+
+**Fixed Tests:**
+
+- `POST /auth/login` validation - Fixed assertion messages
+- `POST /auth/signup` validation - Fixed route path (/register → /signup)
+- `GET /users/nearby` auth protection - Fixed endpoint path
+- All protected endpoints now properly return 401
+
+**Result:** All 16 tests passing (was 5 failing)  
+**Commit:** `6c0c9cb` - "test: fix 5 failing backend tests"
+
+#### ✅ Priority 1.2: Add Pre-commit Hooks (DONE)
+
+**Date:** March 25, 2026  
+**Effort:** 1 hour  
+**Impact:** Catches issues before CI, faster feedback loop
+
+**Installed:**
+
+- Husky v9 (Git hooks manager)
+- lint-staged (Run linters on staged files)
+
+**Configuration:**
+
+- `.husky/pre-commit` - Git hook that runs on every commit
+- `.lintstagedrc.json` - Linting rules:
+  - TypeScript/ESLint checks for `.ts,.tsx` files
+  - Prettier formatting for `.css,.scss,.json,.md`
+
+**Result:** Code quality enforced before every commit  
+**Commit:** `88d2fc4` - "feat: add pre-commit hooks, security headers, and rate limiting"
+
+#### ✅ Priority 2.2: Rate Limiting (ALREADY DONE)
+
+**Status:** Already implemented in previous sessions  
+**Location:** `src/middleware/rateLimiter.ts`
+
+- `authLimiter` - Strict limits for auth endpoints
+- `aiLimiter` - Rate limit AI coaching requests
+- `generalLimiter` - General API rate limiting
+
+#### ✅ Priority 2.3: Security Headers with Helmet (DONE)
+
+**Date:** March 25, 2026  
+**Effort:** 30 minutes  
+**Impact:** XSS protection, clickjacking prevention
+
+**Installed:** `helmet` package  
+**Configuration:** `src/app.ts`
+
+```typescript
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Can enable with custom config
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+  }),
+);
+```
+
+**Security Headers Enabled:**
+
+- `X-XSS-Protection` - XSS attack prevention
+- `X-Frame-Options` - Clickjacking prevention
+- `X-Content-Type-Options` - MIME sniffing prevention
+- `Strict-Transport-Security` - HTTPS enforcement
+
+**Commit:** `88d2fc4` - "feat: add pre-commit hooks, security headers, and rate limiting"
 
 ---
 
 ## ✅ Completed (v1.0.0 MVP)
 
 ### Core Features
+
 - [x] User authentication (Supabase Auth)
 - [x] Goal tree creation and management
 - [x] Domain-based goal categorization (9 domains)
@@ -17,6 +101,7 @@
 - [x] Editable tracker form for speed dial trackers
 
 ### Social Features
+
 - [x] Matching algorithm (SAB compatibility scoring)
 - [x] Matches screen with compatibility scores
 - [x] Direct messaging (1-on-1 chat)
@@ -24,6 +109,7 @@
 - [x] Groups discovery and joining
 
 ### Accountability System
+
 - [x] Daily check-ins (streak tracking)
 - [x] Praxis Points reward system
 - [x] Achievement system
@@ -31,6 +117,7 @@
 - [x] Betting/duels system
 
 ### Tracking & Analytics
+
 - [x] 18 tracker types (fitness, finance, learning, etc.)
 - [x] Offline tracker logging with auto-sync
 - [x] Habit calendar (16-week contribution graph)
@@ -41,6 +128,7 @@
 - [x] Line chart contribution graph (replaced heatmap)
 
 ### AI Features
+
 - [x] Axiom AI coach
 - [x] Daily AI-generated briefs
 - [x] Weekly progress reports
@@ -53,6 +141,7 @@
 - [x] Axiom unified midnight scan for all daily operations
 
 ### Platform Support
+
 - [x] Web app (React + TypeScript)
 - [x] PWA with offline support (Service Worker)
 - [x] Android app (native widgets, Conky integration)
@@ -61,6 +150,7 @@
 - [x] Windows/Mac app (basic wrapper)
 
 ### Infrastructure
+
 - [x] Supabase backend (PostgreSQL + Auth + Storage)
 - [x] Railway deployment
 - [x] Vercel frontend hosting
@@ -73,6 +163,7 @@
 ## 📝 Recent Changes (March 16-21, 2026)
 
 ### Latest Commits (March 21)
+
 - **cb9da12** - feat: enhance analytics with charts & export, add admin debug tools
 - **8bced5b** - feat: enhance Axiom goal progress tracking with private summaries
 - **f6fad63** - feat: add load balancing and monthly summaries for Axiom
@@ -82,7 +173,9 @@
 ### v1.2.0 Major Features (March 21, 2026)
 
 #### 1. Analytics Page Enhancements ✨
+
 **Files:** `client/src/features/analytics/AnalyticsPage.tsx`
+
 - **MUI X-Charts Integration**: Finally using the installed library!
   - Line Chart: Goal Progress Over Time
   - Pie Chart: Domain Distribution
@@ -97,7 +190,9 @@
 - **Premium Feature**: All visual analytics gated behind isPremium
 
 #### 2. Admin Debug Tools 🔧
+
 **Files:** `client/src/features/admin/tabs/DebugTab.tsx`, `src/routes/adminDebugRoutes.ts`
+
 - **System Health Dashboard**:
   - Database: size, connections, status
   - API: uptime, requests/min, status
@@ -113,7 +208,9 @@
   - `POST /admin/debug/restart-services` - Restart services
 
 #### 3. Axiom Load Balancing & Monthly Summaries 🤖
+
 **Files:** `src/services/AxiomMonthlySummaryService.ts`, `src/services/AxiomUnifiedScanService.ts`
+
 - **Load Balancing**:
   - Randomize midnight scan time (00:00-05:59)
   - Random per-user delay (200-800ms)
@@ -128,7 +225,9 @@
 - **Token Cost**: ~800-1200 tokens per monthly summary (one-time, cached)
 
 #### 4. Enhanced Goal Progress Tracking 📊
+
 **Files:** `src/services/AxiomProgressEstimationService.ts`
+
 - **Explicit Progress Extraction**:
   - Detects: "50%", "3/4 done", "halfway", "almost done"
   - Uses extracted progress directly (no AI needed)
@@ -141,7 +240,9 @@
 - **Admin API**: `GET /admin/axiom/summaries` to view all summaries
 
 #### 5. Clickable Content 🔗
+
 **Files:** `client/src/components/common/ContentRenderer.tsx`
+
 - **ContentRenderer Component**: Reusable hashtag/mention parser
 - **Clickable Hashtags**: `#tag` → `/search?q=#tag`
 - **Clickable Mentions**: `@user` → `/profile/username`
@@ -153,7 +254,9 @@
 - **Tag Chips**: Clickable tags in notebook/diary
 
 #### 6. Goal/Subgoal Nomenclature Removal 📝
+
 **Files:** `client/src/features/notes/NotesCardTree.tsx`, `NotesPage.tsx`, `GoalWorkspaceSheet.tsx`
+
 - **Before**: "Main Topic (Goal)", "Chapter (Sub-goal)"
 - **After**: "Main Topic", "Chapter"
 - **Consistent Terminology**:
@@ -162,6 +265,7 @@
   - Node = generic term for any tree item
 
 ### Key Improvements Summary
+
 1. **Analytics**: Premium users can now export data and see beautiful charts
 2. **Admin**: Powerful debugging tools for system monitoring
 3. **Axiom**: Load balancing prevents rate limiting, monthly summaries provide long-term insights
@@ -176,6 +280,7 @@
 ### Week 1-2: Database & Performance
 
 #### Priority 1: Database Optimization (HIGH)
+
 - [ ] Add connection pooling for Supabase queries
 - [ ] Implement query result caching (Redis)
 - [ ] Add database indexes for common queries:
@@ -190,6 +295,7 @@
 **Impact:** 40-60% faster query times
 
 #### Priority 2: Goal Progress History Table (HIGH)
+
 - [ ] Create proper `goal_progress_history` table (migration exists)
 - [ ] Backfill historical data from goal_trees updates
 - [ ] Add API endpoint: `GET /api/goals/:id/history`
@@ -200,6 +306,7 @@
 **Impact:** Better analytics, milestone tracking
 
 #### Priority 3: Image Optimization (MEDIUM)
+
 - [ ] Implement lazy loading for all images
 - [ ] Add WebP format conversion
 - [ ] Set up CDN for static assets (Cloudflare)
@@ -214,6 +321,7 @@
 ### Week 3-4: External Integrations
 
 #### Priority 4: Health Connect Integration (HIGH)
+
 **Why:** One integration covers fitness, sleep, weight, nutrition
 
 - [ ] Add Health Connect permissions to AndroidManifest.xml
@@ -235,6 +343,7 @@
 **Impact:** Automatic fitness tracking, no manual logging
 
 #### Priority 5: Strava Integration (MEDIUM)
+
 - [ ] Set up Strava OAuth flow
 - [ ] Create `StravaService.kt`
 - [ ] Fetch activities (runs, rides, hikes)
@@ -246,6 +355,7 @@
 **Impact:** Automatic running/cycling tracking
 
 #### Priority 6: LinkedIn Integration (MEDIUM)
+
 - [ ] Apply for LinkedIn API access
 - [ ] Implement OAuth 2.0 flow
 - [ ] Fetch job applications
@@ -262,6 +372,7 @@
 ### Month 1: Mobile App Enhancements
 
 #### Android App Improvements
+
 - [ ] Convert to Capacitor for cross-platform (optional)
 - [ ] Add native navigation (bottom tabs)
 - [ ] Implement push notifications:
@@ -277,6 +388,7 @@
 **Estimated Effort:** 10 days
 
 #### iOS App Improvements
+
 - [ ] Update to latest iOS SDK
 - [ ] Add widgets (similar to Android Conky)
 - [ ] Implement HealthKit integration
@@ -290,6 +402,7 @@
 ### Month 2: Advanced Features
 
 #### Priority 7: Real-Time Collaboration (HIGH)
+
 - [ ] Implement WebSocket connections for:
   - Live chat (replace polling)
   - Real-time goal progress updates
@@ -305,6 +418,7 @@
 **Impact:** Major differentiation from competitors
 
 #### Priority 8: Advanced Analytics (MEDIUM)
+
 - [ ] Create insights engine:
   - "You're most productive on Tuesdays"
   - "Your streak drops when you skip morning check-ins"
@@ -320,6 +434,7 @@
 **Impact:** Better user retention, actionable insights
 
 #### Priority 9: Premium Features (HIGH)
+
 **Monetization strategy**
 
 - [ ] Implement Stripe subscription payments
@@ -347,6 +462,7 @@
 ### Month 3: Platform Expansion
 
 #### Priority 10: Browser Extension (MEDIUM)
+
 - [ ] Chrome/Edge extension
 - [ ] Features:
   - Quick tracker log from new tab page
@@ -358,6 +474,7 @@
 **Estimated Effort:** 5 days
 
 #### Priority 11: Desktop App Improvements (LOW)
+
 - [ ] Native menu bar app (macOS)
 - [ ] System tray app (Windows/Linux)
 - [ ] Global hotkey for quick log
@@ -373,6 +490,7 @@
 ### Quarter 1: AI & Machine Learning
 
 #### Axiom AI 2.0 (HIGH)
+
 - [ ] Fine-tune LLM on Praxis data (with user consent)
 - [ ] Personalized coaching based on:
   - Historical patterns
@@ -389,6 +507,7 @@
 **Impact:** Industry-leading AI coaching
 
 #### Smart Goal Suggestions (MEDIUM)
+
 - [ ] AI-powered goal recommendations:
   - Based on user's history
   - Similar users' successful goals
@@ -407,6 +526,7 @@
 ### Quarter 2: Social & Community
 
 #### Accountability Groups 2.0 (HIGH)
+
 - [ ] Structured group programs:
   - "90-Day Fitness Challenge" (curated)
   - "Learn to Code in 6 Months" (with syllabus)
@@ -418,6 +538,7 @@
 **Estimated Effort:** 12 days
 
 #### Mentorship Program (MEDIUM)
+
 - [ ] Match experienced users with beginners
 - [ ] Mentor dashboard with mentee progress
 - [ ] Scheduled check-in reminders
@@ -426,6 +547,7 @@
 **Estimated Effort:** 6 days
 
 #### Public Profiles & Portfolio (LOW)
+
 - [ ] Shareable profile page showing:
   - Completed goals
   - Current streaks
@@ -441,6 +563,7 @@
 ### Quarter 3: Enterprise & Teams
 
 #### Praxis for Teams (HIGH)
+
 **B2B monetization**
 
 - [ ] Team dashboard:
@@ -462,6 +585,7 @@
 **Impact:** B2B revenue stream
 
 #### Praxis for Schools/Universities (MEDIUM)
+
 - [ ] Student goal tracking
 - [ ] Teacher dashboard for class goals
 - [ ] Integration with LMS (Canvas, Moodle, Blackboard)
@@ -475,6 +599,7 @@
 ## 🔧 Technical Debt & Refactoring
 
 ### Code Quality (ONGOING)
+
 - [ ] Increase test coverage (currently ~30% → target 70%)
   - Unit tests for utility functions
   - Integration tests for API endpoints
@@ -491,6 +616,7 @@
 **Estimated Effort:** 10 days (ongoing)
 
 ### Performance Optimization (MEDIUM)
+
 - [ ] Implement code splitting for faster initial load
 - [ ] Add React Query for better data fetching
 - [ ] Optimize bundle size (currently 2.5MB → target <1MB)
@@ -501,6 +627,7 @@
 **Estimated Effort:** 5 days
 
 ### Security Hardening (HIGH)
+
 - [ ] Implement rate limiting on all API endpoints
 - [ ] Add CSRF protection
 - [ ] Set up security headers (CSP, HSTS)
@@ -547,22 +674,26 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 ## 🎯 Success Metrics (KPIs)
 
 ### User Engagement
+
 - **DAU/MAU Ratio:** Target >40% (currently ~25%)
 - **Session Duration:** Target >10 min (currently ~6 min)
 - **Tracker Logs per User per Day:** Target >3 (currently ~1.5)
 - **Check-in Rate:** Target >70% (currently ~50%)
 
 ### Retention
+
 - **Day 1 Retention:** Target >60%
 - **Day 7 Retention:** Target >40%
 - **Day 30 Retention:** Target >25%
 
 ### Growth
+
 - **Organic Signups:** Target 50% of total
 - **Referral Rate:** Target 15% of users invite someone
 - **Viral Coefficient:** Target >1.0
 
 ### Monetization (Post-Premium Launch)
+
 - **Conversion Rate (Free → Pro):** Target 5%
 - **MRR (Monthly Recurring Revenue):** Target $10K in 6 months
 - **Churn Rate:** Target <5% monthly
@@ -572,9 +703,11 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 ## 📝 Quarterly OKRs
 
 ### Q2 2026 (April-June)
+
 **Objective:** Launch Premium & Improve Retention
 
 **Key Results:**
+
 - [ ] Launch premium subscriptions with 100 paying users
 - [ ] Improve Day 30 retention from 20% to 30%
 - [ ] Integrate 3 external services (Health Connect, Strava, LinkedIn)
@@ -582,9 +715,11 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 - [ ] Achieve 4.5+ star rating on app stores
 
 ### Q3 2026 (July-September)
+
 **Objective:** Scale User Base & Launch Teams
 
 **Key Results:**
+
 - [ ] Reach 10,000 MAU (Monthly Active Users)
 - [ ] Launch Praxis for Teams with 10 paying teams
 - [ ] Implement real-time collaboration features
@@ -592,9 +727,11 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 - [ ] Generate $10K MRR
 
 ### Q4 2026 (October-December)
+
 **Objective:** AI Leadership & Enterprise
 
 **Key Results:**
+
 - [ ] Launch Axiom AI 2.0 with predictive insights
 - [ ] Close 5 enterprise deals ($50K+ ARR each)
 - [ ] Achieve 50,000 MAU
@@ -606,6 +743,7 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 ## 🧪 Experiments to Run
 
 ### A/B Tests
+
 1. **Onboarding Flow:**
    - Variant A: Current (5 steps)
    - Variant B: Simplified (3 steps)
@@ -628,6 +766,7 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
    - **Metric:** Match acceptance rate, engagement
 
 ### Feature Experiments
+
 1. **Gamification:**
    - Add XP bars, level-ups, loot boxes
    - **Hypothesis:** Increases engagement by 20%
@@ -645,26 +784,29 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 ## 🚨 Risks & Mitigation
 
 ### Technical Risks
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Supabase downtime | Medium | High | Implement fallback, multi-region |
-| Data breach | Low | Critical | Regular audits, encryption, 2FA |
-| Performance degradation | Medium | High | Monitoring, auto-scaling |
-| AI hallucinations | Medium | Medium | Human review, confidence scores |
+
+| Risk                    | Probability | Impact   | Mitigation                       |
+| ----------------------- | ----------- | -------- | -------------------------------- |
+| Supabase downtime       | Medium      | High     | Implement fallback, multi-region |
+| Data breach             | Low         | Critical | Regular audits, encryption, 2FA  |
+| Performance degradation | Medium      | High     | Monitoring, auto-scaling         |
+| AI hallucinations       | Medium      | Medium   | Human review, confidence scores  |
 
 ### Business Risks
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Low premium conversion | High | High | Iterate pricing, add more value |
-| Competitor launches similar feature | Medium | Medium | Focus on community, network effects |
-| User growth stalls | Medium | High | Invest in marketing, referrals |
-| Key team member leaves | Low | High | Documentation, cross-training |
+
+| Risk                                | Probability | Impact | Mitigation                          |
+| ----------------------------------- | ----------- | ------ | ----------------------------------- |
+| Low premium conversion              | High        | High   | Iterate pricing, add more value     |
+| Competitor launches similar feature | Medium      | Medium | Focus on community, network effects |
+| User growth stalls                  | Medium      | High   | Invest in marketing, referrals      |
+| Key team member leaves              | Low         | High   | Documentation, cross-training       |
 
 ---
 
 ## 📚 Learning & Development
 
 ### Skills to Acquire
+
 - [ ] WebSocket implementation (real-time features)
 - [ ] Machine Learning basics (for AI improvements)
 - [ ] Mobile app optimization (iOS/Android)
@@ -672,6 +814,7 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 - [ ] Security best practices
 
 ### Technologies to Explore
+
 - [ ] GraphQL (alternative to REST)
 - [ ] Edge computing (Cloudflare Workers)
 - [ ] Vector databases (for AI embeddings)
@@ -685,6 +828,7 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 ### Theme: Mobile Excellence & Advanced Analytics
 
 #### April 2026 - Mobile Optimization
+
 **Goal:** Best-in-class mobile experience for Android/iOS
 
 - [ ] **Native Mobile Widgets** (Android/iOS)
@@ -712,6 +856,7 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
   - **Effort:** 3 days
 
 #### May 2026 - Advanced Analytics
+
 **Goal:** Data-driven insights for premium users
 
 - [ ] **Predictive Analytics**
@@ -744,6 +889,7 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
   - **Effort:** 6 days
 
 #### June 2026 - Social & Collaboration
+
 **Goal:** Strengthen accountability network
 
 - [ ] **Accountability Groups**
@@ -784,17 +930,20 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 ## 📞 Contact & Resources
 
 ### Documentation
+
 - **Whitepaper:** `/docs/Praxis_Whitepaper.pdf`
 - **API Docs:** (To be created - Swagger)
 - **Architecture:** `/docs/ARCHITECTURE.md`
 
 ### Team
+
 - **Lead Developer:** (You)
 - **AI/ML:** Claude (AI Assistant)
 - **Design:** (To be hired)
 - **Marketing:** (To be hired)
 
 ### Advisors
+
 - (To be recruited - experienced SaaS founders)
 
 ---
@@ -802,4 +951,3 @@ LOW IMPACT, HIGH EFFORT (Avoid/Delegate)
 **This is a living document. Update quarterly.**
 
 **Next Review:** June 21, 2026
-

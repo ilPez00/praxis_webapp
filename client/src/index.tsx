@@ -2,12 +2,16 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import './i18n'; // Initialize i18n
+import { initSentryReact } from './lib/sentry';
 import AppRouter from './AppRouter';
 import ErrorBoundary from './components/RootErrorBoundary';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { enforceFreshContent } from './utils/versionControl';
 import { registerServiceWorker } from './utils/serviceWorker';
+
+// Initialize Sentry error tracking
+initSentryReact();
 
 // Force refresh if version mismatch
 enforceFreshContent();
