@@ -56,7 +56,8 @@ type ViewMode = 'selector' | 'goal' | 'free';
 
 const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   const { user } = useUser();
-  const getLocation = useCurrentLocation();
+  const [locationEnabled, setLocationEnabled] = useState(true);
+  const getLocation = useCurrentLocation({ enabled: locationEnabled });
   const [rawNodes, setRawNodes] = useState<RawGoalNode[]>([]);
   const [goals, setGoals] = useState<RawGoalNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +70,20 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   const [freeAttachments, setFreeAttachments] = useState<Attachment[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<LoggingSuggestion[]>([]);
+
+  // Fetch user's location preference
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchLocationPreference = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('location_enabled')
+        .eq('id', user.id)
+        .single();
+      setLocationEnabled(profile?.location_enabled ?? false);
+    };
+    fetchLocationPreference();
+  }, [user?.id]);
   const [todayLogCounts, setTodayLogCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {

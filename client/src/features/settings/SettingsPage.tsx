@@ -65,6 +65,8 @@ const SettingsPage: React.FC = () => {
   // Geolocation
   const [geoCity, setGeoCity] = useState<string>('');
   const [geoLoading, setGeoLoading] = useState(false);
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [locationSaving, setLocationSaving] = useState(false);
 
   // Privacy
   const [matchVisibility, setMatchVisibility] = useState<string>('all');
@@ -92,7 +94,7 @@ const SettingsPage: React.FC = () => {
     const loadProfile = async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('city, is_public, match_visibility, share_notes_publicly')
+        .select('city, is_public, match_visibility, share_notes_publicly, location_enabled')
         .eq('id', user.id)
         .single();
       if (data) {
@@ -100,6 +102,7 @@ const SettingsPage: React.FC = () => {
         setProfilePublic(data.is_public !== false);
         setMatchVisibility(data.match_visibility || 'all');
         setShareNotesPublicly(data.share_notes_publicly || false);
+        setLocationEnabled(data.location_enabled || false);
       }
     };
     loadProfile();
@@ -146,6 +149,34 @@ const SettingsPage: React.FC = () => {
     );
     setGeoCity('');
     toast.success('Location data cleared.');
+  };
+
+  const handleToggleLocation = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const enabled = event.target.checked;
+    if (!user) return;
+    
+    setLocationSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ location_enabled: enabled })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      setLocationEnabled(enabled);
+      
+      if (enabled) {
+        toast.success('Location tracking enabled. Your notes will include location data.');
+      } else {
+        toast.success('Location tracking disabled.');
+      }
+    } catch {
+      toast.error('Failed to update location setting.');
+      setLocationEnabled(!enabled); // Revert on error
+    } finally {
+      setLocationSaving(false);
+    }
   };
 
   const savePrivacy = async () => {
@@ -236,6 +267,34 @@ const SettingsPage: React.FC = () => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Your location is used to show nearby users and local events. It is never shared without your consent.
         </Typography>
+        
+        {/* Location tracking toggle */}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={locationEnabled}
+              onChange={handleToggleLocation}
+              disabled={locationSaving}
+              sx={{ color: '#34D399' }}
+            />
+          }
+          label={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" fontWeight={600}>
+                Enable location for notes
+              </Typography>
+              {locationEnabled && (
+                <Chip label="ON" size="small" sx={{ height: 18, bgcolor: 'rgba(52,211,153,0.2)', color: '#34D399', fontSize: '0.65rem' }} />
+              )}
+            </Box>
+          }
+          sx={{ mb: 2 }}
+        />
+        
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+          When enabled, your notes and progress logs will automatically include your current location. This allows you to see where you logged each entry on the map.
+        </Typography>
+        
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           {geoCity ? (
             <Chip label={`📍 ${geoCity}`} sx={{ bgcolor: 'rgba(52,211,153,0.1)', color: '#34D399', fontWeight: 700 }} />

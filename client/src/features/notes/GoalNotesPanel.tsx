@@ -9,6 +9,7 @@ import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import { getGeneralSuggestions, getSuggestionsForDomain, LoggingSuggestion } from '../../utils/loggingSuggestions';
 import { useCurrentLocation, EntryLocation } from '../../hooks/useCurrentLocation';
 
@@ -36,9 +37,24 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
   const [adding, setAdding] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<LoggingSuggestion[]>([]);
-  
-  // Get cached location
-  const getLocation = useCurrentLocation();
+  const [locationEnabled, setLocationEnabled] = useState(true); // Default to true for now
+
+  // Fetch user's location preference
+  useEffect(() => {
+    if (!userId) return;
+    const fetchLocationPreference = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('location_enabled')
+        .eq('id', userId)
+        .single();
+      setLocationEnabled(profile?.location_enabled ?? false);
+    };
+    fetchLocationPreference();
+  }, [userId]);
+
+  // Get cached location (only if enabled in settings)
+  const getLocation = useCurrentLocation({ enabled: locationEnabled });
 
   const MOODS = [
     { emoji: '😊', label: 'Good' },
