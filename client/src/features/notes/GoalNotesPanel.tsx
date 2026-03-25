@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, CircularProgress, IconButton, TextField, Button, Stack, Chip,
+  Box, Typography, CircularProgress, IconButton, TextField, Button, Stack, Chip, Alert,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import CloudOffIcon from '@mui/icons-material/CloudOff';
+import CloudDoneIcon from '@mui/icons-material/CloudDone';
+import SyncIcon from '@mui/icons-material/Sync';
 import GlassCard from '../../components/common/GlassCard';
 import ContentRenderer from '../../components/common/ContentRenderer';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { useOffline } from '../../hooks/useOffline';
 import { getGeneralSuggestions, getSuggestionsForDomain, LoggingSuggestion } from '../../utils/loggingSuggestions';
 import { useCurrentLocation, EntryLocation } from '../../hooks/useCurrentLocation';
 
@@ -38,24 +42,12 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
   const [adding, setAdding] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<LoggingSuggestion[]>([]);
-  const [locationEnabled, setLocationEnabled] = useState(true); // Default to true for now
-
-  // Fetch user's location preference
-  useEffect(() => {
-    if (!userId) return;
-    const fetchLocationPreference = async () => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('location_enabled')
-        .eq('id', userId)
-        .single();
-      setLocationEnabled(profile?.location_enabled ?? false);
-    };
-    fetchLocationPreference();
-  }, [userId]);
-
+  
+  // Offline support
+  const { isOnline, isOffline, hasPendingSync, pendingCount, saveForLater, forceSync } = useOffline();
+  
   // Get cached location (only if enabled in settings)
-  const getLocation = useCurrentLocation({ enabled: locationEnabled });
+  const getLocation = useCurrentLocation({ enabled: true });
 
   const MOODS = [
     { emoji: '😊', label: 'Good' },
@@ -132,7 +124,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
       const isFreeNote = !nodeId || nodeId === 'free-notes';
       const location = getLocation();
 
-      const payload = {
+      const entry = {
         entry_type: 'note',
         content: newNote,
         mood: selectedMood,
@@ -145,18 +137,48 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
         ...(location && {
           location_lat: location.lat,
           location_lng: location.lng,
-          location_name: undefined, // Could be reverse-geocoded in future
+          location_name: undefined,
         }),
+        // Offline tracking metadata
+        occurred_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       };
 
-      await api.post('/notebook/entries', payload);
+      if (isOffline) {
+        // Save for later sync
+        await saveForLater({
+          ...entry,
+          id: `offline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          synced: false,
+          sync_attempted: 0,
+        });
+      } else {
+        // Send to API immediately
+        await api.post('/notebook/entries', entry);
+        toast.success('Note saved to notebook!');
+      }
 
-      toast.success('Note saved to notebook!');
       setNewNote('');
       setSelectedMood(null);
       await fetchNotes();
     } catch (err: any) {
-      toast.error('Failed to add note: ' + err.message);
+      // If API fails but we're online, offer to save offline
+      if (isOnline && err.message?.includes('network')) {
+        const entry = {
+          entry_type: 'note',
+          content: newNote,
+          mood: selectedMood,
+          // ... rest of entry
+        };
+        await saveForLater({
+          ...entry,
+          id: `offline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          synced: false,
+          sync_attempted: 0,
+        });
+      } else {
+        toast.error('Failed to add note: ' + err.message);
+      }
     } finally {
       setAdding(false);
     }
@@ -192,17 +214,75 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
       p: compact ? 1 : 2,
     }}>
       <Box sx={{ mb: 2 }}>
-        <Typography variant={compact ? 'subtitle1' : 'h6'} sx={{ fontWeight: 700, mb: 0.5 }}>
-          <EditNoteIcon sx={{ fontSize: compact ? 18 : 20, mr: 0.5, verticalAlign: 'middle' }} />
-          {nodeId ? `Notes for "${nodeTitle}"` : 'Free Notes'}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+          <Typography variant={compact ? 'subtitle1' : 'h6'} sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <EditNoteIcon sx={{ fontSize: compact ? 18 : 20, mr: 0.5, verticalAlign: 'middle' }} />
+            {nodeId ? `Notes for "${nodeTitle}"` : 'Free Notes'}
+          </Typography>
+          
+          {/* Offline Status Indicator */}
+          {hasPendingSync && (
+            <Chip
+              label={`${pendingCount} pending`}
+              size="small"
+              onClick={() => forceSync()}
+              sx={{
+                bgcolor: 'rgba(245, 158, 11, 0.2)',
+                color: '#F59E0B',
+                fontWeight: 700,
+                fontSize: '0.65rem',
+                cursor: 'pointer',
+                '&:hover': { bgcolor: 'rgba(245, 158, 11, 0.3)' },
+              }}
+              icon={<SyncIcon />}
+            />
+          )}
+          {isOffline && !hasPendingSync && (
+            <Chip
+              label="Offline"
+              size="small"
+              sx={{
+                bgcolor: 'rgba(107, 114, 128, 0.2)',
+                color: '#9CA3AF',
+                fontWeight: 700,
+                fontSize: '0.65rem',
+              }}
+              icon={<CloudOffIcon />}
+            />
+          )}
+          {isOnline && hasPendingSync && (
+            <Chip
+              label="Syncing..."
+              size="small"
+              sx={{
+                bgcolor: 'rgba(59, 130, 246, 0.2)',
+                color: '#3B82F6',
+                fontWeight: 700,
+                fontSize: '0.65rem',
+              }}
+              icon={<CloudDoneIcon />}
+            />
+          )}
+        </Box>
         <Typography variant="caption" color="text.secondary">
           {nodeId ? 'Goal-specific reflections' : 'Standalone thoughts and insights'}
+          {isOffline && ' • Working offline'}
         </Typography>
       </Box>
 
       {/* Add Note Form */}
       <GlassCard sx={{ p: 2, mb: 2, bgcolor: 'rgba(255,255,255,0.03)' }}>
+        {/* Offline Notice */}
+        {isOffline && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 2, fontSize: '0.75rem' }}
+            icon={<CloudOffIcon />}
+          >
+            You're offline. Notes will sync when you're back online.
+          </Alert>
+        )}
+        
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
             <LightbulbIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />

@@ -4,6 +4,8 @@ import { supabase } from './supabase';
 /**
  * Base URL for all backend API calls.
  * Set VITE_API_URL in client/.env for production.
+ * 
+ * UPDATE THIS URL after migrating to Render/Fly.io
  */
 const getBaseUrl = () => {
   const envUrl = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_API_URL : undefined;
@@ -13,6 +15,7 @@ const getBaseUrl = () => {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return 'http://localhost:3001/api';
     }
+    // UPDATE THIS URL after migration:
     return 'https://web-production-646a4.up.railway.app/api';
   }
 
