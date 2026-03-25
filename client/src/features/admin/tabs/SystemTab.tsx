@@ -3,7 +3,7 @@ import {
   Box, Typography, TextField, Button, Stack, Alert, CircularProgress,
   Divider, Paper
 } from '@mui/material';
-import { apiFetch } from './adminTypes';
+import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
@@ -23,14 +23,12 @@ const SystemTab: React.FC = () => {
   const fetchConfig = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch('/admin/config');
-      if (res.ok) {
-        const config = await res.json();
-        const msg = config.find((c: any) => c.key === 'global_login_message');
-        const mid = config.find((c: any) => c.key === 'global_login_message_id');
-        if (msg) setGlobalMessage(msg.value);
-        if (mid) setMessageId(mid.value);
-      }
+      const res = await api.get('/admin/config');
+      const config = res.data;
+      const msg = config.find((c: any) => c.key === 'global_login_message');
+      const mid = config.find((c: any) => c.key === 'global_login_message_id');
+      if (msg) setGlobalMessage(msg.value);
+      if (mid) setMessageId(mid.value);
     } catch (err) {
       console.error('Failed to fetch config:', err);
     } finally {
@@ -42,18 +40,12 @@ const SystemTab: React.FC = () => {
     setSavingMessage(true);
     try {
       // 1. Update message
-      await apiFetch('/admin/config/global_login_message', {
-        method: 'PUT',
-        body: JSON.stringify({ value: globalMessage }),
-      });
+      await api.put('/admin/config/global_login_message', { value: globalMessage });
 
       // 2. Update message ID (current timestamp as simple ID)
       const newId = Date.now().toString();
-      await apiFetch('/admin/config/global_login_message_id', {
-        method: 'PUT',
-        body: JSON.stringify({ value: newId }),
-      });
-      
+      await api.put('/admin/config/global_login_message_id', { value: newId });
+
       setMessageId(newId);
       toast.success('Global message updated! Users who haven\'t seen it will see it on login.');
     } catch (err) {
@@ -67,7 +59,7 @@ const SystemTab: React.FC = () => {
     if (!window.confirm('This will force ALL users to see the current message again at next login. Proceed?')) return;
     setSavingMessage(true);
     try {
-      await apiFetch('/admin/config/clear-seen-messages', { method: 'POST' });
+      await api.post('/admin/config/clear-seen-messages');
       toast.success('Seen status cleared for all users.');
     } catch (err) {
       toast.error('Failed to clear seen status.');
@@ -80,15 +72,8 @@ const SystemTab: React.FC = () => {
     if (!window.confirm(`Are you sure you want to grant ${pointsDelta} PP to ALL users?`)) return;
     setGrantingPoints(true);
     try {
-      const res = await apiFetch('/admin/users/grant-points-all', {
-        method: 'POST',
-        body: JSON.stringify({ delta: pointsDelta }),
-      });
-      if (res.ok) {
-        toast.success(`Successfully granted ${pointsDelta} PP to all users!`);
-      } else {
-        throw new Error('Failed');
-      }
+      await api.post('/admin/users/grant-points-all', { delta: pointsDelta });
+      toast.success(`Successfully granted ${pointsDelta} PP to all users!`);
     } catch (err) {
       toast.error('Failed to grant points to all users.');
     } finally {

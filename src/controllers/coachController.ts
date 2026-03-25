@@ -98,7 +98,7 @@ export const getCoachByUserId = catchAsync(async (req: Request, res: Response, _
 // Body: { bio, skills, domains, hourlyRate, isAvailable }
 // ---------------------------------------------------------------------------
 export const upsertCoachProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   const { bio, skills, domains, hourlyRate, isAvailable } = req.body;
 
   if (!userId) throw new BadRequestError('Authentication required.');
@@ -132,7 +132,7 @@ export const upsertCoachProfile = catchAsync(async (req: Request, res: Response,
 // Partial update of a coach profile.
 // ---------------------------------------------------------------------------
 export const updateCoachProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   if (!userId) throw new BadRequestError('Authentication required.');
   const { bio, skills, domains, hourlyRate, isAvailable } = req.body;
 
@@ -160,7 +160,7 @@ export const updateCoachProfile = catchAsync(async (req: Request, res: Response,
 // DELETE /coaches/:userId
 // ---------------------------------------------------------------------------
 export const deleteCoachProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   if (!userId) throw new BadRequestError('Authentication required.');
 
   const { error } = await supabase

@@ -24,7 +24,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import GroupsIcon from '@mui/icons-material/Groups';
 import toast from 'react-hot-toast';
-import { AdminGroup, ConfirmAction, apiFetch, downloadCSV } from './adminTypes';
+import api from '../../../lib/api';
+import { AdminGroup, ConfirmAction, downloadCSV } from './adminTypes';
 
 interface GroupsTabProps {
   groups: AdminGroup[];
@@ -39,10 +40,9 @@ const GroupsTab: React.FC<GroupsTabProps> = ({ groups, loadingGroups, fetchGroup
   const handleDeleteGroup = async (groupId: string) => {
     setActing(true);
     try {
-      const res = await apiFetch(`/admin/groups/${groupId}`, { method: 'DELETE' });
-      if (res.ok) { await fetchGroups(); toast.success('Group deleted.'); }
-      else toast.error('Failed to delete group.');
-    } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
+      await api.delete(`/admin/groups/${groupId}`);
+      await fetchGroups(); toast.success('Group deleted.');
+    } catch { toast.error('Failed to delete group.'); } finally { setActing(false); setConfirm(null); }
   };
 
   return (

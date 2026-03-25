@@ -15,7 +15,7 @@ function sanitizeHtml(str: string): string {
 
 export const getMessages = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { user1Id, user2Id } = req.params as { user1Id: string; user2Id: string };
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
 
   if (!user1Id || !user2Id) {
     throw new BadRequestError('Both user IDs are required.');
@@ -82,7 +82,7 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
 export const sendMessage = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { receiverId, content, goalNodeId, messageType, mediaUrl, metadata } = req.body;
   // Use authenticated user's ID as sender — prevents impersonation
-  const senderId = (req as any).user?.id;
+  const senderId = req.user?.id;
   if (!senderId) {
     throw new BadRequestError('Authentication required.');
   }

@@ -152,7 +152,7 @@ export const getAchievements = catchAsync(async (req: Request, res: Response, ne
  */
 export const updateAchievement = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
   const { title, description, domain } = req.body;
 
   const { data: existing } = await supabase

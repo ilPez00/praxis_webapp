@@ -22,7 +22,8 @@ import EditTreeIcon from '@mui/icons-material/AccountTree';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import toast from 'react-hot-toast';
-import { AdminUser, UserDetail, ConfirmAction, apiFetch, downloadCSV, isBanned } from './adminTypes';
+import api from '../../../lib/api';
+import { AdminUser, UserDetail, ConfirmAction, downloadCSV, isBanned } from './adminTypes';
 
 interface UsersTabProps {
   currentUserId?: string;
@@ -46,83 +47,57 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
   const handleResetUser = async (userId: string) => {
     setActing(true);
     try {
-      const res = await apiFetch(`/admin/users/${userId}?reset_only=true`, { method: 'DELETE' });
-      if (res.ok) { 
-        toast.success('User reset. They must complete onboarding again.'); 
-        setUsers(prev => prev.map(u => u.id === userId ? { 
-          ...u, 
-          onboarding_completed: false,
-          bio: null,
-          avatar_url: null,
-        } : u));
-      }
-      else { const b = await res.json().catch(() => ({})); toast.error((b as any).message || 'Failed.'); }
-    } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
+      await api.delete(`/admin/users/${userId}?reset_only=true`);
+      toast.success('User reset. They must complete onboarding again.');
+      setUsers(prev => prev.map(u => u.id === userId ? {
+        ...u,
+        onboarding_completed: false,
+        bio: null,
+        avatar_url: null,
+      } : u));
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed.'); } finally { setActing(false); setConfirm(null); }
   };
 
   const handleDeleteUser = async (userId: string) => {
     setActing(true);
     try {
-      const res = await apiFetch(`/admin/users/${userId}?hard_delete=true`, { method: 'DELETE' });
-      if (res.ok) { setUsers(prev => prev.filter(u => u.id !== userId)); toast.success('User deleted permanently.'); }
-      else { const b = await res.json().catch(() => ({})); toast.error((b as any).message || 'Failed.'); }
-    } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
+      await api.delete(`/admin/users/${userId}?hard_delete=true`);
+      setUsers(prev => prev.filter(u => u.id !== userId)); toast.success('User deleted permanently.');
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed.'); } finally { setActing(false); setConfirm(null); }
   };
 
   const handleBanUser = async (userId: string) => {
     setActing(true);
     try {
-      const res = await apiFetch(`/admin/users/${userId}/ban`, { method: 'POST' });
-      if (res.ok) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, banned_until: new Date(Date.now() + 876000 * 3600 * 1000).toISOString() } : u));
-        toast.success('User banned.');
-      } else toast.error('Failed to ban user.');
-    } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
+      await api.post(`/admin/users/${userId}/ban`);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, banned_until: new Date(Date.now() + 876000 * 3600 * 1000).toISOString() } : u));
+      toast.success('User banned.');
+    } catch { toast.error('Failed to ban user.'); } finally { setActing(false); setConfirm(null); }
   };
 
   const handleUnbanUser = async (userId: string) => {
     try {
-      const res = await apiFetch(`/admin/users/${userId}/unban`, { method: 'POST' });
-      if (res.ok) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, banned_until: null } : u));
-        toast.success('User unbanned.');
-      }
+      await api.post(`/admin/users/${userId}/unban`);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, banned_until: null } : u));
+      toast.success('User unbanned.');
     } catch { toast.error('Failed.'); }
   };
 
   const handlePromoteUser = async (userId: string, role: string) => {
     try {
-      const res = await apiFetch(`/admin/users/${userId}/role`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
-      });
-      if (res.ok) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role, is_admin: role === 'admin' } : u));
-        toast.success(`User set to ${role}.`);
-      } else {
-        const b = await res.json().catch(() => ({}));
-        toast.error((b as any).message || 'Failed to update role.');
-      }
-    } catch { toast.error('Failed.'); }
+      await api.put(`/admin/users/${userId}/role`, { role });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role, is_admin: role === 'admin' } : u));
+      toast.success(`User set to ${role}.`);
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to update role.'); }
   };
 
   const handleTogglePremium = async (userId: string, current: boolean) => {
     try {
       const is_premium = !current;
-      const res = await apiFetch(`/admin/users/${userId}/premium`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_premium }),
-      });
-      if (res.ok) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_premium } : u));
-        toast.success(is_premium ? 'User granted Pro status.' : 'Pro status revoked.');
-      } else {
-        const b = await res.json().catch(() => ({}));
-        toast.error((b as any).message || 'Failed to update premium status.');
-      }
-    } catch { toast.error('Failed.'); }
+      await api.put(`/admin/users/${userId}/premium`, { is_premium });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_premium } : u));
+      toast.success(is_premium ? 'User granted Pro status.' : 'Pro status revoked.');
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to update premium status.'); }
   };
 
   const handleModifyPoints = async (userId: string, sign: 1 | -1) => {
@@ -131,26 +106,18 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
     if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid positive amount.'); return; }
     const delta = sign * amount;
     try {
-      const res = await apiFetch(`/admin/users/${userId}/grant-points`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ delta }),
-      });
-      if (res.ok) {
-        const body = await res.json();
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, praxis_points: body.points } : u));
-        toast.success(`PP: ${body.points.toLocaleString()} (${delta > 0 ? '+' : ''}${delta})`);
-      } else toast.error('Failed to update points.');
-    } catch { toast.error('Failed.'); }
+      const res = await api.post(`/admin/users/${userId}/grant-points`, { delta });
+      const body = res.data;
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, praxis_points: body.points } : u));
+      toast.success(`PP: ${body.points.toLocaleString()} (${delta > 0 ? '+' : ''}${delta})`);
+    } catch { toast.error('Failed to update points.'); }
   };
 
   const handleResetTreeEdits = async (userId: string) => {
     try {
-      const res = await apiFetch(`/admin/users/${userId}/reset-tree-edits`, { method: 'POST' });
-      if (res.ok) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, goal_tree_edit_count: 0 } : u));
-        toast.success('Goal tree edit reset — user gets 1 free edit.');
-      } else toast.error('Failed.');
+      await api.post(`/admin/users/${userId}/reset-tree-edits`);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, goal_tree_edit_count: 0 } : u));
+      toast.success('Goal tree edit reset — user gets 1 free edit.');
     } catch { toast.error('Failed.'); }
   };
 
@@ -158,33 +125,26 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
     setLoadingDetail(true);
     setUserDetail(null);
     try {
-      const res = await apiFetch(`/admin/users/${userId}/detail`);
-      if (res.ok) setUserDetail(await res.json());
-      else toast.error('Failed to load user detail.');
-    } catch { toast.error('Failed.'); } finally { setLoadingDetail(false); }
+      const res = await api.get(`/admin/users/${userId}/detail`);
+      setUserDetail(res.data);
+    } catch { toast.error('Failed to load user detail.'); } finally { setLoadingDetail(false); }
   };
 
   const handleDeleteAllDemo = async () => {
     setActing(true);
     try {
-      const res = await apiFetch('/admin/demo-users', { method: 'DELETE' });
-      if (res.ok) {
-        const body = await res.json();
-        setUsers(prev => prev.filter(u => !u.is_demo));
-        toast.success(body.message || 'Demo users deleted.');
-      }
+      const res = await api.delete('/admin/demo-users');
+      setUsers(prev => prev.filter(u => !u.is_demo));
+      toast.success(res.data.message || 'Demo users deleted.');
     } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
   };
 
   const handleSeedDemo = async () => {
     setSeedingDemo(true);
     try {
-      const res = await apiFetch('/admin/seed', { method: 'POST' });
-      if (res.ok) {
-        const body = await res.json();
-        toast.success(body.message || 'Demo users seeded.');
-        fetchUsers();
-      }
+      const res = await api.post('/admin/seed');
+      toast.success(res.data.message || 'Demo users seeded.');
+      fetchUsers();
     } catch { toast.error('Failed.'); } finally { setSeedingDemo(false); }
   };
 

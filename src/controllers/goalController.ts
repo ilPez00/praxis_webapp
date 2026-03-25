@@ -158,7 +158,7 @@ export const getGoalTree = catchAsync(async (req: Request, res: Response, next: 
  * @param res - The Express response object.
  */
 export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   const nodes = req.body.nodes;
   const rootNodes = req.body.root_nodes || req.body.rootNodes;
 
@@ -406,7 +406,7 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
 export const updateNodeProgress = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const userId = String(req.params.userId);
   const nodeId = String(req.params.nodeId);
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
   if (requesterId !== userId) throw new ForbiddenError('You can only update your own goals.');
 
   // Validate nodeId is not empty

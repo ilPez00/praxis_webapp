@@ -20,7 +20,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AddIcon from '@mui/icons-material/Add';
 import toast from 'react-hot-toast';
-import { AdminChallenge, apiFetch } from './adminTypes';
+import api from '../../../lib/api';
+import { AdminChallenge } from './adminTypes';
 import { Domain } from '../../../models/Domain';
 import { DOMAIN_COLORS } from '../../../types/goal';
 
@@ -41,22 +42,12 @@ const ChallengesTab: React.FC<ChallengesTabProps> = ({ challenges, loading, fetc
     if (!newChallenge.title.trim()) { toast.error('Title is required.'); return; }
     setCreatingChallenge(true);
     try {
-      const res = await apiFetch('/admin/challenges', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newChallenge),
-      });
-      if (res.ok) {
-        const created = await res.json();
-        // Note: parent should re-fetch to get updated list
-        fetchChallenges();
-        setNewChallenge({ title: '', description: '', domain: Domain.BODY_FITNESS, duration_days: 30, reward_points: 100 });
-        toast.success(`Challenge "${created.title}" created!`);
-      } else {
-        const b = await res.json().catch(() => ({}));
-        toast.error((b as any).message || 'Failed to create challenge.');
-      }
-    } catch { toast.error('Failed.'); } finally { setCreatingChallenge(false); }
+      const res = await api.post('/admin/challenges', newChallenge);
+      const created = res.data;
+      fetchChallenges();
+      setNewChallenge({ title: '', description: '', domain: Domain.BODY_FITNESS, duration_days: 30, reward_points: 100 });
+      toast.success(`Challenge "${created.title}" created!`);
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to create challenge.'); } finally { setCreatingChallenge(false); }
   };
 
   return (

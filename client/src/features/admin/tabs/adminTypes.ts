@@ -1,6 +1,3 @@
-import { API_URL } from '../../../lib/api';
-import { supabase } from '../../../lib/supabase';
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface AdminUser {
@@ -111,16 +108,6 @@ export type ConfirmAction =
   | null;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-export const authHeaders = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  return { Authorization: `Bearer ${session?.access_token}` };
-};
-
-export const apiFetch = async (path: string, opts?: RequestInit) => {
-  const headers = await authHeaders();
-  return fetch(`${API_URL}${path}`, { ...opts, headers: { ...headers, ...(opts?.headers || {}) } });
-};
 
 export function downloadCSV(rows: Record<string, unknown>[], filename: string) {
   if (rows.length === 0) return;

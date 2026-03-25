@@ -9,7 +9,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import BuildIcon from '@mui/icons-material/Build';
-import { apiFetch } from './adminTypes';
+import api from '../../../lib/api';
 
 interface ProcessStatus {
   running: boolean;
@@ -43,11 +43,8 @@ const CLITab: React.FC = () => {
   // Fetch current process status
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await apiFetch('/admin/cli/status');
-      if (res.ok) {
-        const data = await res.json();
-        setProcessStatus(data);
-      }
+      const res = await api.get('/admin/cli/status');
+      setProcessStatus(res.data);
     } catch (error) {
       console.error('Failed to fetch CLI status:', error);
     }
@@ -71,37 +68,24 @@ const CLITab: React.FC = () => {
     setLogs(prev => [logEntry, ...prev]);
 
     try {
-      const res = await apiFetch('/admin/cli/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command }),
-      });
+      const res = await api.post('/admin/cli/execute', { command });
+      const data = res.data;
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setLogs(prev => prev.map(log => 
-          log.timestamp === logEntry.timestamp 
-            ? { ...log, status: 'success', output: data.output }
-            : log
-        ));
-        setSnackbar({ open: true, message: data.message || 'Command executed successfully', severity: 'success' });
-        fetchStatus(); // Refresh status
-      } else {
-        setLogs(prev => prev.map(log => 
-          log.timestamp === logEntry.timestamp 
-            ? { ...log, status: 'error', output: data.error }
-            : log
-        ));
-        setSnackbar({ open: true, message: data.error || 'Command failed', severity: 'error' });
-      }
-    } catch (error: any) {
-      setLogs(prev => prev.map(log => 
-        log.timestamp === logEntry.timestamp 
-          ? { ...log, status: 'error', output: error.message }
+      setLogs(prev => prev.map(log =>
+        log.timestamp === logEntry.timestamp
+          ? { ...log, status: 'success', output: data.output }
           : log
       ));
-      setSnackbar({ open: true, message: 'Failed to execute command', severity: 'error' });
+      setSnackbar({ open: true, message: data.message || 'Command executed successfully', severity: 'success' });
+      fetchStatus(); // Refresh status
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to execute command';
+      setLogs(prev => prev.map(log =>
+        log.timestamp === logEntry.timestamp
+          ? { ...log, status: 'error', output: errorMsg }
+          : log
+      ));
+      setSnackbar({ open: true, message: errorMsg, severity: 'error' });
     } finally {
       setLoading(false);
       setDialogOpen(false);

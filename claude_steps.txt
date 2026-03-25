@@ -952,3 +952,29 @@ Batch of 6 UX improvements to reduce friction in the logging loop:
 - Consider: weighted activity calendar, daily effort scores
 
 - Sign: Claude
+
+---
+
+Session 91: Type Safety + API Client Unification (2026-03-25)
+=============================================================
+
+## Summary
+- Removed all 34 unnecessary `(req as any).user?.id` type casts across 14 backend controllers → now `req.user?.id` (Express type augmentation was already working)
+- Migrated all 37 `apiFetch()` calls across 9 admin files to centralized `api` axios client (AdminPage + 8 tabs)
+- Deleted dead code from adminTypes.ts: `apiFetch`, `authHeaders`, unused `API_URL`/`supabase` imports
+
+## Files Modified:
+- Backend (14 controllers): achievementController, adminController, bettingController, challengeController, coachController, completionController, goalController, groupController, marketplaceController, messageController, pointsController, postController, stripeController, userController
+- Frontend (10 files): AdminPage, UsersTab, GroupsTab, ServicesTab, ChallengesTab, DebugTab, CLITab, PlacesImportTab, SystemTab, adminTypes
+
+## Verification:
+- Backend `tsc --noEmit` — clean ✅
+- Frontend `tsc --noEmit` — clean ✅
+- 24 files changed, -113 lines net
+
+## Next Steps:
+- Split mega-components (ChatRoom 1334 lines, ProfilePage 1199 lines)
+- Add input validation/sanitization at API boundaries
+- Consider rate limiting on public endpoints
+
+- Sign: Claude

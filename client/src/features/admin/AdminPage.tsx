@@ -19,8 +19,9 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import {
   AdminUser, AdminGroup, AdminStats, NetworkNode, NetworkEdge,
-  AdminChallenge, AdminService, AdminCoach, apiFetch,
+  AdminChallenge, AdminService, AdminCoach,
 } from './tabs/adminTypes';
+import api from '../../lib/api';
 import UsersTab from './tabs/UsersTab';
 import GroupsTab from './tabs/GroupsTab';
 import StatsTab from './tabs/StatsTab';
@@ -72,69 +73,61 @@ const AdminPage: React.FC = () => {
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
-      const res = await apiFetch('/admin/users');
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(Array.isArray(data) ? data : []);
-      }
+      const res = await api.get('/admin/users');
+      const data = res.data;
+      setUsers(Array.isArray(data) ? data : []);
     } catch { /* ignore */ } finally { setLoadingUsers(false); }
   }, []);
 
   const fetchGroups = useCallback(async () => {
     setLoadingGroups(true);
     try {
-      const res = await apiFetch('/admin/groups');
-      if (res.ok) setGroups(await res.json());
+      const res = await api.get('/admin/groups');
+      setGroups(res.data);
     } catch { /* ignore */ } finally { setLoadingGroups(false); }
   }, []);
 
   const fetchStats = useCallback(async () => {
     setLoadingStats(true);
     try {
-      const res = await apiFetch('/admin/stats');
-      if (res.ok) setStats(await res.json());
+      const res = await api.get('/admin/stats');
+      setStats(res.data);
     } catch { /* ignore */ } finally { setLoadingStats(false); }
   }, []);
 
   const fetchNetwork = useCallback(async () => {
     setLoadingNet(true);
     try {
-      const res = await apiFetch('/admin/network');
-      if (res.ok) {
-        const { nodes, edges } = await res.json();
-        setNetNodes(nodes ?? []);
-        setNetEdges(edges ?? []);
-      }
+      const res = await api.get('/admin/network');
+      const { nodes, edges } = res.data;
+      setNetNodes(nodes ?? []);
+      setNetEdges(edges ?? []);
     } catch { /* ignore */ } finally { setLoadingNet(false); }
   }, []);
 
   const fetchChallenges = useCallback(async () => {
     setLoadingChallenges(true);
     try {
-      const res = await apiFetch('/admin/challenges');
-      if (res.ok) setChallenges(await res.json());
+      const res = await api.get('/admin/challenges');
+      setChallenges(res.data);
     } catch { /* ignore */ } finally { setLoadingChallenges(false); }
   }, []);
 
   const fetchServices = useCallback(async () => {
     setLoadingServices(true);
     try {
-      const res = await apiFetch('/admin/services');
-      if (res.ok) {
-        const data = await res.json();
-        setServices(Array.isArray(data) ? data : []);
-      }
+      const res = await api.get('/admin/services');
+      const data = res.data;
+      setServices(Array.isArray(data) ? data : []);
     } catch { /* ignore */ } finally { setLoadingServices(false); }
   }, []);
 
   const fetchCoaches = useCallback(async () => {
     setLoadingCoaches(true);
     try {
-      const res = await apiFetch('/admin/coaches');
-      if (res.ok) {
-        const data = await res.json();
-        setCoaches(Array.isArray(data) ? data : []);
-      }
+      const res = await api.get('/admin/coaches');
+      const data = res.data;
+      setCoaches(Array.isArray(data) ? data : []);
     } catch { /* ignore */ } finally { setLoadingCoaches(false); }
   }, []);
 

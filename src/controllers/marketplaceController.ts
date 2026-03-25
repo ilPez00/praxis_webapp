@@ -28,7 +28,7 @@ export const getItems = catchAsync(async (_req: Request, res: Response, _next: N
 // POST /marketplace/purchase
 // Body: { itemType, coachUserId?, cost? }
 export const purchase = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   const { itemType, coachUserId, cost: overrideCost } = req.body;
 
   if (!userId)   throw new BadRequestError('Authentication required.');

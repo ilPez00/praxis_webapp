@@ -24,7 +24,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import toast from 'react-hot-toast';
-import { AdminService, ConfirmAction, apiFetch, downloadCSV } from './adminTypes';
+import api from '../../../lib/api';
+import { AdminService, ConfirmAction, downloadCSV } from './adminTypes';
 
 interface ServicesTabProps {
   services: AdminService[];
@@ -39,10 +40,9 @@ const ServicesTab: React.FC<ServicesTabProps> = ({ services, loading, fetchServi
   const handleDeleteService = async (serviceId: string) => {
     setActing(true);
     try {
-      const res = await apiFetch(`/admin/services/${serviceId}`, { method: 'DELETE' });
-      if (res.ok) { fetchServices(); toast.success('Service deleted.'); }
-      else toast.error('Failed to delete service.');
-    } catch { toast.error('Failed.'); } finally { setActing(false); setConfirm(null); }
+      await api.delete(`/admin/services/${serviceId}`);
+      fetchServices(); toast.success('Service deleted.');
+    } catch { toast.error('Failed to delete service.'); } finally { setActing(false); setConfirm(null); }
   };
 
   return (

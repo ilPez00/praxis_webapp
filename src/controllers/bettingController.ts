@@ -65,7 +65,7 @@ async function findDuelOpponent(userId: string, goalName: string): Promise<strin
  * Body: { userId, goalNodeId, goalName, deadline, stakePoints, opponentType: 'self' | 'duel' }
  */
 export const createBet = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   const { goalNodeId, goalName, deadline, stakePoints, opponentType } = req.body;
 
   logger.info('[createBet] Received:', { userId, goalName, deadline, stakePoints, opponentType });
@@ -204,7 +204,7 @@ export const getBetById = catchAsync(async (req: Request, res: Response, _next: 
  */
 export const cancelBet = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { betId } = req.params;
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
 
   if (!userId) throw new BadRequestError('Authentication required.');
 

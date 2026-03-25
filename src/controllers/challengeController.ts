@@ -19,7 +19,7 @@ export const listChallenges = catchAsync(async (req: Request, res: Response, _ne
 
 export const joinChallenge = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { challengeId } = req.params;
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   if (!userId) throw new BadRequestError('Authentication required.');
 
   // Check if already joined (upsert won't tell us)
@@ -48,7 +48,7 @@ export const joinChallenge = catchAsync(async (req: Request, res: Response, _nex
 
 export const leaveChallenge = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { challengeId } = req.params;
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   if (!userId) throw new BadRequestError('Authentication required.');
   await supabase.from('challenge_participants')
     .delete().eq('challenge_id', challengeId).eq('user_id', userId);

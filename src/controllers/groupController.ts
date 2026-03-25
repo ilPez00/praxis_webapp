@@ -107,7 +107,7 @@ export const leaveRoom = catchAsync(async (req: Request, res: Response, next: Ne
  */
 export const getRoomMessages = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { roomId } = req.params;
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
 
   // Verify requester is a member of this room
   if (requesterId) {

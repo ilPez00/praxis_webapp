@@ -11,7 +11,7 @@ import PlaceIcon from '@mui/icons-material/Place';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { apiFetch } from './adminTypes';
+import api from '../../../lib/api';
 
 // Fix leaflet default icon
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -173,19 +173,10 @@ const PlacesImportTab: React.FC = () => {
     else setImporting(true);
 
     try {
-      const res = await apiFetch('/admin/import-osm-places', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city, dryRun }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || 'Import failed.');
-        return;
-      }
-      setResult(data);
-    } catch (err) {
-      setError('Import request failed. Is the backend running?');
+      const res = await api.post('/admin/import-osm-places', { city, dryRun });
+      setResult(res.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Import request failed. Is the backend running?');
     } finally {
       setImporting(false);
       setDryRunning(false);

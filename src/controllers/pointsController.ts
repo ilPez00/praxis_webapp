@@ -23,7 +23,7 @@ export const getCatalogue = (_req: Request, res: Response) => {
 };
 
 export const getBalance = catchAsync(async (req: Request, res: Response) => {
-  const userId: string = (req as any).user?.id;
+  const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
   const { data: profile } = await supabase
@@ -50,7 +50,7 @@ export const getBalance = catchAsync(async (req: Request, res: Response) => {
 
 export const spendPoints = catchAsync(async (req: Request, res: Response) => {
   const { item, nodeId } = req.body as { item?: string; nodeId?: string };
-  const userId: string = (req as any).user?.id;
+  const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: 'Authentication required' });
   if (!item || !SPEND_CATALOGUE[item]) {
     throw new BadRequestError(`Unknown item "${item}". Valid items: ${Object.keys(SPEND_CATALOGUE).join(', ')}`);

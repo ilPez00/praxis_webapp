@@ -15,7 +15,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import StorageIcon from '@mui/icons-material/Storage';
 import SpeedIcon from '@mui/icons-material/Speed';
 import SecurityIcon from '@mui/icons-material/Security';
-import { apiFetch } from './adminTypes';
+import api from '../../../lib/api';
 
 interface SystemHealth {
   database: { status: string; size: string; connections: number };
@@ -42,8 +42,8 @@ const DebugTab: React.FC = () => {
   const fetchHealth = async () => {
     setLoadingHealth(true);
     try {
-      const res = await apiFetch('/admin/debug/health');
-      if (res.ok) setHealth(await res.json());
+      const res = await api.get('/admin/debug/health');
+      setHealth(res.data);
     } catch (err) {
       console.error('Failed to fetch health:', err);
     } finally {
@@ -53,8 +53,8 @@ const DebugTab: React.FC = () => {
 
   const fetchErrors = async () => {
     try {
-      const res = await apiFetch('/admin/debug/errors?limit=20');
-      if (res.ok) setRecentErrors(await res.json());
+      const res = await api.get('/admin/debug/errors?limit=20');
+      setRecentErrors(res.data);
     } catch (err) {
       console.error('Failed to fetch errors:', err);
     }
@@ -63,7 +63,7 @@ const DebugTab: React.FC = () => {
   const runDiagnostics = async () => {
     setTesting(true);
     setTestResults([]);
-    
+
     const results: string[] = [];
     const tests = [
       { name: 'Database Connection', endpoint: '/admin/debug/test/db' },
@@ -75,12 +75,8 @@ const DebugTab: React.FC = () => {
 
     for (const test of tests) {
       try {
-        const res = await apiFetch(test.endpoint);
-        if (res.ok) {
-          results.push(`✅ ${test.name}: OK`);
-        } else {
-          results.push(`❌ ${test.name}: FAILED`);
-        }
+        await api.get(test.endpoint);
+        results.push(`✅ ${test.name}: OK`);
       } catch (err: any) {
         results.push(`❌ ${test.name}: ${err.message || 'Error'}`);
       }

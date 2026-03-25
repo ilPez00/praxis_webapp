@@ -148,7 +148,7 @@ const UPDATABLE_PROFILE_FIELDS = new Set([
 
 export const updateUserProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id } = req.params as { id: string };
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
   if (!requesterId || requesterId !== id) {
     throw new BadRequestError('You can only update your own profile.');
   }
@@ -235,7 +235,7 @@ export const getNearbyUsers = catchAsync(async (req: Request, res: Response, _ne
  * Marks onboarding_completed = true for the given userId.
  */
 export const completeOnboarding = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   if (!userId) throw new BadRequestError('Authentication required.');
   // Check if already onboarded (idempotent — don't double-grant PP)
   const { data: existing } = await supabase
@@ -263,7 +263,7 @@ export const completeOnboarding = catchAsync(async (req: Request, res: Response,
  */
 export const verifyIdentity = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id } = req.params;
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
 
   if (id !== requesterId) {
     return res.status(403).json({ error: 'You can only verify your own identity.' });

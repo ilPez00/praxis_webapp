@@ -305,7 +305,7 @@ export const getUserPosts = catchAsync(async (req: Request, res: Response, _next
 // Body: { userId, userName, userAvatarUrl?, content, mediaUrl?, mediaType?, context }
 // ---------------------------------------------------------------------------
 export const createPost = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   const { userName, userAvatarUrl, title, content, mediaUrl, mediaType, context, reference } = req.body;
 
   logger.info('[createPost] Received request:', {
@@ -381,7 +381,7 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
 // ---------------------------------------------------------------------------
 export const deletePost = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id } = req.params;
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
 
   if (!userId) throw new BadRequestError('Authentication required.');
 
@@ -402,7 +402,7 @@ export const deletePost = catchAsync(async (req: Request, res: Response, _next: 
 // ---------------------------------------------------------------------------
 export const toggleLike = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id: postId } = req.params;
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
 
   if (!userId) throw new BadRequestError('Authentication required.');
 
@@ -470,7 +470,7 @@ export const getComments = catchAsync(async (req: Request, res: Response, _next:
 // ---------------------------------------------------------------------------
 export const addComment = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { id: postId } = req.params;
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   const { userName, userAvatarUrl, content } = req.body;
 
   if (!userId) throw new BadRequestError('Authentication required.');
@@ -502,7 +502,7 @@ export const addComment = catchAsync(async (req: Request, res: Response, _next: 
 // ---------------------------------------------------------------------------
 export const deleteComment = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const { commentId } = req.params;
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
 
   if (!userId) throw new BadRequestError('Authentication required.');
 

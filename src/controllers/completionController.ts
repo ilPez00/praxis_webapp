@@ -12,7 +12,7 @@ import { pushNotification } from './notificationController';
  * 'completion_request' message in the requester→verifier DM thread.
  */
 export const createCompletionRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const requesterId = (req as any).user?.id;
+  const requesterId = req.user?.id;
   const { verifierId, goalNodeId, goalName, evidenceUrl } = req.body;
 
   if (!requesterId) {
@@ -89,7 +89,7 @@ export const createCompletionRequest = catchAsync(async (req: Request, res: Resp
  */
 export const respondToCompletionRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
-  const verifierId = (req as any).user?.id;
+  const verifierId = req.user?.id;
   const { approved } = req.body;
 
   if (!verifierId) {
@@ -207,7 +207,7 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
  * Returns pending completion_requests where the authenticated user is the verifier.
  */
 export const getPendingRequests = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   if (!userId) throw new BadRequestError('Authentication required.');
 
   const { data, error } = await supabase

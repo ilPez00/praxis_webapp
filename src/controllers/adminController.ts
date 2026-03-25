@@ -109,7 +109,7 @@ export const seedDemoUsers = catchAsync(async (req: Request, res: Response, next
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
   // When called via JWT-secured route (/admin/seed), req.user is set by authenticateToken + requireAdmin
-  const isJwtAdmin = !!(req as any).user?.id;
+  const isJwtAdmin = !!req.user?.id;
   if (!isSecretAuth && !isJwtAdmin) {
     throw new UnauthorizedError('Invalid or missing admin secret.');
   }
@@ -202,7 +202,7 @@ export const seedDemoUsers = catchAsync(async (req: Request, res: Response, next
 export const deleteDemoUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
-  const isJwtAdmin = !!(req as any).user?.id;
+  const isJwtAdmin = !!req.user?.id;
   if (!isSecretAuth && !isJwtAdmin) {
     throw new UnauthorizedError('Invalid or missing admin secret.');
   }
@@ -835,7 +835,7 @@ export const listAllCoaches = catchAsync(async (_req: Request, res: Response) =>
 export const decayPoints = catchAsync(async (req: Request, res: Response) => {
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
-  const isJwtAdmin = !!(req as any).user?.id;
+  const isJwtAdmin = !!req.user?.id;
   if (!isSecretAuth && !isJwtAdmin) {
     throw new UnauthorizedError('Admin authentication required.');
   }
@@ -971,7 +971,7 @@ export const togglePremium = catchAsync(async (req: Request, res: Response) => {
 export const leaderboardBonus = catchAsync(async (req: Request, res: Response) => {
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
-  const isJwtAdmin = !!(req as any).user?.id;
+  const isJwtAdmin = !!req.user?.id;
   if (!isSecretAuth && !isJwtAdmin) throw new UnauthorizedError('Admin authentication required.');
 
   // Fetch top 100 by praxis_points
@@ -1169,7 +1169,7 @@ export const generateAllBriefs = catchAsync(async (_req: Request, res: Response)
 export const streakAlerts = catchAsync(async (req: Request, res: Response) => {
   const adminSecret = process.env.ADMIN_SECRET;
   const isSecretAuth = adminSecret && req.headers['x-admin-secret'] === adminSecret;
-  const isJwtAdmin = !!(req as any).user?.id;
+  const isJwtAdmin = !!req.user?.id;
   if (!isSecretAuth && !isJwtAdmin) throw new UnauthorizedError('Admin authentication required.');
 
   const today = new Date().toISOString().slice(0, 10);
@@ -1222,7 +1222,7 @@ export const importOSMPlacesEndpoint = catchAsync(async (req: Request, res: Resp
   }
 
   // Use the authenticated admin's ID as the owner of imported places
-  const ownerId = (req as any).user?.id;
+  const ownerId = req.user?.id;
   if (!ownerId) throw new UnauthorizedError('Admin user ID required');
 
   const result = await importOSMPlaces(city, ownerId, {
