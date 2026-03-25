@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { DOMAIN_COLORS, DOMAIN_ICONS, GoalNode as FrontendGoalNode } from '../../types/goal';
+import { DOMAIN_TRACKER_MAP } from '../../features/trackers/trackerTypes';
 import { getGeneralSuggestions, getSuggestionsForDomain, LoggingSuggestion } from '../../utils/loggingSuggestions';
 import NoteGoalDetail from '../../features/notes/NoteGoalDetail';
 import NoteAttachmentBar from './NoteAttachmentBar';
@@ -66,6 +67,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   const [freeAttachments, setFreeAttachments] = useState<Attachment[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<LoggingSuggestion[]>([]);
+  const [todayLogCounts, setTodayLogCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!open || !user?.id) return;
@@ -76,7 +78,9 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
     setMood(null);
     setFreeAttachments([]);
 
-    // Fetch goals + bets in parallel
+    // Fetch goals + bets + today's tracker logs in parallel
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
     Promise.all([
       supabase
         .from('goal_trees')
@@ -88,13 +92,27 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'active'),
-    ]).then(([treeRes, betsRes]) => {
+      api.get('/trackers/my?days=1').catch(() => ({ data: [] })),
+    ]).then(([treeRes, betsRes, trackersRes]) => {
       if (treeRes.data?.nodes && Array.isArray(treeRes.data.nodes)) {
         const all = treeRes.data.nodes as RawGoalNode[];
         setRawNodes(all);
         setGoals(all.filter(n => n.status !== 'suspended' && n.status !== 'completed'));
       }
       setActiveBets(Array.isArray(betsRes.data) ? betsRes.data : []);
+
+      // Count today's entries per tracker type
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const counts: Record<string, number> = {};
+      const trackers = Array.isArray(trackersRes.data) ? trackersRes.data : [];
+      for (const t of trackers) {
+        const todayEntries = Array.isArray(t.entries)
+          ? t.entries.filter((e: any) => e.logged_at?.slice(0, 10) === todayStr)
+          : [];
+        if (todayEntries.length > 0) counts[t.type] = todayEntries.length;
+      }
+      setTodayLogCounts(counts);
+
       setLoading(false);
     });
   }, [open, user?.id]);
@@ -415,6 +433,9 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
                   const color = domainColor(goal.domain);
                   const icon = DOMAIN_ICONS[goal.domain] || '🎯';
                   const pct = Math.round((goal.progress || 0) * 100);
+                  // Count today's logs for this goal's domain trackers
+                  const domainTrackerIds = DOMAIN_TRACKER_MAP[goal.domain] || [];
+                  const domainLogCount = domainTrackerIds.reduce((sum, tid) => sum + (todayLogCounts[tid] || 0), 0);
                   return (
                     <Box
                       key={goal.id}
@@ -438,6 +459,18 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
                           {goal.domain}
                         </Typography>
                       </Box>
+                      {domainLogCount > 0 && (
+                        <Chip
+                          label={`${domainLogCount} logged`}
+                          size="small"
+                          sx={{
+                            fontSize: '0.6rem', fontWeight: 800, height: 22,
+                            bgcolor: `${color}20`,
+                            color,
+                            border: `1px solid ${color}40`,
+                          }}
+                        />
+                      )}
                       <Typography sx={{ fontSize: '0.85rem', fontWeight: 900, color }}>
                         {pct}%
                       </Typography>
