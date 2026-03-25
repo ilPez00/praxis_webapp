@@ -3,6 +3,7 @@ import { Box, Typography, CircularProgress, Chip, IconButton } from '@mui/materi
 import CloseIcon from '@mui/icons-material/Close';
 import { supabase } from '../../lib/supabase';
 import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
+import ContentRenderer from '../../components/common/ContentRenderer';
 
 interface DayEntry {
   id: string;
@@ -353,13 +354,15 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({ userId, date, onClose }) 
                   </Box>
 
                   {entry.detail && (
-                    <Typography sx={{
-                      fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.5,
-                      display: '-webkit-box', WebkitLineClamp: 4,
-                      WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                    }}>
-                      {entry.detail}
-                    </Typography>
+                    <ContentRenderer
+                      content={entry.detail}
+                      variant="comment"
+                      sx={{
+                        fontSize: '0.72rem',
+                        color: 'rgba(255,255,255,0.55)',
+                        lineHeight: 1.5,
+                      }}
+                    />
                   )}
                 </Box>
               </Box>

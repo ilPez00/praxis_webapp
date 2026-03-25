@@ -7,6 +7,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import GlassCard from '../../components/common/GlassCard';
+import ContentRenderer from '../../components/common/ContentRenderer';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
@@ -382,9 +383,11 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               </Box>
-              <Typography sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                {note.content}
-              </Typography>
+              <ContentRenderer
+                content={note.content}
+                variant="comment"
+                sx={{ whiteSpace: 'pre-wrap' }}
+              />
             </GlassCard>
           ))}
         </Stack>
