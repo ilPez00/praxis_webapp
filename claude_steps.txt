@@ -901,3 +901,54 @@ Performed comprehensive audit of 12 open Dependabot PRs, categorized by risk, an
 - 41b064c: chore: clarify AxiomUnifiedScanService TODOs
 
 - Sign: Claude
+
+Session 90: Notebook & Logging UX Improvements (2026-03-25)
+
+## Summary
+Batch of 6 UX improvements to reduce friction in the logging loop:
+
+### Bug Fixes
+- Fixed DOMAIN_ICONS and DOMAIN_COLORS using non-existent old enum keys (same root cause as DOMAIN_TRACKER_MAP fix in session 84)
+- Fixed tracker entries disappearing after logging — React object identity in useEffect deps caused row reset. Added useRef guard + auto-save template on every log entry
+
+### Notebook Improvements (batch 1)
+1. **Repeat last entry** — button on tracker forms to re-fill rows from most recent entry
+2. **Search bar in DiaryFeed** — client-side filtering across title, detail, goal name
+3. **Time-of-day smart sorting** — QuickLog topics sorted by time-relevant domains (morning→fitness, midday→career, etc.)
+
+### Notebook Improvements (batch 2)
+4. **Starter templates for all 20 tracker types** — was only 5, now every tracker has sensible defaults on first use
+5. **Log count badges** — "N logged" chips on goal selector cards in QuickLog showing today's tracker entry counts
+6. **Delete tracker entries** — new DELETE /trackers/entries/:id endpoint + trash icon on "Logged today" entries with confirmation
+
+### Also
+- Moved "Logged today" section to below all widgets/trackers, above the activity graph
+- Extended makeEmptyRow() for books, music, hangout, budget, investments, gaming, streaming, project types
+
+## Files Modified
+- client/src/types/goal.ts (DOMAIN_ICONS, DOMAIN_COLORS fix)
+- client/src/features/trackers/EditableTrackerForm.tsx (repeat last, useRef guard, auto-save template, starter templates, makeEmptyRow)
+- client/src/features/notes/NoteGoalDetail.tsx (logged today section, delete entries)
+- client/src/features/notes/DiaryFeed.tsx (search bar)
+- client/src/components/common/QuickLogDialog.tsx (time-of-day sorting, log count badges)
+- src/controllers/trackerController.ts (deleteTrackerEntry, include id in select)
+- src/routes/trackerRoutes.ts (DELETE /trackers/entries/:id route)
+
+## Verification
+- All changes committed, no build errors expected
+- 9 commits total across 2 conversation contexts
+
+## Commits
+- ae855bd: feat: add "Repeat last entry" button to tracker forms
+- 1778f2d: feat: add search bar to Unified Notebook Feed
+- 931348a: feat: time-of-day smart sorting for QuickLog topics
+- 422ad71: feat: add starter templates for all tracker types
+- 3ebb9c5: feat: show today's log count badges on goal selector cards
+- f2811aa: feat: add delete action for logged tracker entries
+
+## Next
+- Type check (client + backend)
+- Test delete endpoint manually
+- Consider: weighted activity calendar, daily effort scores
+
+- Sign: Claude
