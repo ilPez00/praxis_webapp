@@ -128,19 +128,63 @@ app.use(
 
 ## 🚧 In Progress (v1.3.0 Professional Improvements)
 
-### Priority 2.1: Add Input Validation with Zod (IN PROGRESS)
+### Priority 2.1: Add Input Validation with Zod (DONE ✅)
 
-**Status:** Next up - implementing validation schemas for priority endpoints
+**Date:** March 25, 2026  
+**Effort:** 2 hours  
+**Impact:** Security hardening, API reliability
 
-**Priority Endpoints to Validate:**
+**Installed:** `zod` validation library
 
-1. `POST /auth/register` - email, password, name
-2. `POST /auth/login` - email, password
-3. `POST /trackers/entries` - tracker_id, data
-4. `POST /messages/send` - receiverId, content
-5. `POST /goals` - name, domain
+**Schemas Created:**
 
-**Estimated Completion:** 4 hours
+- `src/schemas/userSchemas.ts` - Registration, login, profile updates
+- `src/schemas/trackerSchemas.ts` - Tracker entries, creation
+- `src/schemas/messageSchemas.ts` - Messages, chat rooms
+- `src/schemas/goalSchemas.ts` - Goal creation, progress updates
+
+**Middleware:**
+
+- `src/middleware/validateRequest.ts` - Reusable validation middleware
+
+**Endpoints Protected:**
+
+- `POST /auth/signup` - Email format, password strength (8+ chars, letter+number)
+- `POST /auth/login` - Email, password required
+- `POST /trackers/log` - UUID validation, data structure
+- `POST /messages/` - Receiver ID, content length (max 5000 chars)
+- `POST /goals/:userId/node` - Domain enum, name length, future dates
+
+**Error Response Format:**
+
+```json
+{
+  "error": "VALIDATION_ERROR",
+  "message": "Invalid input data",
+  "details": [
+    { "field": "email", "message": "Invalid email format" },
+    { "field": "password", "message": "Password must be at least 8 characters" }
+  ]
+}
+```
+
+**Commit:** `c434c68` - "feat: add Zod input validation"
+
+---
+
+## 🎯 Quick Wins (Priority 4.2 + API Docs) - IN PROGRESS
+
+### Health Endpoint for Uptime Monitoring
+
+**Status:** Implementing now  
+**Effort:** 15 minutes  
+**Impact:** SLA visibility, incident detection
+
+### API Documentation
+
+**Status:** Next up  
+**Effort:** 1 hour  
+**Impact:** Developer experience, external integrations
 
 ---
 

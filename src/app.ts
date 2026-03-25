@@ -52,6 +52,7 @@ import scheduleRoutes from './routes/scheduleRoutes';
 import narrativeRoutes from './routes/narrativeRoutes';
 import publicWidgetRoutes from './routes/publicWidgetRoutes';
 import adminCLIRoutes from './routes/adminCLIRoutes';
+import healthRoutes from './routes/healthRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -186,6 +187,9 @@ apiRouter.use('/narratives', generalLimiter, narrativeRoutes);
 apiRouter.use('/sparring', generalLimiter, sparringRoutes);
 
 app.use('/api', apiRouter);
+
+// Health check endpoints (no auth required - for monitoring)
+app.use('/health', healthRoutes);
 
 // Root level health check for Vercel functions compatibility
 app.get('/', (_req, res) => res.json({ message: 'Praxis API Entry Point' }));
