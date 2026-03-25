@@ -175,7 +175,7 @@ export const getMyTrackers = catchAsync(async (req: Request, res: Response) => {
   const trackerIds = trackers.map(t => t.id);
   const { data: entries } = await supabase
     .from('tracker_entries')
-    .select('tracker_id, data, logged_at')
+    .select('id, tracker_id, data, logged_at')
     .in('tracker_id', trackerIds)
     .gte('logged_at', since)
     .order('logged_at', { ascending: false });
@@ -406,4 +406,38 @@ export const logTracker = catchAsync(async (req: Request, res: Response) => {
     });
 
   res.json({ ok: true, ppAwarded: PP_PER_LOG });
+});
+
+/**
+ * DELETE /trackers/entries/:id
+ * Delete a tracker entry (only if owned by the user)
+ */
+export const deleteTrackerEntry = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const { id } = req.params;
+  if (!id) throw new BadRequestError('Entry ID is required.');
+
+  // Verify the entry belongs to the user
+  const { data: entry, error: fetchErr } = await supabase
+    .from('tracker_entries')
+    .select('id, user_id')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchErr || !entry) {
+    return res.status(404).json({ message: 'Entry not found.' });
+  }
+
+  const { error: delErr } = await supabase
+    .from('tracker_entries')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (delErr) throw new Error(`Failed to delete entry: ${delErr.message}`);
+
+  res.json({ ok: true });
 });

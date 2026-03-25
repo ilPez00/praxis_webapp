@@ -12,6 +12,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import FlagIcon from '@mui/icons-material/Flag';
 import HistoryIcon from '@mui/icons-material/History';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import GlassCard from '../../components/common/GlassCard';
 import GoalActivityGraph from './GoalActivityGraph';
 import { GoalNode as FrontendGoalNode, DOMAIN_COLORS } from '../../types/goal';
@@ -422,6 +423,24 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
                   <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', ml: 'auto' }}>
                     {new Date(entry.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Typography>
+                  {entry.id && (
+                    <Tooltip title="Delete entry">
+                      <IconButton
+                        size="small"
+                        onClick={async () => {
+                          if (!window.confirm('Delete this entry?')) return;
+                          try {
+                            await api.delete(`/trackers/entries/${entry.id}`);
+                            toast.success('Entry deleted');
+                            fetchTrackers();
+                          } catch { toast.error('Failed to delete'); }
+                        }}
+                        sx={{ p: 0.25, color: 'rgba(255,255,255,0.2)', '&:hover': { color: '#EF4444' } }}
+                      >
+                        <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </Box>
                 {(entry.data?.items || []).map((item: any, ii: number) => (
                   <Box key={ii} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.25 }}>
