@@ -21,6 +21,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 
 interface Tracker { id: string; type: string; goal: any; }
 
@@ -30,6 +31,7 @@ interface TrackerWidgetProps {
 
 const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
   const navigate = useNavigate();
+  const getLocation = useCurrentLocation();
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [todayCounts, setTodayCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -156,9 +158,10 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
     
     setSaving(true);
     try {
+      const loc = getLocation();
       await api.post('/trackers/log', {
         type: tracker.type,
-        data: logData,
+        data: { ...logData, ...(loc && { _location: loc }) },
       });
 
       toast.success(`Logged: ${item.name}`);
@@ -204,9 +207,10 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
     if (!logTracker) return;
     setSaving(true);
     try {
+      const loc = getLocation();
       await api.post('/trackers/log', {
         type: logTracker.type,
-        data: data,
+        data: { ...data, ...(loc && { _location: loc }) },
       });
 
       toast.success('Logged!');

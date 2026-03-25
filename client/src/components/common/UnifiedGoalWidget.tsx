@@ -12,6 +12,7 @@ import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 import { DOMAIN_TRACKER_MAP, TRACKER_TYPES } from '../../features/trackers/trackerTypes';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import { findWidget } from '../../features/dashboard/components/GoalWidgets';
 import type { WidgetGoalNode } from '../../features/dashboard/components/GoalWidgets';
 import EditableTrackerForm from '../../features/trackers/EditableTrackerForm';
@@ -129,6 +130,7 @@ function MiniChart({ entries, chartKey, color, unit }: {
 const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
   goal, allNodes, userId, activeBets, onSaved,
 }) => {
+  const getLocation = useCurrentLocation();
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState('');
@@ -180,11 +182,13 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
       });
 
       // Dual-write to notebook_entries
+      const loc = getLocation();
       await api.post('/notebook/entries', {
         entry_type: 'note', title: goal.name, content: contentText,
         mood: mood || undefined, goal_id: goal.id,
         domain: goal.domain || undefined, source_table: 'node_journal_entries',
         attachments: attachments.length > 0 ? attachments : undefined,
+        ...(loc && { location_lat: loc.lat, location_lng: loc.lng }),
       });
 
       toast.success(`Logged on "${goal.name}"!`);
@@ -386,7 +390,8 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
               tracker={effectiveTracker ? { ...effectiveTracker, def: effectiveTrackerConfig!, goal: effectiveTracker.goal } : { id: '', type: effectiveType || '', def: effectiveTrackerConfig!, goal: {} }}
               onSave={async (data) => {
                 if (!effectiveType) return;
-                const res = await api.post('/trackers/log', { type: effectiveType, data });
+                const loc = getLocation();
+                const res = await api.post('/trackers/log', { type: effectiveType, data: { ...data, ...(loc && { _location: loc }) } });
                 if (res.data?.limitReached) {
                   toast.error('Daily limit reached (3 per goal)');
                   return;

@@ -18,6 +18,7 @@ import GoalActivityGraph from './GoalActivityGraph';
 import { GoalNode as FrontendGoalNode, DOMAIN_COLORS } from '../../types/goal';
 import { DOMAIN_TRACKER_MAP, TRACKER_TYPES } from '../trackers/trackerTypes';
 import api from '../../lib/api';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import EditableTrackerForm from '../trackers/EditableTrackerForm';
 import { findWidget } from '../dashboard/components/GoalWidgets';
 import type { WidgetGoalNode } from '../dashboard/components/GoalWidgets';
@@ -229,6 +230,7 @@ function ObjectiveRow({ config, currentGoal, onSave }: {
 const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
   node, allNodes, userId, activeBets, onProgressUpdate, focusedTrackerType,
 }) => {
+  const getLocation = useCurrentLocation();
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -391,7 +393,8 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
             tracker={{ ...dt.tracker, def: dt.config, goal: dt.tracker.goal }}
             entries={dt.tracker.entries || []}
             onSave={async (data) => {
-              await api.post('/trackers/log', { type: dt.config.id, data });
+              const loc = getLocation();
+              await api.post('/trackers/log', { type: dt.config.id, data: { ...data, ...(loc && { _location: loc }) } });
               toast.success('Entry logged!');
               fetchTrackers();
             }}

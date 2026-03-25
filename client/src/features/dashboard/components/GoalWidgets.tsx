@@ -21,6 +21,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import GlassCard from '../../../components/common/GlassCard';
 import { supabase } from '../../../lib/supabase';
 import api from '../../../lib/api';
+import { useCurrentLocation } from '../../../hooks/useCurrentLocation';
 import { DOMAIN_COLORS } from '../../../types/goal';
 import { FieldConfig, ObjectiveField, WidgetConfig, findWidget } from './widgetConfigs';
 
@@ -229,6 +230,7 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
   onObjectiveSaved: (type: string, goal: Record<string, any>) => Promise<void>;
   onProgressUpdate: (nodeId: string, newProgress: number) => void;
 }) {
+  const getLocation = useCurrentLocation();
   const [logTracker, setLogTracker] = useState<any>(null); // For Full Log dialog
   const [manageMode, setManageMode] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
@@ -268,9 +270,10 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
     if (!config) return;
     setSaving(true);
     try {
+      const loc = getLocation();
       await api.post('/trackers/log', {
         type: config.type,
-        data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }] }
+        data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }], ...(loc && { _location: loc }) }
       });
       toast.success(`${config.emoji} Logged: ${item.name}`);
       onLogged();
@@ -659,7 +662,8 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
             onClose={() => setLogTracker(null)}
             tracker={logTracker ? { id: tracker?.id || '', type: config.type, def: config } : null}
             onSave={async (data) => {
-              await api.post('/trackers/log', { type: config.type, data });
+              const loc = getLocation();
+              await api.post('/trackers/log', { type: config.type, data: { ...data, ...(loc && { _location: loc }) } });
               onLogged();
             }}
             saving={saving}

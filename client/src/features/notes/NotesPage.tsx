@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import toast from 'react-hot-toast';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
 import NotesCardTree from './NotesCardTree';
@@ -88,6 +89,7 @@ const NOTES_ACTIONS: ActionItem[] = [
 
 const NotesPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
+  const getLocation = useCurrentLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -395,9 +397,11 @@ const NotesPage: React.FC = () => {
     
     setLogSaving(true);
     try {
+      const loc = getLocation();
+      const logData = data.items ? { items: data.items } : data;
       await api.post(`/trackers/log`, {
         type: logTrackerData.type,
-        data: data.items ? { items: data.items } : data,
+        data: { ...logData, ...(loc && { _location: loc }) },
         goalNodeId: selectedNode?.id,
       });
 

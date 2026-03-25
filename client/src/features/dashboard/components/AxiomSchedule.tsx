@@ -27,6 +27,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EventIcon from '@mui/icons-material/Event';
 import api from '../../lib/api';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import toast from 'react-hot-toast';
 import GlassCard from '../../components/common/GlassCard';
 
@@ -113,6 +114,7 @@ const priorityColors: Record<string, string> = {
 };
 
 const AxiomSchedule: React.FC<AxiomScheduleProps> = ({ userId, selectedDate, onSlotComplete }) => {
+  const getLocation = useCurrentLocation();
   const [schedule, setSchedule] = useState<DailySchedule | null>(null);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
@@ -254,6 +256,7 @@ ${shareableSlot.suggestions.event ? `🎯 **Suggested Event:** ${shareableSlot.s
 
 *From Axiom's daily schedule for ${shareableSlot.schedule.date}*`;
 
+      const loc = getLocation();
       const response = await api.post('/diary/entries', {
         entry_type: 'schedule_share',
         title: `Schedule: ${shareableSlot.slot.timeLabel} - ${shareableSlot.slot.task}`,
@@ -266,6 +269,7 @@ ${shareableSlot.suggestions.event ? `🎯 **Suggested Event:** ${shareableSlot.s
           category: shareableSlot.slot.category,
           priority: shareableSlot.slot.priority,
         },
+        ...(loc && { location_lat: loc.lat, location_lng: loc.lng }),
         is_private: false, // Shareable to accountability network
       });
 

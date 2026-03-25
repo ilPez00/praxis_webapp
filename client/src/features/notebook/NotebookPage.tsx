@@ -33,6 +33,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import api from '../../lib/api';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import NoteEditDialog from './NoteEditDialog';
 import ShareDialog from '../../components/common/ShareDialog';
 import ContentRenderer from '../../components/common/ContentRenderer';
@@ -90,6 +91,7 @@ interface NotebookEntry {
 
 const NotebookPage: React.FC = () => {
   const { user } = useUser();
+  const getLocation = useCurrentLocation();
   const navigate = useNavigate();
   const [entries, setEntries] = useState<NotebookEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,6 +210,7 @@ const NotebookPage: React.FC = () => {
     if (!replyText.trim() || !user?.id) return;
     setReplySaving(true);
     try {
+      const loc = getLocation();
       const res = await api.post('/notebook/entries', {
         user_id: user.id,
         entry_type: 'note',
@@ -219,6 +222,7 @@ const NotebookPage: React.FC = () => {
           reply_to_type: parentEntry.entry_type,
         },
         attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
+        ...(loc && { location_lat: loc.lat, location_lng: loc.lng }),
       });
       setEntries(prev => [res.data, ...prev]);
       setReplyText('');

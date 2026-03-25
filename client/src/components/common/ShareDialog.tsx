@@ -19,6 +19,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 
 interface ShareDialogProps {
   open: boolean;
@@ -52,6 +53,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
   metadata = {},
   onSuccess,
 }) => {
+  const getLocation = useCurrentLocation();
   const [activeTab, setActiveTab] = useState<'diary' | 'social' | 'praxis'>('diary');
   const [diaryNote, setDiaryNote] = useState('');
   const [diaryTags, setDiaryTags] = useState('');
@@ -125,20 +127,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
       }
       fullContent += `*Shared from ${sourceTable.replace('_', ' ')}*`;
 
-      // Get current location if available
-      let latitude, longitude, location_name;
-      if (navigator.geolocation) {
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-          });
-          latitude = position.coords.latitude;
-          longitude = position.coords.longitude;
-          location_name = 'Current Location';
-        } catch (err) {
-          console.debug('Location not available');
-        }
-      }
+      const loc = getLocation();
 
       // Use notebook endpoint instead of diary
       await api.post('/notebook/entries', {
@@ -148,7 +137,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
         source_table: sourceTable,
         source_id: sourceId,
         tags: tagArray.length > 0 ? tagArray : null,
-        metadata: location_name ? { latitude, longitude, location_name } : undefined,
+        ...(loc && { location_lat: loc.lat, location_lng: loc.lng }),
       });
 
       toast.success('Saved to notebook!');

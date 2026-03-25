@@ -1114,9 +1114,43 @@ Comprehensive codebase inspection and cleanup:
    - Then react-leaflet 5.0.0 will work
    - Then @vitejs/plugin-react 6.0.1 will work (requires Vite 8)
 2. **TODO Optimization**: Implement `estimateAllGoalProgressWithUserData()` in AxiomUnifiedScanService
-3. **Split Mega-Components**: 
+3. **Split Mega-Components**:
    - ChatRoom: integrate dialog stubs, extract MessageComposer, FeedbackForm
    - ProfilePage.tsx (1199 LOC) - not started
 4. **Pre-existing Issues**: 5 tests fail in api.test.ts (assertion issues)
+
+- Sign: Claude
+
+---
+
+# Session 93: Geolocation on All Entries (2026-03-25)
+
+## What Changed
+- Added `useCurrentLocation` hook to all tracker and notebook entry creation points
+- **Tracker entries** (5 files): location stored as `_location: { lat, lng, accuracy? }` in existing JSONB `data` column — no migration needed
+- **Notebook entries** (4 files): location sent as `location_lat` / `location_lng` fields (columns added by Gemini in migration `2026-03-25-add-notebook-location-tracking.sql`)
+- **ShareDialog.tsx**: replaced 10-line inline `navigator.geolocation.getCurrentPosition` block with single `getLocation()` call from hook; removed dead variables
+- DiaryPage skipped (already has its own location system)
+- QuickLogDialog + GoalNotesPanel already done by prior agent
+
+## Files Modified
+- `client/src/features/trackers/TrackerWidget.tsx` — hook + 2 tracker log calls
+- `client/src/features/dashboard/components/GoalWidgets.tsx` — hook in UnifiedGoalCard + 2 tracker log calls
+- `client/src/features/notes/NoteGoalDetail.tsx` — hook + 1 tracker log call
+- `client/src/components/common/UnifiedGoalWidget.tsx` — hook + 1 tracker + 1 notebook call
+- `client/src/features/notes/NotesPage.tsx` — hook + 1 tracker log call
+- `client/src/features/notebook/NotebookPage.tsx` — hook + 1 notebook reply call
+- `client/src/features/dashboard/components/AxiomSchedule.tsx` — hook + 1 diary entry call
+- `client/src/components/common/ShareButton.tsx` — hook + 1 notebook call
+- `client/src/components/common/ShareDialog.tsx` — hook, replaced inline geolocation, 1 notebook call
+
+## Verification
+- Frontend TypeScript: ✅ Passes (`npx tsc --noEmit` clean)
+- Approach: "eager" geolocation — `useCurrentLocation` caches position on mount if permission already granted; `getLocation()` returns cached value synchronously (never blocks saves)
+
+## Next
+- Run SQL migration for notebook location columns (if not already done)
+- Consider adding a map view for tracker entries (notebook map already exists via NotebookMap.tsx)
+- Settings toggle for location tracking already added by Gemini (session 92)
 
 - Sign: Claude

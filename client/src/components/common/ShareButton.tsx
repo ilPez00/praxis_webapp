@@ -11,6 +11,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 
 // Goal domain categories
 const GOAL_DOMAINS = [
@@ -69,6 +70,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   tooltip = 'Share to Notebook',
   onSuccess,
 }) => {
+  const getLocation = useCurrentLocation();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [reply, setReply] = useState('');
   const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
@@ -286,6 +288,8 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       }
 
       // Use the API endpoint instead of direct Supabase insert
+      const loc = getLocation();
+      if (loc) { insertPayload.location_lat = loc.lat; insertPayload.location_lng = loc.lng; }
       console.debug('[ShareButton] Saving to notebook:', { userId, entry_type: 'note', title, sourceTable });
       const res = await api.post('/notebook/entries', insertPayload);
       console.debug('[ShareButton] Entry saved successfully:', res.data.id);

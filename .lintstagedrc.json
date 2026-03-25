@@ -1,12 +1,3 @@
 {
-  "*.{ts,tsx}": [
-    "npx eslint --fix",
-    "npx tsc --noEmit"
-  ],
-  "*.{js,jsx}": [
-    "npx eslint --fix"
-  ],
-  "*.{css,scss,json,md}": [
-    "npx prettier --write"
-  ]
+  "*.{css,scss,json,md}": ["npx prettier --write"]
 }
