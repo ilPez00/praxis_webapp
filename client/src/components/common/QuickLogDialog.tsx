@@ -56,6 +56,7 @@ type ViewMode = 'selector' | 'goal' | 'free';
 
 const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   const { user } = useUser();
+  const getLocation = useCurrentLocation();
   const [rawNodes, setRawNodes] = useState<RawGoalNode[]>([]);
   const [goals, setGoals] = useState<RawGoalNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +175,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
     setSaving(true);
     try {
       const contentText = note.trim() || (mood ? `Mood: ${mood}` : '');
+      const location = getLocation();
 
       // Unified write: notebook_entries
       await api.post('/notebook/entries', {
@@ -184,6 +186,12 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
         domain: selectedGoal?.domain || 'Personal',
         title: selectedGoal ? `Note for ${selectedGoal.name}` : 'Free Note',
         attachments: freeAttachments.length > 0 ? freeAttachments : undefined,
+        // Add location data if available
+        ...(location && {
+          location_lat: location.lat,
+          location_lng: location.lng,
+          location_name: undefined,
+        }),
       });
 
       toast.success('Saved to notebook!');

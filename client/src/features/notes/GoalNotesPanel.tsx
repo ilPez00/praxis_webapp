@@ -10,6 +10,7 @@ import GlassCard from '../../components/common/GlassCard';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import { getGeneralSuggestions, getSuggestionsForDomain, LoggingSuggestion } from '../../utils/loggingSuggestions';
+import { useCurrentLocation, EntryLocation } from '../../hooks/useCurrentLocation';
 
 interface NotebookNote {
   id: string;
@@ -35,6 +36,9 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
   const [adding, setAdding] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<LoggingSuggestion[]>([]);
+  
+  // Get cached location
+  const getLocation = useCurrentLocation();
 
   const MOODS = [
     { emoji: '😊', label: 'Good' },
@@ -109,6 +113,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
     setAdding(true);
     try {
       const isFreeNote = !nodeId || nodeId === 'free-notes';
+      const location = getLocation();
 
       const payload = {
         entry_type: 'note',
@@ -119,6 +124,12 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
         title: isFreeNote ? 'Free Note' : `Note for ${nodeTitle}`,
         source_table: 'manual_entry',
         source_id: 'manual',
+        // Add location data if available
+        ...(location && {
+          location_lat: location.lat,
+          location_lng: location.lng,
+          location_name: undefined, // Could be reverse-geocoded in future
+        }),
       };
 
       await api.post('/notebook/entries', payload);

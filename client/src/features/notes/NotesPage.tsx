@@ -16,6 +16,7 @@ import GoalNotesPanel from './GoalNotesPanel';
 import ShareButton from '../../components/common/ShareButton';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import AxiomQueryDialog from '../notebook/AxiomQueryDialog';
+import NotebookMap from './NotebookMap';
 import Slider from '@mui/material/Slider';
 
 import {
@@ -102,6 +103,7 @@ const NotesPage: React.FC = () => {
   const [logTrackerOpen, setLogTrackerOpen] = useState(false);
   const [logTrackerData, setLogTrackerData] = useState<{ id: string; type: string; def: any } | null>(null);
   const [logSaving, setLogSaving] = useState(false);
+  const [notebookEntriesForMap, setNotebookEntriesForMap] = useState<any[]>([]);
 
   // Axiom Query
   const [isPremium, setIsPremium] = useState(false);
@@ -289,6 +291,17 @@ const NotesPage: React.FC = () => {
           .eq('user_id', currentUserId)
           .eq('status', 'active');
         setActiveBets(betsRes.data || []);
+
+        // Fetch notebook entries with location data for the map
+        const notebookRes = await supabase
+          .from('notebook_entries')
+          .select('id, title, content, entry_type, mood, occurred_at, location_lat, location_lng, location_name')
+          .eq('user_id', currentUserId)
+          .not('location_lat', 'is', null)
+          .not('location_lng', 'is', null)
+          .order('occurred_at', { ascending: false })
+          .limit(100);
+        setNotebookEntriesForMap(notebookRes.data || []);
       } catch (err: any) {
         console.error('Notes fetch error:', err);
         setBackendNodes([]);
@@ -673,6 +686,19 @@ const NotesPage: React.FC = () => {
                   userId={currentUserId}
                   onDaySelect={(date) => setSelectedCalendarDate(date)}
                 />
+              )}
+            </Box>
+
+            {/* 1.5: Notebook Map (Location-based entries) */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ fontWeight: 900, mb: 2, color: 'text.primary', opacity: 0.9 }}>
+                📍 Notes Map
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                See where your notes and progress were logged
+              </Typography>
+              {currentUserId && (
+                <NotebookMap entries={notebookEntriesForMap} />
               )}
             </Box>
 
