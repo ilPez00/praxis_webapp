@@ -9,6 +9,7 @@ import { GoalNode } from '../../models/GoalNode';
 import VideoCall from './VideoCall';
 import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
 import ReferencePicker from '../../components/common/ReferencePicker';
+import { GradingDialog, AxiomDialog, IncomingCallDialog, MessageList } from './components';
 import {
   Container,
   Box,
@@ -45,8 +46,8 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import LinkIcon from '@mui/icons-material/Link';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import CallIcon from '@mui/icons-material/Call';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import CallIcon from '@mui/icons-material/Call';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
@@ -991,31 +992,12 @@ const ChatRoom: React.FC = () => {
 
         {/* Messages list */}
         <ErrorBoundary label="Chat Messages">
-        <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 2, py: 2 }}>
-          {messages.length === 0 ? (
-            <Box sx={{ textAlign: 'center', mt: 6, opacity: 0.5 }}>
-              <Typography color="text.secondary">Say hi to start the conversation!</Typography>
-            </Box>
-          ) : (
-            <Stack spacing={1}>
-              {messages.map((msg) => renderMessage(msg))}
-            </Stack>
-          )}
-
-          {isPartnerTyping && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-              <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                {receiverName.charAt(0)}
-              </Avatar>
-              <Box sx={{ px: 2, py: 0.75, borderRadius: '20px 20px 20px 4px', bgcolor: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                {[0, 1, 2].map((i) => (
-                  <Box key={i} sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: 'text.disabled', animation: 'typing-bounce 1.2s infinite', animationDelay: `${i * 0.2}s` }} />
-                ))}
-              </Box>
-            </Box>
-          )}
-          <div ref={messagesEndRef} />
-        </Box>
+        <MessageList
+          messages={messages}
+          currentUserId={currentUserId}
+          partnerName={receiverName}
+          isPartnerTyping={isPartnerTyping}
+        />
         </ErrorBoundary>
 
         {/* Input bar */}
