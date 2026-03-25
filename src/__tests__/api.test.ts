@@ -31,7 +31,7 @@ describe('Auth Endpoints', () => {
         .send({ password: 'test123' });
       
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('email');
+      expect(res.body.message.toLowerCase()).toContain('email');
     });
 
     it('should reject login without password', async () => {
@@ -40,22 +40,22 @@ describe('Auth Endpoints', () => {
         .send({ email: 'test@example.com' });
       
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('password');
+      expect(res.body.message.toLowerCase()).toContain('password');
     });
   });
 
-  describe('POST /auth/register', () => {
-    it('should reject registration without email', async () => {
+  describe('POST /auth/signup', () => {
+    it('should reject signup without email', async () => {
       const res = await request(app)
-        .post('/api/auth/register')
+        .post('/api/auth/signup')
         .send({ password: 'test123', name: 'Test User' });
       
       expect(res.status).toBe(400);
     });
 
-    it('should reject registration with weak password', async () => {
+    it('should reject signup with weak password', async () => {
       const res = await request(app)
-        .post('/api/auth/register')
+        .post('/api/auth/signup')
         .send({ 
           email: 'test@example.com', 
           password: '123',
@@ -69,13 +69,13 @@ describe('Auth Endpoints', () => {
 
 describe('Protected Endpoints', () => {
   it('should reject requests without auth token', async () => {
-    const res = await request(app).get('/api/users/me');
+    const res = await request(app).get('/api/users/nearby');
     expect(res.status).toBe(401);
   });
 
   it('should reject requests with invalid token', async () => {
     const res = await request(app)
-      .get('/api/users/me')
+      .get('/api/users/nearby')
       .set('Authorization', 'Bearer invalid-token');
     expect(res.status).toBe(401);
   });

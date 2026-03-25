@@ -13,9 +13,7 @@
       "Bash(. *)",
       "Bash(eof)",
       "Bash(chmod *)",
-      "Bash(npm pkg *)",
-      "Bash(npm test)"
+      "Bash(npm pkg *)"
     ]
-  },
-  "$version": 3
+  }
 }
