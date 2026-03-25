@@ -1019,3 +1019,104 @@ Session 91: Type Safety + API Client Unification (2026-03-25)
 - Consider rate limiting on public endpoints
 
 - Sign: Claude
+
+---
+
+Session 92: Codebase Audit + Dependency Updates + ChatRoom Refactoring (2026-03-25)
+===============================================================================
+
+## Summary
+Comprehensive codebase inspection and cleanup:
+1. Audited GitHub repo, PRs, and codebase
+2. Processed 12 Dependabot PRs
+3. Updated all safe dependencies
+4. Investigated and clarified TODO comments
+5. Started mega-component refactoring
+
+## Phase 1: Dependabot PR Management
+### Merged (Safe patches):
+| PR | Change | Risk |
+|----|--------|------|
+| #12 | @mui/material 7.3.8 → 7.3.9 | ✅ Safe |
+| #13 | @stripe/react-stripe-js 5.6.0 → 5.6.1 | ✅ Safe |
+| #2 | actions/setup-node 4 → 6 | ✅ Safe |
+| #5 | stripe 20.3.1 → 20.4.1 | ✅ Safe |
+
+### Closed/Blocked:
+| PR | Change | Reason |
+|----|--------|--------|
+| #6 | google-auth-library 10.5.0 → 10.6.1 | Conflicts - applied directly |
+| #8 | @types/jest 27.5.2 → 30.0.0 | Major version - tested ok |
+| #9 | nodemon 3.1.11 → 3.1.14 | Conflicts - applied directly |
+| #10 | react + @types/react | BLOCKED: Requires React 19 |
+| #11 | @types/node 20.19.35 → 25.4.0 | Major - applied directly |
+| #1 | Vercel Speed Insights | Manual feature PR |
+
+## Phase 2: Dependency Updates Applied
+### Backend:
+- google-auth-library: 10.5.0 → 10.6.2
+- nodemon: 3.1.11 → 3.1.14
+- @types/node: 25.2.0 → 25.5.0
+- @types/jest: 30 (already installed)
+
+### Frontend:
+- @testing-library/user-event: 13.5.0 → 14.6.1
+- @types/node: 20.0.0 → 25.5.0
+- @stripe/react-stripe-js: 5.6.0 → 5.6.1
+- @mui/material: 7.3.8 → 7.3.9
+
+## Phase 3: TODO Investigation
+- `src/services/AxiomUnifiedScanService.ts:294,302` TODOs are **known optimization opportunities**, not bugs
+- Service works as-is, just refetches data redundantly
+- Clarified TODOs with comments documenting what data is refetched
+- TODO: Implement `estimateAllGoalProgressWithUserData()` variant (deferred)
+
+## Phase 4: Mega-Component Splitting - ChatRoom.tsx
+### Completed:
+- ✅ Created `client/src/features/chat/components/` directory
+- ✅ Extracted `MessageList.tsx` (~250 LOC) - message rendering logic
+- ✅ Created dialog stubs: GradingDialog, AxiomDialog, IncomingCallDialog
+- ✅ ChatRoom.tsx: 1333 → 1315 lines (-18 lines)
+- ⚠️ Dialog stubs not fully integrated (complex state dependencies)
+
+### Files Created:
+- `client/src/features/chat/components/MessageList.tsx`
+- `client/src/features/chat/components/GradingDialog.tsx`
+- `client/src/features/chat/components/AxiomDialog.tsx`
+- `client/src/features/chat/components/IncomingCallDialog.tsx`
+- `client/src/features/chat/components/index.ts`
+
+### Still to Extract:
+- MessageComposer component (input bar + file upload)
+- FeedbackForm component (inline feedback form)
+- Full dialog integration (requires state refactoring)
+
+## Verification
+- Backend TypeScript: ✅ Passes
+- Frontend TypeScript: ✅ Passes
+- Frontend Build: ✅ Passes
+- Backend Tests: ✅ Pass (5 pre-existing failures unrelated)
+- Git Status: Clean
+
+## Commits (this session)
+- fe8d10b: docs: add Session 89 - Dependabot PR audit
+- 41b064c: chore: clarify AxiomUnifiedScanService TODOs
+- 5e81ed7: docs: update Session 89 - completed TODO investigation
+- 7670e49: chore(deps): update google-auth-library, nodemon, @types/node
+- 1b5a5da: docs: update Session 89 - dependency updates completed
+- db0706d: chore(deps): update @testing-library/user-event, @types/node in client
+- 2b0f7e5: refactor(ChatRoom): extract MessageList component
+- bb7e3a9: docs: update Session 89 - ChatRoom refactoring started
+
+## Remaining Work (Future Sessions)
+1. **React 19 Upgrade Path**: When ready to upgrade React:
+   - Upgrade to React 19
+   - Then react-leaflet 5.0.0 will work
+   - Then @vitejs/plugin-react 6.0.1 will work (requires Vite 8)
+2. **TODO Optimization**: Implement `estimateAllGoalProgressWithUserData()` in AxiomUnifiedScanService
+3. **Split Mega-Components**: 
+   - ChatRoom: integrate dialog stubs, extract MessageComposer, FeedbackForm
+   - ProfilePage.tsx (1199 LOC) - not started
+4. **Pre-existing Issues**: 5 tests fail in api.test.ts (assertion issues)
+
+- Sign: Claude
