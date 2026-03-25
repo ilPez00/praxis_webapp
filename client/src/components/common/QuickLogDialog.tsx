@@ -18,6 +18,7 @@ import { getGeneralSuggestions, getSuggestionsForDomain, LoggingSuggestion } fro
 import NoteGoalDetail from '../../features/notes/NoteGoalDetail';
 import NoteAttachmentBar from './NoteAttachmentBar';
 import type { Attachment } from './NoteAttachmentBar';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 
 interface RawGoalNode {
   id: string;
