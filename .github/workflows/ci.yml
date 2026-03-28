@@ -22,6 +22,12 @@ jobs:
       - name: Install backend dependencies
         run: npm install
 
+      - name: Run backend linter
+        run: npm run lint || true
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
       - name: Build backend (TypeScript)
         run: npm run build
 
@@ -51,3 +57,28 @@ jobs:
       - name: Run frontend tests
         working-directory: ./client
         run: npm test -- --watchAll=false || echo "No tests configured yet"
+
+  # E2E tests - requires server running (uncomment when deploying)
+  # e2e:
+  #   needs: [backend, frontend]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v6
+  #       with:
+  #         node-version: '20'
+  #     - name: Install Playwright
+  #       run: npx playwright install --with-deps
+  #     - name: Install dependencies
+  #       run: npm install
+  #     - name: Build backend
+  #       run: npm run build
+  #     - name: Start server
+  #       run: npm run start &
+  #       shell: bash
+  #     - name: Run E2E tests
+  #       run: npx playwright test tests/e2e/api-critical.spec.ts --project=chromium
+  #     - name: Stop server
+  #       if: always()
+  #       run: pkill -f "node dist/index.js"

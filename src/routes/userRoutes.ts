@@ -12,6 +12,8 @@ import {
   getPublicStats,
 } from '../controllers/userController';
 import { authenticateToken } from '../middleware/authenticateToken';
+import { validateBody } from '../middleware/validateRequest';
+import { updateProfileSchema } from '../schemas/userSchemas';
 
 const router = Router();
 
@@ -23,7 +25,7 @@ router.delete('/me', authenticateToken, deleteMyAccount);
 router.post('/me/reset-goals', authenticateToken, resetMyGoals);
 router.get('/:userId/percentile', getUserPercentile);
 router.get('/:id', getUserProfile);
-router.put('/:id', authenticateToken, updateUserProfile);
+router.put('/:id', authenticateToken, validateBody(updateProfileSchema), updateUserProfile);
 router.post('/:id/verify', authenticateToken, verifyIdentity);
 
 export default router;

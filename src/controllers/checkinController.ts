@@ -90,6 +90,12 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   const DAILY_CHECKIN_CAP = 50; // hard anti-inflation guard
   const pointsAwarded = Math.min(5 + streakBonus, DAILY_CHECKIN_CAP);
   const newPoints = (profile.praxis_points ?? 0) + pointsAwarded;
+  
+  // XP calculation: base 20 XP + streak bonus (×2 at 7d, ×3 at 30d)
+  const xpMultiplier = 
+    streakUpdate.current_streak >= 30 ? 3 :
+    streakUpdate.current_streak >= 7  ? 2 : 1;
+  const xpAwarded = 20 * xpMultiplier;
 
   // Insert checkin record
   await supabase.from('checkins').insert({
@@ -98,6 +104,35 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
     ...(mood ? { mood } : {}),
     ...(winOfTheDay ? { win_of_the_day: winOfTheDay } : {}),
   });
+
+  // Award XP and PP using the gamification function
+  const { data: levelData } = await supabase.rpc('add_xp_to_user', {
+    p_user_id: userId,
+    p_xp_amount: xpAwarded,
+    p_pp_amount: pointsAwarded,
+    p_source: 'daily_checkin',
+  });
+  
+  const { data: profileWithLevel } = await supabase
+    .from('profiles')
+    .select('level')
+    .eq('id', userId)
+    .single();
+  
+  const leveledUp = levelData?.[0]?.leveled_up || false;
+  const newLevel = levelData?.[0]?.new_level || profileWithLevel?.level || 1;
+
+  // Progress daily quest for check-in
+  await supabase.rpc('progress_user_quest', {
+    p_user_id: userId,
+    p_quest_type: 'check_in',
+    p_amount: 1,
+  });
+  
+  // Check for streak milestone achievements
+  if (streakUpdate.current_streak >= 7) {
+    await supabase.rpc('check_user_achievements', { p_user_id: userId });
+  }
 
   // Compute Reliability Score R using the whitepaper formula:
   //   R = 0.50*C + 0.25*V + 0.10*S + 0.15*K
@@ -163,6 +198,10 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
     streakBonus,
     totalPoints: newPoints,
     shieldConsumed: streakUpdate.shield_consumed,
+    // Gamification
+    xpAwarded,
+    leveledUp,
+    newLevel,
   });
 });
 

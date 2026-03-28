@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
+import { useGamification } from '../../hooks/useGamification';
 import { supabase } from '../../lib/supabase';
 import GlassCard from '../../components/common/GlassCard';
 import PostFeed from '../posts/PostFeed';
@@ -11,6 +12,10 @@ import ShareSnippetButton from '../../components/common/ShareSnippetButton';
 import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import QuickActionFAB from '../../components/common/QuickActionFAB';
+import LevelBadge from '../../components/common/LevelBadge';
+import DailyQuestsWidget from '../../components/common/DailyQuestsWidget';
+import LevelUpDialog from '../../components/common/LevelUpDialog';
+import PPToast from '../../components/common/PPToast';
 
 import PageSkeleton from '../../components/common/PageSkeleton';
 import {
@@ -22,6 +27,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import PlaceIcon from '@mui/icons-material/Place';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import ExploreIcon from '@mui/icons-material/Explore';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
 interface MatchResult { userId: string; score: number; }
 interface MatchProfile { name: string; avatar_url: string | null; }
@@ -29,6 +35,10 @@ interface MatchProfile { name: string; avatar_url: string | null; }
 const DashboardPage: React.FC = () => {
   const { user, loading: userLoading } = useUser();
   const navigate = useNavigate();
+  const currentUserId = user?.id;
+
+  // Gamification hook
+  const { profile: gamificationProfile, quests, loading: gamificationLoading, trackAction } = useGamification(currentUserId || '');
 
   const [loadingContent, setLoadingContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +54,12 @@ const DashboardPage: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [nearbyUsers, setNearbyUsers] = useState<any[]>([]);
 
-  const currentUserId = user?.id;
+  // Level up dialog
+  const [showLevelUpDialog, setShowLevelUpDialog] = useState(false);
+  const [levelUpData, setLevelUpData] = useState({ oldLevel: 1, newLevel: 1, xpProgress: 0, xpNeeded: 1000 });
+
+  // PP Toast
+  const [ppToast, setPpToast] = useState<{ show: boolean; amount: number; xpAmount?: number; x: number; y: number } | null>(null);
 
   // Fetch morning brief data
   useEffect(() => {

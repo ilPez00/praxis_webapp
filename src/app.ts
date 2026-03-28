@@ -53,10 +53,13 @@ import narrativeRoutes from './routes/narrativeRoutes';
 import publicWidgetRoutes from './routes/publicWidgetRoutes';
 import adminCLIRoutes from './routes/adminCLIRoutes';
 import healthRoutes from './routes/healthRoutes';
+import gamificationRoutes from './routes/gamificationRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 import { authLimiter, aiLimiter, axiomLimiter, generalLimiter, strictLimiter } from './middleware/rateLimiter';
+import { authenticateToken } from './middleware/authenticateToken';
+import { requireAdmin } from './middleware/requireAdmin';
 import { requestTracer, auditSecurity } from './utils/logger';
 
 const app = express();
@@ -69,15 +72,19 @@ const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:3000',
 ];
 
+// Railway production URL (set via environment variable)
+const railwayOrigin = process.env.RAILWAY_STATIC_URL;
+if (railwayOrigin) {
+  allowedOrigins.push(railwayOrigin);
+}
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
-    // Check if origin is in allowed list or is a Railway subdomain
-    const isAllowed = allowedOrigins.indexOf(origin) !== -1 || 
-                     origin.endsWith('.up.railway.app') ||
-                     (process.env.RAILWAY_STATIC_URL && origin.includes(process.env.RAILWAY_STATIC_URL));
+
+    // Check if origin is in allowed list
+    const isAllowed = allowedOrigins.indexOf(origin) !== -1;
 
     if (isAllowed) {
       callback(null, true);
@@ -94,10 +101,49 @@ app.use(cors({
 
 // Security headers with Helmet
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable for now, can enable with custom config
-  crossOriginEmbedderPolicy: false,
-  crossOriginOpenerPolicy: false,
-  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'", // Required for React
+        'https://www.google-analytics.com',
+        'https://www.googletagmanager.com',
+      ],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'", // Required for MUI
+        'https://fonts.googleapis.com',
+      ],
+      fontSrc: [
+        "'self'",
+        'https://fonts.gstatic.com',
+      ],
+      imgSrc: [
+        "'self'",
+        'blob:',
+        'data:',
+        'https:',
+      ],
+      connectSrc: [
+        "'self'",
+        'https://*.supabase.co',
+        'https://*.vercel.app',
+        'https://*.up.railway.app',
+        'https://www.google-analytics.com',
+        'https://api.stripe.com',
+      ],
+      frameSrc: [
+        "'self'",
+        'https://js.stripe.com',
+      ],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  crossOriginEmbedderPolicy: true,
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+  crossOriginResourcePolicy: { policy: 'same-site' },
 }));
 
 app.use(express.json());
@@ -133,6 +179,42 @@ app.get('/health', async (_req, res) => {
   });
 });
 
+// Readiness check — used for Kubernetes/Railway orchestration
+app.get('/health/ready', async (_req, res) => {
+  const checks: Record<string, string> = {};
+  let isHealthy = true;
+
+  // Check database
+  try {
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    checks.database = error ? `error: ${error.message}` : 'ok';
+    if (error) isHealthy = false;
+  } catch (err: any) {
+    checks.database = `error: ${err.message}`;
+    isHealthy = false;
+  }
+
+  // Check Stripe API (if configured)
+  if (process.env.STRIPE_SECRET_KEY) {
+    checks.stripe = 'configured';
+  } else {
+    checks.stripe = 'not configured (optional)';
+  }
+
+  // Check Sentry
+  if (process.env.SENTRY_DSN) {
+    checks.sentry = 'configured';
+  } else {
+    checks.sentry = 'not configured (optional)';
+  }
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'ready' : 'not ready',
+    checks,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // API routes prefix
 const apiRouter = express.Router();
 
@@ -143,8 +225,8 @@ apiRouter.use('/auth', authLimiter, authRoutes);  // Strict: 5 attempts per 15 m
 apiRouter.use('/ai-coaching', aiLimiter, aiCoachingRoutes);  // AI cost control: 10/min
 apiRouter.use('/axiom', axiomLimiter, axiomRoutes);  // Axiom briefs: 3/hour
 apiRouter.use('/stripe', strictLimiter, stripeRoutes);  // Payments: 10/15 min
-apiRouter.use('/admin', strictLimiter, adminRoutes);  // Admin ops: 10/15 min
-apiRouter.use('/admin/cli', strictLimiter, adminCLIRoutes);  // CLI control: 10/15 min
+apiRouter.use('/admin', strictLimiter, authenticateToken, requireAdmin, adminRoutes);  // Admin ops: 10/15 min + auth + admin check
+apiRouter.use('/admin/cli', strictLimiter, authenticateToken, requireAdmin, adminCLIRoutes);  // CLI control: 10/15 min + auth + admin check
 
 // General routes with fallback limiter
 apiRouter.use('/users', generalLimiter, userRoutes);
@@ -185,6 +267,7 @@ apiRouter.use('/diary', generalLimiter, diaryRoutes);
 apiRouter.use('/schedule', generalLimiter, scheduleRoutes);
 apiRouter.use('/narratives', generalLimiter, narrativeRoutes);
 apiRouter.use('/sparring', generalLimiter, sparringRoutes);
+apiRouter.use('/gamification', generalLimiter, gamificationRoutes);
 
 app.use('/api', apiRouter);
 

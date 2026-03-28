@@ -14,6 +14,8 @@ import {
   getPostVote,
 } from '../controllers/postController';
 import { authenticateToken } from '../middleware/authenticateToken';
+import { validateBody } from '../middleware/validateRequest';
+import { createPostBodySchema, addCommentBodySchema, votePostBodySchema } from '../schemas/postSchemas';
 
 const router = express.Router();
 
@@ -25,12 +27,12 @@ router.get('/:id', getPost);
 router.get('/:id/comments', getComments);
 
 // Authenticated writes
-router.post('/', authenticateToken, createPost);
+router.post('/', authenticateToken, validateBody(createPostBodySchema), createPost);
 router.delete('/:id', authenticateToken, deletePost);
 router.post('/:id/likes', authenticateToken, toggleLike);
-router.post('/:id/comments', authenticateToken, addComment);
+router.post('/:id/comments', authenticateToken, validateBody(addCommentBodySchema), addComment);
 router.delete('/:postId/comments/:commentId', authenticateToken, deleteComment);
-router.post('/:id/vote', authenticateToken, votePost);
+router.post('/:id/vote', authenticateToken, validateBody(votePostBodySchema), votePost);
 router.get('/:id/vote', authenticateToken, getPostVote);
 
 export default router;

@@ -36,3 +36,84 @@ Status: DONE
 Converted all console.log → console.debug across 11 frontend files (22 occurrences).
 console.debug is stripped in production builds, reducing noise.
 Status: DONE
+
+---
+
+## Security Audit Fixes (2026-03-28)
+
+### Fix 7: Enable Helmet Security Policies
+**Location:** `src/app.ts:96-101`
+**Problem:** CSP, COOP, COEP, CORP all disabled
+**Status:** ✅ DONE
+- Configured CSP with allowed origins for self, Google Analytics, fonts, Supabase, Stripe
+- Enabled COEP, COOP (same-origin-allow-popups), CORP (same-site)
+- Files modified: src/app.ts
+
+### Fix 8: Restrict Railway CORS Domains
+**Location:** `src/app.ts:79`
+**Problem:** `*.up.railway.app` allows ANY Railway subdomain
+**Status:** ✅ DONE
+- Replaced wildcard with explicit RAILWAY_STATIC_URL env variable
+- Only allows origins explicitly in allowedOrigins list or from RAILWAY_STATIC_URL
+- Files modified: src/app.ts
+
+### Fix 9: Add Zod Input Validation
+**Problem:** Zod in deps but not used in controllers
+**Status:** ✅ DONE
+- Created schemas: src/schemas/postSchemas.ts, src/schemas/adminSchemas.ts
+- Added validation to routes:
+  - POST /posts (createPostBodySchema)
+  - POST /posts/:id/comments (addCommentBodySchema)
+  - POST /posts/:id/vote (votePostBodySchema)
+  - POST /admin/users/:id/ban (banUserBodySchema)
+  - POST /admin/users/:id/grant-points (grantPointsBodySchema)
+  - POST /admin/challenges (createChallengeBodySchema)
+  - PUT /admin/users/:id/role (promoteUserBodySchema)
+  - PUT /admin/users/:id/premium (togglePremiumBodySchema)
+  - PUT /admin/config/:key (updateSystemConfigBodySchema)
+  - POST /admin/import-osm-places (importOSMPlacesBodySchema)
+- Files modified: src/schemas/postSchemas.ts (NEW), src/schemas/adminSchemas.ts (NEW), src/routes/postRoutes.ts, src/routes/adminRoutes.ts
+
+### Fix 10: Add requireAdmin to Admin Routes
+**Location:** `src/app.ts:146`
+**Problem:** `/admin` routes only have rate limiting
+**Status:** ✅ DONE (already implemented in previous session)
+- All webapp admin routes have authenticateToken + requireAdmin middleware
+- AdminAxiomRoutes also protected with both middlewares
+- Curl-only routes intentionally use X-Admin-Secret header instead (for cron/scripts)
+- Files verified: src/routes/adminRoutes.ts, src/routes/adminAxiomRoutes.ts
+
+---
+
+## Gamification Implementation (2026-03-28) — PHASE 1 COMPLETE ✅
+
+**New Features:**
+1. **Level/XP System** — Visible progression (levels 1-100, 5 tiers: Bronze/Silver/Gold/Platinum/Diamond)
+2. **Daily Quests** — 3 random quests/day with XP+PP rewards
+3. **Social Rewards** — PP for posts/comments/likes with anti-farming daily limits
+4. **Achievements** — 27 master achievements with title unlocks
+5. **Titles** — Equipable titles shown next to username
+
+**Files Created:**
+- Backend: migrations/2026-03-28-gamification-phase1.sql, src/controllers/gamificationController.ts, src/routes/gamificationRoutes.ts
+- Frontend: LevelBadge.tsx, DailyQuestsWidget.tsx, PPToast.tsx, LevelUpDialog.tsx, useGamification.ts
+
+**Files Modified:**
+- src/controllers/checkinController.ts (XP awards, quest progress)
+- src/controllers/postController.ts (quest tracking)
+- src/app.ts (routes registered)
+- client/src/features/dashboard/DashboardPage.tsx (integration)
+
+**Database:**
+- 6 new tables, 7 functions, 4 modified columns in profiles
+- Auto-triggers for level calculation, achievement checking
+
+**API Endpoints:** 12 new routes under /api/gamification
+
+**Verification:** TypeScript build passes (0 errors)
+
+**Next Steps:**
+- Run migration in Supabase SQL Editor
+- Configure daily quest reset cron
+- Integrate remaining achievements (betting, goals, etc.)
+- Add level badge to navbar, posts, profile page

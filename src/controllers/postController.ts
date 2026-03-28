@@ -365,6 +365,18 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
     }
 
     logger.info('[createPost] Post created successfully:', { postId: data.id });
+    
+    // Track social reward for post creation
+    try {
+      await supabase.rpc('progress_user_quest', {
+        p_user_id: userId,
+        p_quest_type: 'create_post',
+        p_amount: 1,
+      });
+    } catch (questErr) {
+      logger.warn('[createPost] Quest progress failed:', questErr);
+    }
+    
     res.status(201).json({ ...data, like_count: 0, comment_count: 0, user_liked: false });
   } catch (err: any) {
     // Re-throw if it's already an app error
@@ -492,6 +504,17 @@ export const addComment = catchAsync(async (req: Request, res: Response, _next: 
 
   if (error) handleSupabaseError(error);
   if (!data) throw new InternalServerError('Insert returned no data.');
+  
+  // Track social reward / quest progress for comment
+  try {
+    await supabase.rpc('progress_user_quest', {
+      p_user_id: userId,
+      p_quest_type: 'comment_post',
+      p_amount: 1,
+    });
+  } catch (questErr) {
+    logger.warn('[addComment] Quest progress failed:', questErr);
+  }
 
   res.status(201).json(data);
 });
