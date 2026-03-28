@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { offlineSyncManager } from './offlineSyncManager';
+import { offlineSyncManager } from '../lib/offlineSyncManager';
 
 interface OfflineStatus {
   isOnline: boolean;
