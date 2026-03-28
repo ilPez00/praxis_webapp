@@ -31,6 +31,7 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
+  LinearProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -56,6 +57,8 @@ import ErrorBoundary from '../../components/common/ErrorBoundary';
 import toast from 'react-hot-toast';
 import CodeIcon from '@mui/icons-material/Code';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import LevelBadge from '../../components/common/LevelBadge';
+import { useGamification } from '../../hooks/useGamification';
 
 // Inline component — only shown on own profile
 const RAILWAY_BASE = 'https://web-production-646a4.up.railway.app';
@@ -217,6 +220,9 @@ const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
 
   const isOwnProfile = !paramId || paramId === user?.id;
+  
+  // Gamification data
+  const { profile: gamificationProfile, loading: gamificationLoading } = useGamification(paramId || user?.id || '');
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -813,6 +819,9 @@ const ProfilePage: React.FC = () => {
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 0.75 }}>
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>{profile.name}</Typography>
+                {gamificationProfile?.level && (
+                  <LevelBadge level={gamificationProfile.level} size="small" animated={false} />
+                )}
                 {profile.is_premium && (
                   <Chip
                     icon={<WorkspacePremiumIcon sx={{ fontSize: '14px !important' }} />}
@@ -1096,6 +1105,111 @@ const ProfilePage: React.FC = () => {
       {/* Public Embed Widget — own profile only */}
       {isOwnProfile && user?.id && (
         <EmbedWidgetCard userId={user.id} />
+      )}
+
+      {/* Gamification Section — Level, XP, League */}
+      {!gamificationLoading && gamificationProfile && (
+        <ErrorBoundary label="Gamification">
+        <GlassCard glowColor="rgba(167,139,250,0.1)" sx={{ p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+            <EmojiEventsIcon sx={{ color: '#A78BFA' }} />
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Progress & Achievements
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Level {gamificationProfile.level} · {gamificationProfile.league} League
+              </Typography>
+            </Box>
+            <LevelBadge level={gamificationProfile.level} size="large" animated={true} />
+          </Box>
+          
+          {/* XP Progress Bar */}
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                XP Progress
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#A78BFA' }}>
+                {gamificationProfile.xp_progress?.toLocaleString()} / {gamificationProfile.xp_needed?.toLocaleString()} XP
+              </Typography>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={gamificationProfile.xp_percent || 0}
+              sx={{
+                height: 10,
+                borderRadius: 5,
+                bgcolor: 'rgba(255,255,255,0.1)',
+                '& .MuiLinearProgress-bar': {
+                  bgcolor: '#A78BFA',
+                  borderRadius: 5,
+                },
+              }}
+            />
+          </Box>
+
+          {/* Stats Grid */}
+          <Grid container spacing={2}>
+            <Grid size={6}>
+              <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'rgba(245,158,11,0.08)', borderRadius: 2 }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: '#F59E0B' }}>
+                  {gamificationProfile.praxis_points?.toLocaleString() || 0}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Praxis Points
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={6}>
+              <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'rgba(167,139,250,0.08)', borderRadius: 2 }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: '#A78BFA' }}>
+                  {gamificationProfile.total_xp?.toLocaleString() || 0}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Total XP
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={6}>
+              <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'rgba(6,182,212,0.08)', borderRadius: 2 }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: '#06B6D4' }}>
+                  {gamificationProfile.reputation_score || 50}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Reputation
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={6}>
+              <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'rgba(34,197,94,0.08)', borderRadius: 2 }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: '#22C55E' }}>
+                  {gamificationProfile.current_streak || 0}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Day Streak
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+
+          {/* Equipped Title */}
+          {gamificationProfile.equipped_title && (
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <Chip
+                label={`"${gamificationProfile.equipped_title}"`}
+                sx={{
+                  bgcolor: 'rgba(167,139,250,0.15)',
+                  border: '1px solid rgba(167,139,250,0.4)',
+                  color: '#A78BFA',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                }}
+              />
+            </Box>
+          )}
+        </GlassCard>
+        </ErrorBoundary>
       )}
 
       {/* Achievements (trophies) */}
