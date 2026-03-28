@@ -6,6 +6,7 @@ export interface Post {
   user_id: string;
   user_name: string;
   user_avatar_url: string | null;
+  user_level?: number; // Gamification level
   title: string | null;
   content: string;
   media_url: string | null;

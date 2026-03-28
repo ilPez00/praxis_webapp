@@ -86,7 +86,7 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
   // 4. Load author profiles + goal trees in parallel
   const [authorProfilesRes, authorTreesRes] = await Promise.allSettled([
     authorIds.length > 0
-      ? supabase.from('profiles').select('id, honor_score, karma_score, reliability_score, latitude, longitude').in('id', authorIds)
+      ? supabase.from('profiles').select('id, honor_score, karma_score, reliability_score, latitude, longitude, level').in('id', authorIds)
       : Promise.resolve({ data: [] as any[], error: null }),
     authorIds.length > 0
       ? supabase.from('goal_trees').select('user_id, nodes').in('user_id', authorIds)
@@ -159,6 +159,7 @@ export const getPersonalizedFeed = catchAsync(async (req: Request, res: Response
       like_count: p.post_likes?.[0]?.count ?? 0,
       comment_count: p.post_comments?.[0]?.count ?? 0,
       user_liked: false,
+      user_level: authorProfile?.level ?? 1,
       _score: finalScore,
     };
   });

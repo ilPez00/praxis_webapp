@@ -32,6 +32,7 @@ import ReferenceCard, { Reference } from '../../components/common/ReferenceCard'
 import ReferencePicker from '../../components/common/ReferencePicker';
 import ShareButton from '../../components/common/ShareButton';
 import ContentRenderer from '../../components/common/ContentRenderer';
+import LevelBadge from '../../components/common/LevelBadge';
 import { Post, PostComment } from '../../types/api';
 
 interface Props {
@@ -469,13 +470,18 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                     {post.user_name?.charAt(0).toUpperCase()}
                   </Avatar>
                   <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ fontWeight: 700, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                      onClick={() => navigate('/profile/' + post.user_id)}
-                    >
-                      {post.user_name}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 700, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                        onClick={() => navigate('/profile/' + post.user_id)}
+                      >
+                        {post.user_name}
+                      </Typography>
+                      {post.user_level && (
+                        <LevelBadge level={post.user_level} size="small" animated={false} />
+                      )}
+                    </Box>
                     <Typography variant="caption" color="text.disabled">
                       {formatRelativeTime(post.created_at)}
                     </Typography>

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
+import { useGamification } from '../../hooks/useGamification';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
+import LevelBadge from './LevelBadge';
 import {
   AppBar,
   Toolbar,
@@ -85,6 +87,7 @@ function notifIcon(type: string): string {
 
 const Navbar: React.FC = () => {
   const { user } = useUser();
+  const { profile: gamificationProfile } = useGamification(user?.id || '');
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -484,25 +487,30 @@ const Navbar: React.FC = () => {
                     </Box>
                   </Popover>
 
-                  {/* Profile avatar — opens dropdown */}
-                  <IconButton
-                    onClick={(e) => setProfileMenuAnchor(e.currentTarget)}
-                    sx={{ p: 0.5 }}
-                    aria-label="account menu"
-                  >
-                    <Avatar
-                      src={user.avatarUrl || undefined}
-                      sx={{
-                        width: 34,
-                        height: 34,
-                        border: '2px solid rgba(245,158,11,0.35)',
-                        fontSize: '0.875rem',
-                        fontWeight: 700,
-                      }}
+                  {/* Profile avatar with level badge — opens dropdown */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <IconButton
+                      onClick={(e) => setProfileMenuAnchor(e.currentTarget)}
+                      sx={{ p: 0.5 }}
+                      aria-label="account menu"
                     >
-                      {user.name?.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </IconButton>
+                      <Avatar
+                        src={user.avatarUrl || undefined}
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          border: '2px solid rgba(245,158,11,0.35)',
+                          fontSize: '0.875rem',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {user.name?.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </IconButton>
+                    {gamificationProfile?.level && (
+                      <LevelBadge level={gamificationProfile.level} size="small" animated={false} />
+                    )}
+                  </Box>
 
                   {/* Profile dropdown menu */}
                   <Menu
