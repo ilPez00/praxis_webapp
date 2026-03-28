@@ -8,12 +8,14 @@ import {
   getNearbyUsers,
   getUserPercentile,
   deleteMyAccount,
+  anonymizeMyAccount,
+  exportMyData,
   resetMyGoals,
   getPublicStats,
 } from '../controllers/userController';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { validateBody } from '../middleware/validateRequest';
-import { updateProfileSchema } from '../schemas/userSchemas';
+import { updateProfileSchema, deleteAccountSchema, anonymizeAccountSchema } from '../schemas/userSchemas';
 
 const router = Router();
 
@@ -21,7 +23,12 @@ router.get('/stats/public', getPublicStats);
 router.post('/complete-onboarding', authenticateToken, completeOnboarding);
 router.get('/leaderboard', getLeaderboard);
 router.get('/nearby', authenticateToken, getNearbyUsers);
-router.delete('/me', authenticateToken, deleteMyAccount);
+
+// GDPR endpoints
+router.delete('/me', authenticateToken, validateBody(deleteAccountSchema), deleteMyAccount);
+router.post('/me/anonymize', authenticateToken, validateBody(anonymizeAccountSchema), anonymizeMyAccount);
+router.get('/me/export', authenticateToken, exportMyData);
+
 router.post('/me/reset-goals', authenticateToken, resetMyGoals);
 router.get('/:userId/percentile', getUserPercentile);
 router.get('/:id', getUserProfile);

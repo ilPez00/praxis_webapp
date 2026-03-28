@@ -84,3 +84,29 @@ export const updateProfileSchema = z.object({
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/**
+ * Account deletion confirmation (GDPR)
+ */
+export const deleteAccountSchema = z.object({
+  password: z
+    .string()
+    .min(1, 'Password is required to delete account'),
+  
+  confirmText: z
+    .string()
+    .refine(val => val === 'DELETE', 'You must type DELETE to confirm'),
+});
+
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
+
+/**
+ * Anonymize account instead of hard delete (GDPR - right to be forgotten)
+ */
+export const anonymizeAccountSchema = z.object({
+  confirmText: z
+    .string()
+    .refine(val => val === 'ANONYMIZE', 'You must type ANONYMIZE to confirm'),
+});
+
+export type AnonymizeAccountInput = z.infer<typeof anonymizeAccountSchema>;

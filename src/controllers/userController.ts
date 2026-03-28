@@ -321,12 +321,31 @@ export const getUserPercentile = catchAsync(async (req: Request, res: Response, 
 
 /**
  * DELETE /users/me — hard-delete the authenticated user's account.
+ * Requires password confirmation for GDPR compliance.
  * Removes: goal_tree, profile data (cascades messages, etc. via FK).
  * Auth: removes the user from Supabase Auth (service-role required).
  */
 export const deleteMyAccount = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const userId = req.user?.id;
+  const { password } = req.body;
+  
   if (!userId) throw new UnauthorizedError('Not authenticated.');
+  if (!password) throw new BadRequestError('Password is required to delete account.');
+
+  // Verify password before deletion
+  const { data: { user }, error: verifyErr } = await supabase.auth.getUser();
+  if (verifyErr || !user) {
+    throw new UnauthorizedError('Unable to verify account.');
+  }
+
+  const { error: signInErr } = await supabase.auth.signInWithPassword({
+    email: user.email || '',
+    password,
+  });
+  
+  if (signInErr) {
+    throw new BadRequestError('Incorrect password.');
+  }
 
   // Delete goal tree first (not always cascade-linked)
   await supabase.from('goal_trees').delete().eq('user_id', userId);
@@ -338,10 +357,69 @@ export const deleteMyAccount = catchAsync(async (req: Request, res: Response, _n
   const { error: authErr } = await supabase.auth.admin.deleteUser(userId);
   if (authErr) {
     logger.warn(`Could not delete auth user ${userId}: ${authErr.message}`);
-    // Non-fatal: profile is gone, auth entry will be orphaned but harmless
   }
 
-  res.json({ success: true, message: 'Account deleted.' });
+  res.json({ success: true, message: 'Account permanently deleted.' });
+});
+
+/**
+ * POST /users/me/anonymize — GDPR: right to be forgotten (soft delete)
+ * Anonymizes user data instead of hard deletion.
+ */
+export const anonymizeMyAccount = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  // Anonymize profile data
+  await supabase.from('profiles').update({
+    name: 'Deleted User',
+    bio: null,
+    avatar_url: null,
+    city: null,
+    country: null,
+    onboarding_completed: false,
+  }).eq('id', userId);
+
+  // Anonymize goal tree
+  await supabase.from('goal_trees').update({
+    user_id: `anonymous_${userId}`,
+  }).eq('user_id', userId);
+
+  // Delete from Supabase Auth
+  await supabase.auth.admin.deleteUser(userId);
+
+  res.json({ success: true, message: 'Account anonymized. Data retained for analytics.' });
+});
+
+/**
+ * GET /users/me/export — GDPR: right to data portability
+ * Returns all user data in JSON format.
+ */
+export const exportMyData = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  // Gather all user data
+  const [profile, goalTree, checkins, achievements, matches] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', userId).single(),
+    supabase.from('goal_trees').select('*').eq('user_id', userId).single(),
+    supabase.from('checkins').select('*').eq('user_id', userId),
+    supabase.from('user_achievements').select('*').eq('user_id', userId),
+    supabase.from('matches').select('*').eq('user_id', userId),
+  ]);
+
+  const exportData = {
+    exportedAt: new Date().toISOString(),
+    user: profile.data,
+    goalTree: goalTree.data,
+    checkins: checkins.data ?? [],
+    achievements: achievements.data ?? [],
+    matches: matches.data ?? [],
+  };
+
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename=praxis-data-export.json');
+  res.json(exportData);
 });
 
 /**
