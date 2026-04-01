@@ -152,9 +152,42 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
       const { data: prof } = await supabase.from('profiles').select('praxis_points').eq('id', requesterId).single();
       if (prof) await supabase.from('profiles').update({ praxis_points: (prof.praxis_points ?? 0) + 20 }).eq('id', requesterId);
 
-      // Verifier reward
+      // Award XP for goal completion (100 XP base)
+      await supabase.rpc('add_xp_to_user', {
+        p_user_id: requesterId,
+        p_xp_amount: 100,
+        p_pp_amount: 0,
+        p_source: 'goal_completion',
+      });
+
+      // Progress quest for completing goal
+      await supabase.rpc('progress_user_quest', {
+        p_user_id: requesterId,
+        p_quest_type: 'complete_goal',
+        p_amount: 1,
+      });
+
+      // Check achievements for goal completions
+      await supabase.rpc('check_user_achievements', { p_user_id: requesterId });
+
+      // Verifier reward + XP for helping peer
       const { data: verProf } = await supabase.from('profiles').select('praxis_points').eq('id', verifierId).single();
       if (verProf) await supabase.from('profiles').update({ praxis_points: (verProf.praxis_points ?? 0) + 10 }).eq('id', verifierId);
+      
+      // Verifier XP (50 XP for helping)
+      await supabase.rpc('add_xp_to_user', {
+        p_user_id: verifierId,
+        p_xp_amount: 50,
+        p_pp_amount: 0,
+        p_source: 'peer_verification',
+      });
+      
+      // Progress quest for verifier (help_peer)
+      await supabase.rpc('progress_user_quest', {
+        p_user_id: verifierId,
+        p_quest_type: 'help_peer',
+        p_amount: 1,
+      });
 
       // Auto-create achievement in the community feed for the completed goal
       const completedNode = (tree.nodes as any[]).find((n: any) => n.id === request.goal_node_id);

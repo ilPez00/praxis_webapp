@@ -315,7 +315,28 @@ export const resolveBetsOnGoalCompletion = async (userId: string, goalNodeId: st
         .from('profiles')
         .update({ praxis_points: (profile?.praxis_points ?? 0) + winnings })
         .eq('id', userId);
-      logger.info(`Bet ${bet.id} WON for user ${userId}: +${winnings} Praxis Points (1.8× payout)`);
+      
+      // Award XP (2 XP per 1 PP won from betting)
+      const xpWinnings = winnings * 2;
+      await supabase.rpc('add_xp_to_user', {
+        p_user_id: userId,
+        p_xp_amount: xpWinnings,
+        p_pp_amount: 0, // PP already awarded above
+        p_source: 'bet_win',
+      });
+      
+      // Progress quest for winning bet
+      await supabase.rpc('progress_user_quest', {
+        p_user_id: userId,
+        p_quest_type: 'win_bet',
+        p_amount: 1,
+      });
+      
+      // Check achievements for bet wins
+      await supabase.rpc('check_user_achievements', { p_user_id: userId });
+      
+      logger.info(`Bet ${bet.id} WON for user ${userId}: +${winnings} PP, +${xpWinnings} XP`);
+      
       pushNotification({
         userId,
         type: 'bet_result',

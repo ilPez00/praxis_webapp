@@ -9,7 +9,7 @@ import { GoalNode } from '../../models/GoalNode';
 import VideoCall from './VideoCall';
 import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
 import ReferencePicker from '../../components/common/ReferencePicker';
-import { GradingDialog, AxiomDialog, IncomingCallDialog, MessageList } from './components';
+import { MessageList } from './components';
 import {
   Container,
   Box,
@@ -21,7 +21,6 @@ import {
   ListItemButton,
   ListItemText,
   IconButton,
-  Paper,
   Select,
   MenuItem,
   FormControl,
@@ -45,7 +44,6 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import LinkIcon from '@mui/icons-material/Link';
 import VideocamIcon from '@mui/icons-material/Videocam';
-import VerifiedIcon from '@mui/icons-material/Verified';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import CallIcon from '@mui/icons-material/Call';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -64,7 +62,6 @@ const ChatRoom: React.FC = () => {
   const [muted, setMuted] = useState(false);
   const [partnerCheckedInToday, setPartnerCheckedInToday] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -239,10 +236,6 @@ const ChatRoom: React.FC = () => {
   }, [user1Id, user2Id, currentUserId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  useEffect(() => {
     if (!focusGoalId || !userGoalTree) return;
     const node = (userGoalTree.nodes ?? []).find((n: GoalNode) => n.id === focusGoalId);
     if (node) setFocusGoalName(node.name);
@@ -376,18 +369,6 @@ const ChatRoom: React.FC = () => {
     }
   };
 
-  const handleCompletionResponse = async (requestId: string, approved: boolean) => {
-    if (!currentUserId) return;
-    try {
-      await api.patch(`/completions/${requestId}/respond`, {
-        approved,
-      });
-      toast.success(approved ? '✅ Goal verified!' : '❌ Verification declined.');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to respond.');
-    }
-  };
-
   const handleVideoCallClick = () => {
     if (!currentUserId) return;
     setIsCallInitiator(true);
@@ -457,278 +438,6 @@ const ChatRoom: React.FC = () => {
     } finally {
       setSubmittingFeedback(false);
     }
-  };
-
-  // ── Message renderers ────────────────────────────────────────────────────────
-
-  const renderMessage = (msg: any) => {
-    const isMine = (msg.sender_id ?? msg.senderId) === currentUserId;
-    const msgType: string = msg.message_type ?? 'text';
-
-    // System notification — centered, no bubble
-    if (msgType === 'system') {
-      return (
-        <Box
-          key={msg.id}
-          sx={{ display: 'flex', justifyContent: 'center', py: 0.75 }}
-        >
-          <Typography
-            variant="caption"
-            sx={{
-              color: 'text.disabled',
-              fontStyle: 'italic',
-              bgcolor: 'rgba(255,255,255,0.04)',
-              px: 2,
-              py: 0.5,
-              borderRadius: 10,
-              textAlign: 'center',
-            }}
-          >
-            {msg.content}
-          </Typography>
-        </Box>
-      );
-    }
-
-    // Completion request card
-    if (msgType === 'completion_request') {
-      const isVerifier = msg.receiver_id === currentUserId;
-      let meta: any = {};
-      try {
-        meta = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : (msg.metadata ?? {});
-      } catch {
-        meta = {};
-      }
-      return (
-        <Box
-          key={msg.id}
-          sx={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', py: 0.5 }}
-        >
-          <Paper
-            elevation={0}
-            sx={{
-              maxWidth: '78%',
-              p: 2,
-              borderRadius: 3,
-              border: '1px solid rgba(245,158,11,0.3)',
-              bgcolor: 'rgba(245,158,11,0.07)',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <VerifiedIcon sx={{ color: 'primary.main', fontSize: 18 }} />
-              <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                Completion Request
-              </Typography>
-            </Box>
-            <Typography variant="body2" sx={{ mb: isVerifier ? 1.5 : 0 }}>
-              Requesting verification of:{' '}
-              <strong>{meta.goalName || 'a goal'}</strong>
-            </Typography>
-            {isVerifier && (
-              <Stack direction="row" spacing={1}>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="success"
-                  onClick={() => handleCompletionResponse(meta.requestId, true)}
-                  sx={{ borderRadius: 3, fontSize: '0.75rem', py: 0.5 }}
-                >
-                  ✓ Verify
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  onClick={() => handleCompletionResponse(meta.requestId, false)}
-                  sx={{ borderRadius: 3, fontSize: '0.75rem', py: 0.5 }}
-                >
-                  ✗ Reject
-                </Button>
-              </Stack>
-            )}
-            {!isVerifier && (
-              <Typography variant="caption" color="text.secondary">
-                Waiting for verification…
-              </Typography>
-            )}
-            <Typography
-              variant="caption"
-              sx={{ display: 'block', textAlign: 'right', mt: 1, opacity: 0.5, fontSize: '0.63rem' }}
-            >
-              {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Typography>
-          </Paper>
-        </Box>
-      );
-    }
-
-    // Image message
-    if (msgType === 'image') {
-      return (
-        <Box
-          key={msg.id}
-          sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}
-        >
-          {!isMine && (
-            <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-              {receiverName.charAt(0)}
-            </Avatar>
-          )}
-          <Box sx={{ maxWidth: '60%' }}>
-            {!isMine && (
-              <Typography sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>
-                {receiverName}
-              </Typography>
-            )}
-            <Box
-              component="img"
-              src={msg.media_url}
-              alt="shared image"
-              onClick={() => window.open(msg.media_url, '_blank')}
-              sx={{
-                width: '100%',
-                maxWidth: 280,
-                borderRadius: 3,
-                display: 'block',
-                cursor: 'pointer',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            />
-            <Typography
-              variant="caption"
-              sx={{
-                display: 'block',
-                textAlign: isMine ? 'right' : 'left',
-                mt: 0.25,
-                opacity: 0.5,
-                fontSize: '0.63rem',
-              }}
-            >
-              {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Typography>
-          </Box>
-        </Box>
-      );
-    }
-
-    // File message
-    if (msgType === 'file') {
-      return (
-        <Box
-          key={msg.id}
-          sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}
-        >
-          {!isMine && (
-            <Avatar sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-              {receiverName.charAt(0)}
-            </Avatar>
-          )}
-          <Box sx={{ maxWidth: '68%' }}>
-            {!isMine && (
-              <Typography sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5 }}>
-                {receiverName}
-              </Typography>
-            )}
-            <Box
-              onClick={() => window.open(msg.media_url, '_blank')}
-              sx={{
-                px: 2,
-                py: 1,
-                borderRadius: 3,
-                bgcolor: isMine ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.07)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                cursor: 'pointer',
-                '&:hover': { opacity: 0.85 },
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{ color: isMine ? 'primary.main' : 'text.primary', display: 'flex', alignItems: 'center', gap: 0.5 }}
-              >
-                📎 {msg.content?.replace('📎 ', '') || 'File'}
-              </Typography>
-            </Box>
-            <Typography
-              variant="caption"
-              sx={{ display: 'block', textAlign: isMine ? 'right' : 'left', mt: 0.25, opacity: 0.5, fontSize: '0.63rem' }}
-            >
-              {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Typography>
-          </Box>
-        </Box>
-      );
-    }
-
-    // Parse reference from metadata
-    let msgRef: Reference | null = null;
-    try {
-      const meta = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : (msg.metadata ?? {});
-      if (meta?.reference) msgRef = meta.reference as Reference;
-    } catch { /* ignore */ }
-
-    // Default: text bubble
-    return (
-      <Box
-        key={msg.id}
-        sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, justifyContent: isMine ? 'flex-end' : 'flex-start' }}
-      >
-        {!isMine && (
-          <Avatar
-            sx={{ width: 26, height: 26, fontSize: '0.7rem', flexShrink: 0, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
-            onClick={() => navigate('/profile/' + (msg.sender_id ?? msg.senderId))}
-          >
-            {receiverName.charAt(0)}
-          </Avatar>
-        )}
-        <Box sx={{ maxWidth: '68%' }}>
-          {!isMine && (
-            <Typography
-              sx={{ fontSize: '0.68rem', color: 'text.disabled', mb: 0.25, ml: 0.5, cursor: 'pointer', '&:hover': { color: 'text.secondary' } }}
-              onClick={() => navigate('/profile/' + (msg.sender_id ?? msg.senderId))}
-            >
-              {receiverName}
-            </Typography>
-          )}
-          <Box
-            sx={{
-              px: 2,
-              py: 1,
-              borderRadius: isMine ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-              background: isMine
-                ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
-                : 'rgba(255,255,255,0.07)',
-              border: isMine ? 'none' : '1px solid rgba(255,255,255,0.08)',
-              boxShadow: isMine ? '0 2px 12px rgba(245,158,11,0.25)' : 'none',
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{ color: isMine ? '#0A0B14' : 'text.primary', wordBreak: 'break-word', fontWeight: isMine ? 500 : 400 }}
-            >
-              {msg.content}
-            </Typography>
-            {msgRef && (
-              <Box sx={{ mt: 0.75 }}>
-                <ReferenceCard reference={msgRef} compact />
-              </Box>
-            )}
-            <Typography
-              variant="caption"
-              sx={{
-                display: 'block',
-                textAlign: 'right',
-                mt: 0.25,
-                opacity: 0.6,
-                color: isMine ? '#0A0B14' : 'text.secondary',
-                fontSize: '0.63rem',
-              }}
-            >
-              {new Date(msg.timestamp ?? msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
-    );
   };
 
   if (loading || !currentUserId) {
