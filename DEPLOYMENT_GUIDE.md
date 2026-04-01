@@ -1,308 +1,446 @@
-# 🚀 Deployment Guide - Maslow Domain System
+# 🚀 PRAXIS GAMIFICATION — DEPLOYMENT GUIDE
 
-**Date:** March 18, 2026  
-**Version:** 1.0.0  
-**Status:** Ready for Production
+### _Phase 1 & 2 Complete — Production Ready_
 
 ---
 
-## Pre-Deployment Checklist
+## 📋 PRE-DEPLOYMENT CHECKLIST
 
-- [ ] Backup database (Supabase → Backups → Create backup)
-- [ ] Test migration on staging environment (if available)
-- [ ] Notify users of upcoming maintenance (if needed)
-- [ ] Have rollback plan ready
+### ✅ Code Status
+
+- [x] All commits pushed to GitHub (`main` branch)
+- [x] TypeScript build passes (0 errors)
+- [x] Vercel auto-deploy triggered
+- [x] No console errors in development
+
+### 📦 Files to Deploy
+
+**Already pushed:**
+
+- Backend controllers, routes, schemas
+- Frontend components, hooks, pages
+- Database migrations
 
 ---
 
-## Option 1: Deploy via Supabase Dashboard (Recommended)
+## 🗄️ DATABASE MIGRATIONS (REQUIRED)
 
-### Step 1: Open Supabase SQL Editor
+### Step 1: Run Phase 1 Migration
 
-1. Go to https://supabase.com
-2. Select your Praxis project
-3. Navigate to **SQL Editor** (left sidebar)
+**File:** `migrations/2026-03-28-gamification-phase1.sql`
 
-### Step 2: Run Migration
+**What it creates:**
 
-1. Open `migrations/2026-03-18-domain-rework-maslow.sql`
-2. Copy entire contents
-3. Paste into SQL Editor
-4. Click **Run** (or Ctrl+Enter / Cmd+Enter)
+- 6 new tables (`daily_quests`, `user_daily_quests`, `achievements_master`, `user_achievements`, `social_rewards_tracking`, `level_rewards`)
+- 7 database functions (`update_user_level`, `add_xp_to_user`, `get_daily_quests_for_user`, `progress_user_quest`, `check_user_achievements`, `update_user_leagues`, `reset_daily_quests`)
+- Modifies `profiles` table (adds `total_xp`, `level`, `league`, `equipped_title`, `profile_theme`, `reputation_score`)
 
-### Step 3: Verify Success
+**How to run:**
 
-You should see:
+1. Go to Supabase Dashboard → SQL Editor
+2. Copy entire SQL file content
+3. Paste and run
+4. Verify: Check that tables exist in Table Editor
+
+**Expected output:**
+
 ```
-✅ Migration completed successfully!
-```
-
-If there are errors, they will be shown in the results panel.
-
-### Step 4: Verify Data
-
-Run these verification queries:
-
-```sql
--- Check domain distribution
-SELECT domain, COUNT(*) as count 
-FROM goal_trees 
-GROUP BY domain 
-ORDER BY domain;
-
--- Test Maslow level function
-SELECT get_maslow_level('Gaming & Esports'); -- Should return 4
-SELECT get_maslow_level('Body & Fitness'); -- Should return 1
-
--- Check user domain balance
-SELECT * FROM user_domain_balance LIMIT 10;
+SUCCESS: 6 tables created
+SUCCESS: 7 functions created
+SUCCESS: profiles table altered
+SUCCESS: 27 achievements seeded
+SUCCESS: 10 quest templates seeded
 ```
 
 ---
 
-## Option 2: Deploy via CLI (Advanced)
+### Step 2: Run Phase 2 Migration
 
-### Prerequisites
+**File:** `migrations/2026-03-28-gamification-events.sql`
+
+**What it creates:**
+
+- 1 new table (`gamification_events`)
+- 4 functions (`emit_level_up_event`, `emit_achievement_event`, `emit_quest_complete_event`, `cleanup_gamification_events`)
+- 1 trigger (`trg_emit_level_up`)
+
+**How to run:**
+
+1. Go to Supabase Dashboard → SQL Editor
+2. Copy entire SQL file content
+3. Paste and run
+4. Verify: Check that `gamification_events` table exists
+
+**Expected output:**
+
+```
+SUCCESS: 1 table created
+SUCCESS: 4 functions created
+SUCCESS: 1 trigger created
+```
+
+---
+
+## ⚙️ BACKEND DEPLOYMENT (Railway)
+
+### Automatic Deployment
+
+If Railway is connected to GitHub:
+
+1. Push is already done ✅
+2. Railway will auto-deploy on push
+3. Wait for deployment to complete (~2-3 minutes)
+
+### Manual Deployment (if needed)
 
 ```bash
-# Install PostgreSQL client if not already installed
-# Ubuntu/Debian:
-sudo apt-get install postgresql-client
-
-# Fedora:
-sudo dnf install postgresql
-
-# Arch:
-sudo pacman -S postgresql-libs
+# SSH into Railway instance or use Railway CLI
+railway up
 ```
 
-### Step 1: Get Database URL
-
-1. Go to Supabase Dashboard
-2. Settings → Database
-3. Copy **Connection string** (URI mode)
-4. Format: `postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres`
-
-### Step 2: Create .env File
+### Environment Variables to Verify
 
 ```bash
-cp .env.example .env
-# Edit .env and add:
-DATABASE_URL="your_supabase_connection_string"
+# Required for gamification
+DATABASE_URL=postgresql://...  # Supabase connection string
+SUPABASE_SERVICE_ROLE_KEY=eyJ...  # Service role key
 ```
 
-### Step 3: Run Deployment Script
+### Verify Backend Deployment
 
 ```bash
-chmod +x deploy_domains.sh
-./deploy_domains.sh
+# Test gamification endpoints
+curl -X GET https://your-railway-url.up.railway.app/api/gamification/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Expected: 200 OK with profile data
 ```
 
 ---
 
-## Post-Deployment Steps
+## 🌐 FRONTEND DEPLOYMENT (Vercel)
 
-### 1. Restart Application
+### Automatic Deployment
+
+Vercel auto-deploys on push to `main`:
+
+1. ✅ Push already done
+2. Check Vercel dashboard for build status
+3. Build time: ~3-4 minutes
+4. Preview URL will be available
+
+### Verify Frontend Deployment
+
+1. Go to deployed URL: `https://praxis-webapp.vercel.app`
+2. Login with test account
+3. Navigate to Dashboard
+4. Check for:
+   - Daily Quests Widget (should show 3 quests)
+   - Level badge in navbar (should show level 1)
+   - PP/XP toast on check-in
+
+---
+
+## 🧪 TESTING CHECKLIST
+
+### Core Gamification Flow
+
+**1. Level System**
+
+- [ ] Login → Check navbar (level badge visible)
+- [ ] Visit profile → See XP progress bar
+- [ ] Complete check-in → See level increase (if XP earned)
+- [ ] Level up → See celebration dialog
+
+**2. Daily Quests**
+
+- [ ] Dashboard → See 3 daily quests
+- [ ] Complete check-in → Quest progress updates
+- [ ] Create post → Quest progress updates
+- [ ] Comment → Quest progress updates
+- [ ] Claim reward → Receive XP+PP
+
+**3. Achievements**
+
+- [ ] Complete goal → Achievement unlocked toast
+- [ ] Win bet → Achievement unlocked toast
+- [ ] Visit profile → See unlocked achievements
+
+**4. Social Rewards**
+
+- [ ] Create post → +2 PP, +4 XP
+- [ ] Comment → +1 PP, +2 XP
+- [ ] Check daily limit not exceeded
+
+**5. Notifications**
+
+- [ ] Level up → Toast notification appears
+- [ ] Achievement unlock → Toast with XP/PP
+- [ ] Quest complete → Toast notification
+
+**6. Leaderboard**
+
+- [ ] Visit /leaderboard
+- [ ] See level badges next to names
+- [ ] See league badges next to names
+- [ ] Filter by league (Diamond/Platinum/Gold/Silver/Bronze)
+- [ ] Filter by aligned/all users
+
+---
+
+## 🔧 CRON JOBS SETUP (Optional but Recommended)
+
+### Daily Quest Reset (Midnight UTC)
+
+**Option A: Supabase pg_cron**
+
+```sql
+-- Run in Supabase SQL Editor
+SELECT cron.schedule(
+  'reset-daily-quests',
+  '0 0 * * *',  -- Midnight UTC
+  $$SELECT reset_daily_quests()$$
+);
+```
+
+**Option B: Railway Cron**
+Create `scripts/reset-quests.js`:
+
+```javascript
+const { createClient } = require("@supabase/supabase-js");
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
+
+async function main() {
+  const { data, error } = await supabase.rpc("reset_daily_quests");
+  if (error) {
+    console.error("Error:", error);
+    process.exit(1);
+  }
+  console.log("Success:", data);
+}
+
+main();
+```
+
+Then add to `package.json`:
+
+```json
+{
+  "scripts": {
+    "reset-quests": "node scripts/reset-quests.js"
+  }
+}
+```
+
+And configure Railway cron:
 
 ```bash
-# If using PM2
-pm2 restart praxis
-
-# If using Railway/Railway
-# Redeploy from GitHub
-
-# If running manually
-npm restart
+railway cron:add "0 0 * * *" "npm run reset-quests"
 ```
 
-### 2. Clear Frontend Cache
+### Monthly League Update (1st of each month)
 
-Instruct users to:
-- Hard refresh browser (Ctrl+Shift+R / Cmd+Shift+R)
-- Or clear cache completely
-
-### 3. Test Critical Flows
-
-#### Goal Creation
-- [ ] Create new goal → verify all 14 domains appear
-- [ ] Select "Gaming & Esports" → save → verify stored correctly
-- [ ] Edit goal → change domain → verify update works
-
-#### Tracker Auto-Assignment
-- [ ] Create "Gaming & Esports" goal → verify gaming trackers enabled
-- [ ] Create "Body & Fitness" goal → verify lift/cardio enabled
-- [ ] Log gaming session → verify notebook entry created
-
-#### Filters
-- [ ] Matches page → filter by domain → verify all 14 domains shown
-- [ ] Places page → filter by domain → verify working
-- [ ] Events page → filter by domain → verify working
-
-#### Analytics
-- [ ] View goal tree → verify domain colors correct
-- [ ] Check domain icons → verify emoji display correctly
-
----
-
-## Rollback Plan
-
-If issues occur, run this rollback SQL:
+**Supabase pg_cron:**
 
 ```sql
--- Rollback: Restore old domain column
-ALTER TABLE goal_trees RENAME COLUMN domain TO domain_new;
-ALTER TABLE goal_trees RENAME COLUMN domain_old TO domain;
-
--- Drop new enum type
-DROP TYPE IF EXISTS goal_domain_new CASCADE;
-
--- Restore old check constraint
-ALTER TABLE goal_trees 
-  ADD CONSTRAINT goal_trees_domain_check 
-  CHECK (domain IN (
-    'Career', 'Investing / Financial Growth', 'Fitness', 'Academics',
-    'Mental Health', 'Philosophical Development', 
-    'Culture / Hobbies / Creative Pursuits', 
-    'Intimacy / Romantic Exploration', 
-    'Friendship / Social Engagement', 'Personal Goals'
-  ));
+SELECT cron.schedule(
+  'update-monthly-leagues',
+  '0 0 1 * *',  -- 1st of month
+  $$SELECT update_user_leagues()$$
+);
 ```
 
----
+### Event Cleanup (Weekly)
 
-## Migration Mapping Reference
-
-### Old → New Domain Mapping
-
-| Old Domain | New Domain | Notes |
-|------------|------------|-------|
-| Fitness | Body & Fitness | Direct mapping |
-| Body & Health | Body & Fitness | Split into Body + Health |
-| Mental Health | Mental Balance | Renamed |
-| Environment & Gear | Environment & Home | Renamed |
-| Investing / Financial Growth | Financial Security | Level 2 focus |
-| Money & Assets | Financial Security | Consolidated |
-| Friendship / Social Engagement | Friendship & Social | Simplified |
-| Intimacy / Romantic Exploration | Romance & Intimacy | Simplified |
-| Career | Career & Craft | Expanded |
-| Academics | Career & Craft | Merged |
-| Philosophical Development | Spirit & Purpose | Renamed |
-| Personal Goals | Impact & Legacy | Focused |
-| Culture / Hobbies / Creative Pursuits | Gaming & Esports | Modern focus |
-
-### New Domains (No Predecessor)
-
-- 😴 Rest & Recovery (split from Health)
-- 🛡️ Health & Longevity (split from Fitness)
-- 💰 Financial Security (new categorization)
-- 🏛️ Community & Contribution (elevated)
-- 🎮 Gaming & Esports (modern addition)
-- 🎯 Impact & Legacy (split from Personal)
-
----
-
-## Troubleshooting
-
-### Issue: "type goal_domain_new does not exist"
-
-**Solution:** The enum type wasn't created. Re-run the first part of the migration:
+**Supabase pg_cron:**
 
 ```sql
-DO $$ BEGIN
-  CREATE TYPE goal_domain_new AS ENUM (
-    'Body & Fitness', 'Rest & Recovery', 'Mental Balance',
-    'Environment & Home', 'Health & Longevity', 'Financial Security',
-    'Friendship & Social', 'Romance & Intimacy', 'Community & Contribution',
-    'Career & Craft', 'Wealth & Assets', 'Gaming & Esports',
-    'Impact & Legacy', 'Spirit & Purpose'
-  );
-EXCEPTION
-  WHEN duplicate_object THEN null;
-END $$;
+SELECT cron.schedule(
+  'cleanup-gamification-events',
+  '0 0 * * 0',  -- Sunday midnight
+  $$SELECT cleanup_gamification_events()$$
+);
 ```
 
-### Issue: "column domain does not exist"
+---
 
-**Solution:** Check if column was renamed. Run:
+## 📊 MONITORING & ANALYTICS
+
+### Key Metrics to Track
+
+**Engagement:**
+
+- Daily Active Users (DAU)
+- Quest completion rate
+- Average session duration
+- Social actions per user per day
+
+**Economy:**
+
+- Total PP in circulation
+- PP inflation rate
+- Average XP earned per user
+- Level distribution
+
+**Retention:**
+
+- 7-day retention rate
+- 30-day retention rate
+- Streak maintenance rate
+
+### SQL Queries for Monitoring
+
+**Daily Quest Completion Rate:**
 
 ```sql
-\d goal_trees
+SELECT
+  date,
+  COUNT(*) FILTER (WHERE completed) * 100 / COUNT(*) AS completion_rate
+FROM user_daily_quests
+WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+GROUP BY date
+ORDER BY date DESC;
 ```
 
-Look for `domain`, `domain_old`, or `domain_new` columns.
-
-### Issue: Frontend shows old domains
-
-**Solution:** Clear browser cache and rebuild:
-
-```bash
-# Frontend
-cd client
-npm run build
-
-# Or for dev mode
-npm run dev
-```
-
-### Issue: Gaming trackers not showing
-
-**Solution:** Verify tracker types were added:
+**Level Distribution:**
 
 ```sql
-SELECT * FROM tracker_domain_mapping WHERE domain = 'Gaming & Esports';
+SELECT
+  level,
+  COUNT(*) as user_count
+FROM profiles
+GROUP BY level
+ORDER BY level;
 ```
 
-Should return 4 rows (gaming, achievements, rank, streaming).
+**PP Inflation (Weekly):**
 
----
-
-## Success Metrics
-
-After deployment, verify:
-
-1. ✅ All 14 domains visible in dropdowns
-2. ✅ Gaming trackers available (gaming, achievements, rank, streaming)
-3. ✅ Domain colors match new scheme (purple for gaming)
-4. ✅ Maslow level function works: `SELECT get_maslow_level('Gaming & Esports');`
-5. ✅ User domain balance view returns data
-6. ✅ No console errors in browser
-7. ✅ Existing goals still accessible
-
----
-
-## Communication Template
-
-If notifying users:
-
-```
-🎉 Praxis Update: Enhanced Goal System!
-
-We've upgraded our goal categorization based on Maslow's Hierarchy of Needs!
-
-What's New:
-✨ 14 focused domains (was 9)
-🎮 NEW: Gaming & Esports domain for achievement hunters
-😴 NEW: Rest & Recovery for work-life balance
-🏛️ NEW: Community & Contribution for giving back
-
-Your existing goals have been automatically migrated to the new system.
-
-Try creating a new goal to see the improved categorization!
-
-— The Praxis Team
+```sql
+SELECT
+  DATE_TRUNC('week', created_at) as week,
+  SUM(cost) as pp_spent,
+  COUNT(*) as transactions
+FROM marketplace_transactions
+WHERE created_at >= NOW() - INTERVAL '30 days'
+GROUP BY week
+ORDER BY week DESC;
 ```
 
 ---
 
-## Support
+## 🐛 TROUBLESHOOTING
 
-If you encounter issues:
+### Issue: Quests not appearing
 
-1. Check this guide's Troubleshooting section
+**Solution:**
+
+```sql
+-- Manually trigger quest reset for testing
+SELECT reset_daily_quests();
+
+-- Check if quests exist for user
+SELECT * FROM user_daily_quests
+WHERE user_id = 'YOUR_USER_ID'
+AND date = CURRENT_DATE;
+```
+
+### Issue: Level not updating
+
+**Solution:**
+
+```sql
+-- Check trigger exists
+SELECT * FROM pg_trigger WHERE tgname = 'trg_update_user_level';
+
+-- Manually update level if trigger broken
+UPDATE profiles
+SET level = FLOOR(total_xp / 1000) + 1
+WHERE id = 'YOUR_USER_ID';
+```
+
+### Issue: Notifications not showing
+
+**Solution:**
+
+1. Check browser console for errors
+2. Verify Supabase realtime subscription
+3. Check `gamification_events` table for events
+4. Verify JWT token is valid
+
+### Issue: Leaderboard empty
+
+**Solution:**
+
+```sql
+-- Check if profiles have level data
+SELECT id, name, level, league, praxis_points
+FROM profiles
+ORDER BY praxis_points DESC
+LIMIT 10;
+
+-- If empty, run league update
+SELECT update_user_leagues();
+```
+
+---
+
+## 📈 POST-DEPLOYMENT OPTIMIZATION
+
+### Week 1: Monitor & Adjust
+
+- Watch for exploits (PP farming, etc.)
+- Adjust quest difficulty if needed
+- Monitor server performance
+
+### Week 2: User Feedback
+
+- Collect user feedback on Discord/feedback form
+- Identify pain points
+- Prioritize bug fixes
+
+### Week 3-4: Phase 3 Planning
+
+- Review analytics
+- Plan Squad system
+- Design Battle Pass
+
+---
+
+## 🎉 SUCCESS CRITERIA
+
+**Phase 1 & 2 are successful when:**
+
+- [ ] Migrations run without errors
+- [ ] Backend deploys successfully
+- [ ] Frontend deploys successfully
+- [ ] Users can see level badges
+- [ ] Daily quests appear and work
+- [ ] XP/PP awards correctly
+- [ ] Achievements unlock automatically
+- [ ] Notifications appear in real-time
+- [ ] Leaderboard filters work
+- [ ] No critical bugs in first 48 hours
+
+---
+
+## 📞 SUPPORT
+
+**If you encounter issues:**
+
+1. Check this guide's troubleshooting section
 2. Review migration SQL for errors
-3. Check Supabase logs (Dashboard → Logs)
-4. Contact: [Your support contact]
+3. Check Supabase logs for database errors
+4. Check Railway logs for backend errors
+5. Check Vercel logs for frontend errors
+6. Review `GAMIFICATION_PHASE1_COMPLETE.md` for architecture details
 
 ---
 
-*Last Updated: March 18, 2026*
+**🚀 Ready to deploy! Good luck!**
+
+_Generated: March 28, 2026_
+_Version: 2.0 (Phase 1 + Phase 2)_
