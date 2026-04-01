@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { DOMAIN_COLORS } from '../../types/goal';
 import GlassCard from '../../components/common/GlassCard';
+import ShareButton from '../../components/common/ShareButton';
 import {
   Container,
   Box,
@@ -15,10 +16,12 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Tooltip,
+  IconButton,
 } from '@mui/material';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ShareIcon from '@mui/icons-material/Share';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LeagueBadge from '../../components/common/LeagueBadge';
 import LevelBadge from '../../components/common/LevelBadge';
@@ -56,6 +59,7 @@ const LeaderboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'aligned'>('all');
   const [leagueFilter, setLeagueFilter] = useState<string>('all');
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -120,6 +124,24 @@ const LeaderboardPage: React.FC = () => {
                   )}
                 </Stack>
               </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Tooltip title="Share your rank">
+                <IconButton
+                  onClick={() => setShareDialogOpen(true)}
+                  sx={{ mr: 2, bgcolor: 'rgba(245,158,11,0.1)', '&:hover': { bgcolor: 'rgba(245,158,11,0.2)' } }}
+                >
+                  <ShareIcon sx={{ color: '#F59E0B' }} />
+                </IconButton>
+              </Tooltip>
+              <ShareButton
+                open={shareDialogOpen}
+                onClose={() => setShareDialogOpen(false)}
+                sourceTable="leaderboard"
+                sourceId={user?.id || ''}
+                title={`I'm ranked #${myRank} in the ${myEntry?.league || 'Gold'} League on Praxis!`}
+                content={`Check out my progress on Praxis — ${myEntry?.praxis_points?.toLocaleString()} PP, ${user?.current_streak}-day streak!`}
+              />
             </Box>
             <Stack direction="row" spacing={3} alignItems="center">
               <Box sx={{ textAlign: 'center' }}>
