@@ -9,7 +9,8 @@ import {
   streakAlerts,
   getSystemConfig, updateSystemConfig, triggerAxiomScan, togglePremium,
   importOSMPlacesEndpoint,
-  clearSeenMessages
+  clearSeenMessages,
+  getAdminMetrics
 } from '../controllers/adminController';
 import adminAxiomRoutes from './adminAxiomRoutes';
 import { authenticateToken } from '../middleware/authenticateToken';
@@ -67,6 +68,9 @@ router.post('/axiom/trigger-scan', authenticateToken, requireAdmin, triggerAxiom
 router.post('/axiom/generate-all-briefs', authenticateToken, requireAdmin, generateAllBriefs);
 // OSM place import
 router.post('/import-osm-places', authenticateToken, requireAdmin, validateBody(importOSMPlacesBodySchema), importOSMPlacesEndpoint);
+
+// Metrics dashboard
+router.get('/metrics', authenticateToken, requireAdmin, getAdminMetrics);
 
 router.use('/axiom', adminAxiomRoutes);
 router.use('/debug', adminDebugRoutes);

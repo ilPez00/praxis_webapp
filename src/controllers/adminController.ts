@@ -1237,3 +1237,85 @@ export const importOSMPlacesEndpoint = catchAsync(async (req: Request, res: Resp
     ...result,
   });
 });
+
+// ── Metrics Dashboard ──────────────────────────────────────────────────────────
+
+export const getAdminMetrics = catchAsync(async (req: Request, res: Response) => {
+  const { days = 30 } = req.query;
+  const daysNum = parseInt(days as string, 10) || 30;
+  const since = new Date();
+  since.setDate(since.getDate() - daysNum);
+
+  // Core metrics
+  const [
+    totalUsersRes,
+    activeUsers7dRes,
+    activeUsers30dRes,
+    payingUsersRes,
+    checkinsRes,
+    goalsRes,
+    postsRes,
+    achievementsRes,
+  ] = await Promise.all([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('checkins').select('user_id', { count: 'exact', head: true }).gte('checked_in_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+    supabase.from('checkins').select('user_id', { count: 'exact', head: true }).gte('checked_in_at', new Date(Date.now() - 30 * 86400000).toISOString()),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_premium', true),
+    supabase.from('checkins').select('id', { count: 'exact', head: true }).gte('created_at', since.toISOString()),
+    supabase.from('goal_trees').select('id', { count: 'exact', head: true }),
+    supabase.from('posts').select('id', { count: 'exact', head: true }).gte('created_at', since.toISOString()),
+    supabase.from('user_achievements').select('id', { count: 'exact', head: true }).eq('completed', true).gte('completed_at', since.toISOString()),
+  ]);
+
+  // Note: For distinct counts, we fetch all and count in memory (Supabase limitation)
+  const activeUsers7d = new Set(activeUsers7dRes.data?.map(r => r.user_id)).size;
+  const activeUsers30d = new Set(activeUsers30dRes.data?.map(r => r.user_id)).size;
+
+  // Calculate MRR (assuming $10/mo average)
+  const payingUsers = payingUsersRes.count || 0;
+  const estimatedMRR = payingUsers * 10;
+
+  // Retention curve (simplified)
+  const retentionData = [];
+  for (let i = 0; i < 7; i++) {
+    const day = new Date();
+    day.setDate(day.getDate() - i);
+    const dayStart = day.toISOString().slice(0, 10);
+    const { data: dayCheckins } = await supabase
+      .from('checkins')
+      .select('user_id')
+      .gte('checked_in_at', dayStart);
+    const dau = new Set(dayCheckins?.map(r => r.user_id)).size || 0;
+    retentionData.unshift({ day: i, dau });
+  }
+
+  // Top goals (from goal_trees nodes)
+  const { data: allTrees } = await supabase.from('goal_trees').select('nodes');
+  const goalCounts: Record<string, number> = {};
+  (allTrees || []).forEach((tree: any) => {
+    (tree.nodes || []).forEach((node: any) => {
+      if (node.domain) {
+        goalCounts[node.domain] = (goalCounts[node.domain] || 0) + 1;
+      }
+    });
+  });
+  const topGoals = Object.entries(goalCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
+
+  res.json({
+    totalUsers: totalUsersRes.count || 0,
+    activeUsers7d,
+    activeUsers30d,
+    payingUsers,
+    mrr: estimatedMRR,
+    checkinsThisPeriod: checkinsRes.count || 0,
+    totalGoals: goalsRes.count || 0,
+    postsThisPeriod: postsRes.count || 0,
+    achievementsThisPeriod: achievementsRes.count || 0,
+    retentionCurve: retentionData,
+    topGoals,
+    generatedAt: new Date().toISOString(),
+  });
+});
