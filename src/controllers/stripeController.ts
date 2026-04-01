@@ -28,18 +28,20 @@ type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number];
  * @param res - The Express response object.
  */
 export const createCheckoutSession = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { userId, email } = req.body; // Extract user ID and email from the request body
+  const { userId, email, interval = 'month' } = req.body; // Extract user ID and email from the request body
 
   // Validate required input
   if (!userId || !email) {
     throw new BadRequestError('User ID and email are required to create a checkout session.');
   }
 
-  // Retrieve Stripe Price ID from environment variables
-  const priceId = process.env.STRIPE_PRICE_ID;
+  // Retrieve Stripe Price ID from environment variables (support monthly and annual)
+  const priceId = interval === 'year' 
+    ? process.env.STRIPE_PRICE_ID_ANNUAL 
+    : process.env.STRIPE_PRICE_ID;
 
   if (!priceId) {
-    logger.error('STRIPE_PRICE_ID is not set in environment variables.');
+    logger.error(`STRIPE_PRICE_ID_${interval.toUpperCase()} is not set in environment variables.`);
     throw new InternalServerError('Server configuration error: Stripe Price ID missing.');
   }
 
@@ -60,6 +62,7 @@ export const createCheckoutSession = catchAsync(async (req: Request, res: Respon
     customer_email: email, // Pre-fill customer email in Stripe Checkout
     metadata: {
       userId: userId, // Store our internal userId in Stripe's metadata for webhook processing
+      interval, // Store subscription interval
     },
   });
 
@@ -289,3 +292,86 @@ export const handleWebhook = async (req: Request, res: Response) => {
   // Return a 200 response to Stripe to acknowledge successful receipt of the event
   res.json({ received: true });
 };
+
+/**
+ * @description Creates a Stripe Customer Portal session for managing subscriptions.
+ * Users can cancel, update payment method, or change subscription tier.
+ * @param req - The Express request object, containing userId in params/user.
+ * @param res - The Express response object.
+ */
+export const createPortalSession = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  
+  if (!userId) {
+    throw new BadRequestError('Authentication required');
+  }
+
+  // Get customer ID from user's subscription
+  const { data: subscription } = await supabase
+    .from('user_subscriptions')
+    .select('customer_id')
+    .eq('user_id', userId)
+    .not('customer_id', 'is', null)
+    .maybeSingle();
+
+  if (!subscription?.customer_id) {
+    throw new BadRequestError('No active subscription found');
+  }
+
+  // Create portal session
+  const portalSession = await stripe.billingPortal.sessions.create({
+    customer: subscription.customer_id,
+    return_url: `${process.env.CLIENT_URL}/profile`,
+  });
+
+  res.json({ url: portalSession.url });
+});
+
+/**
+ * @description Verifies a Stripe checkout session server-side.
+ * Prevents fake success redirects and confirms payment status.
+ * @param req - The Express request object, containing session_id in query.
+ * @param res - The Express response object.
+ */
+export const verifySession = catchAsync(async (req: Request, res: Response) => {
+  const { session_id } = req.query;
+
+  if (!session_id) {
+    throw new BadRequestError('session_id is required');
+  }
+
+  // Retrieve session from Stripe
+  const session = await stripe.checkout.sessions.retrieve(session_id as string);
+
+  if (!session) {
+    throw new BadRequestError('Invalid session ID');
+  }
+
+  // Verify payment status
+  const paymentStatus = session.payment_status;
+  const subscriptionStatus = session.mode === 'subscription' 
+    ? (await stripe.subscriptions.retrieve(session.subscription as string)).status 
+    : null;
+
+  // Get subscription details if applicable
+  let subscriptionDetails = null;
+  if (session.mode === 'subscription' && session.subscription) {
+    const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+    subscriptionDetails = {
+      id: sub.id,
+      status: sub.status,
+      current_period_end: (sub as any).current_period_end,
+      plan: sub.items.data[0]?.price?.nickname || 'Premium',
+    };
+  }
+
+  res.json({
+    status: paymentStatus,
+    subscriptionStatus,
+    customerId: session.customer,
+    subscriptionId: session.subscription,
+    subscription: subscriptionDetails,
+    amountTotal: session.amount_total,
+    currency: session.currency,
+  });
+});

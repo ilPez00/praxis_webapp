@@ -33,6 +33,7 @@ const UpgradePage: React.FC = () => {
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [loadingPP, setLoadingPP] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('month');
 
   const handleUpgradeClick = async () => {
     if (!user || userLoading) {
@@ -45,6 +46,7 @@ const UpgradePage: React.FC = () => {
       const response = await api.post('/stripe/create-checkout-session', {
         userId: user.id,
         email: user.email,
+        interval: billingInterval,
       });
       const { url } = response.data;
       if (url) window.location.href = url;
@@ -131,10 +133,58 @@ const UpgradePage: React.FC = () => {
               </Box>
               <Box sx={{ textAlign: 'right' }}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end' }}>
-                  <Typography variant="h3" sx={{ fontWeight: 900, color: 'primary.main' }}>$10</Typography>
-                  <Typography variant="h6" color="text.secondary" sx={{ ml: 0.5 }}>/mo</Typography>
+                  <Typography variant="h3" sx={{ fontWeight: 900, color: 'primary.main' }}>
+                    {billingInterval === 'month' ? '$10' : '$80'}
+                  </Typography>
+                  <Typography variant="h6" color="text.secondary" sx={{ ml: 0.5 }}>
+                    /{billingInterval === 'month' ? 'mo' : 'yr'}
+                  </Typography>
                 </Box>
+                {billingInterval === 'year' && (
+                  <Chip label="Save 33%" size="small" sx={{ mt: 1, bgcolor: '#22C55E', color: '#fff', fontWeight: 700 }} />
+                )}
               </Box>
+            </Box>
+
+            {/* Billing Interval Toggle */}
+            <Box sx={{ mb: 4 }}>
+              <Box sx={{
+                display: 'flex',
+                borderRadius: '12px',
+                bgcolor: 'rgba(255,255,255,0.05)',
+                p: 0.5,
+              }}>
+                <Button
+                  fullWidth
+                  variant={billingInterval === 'month' ? 'contained' : 'text'}
+                  onClick={() => setBillingInterval('month')}
+                  sx={{
+                    borderRadius: '10px',
+                    fontWeight: billingInterval === 'month' ? 700 : 500,
+                    py: 1.5,
+                  }}
+                >
+                  Monthly
+                </Button>
+                <Button
+                  fullWidth
+                  variant={billingInterval === 'year' ? 'contained' : 'text'}
+                  onClick={() => setBillingInterval('year')}
+                  sx={{
+                    borderRadius: '10px',
+                    fontWeight: billingInterval === 'year' ? 700 : 500,
+                    py: 1.5,
+                  }}
+                >
+                  Annual
+                  <Typography variant="caption" sx={{ ml: 1, color: '#22C55E', fontWeight: 700 }}>
+                    -33%
+                  </Typography>
+                </Button>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
+                {billingInterval === 'year' ? 'Billed $80 once per year' : 'Billed monthly'}
+              </Typography>
             </Box>
 
             <Divider sx={{ mb: 4, borderColor: 'rgba(255,255,255,0.08)' }} />
