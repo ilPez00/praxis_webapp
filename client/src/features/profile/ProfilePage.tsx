@@ -7,7 +7,6 @@ import PostFeed from '../posts/PostFeed';
 import api from '../../lib/api';
 import GlassCard from '../../components/common/GlassCard';
 import FriendButton from '../../components/common/FriendButton';
-import ReferralWidget from '../referral/ReferralWidget';
 import {
   Container,
   Box,
@@ -27,11 +26,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  LinearProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -44,19 +38,17 @@ import LinkIcon from '@mui/icons-material/Link';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import PeopleIcon from '@mui/icons-material/People';
 import ArticleIcon from '@mui/icons-material/Article';
-import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import SecurityIcon from '@mui/icons-material/Security';
 import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 import ShareDialog from '../../components/common/ShareDialog';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DuelDialog from '../duels/components/DuelDialog';
-import { DOMAIN_COLORS } from '../../types/goal';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import toast from 'react-hot-toast';
 import CodeIcon from '@mui/icons-material/Code';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { GamificationSection, AchievementsSection, FriendsDialog } from './components';
 import LevelBadge from '../../components/common/LevelBadge';
 import { useGamification } from '../../hooks/useGamification';
 
@@ -259,9 +251,7 @@ const ProfilePage: React.FC = () => {
   const [honorLoading, setHonorLoading] = useState(false);
 
   // Friends
-  const [friends, setFriends] = useState<any[]>([]);
   const [friendsDialogOpen, setFriendsDialogOpen] = useState(false);
-  const [friendsLoading, setFriendsLoading] = useState(false);
 
   // Achievements
   const [achievements, setAchievements] = useState<any[]>([]);
@@ -487,20 +477,7 @@ const ProfilePage: React.FC = () => {
     setIsEditing(false);
   };
 
-  const handleOpenFriends = async () => {
-    setFriendsDialogOpen(true);
-    if (friends.length > 0) return;
-    setFriendsLoading(true);
-    try {
-      const targetId = paramId || user?.id;
-      const res = await api.get(`/friends/of/${targetId}`);
-      setFriends(Array.isArray(res.data) ? res.data : []);
-    } catch {
-      toast.error('Could not load friends.');
-    } finally {
-      setFriendsLoading(false);
-    }
-  };
+  const handleOpenFriends = () => setFriendsDialogOpen(true);
 
   const handleHonor = async () => {
     if (!user || !paramId) return;
@@ -949,65 +926,14 @@ const ProfilePage: React.FC = () => {
       </ErrorBoundary>
 
       {/* Friends dialog */}
-      <Dialog
+      <FriendsDialog
         open={friendsDialogOpen}
         onClose={() => setFriendsDialogOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{ sx: { bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' } }}
-      >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
-          {isOwnProfile ? 'Your Friends' : `${profile.name}'s Friends`}
-        </DialogTitle>
-        <DialogContent sx={{ px: 1, pb: 2 }}>
-          {isOwnProfile && user?.id && (
-            <Box sx={{ px: 1, mb: 1 }}>
-              <ReferralWidget userId={user.id} />
-            </Box>
-          )}
-          {friendsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress size={28} />
-            </Box>
-          ) : friends.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-              No friends yet.
-            </Typography>
-          ) : (
-            <List disablePadding>
-              {friends.map((f: any) => (
-                <ListItem
-                  key={f.id}
-                  sx={{ borderRadius: '10px', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' }, px: 1.5 }}
-                  onClick={() => { setFriendsDialogOpen(false); navigate(`/profile/${f.id}`); }}
-                >
-                  <ListItemAvatar>
-                    <Avatar src={f.avatar_url ?? undefined} sx={{ width: 40, height: 40 }}>
-                      {f.name?.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={<Typography variant="body2" sx={{ fontWeight: 600 }}>{f.name}</Typography>}
-                    secondary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        {f.current_streak > 0 && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                            <LocalFireDepartmentIcon sx={{ fontSize: 13, color: '#F59E0B' }} />
-                            <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 600 }}>{f.current_streak}d</Typography>
-                          </Box>
-                        )}
-                        {f.praxis_points > 0 && (
-                          <Typography variant="caption" color="text.disabled">⚡ {f.praxis_points} PP</Typography>
-                        )}
-                      </Box>
-                    }
-                  />
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </DialogContent>
-      </Dialog>
+        isOwnProfile={isOwnProfile}
+        profileName={profile.name}
+        targetUserId={paramId || user?.id}
+        currentUserId={user?.id}
+      />
 
       {/* Latest Reports (Own profile only) */}
       {isOwnProfile && (profile.latest_axiom_report || profile.latest_ai_narrative) && (
@@ -1109,165 +1035,15 @@ const ProfilePage: React.FC = () => {
 
       {/* Gamification Section — Level, XP, League */}
       {!gamificationLoading && gamificationProfile && (
-        <ErrorBoundary label="Gamification">
-        <GlassCard glowColor="rgba(167,139,250,0.1)" sx={{ p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-            <EmojiEventsIcon sx={{ color: '#A78BFA' }} />
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                Progress & Achievements
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Level {gamificationProfile.level} · {gamificationProfile.league} League
-              </Typography>
-            </Box>
-            <LevelBadge level={gamificationProfile.level} size="large" animated={true} />
-          </Box>
-          
-          {/* XP Progress Bar */}
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography variant="body2" color="text.secondary">
-                XP Progress
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#A78BFA' }}>
-                {gamificationProfile.xp_progress?.toLocaleString()} / {gamificationProfile.xp_needed?.toLocaleString()} XP
-              </Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={gamificationProfile.xp_percent || 0}
-              sx={{
-                height: 10,
-                borderRadius: 5,
-                bgcolor: 'rgba(255,255,255,0.1)',
-                '& .MuiLinearProgress-bar': {
-                  bgcolor: '#A78BFA',
-                  borderRadius: 5,
-                },
-              }}
-            />
-          </Box>
-
-          {/* Stats Grid */}
-          <Grid container spacing={2}>
-            <Grid size={6}>
-              <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'rgba(245,158,11,0.08)', borderRadius: 2 }}>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#F59E0B' }}>
-                  {gamificationProfile.praxis_points?.toLocaleString() || 0}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                  Praxis Points
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={6}>
-              <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'rgba(167,139,250,0.08)', borderRadius: 2 }}>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#A78BFA' }}>
-                  {gamificationProfile.total_xp?.toLocaleString() || 0}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                  Total XP
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={6}>
-              <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'rgba(6,182,212,0.08)', borderRadius: 2 }}>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#06B6D4' }}>
-                  {gamificationProfile.reputation_score || 50}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                  Reputation
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={6}>
-              <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'rgba(34,197,94,0.08)', borderRadius: 2 }}>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#22C55E' }}>
-                  {gamificationProfile.current_streak || 0}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                  Day Streak
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-
-          {/* Equipped Title */}
-          {gamificationProfile.equipped_title && (
-            <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Chip
-                label={`"${gamificationProfile.equipped_title}"`}
-                sx={{
-                  bgcolor: 'rgba(167,139,250,0.15)',
-                  border: '1px solid rgba(167,139,250,0.4)',
-                  color: '#A78BFA',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                }}
-              />
-            </Box>
-          )}
-        </GlassCard>
-        </ErrorBoundary>
+        <GamificationSection profile={gamificationProfile} />
       )}
 
       {/* Achievements (trophies) */}
-      {achievements.length > 0 && (
-        <ErrorBoundary label="Achievements">
-        <GlassCard glowColor="rgba(245,158,11,0.1)" sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-            <EmojiEventsIcon sx={{ color: '#F59E0B' }} />
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {isOwnProfile ? 'Your Achievements' : `${profile.name}'s Achievements`}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {achievements.length} completed goal{achievements.length !== 1 ? 's' : ''} unlocked
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-            {achievements.map((a: any) => {
-              const domainColor = DOMAIN_COLORS[a.domain as string] || '#F59E0B';
-              return (
-                <Tooltip key={a.id} title={a.description || a.title} arrow>
-                  <Box sx={{
-                    display: 'flex', alignItems: 'center', gap: 1,
-                    px: 1.5, py: 1, borderRadius: '12px',
-                    bgcolor: `${domainColor}12`,
-                    border: `1px solid ${domainColor}30`,
-                    maxWidth: 220,
-                  }}>
-                    <Box sx={{
-                      width: 32, height: 32, borderRadius: '8px',
-                      bgcolor: `${domainColor}20`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <EmojiEventsIcon sx={{ color: domainColor, fontSize: 18 }} />
-                    </Box>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography sx={{
-                        fontWeight: 700, fontSize: '0.78rem', color: domainColor,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {a.title}
-                      </Typography>
-                      {a.domain && (
-                        <Typography sx={{ fontSize: '0.63rem', color: 'text.disabled', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                          {a.domain}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-                </Tooltip>
-              );
-            })}
-          </Box>
-        </GlassCard>
-        </ErrorBoundary>
-      )}
+      <AchievementsSection
+        achievements={achievements}
+        isOwnProfile={isOwnProfile}
+        profileName={profile.name}
+      />
 
       {/* Posts timeline */}
       <ErrorBoundary label="Posts">

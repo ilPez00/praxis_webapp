@@ -19,6 +19,9 @@ import {
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import LeagueBadge from '../../components/common/LeagueBadge';
+import LevelBadge from '../../components/common/LevelBadge';
 
 interface LeaderboardEntry {
   id: string;
@@ -32,6 +35,8 @@ interface LeaderboardEntry {
   rank: number;
   similarity: number;
   domains: string[];
+  level?: number;
+  league?: string;
 }
 
 function getStreakTier(streak: number): { label: string; color: string } {
@@ -50,12 +55,13 @@ const LeaderboardPage: React.FC = () => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'aligned'>('all');
+  const [leagueFilter, setLeagueFilter] = useState<string>('all');
 
   useEffect(() => {
     if (!user?.id) return;
     setLoading(true);
     api
-      .get('/users/leaderboard', { params: { userId: user.id } })
+      .get('/gamification/leaderboard', { params: { limit: 100 } })
       .then(r => setEntries(Array.isArray(r.data) ? r.data : []))
       .catch(() => setEntries([]))
       .finally(() => setLoading(false));
@@ -64,9 +70,11 @@ const LeaderboardPage: React.FC = () => {
   const myEntry = entries.find(e => e.id === user?.id);
   const myRank = myEntry?.rank ?? null;
 
-  const visible = filter === 'aligned'
-    ? entries.filter(e => e.similarity > 0)
-    : entries;
+  const visible = entries.filter(e => {
+    if (filter === 'aligned' && e.similarity <= 0) return false;
+    if (leagueFilter !== 'all' && e.league !== leagueFilter) return false;
+    return true;
+  });
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, pb: 8 }}>
@@ -141,8 +149,8 @@ const LeaderboardPage: React.FC = () => {
         </GlassCard>
       )}
 
-      {/* Filter */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+      {/* Filters */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
         <ToggleButtonGroup
           value={filter}
           exclusive
@@ -152,6 +160,21 @@ const LeaderboardPage: React.FC = () => {
         >
           <ToggleButton value="all">All Users</ToggleButton>
           <ToggleButton value="aligned">Goal-Aligned</ToggleButton>
+        </ToggleButtonGroup>
+        
+        <ToggleButtonGroup
+          value={leagueFilter}
+          exclusive
+          onChange={(_e, v) => { if (v) setLeagueFilter(v); }}
+          size="small"
+          sx={{ '& .MuiToggleButton-root': { borderRadius: '8px !important', px: 2, fontSize: '0.75rem', fontWeight: 700 } }}
+        >
+          <ToggleButton value="all">All Leagues</ToggleButton>
+          <ToggleButton value="diamond">💎 Diamond</ToggleButton>
+          <ToggleButton value="platinum">🏆 Platinum</ToggleButton>
+          <ToggleButton value="gold">🥇 Gold</ToggleButton>
+          <ToggleButton value="silver">🥈 Silver</ToggleButton>
+          <ToggleButton value="bronze">🥉 Bronze</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
@@ -208,6 +231,12 @@ const LeaderboardPage: React.FC = () => {
                       <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
                         {entry.name}{isMe && ' (you)'}
                       </Typography>
+                      {entry.level && (
+                        <LevelBadge level={entry.level} size="small" animated={false} />
+                      )}
+                      {entry.league && (
+                        <LeagueBadge league={entry.league as any} size="small" showTooltip={false} />
+                      )}
                       <Chip
                         label={tier.label}
                         size="small"

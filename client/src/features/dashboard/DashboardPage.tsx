@@ -16,6 +16,7 @@ import LevelBadge from '../../components/common/LevelBadge';
 import DailyQuestsWidget from '../../components/common/DailyQuestsWidget';
 import LevelUpDialog from '../../components/common/LevelUpDialog';
 import PPToast from '../../components/common/PPToast';
+import { useGamificationNotifications } from '../../hooks/useGamificationNotifications';
 
 import PageSkeleton from '../../components/common/PageSkeleton';
 import {
@@ -39,6 +40,9 @@ const DashboardPage: React.FC = () => {
 
   // Gamification hook
   const { profile: gamificationProfile, quests, loading: gamificationLoading, trackAction } = useGamification(currentUserId || '');
+  
+  // Gamification notifications
+  useGamificationNotifications(currentUserId);
 
   const [loadingContent, setLoadingContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
