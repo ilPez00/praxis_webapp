@@ -9,6 +9,7 @@ import TagIcon from '@mui/icons-material/LocalOffer';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import toast from 'react-hot-toast';
+import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';

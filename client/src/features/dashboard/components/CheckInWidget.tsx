@@ -123,6 +123,7 @@ const CheckInWidget: React.FC<Props> = ({
 
   const tier = getStreakTier(currentStreak);
   const atRisk = isStreakAtRisk(lastActivityDate);
+  const isMilestone = [7, 14, 30, 60, 100].includes(currentStreak);
 
   return (
     <GlassCard sx={{
@@ -203,41 +204,53 @@ const CheckInWidget: React.FC<Props> = ({
               {currentStreak >= 3 && (
                 <Tooltip title="Share your streak & get +10 PP">
                   <Button
-                    size="small"
+                    size={isMilestone ? 'medium' : 'small'}
                     variant="contained"
-                    startIcon={<ShareIcon sx={{ fontSize: '14px !important' }} />}
+                    startIcon={<ShareIcon sx={{ fontSize: isMilestone ? '18px !important' : '14px !important' }} />}
                     onClick={async () => {
-                      const text = `I'm on a 🔥 ${currentStreak}-day streak on Praxis! Building goals every day — join me → https://praxis-app.vercel.app`;
+                      const text = isMilestone
+                        ? `🚨 Milestone! I'm on a ${currentStreak}-day streak on Praxis. ${currentStreak} days of discipline — join me → https://praxis-app.vercel.app`
+                        : `I'm on a 🔥 ${currentStreak}-day streak on Praxis! Building goals every day — join me → https://praxis-app.vercel.app`;
                       
-                      // Share
                       if (navigator.share) {
-                        navigator.share({ title: 'My Praxis Streak', text }).catch(() => {});
+                        navigator.share({ title: isMilestone ? `My ${currentStreak}-Day Milestone!` : 'My Praxis Streak', text }).catch(() => {});
                       } else {
                         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                       }
                       
-                      // Award +10 PP (fire-and-forget)
                       try {
                         await api.post('/gamification/social/track', {
                           actionType: 'streak_share',
                           amount: 1,
                         });
-                        toast.success('Shared! +10 PP 🎉', { duration: 2000 });
-                      } catch (err) {
-                        // Silent fail — don't ruin the share experience
-                      }
+                        toast.success(`Shared! +10 PP ${isMilestone ? '🎉' : ''}`, { duration: 3000 });
+                      } catch (err) {}
                     }}
                     sx={{
-                      fontSize: '0.72rem',
-                      bgcolor: '#F97316',
+                      fontSize: isMilestone ? '0.9rem' : '0.72rem',
+                      py: isMilestone ? 1.5 : 0.75,
+                      px: isMilestone ? 3 : undefined,
+                      bgcolor: isMilestone ? 'linear-gradient(135deg, #F97316, #FBBF24)' : '#F97316',
+                      background: isMilestone ? 'linear-gradient(135deg, #F97316, #FBBF24)' : '#F97316',
                       color: '#fff',
-                      fontWeight: 700,
-                      borderRadius: '10px',
-                      boxShadow: '0 4px 12px rgba(249,115,22,0.4)',
-                      '&:hover': { bgcolor: '#FB923C', boxShadow: '0 6px 16px rgba(249,115,22,0.5)' },
+                      fontWeight: 800,
+                      borderRadius: isMilestone ? '14px' : '10px',
+                      boxShadow: isMilestone 
+                        ? '0 8px 24px rgba(249,115,22,0.5), 0 0 20px rgba(249,115,22,0.3)' 
+                        : '0 4px 12px rgba(249,115,22,0.4)',
+                      animation: isMilestone ? 'pulse-glow 2s ease-in-out infinite' : 'none',
+                      '@keyframes pulse-glow': {
+                        '0%, 100%': { boxShadow: '0 8px 24px rgba(249,115,22,0.5), 0 0 20px rgba(249,115,22,0.3)' },
+                        '50%': { boxShadow: '0 8px 32px rgba(249,115,22,0.7), 0 0 40px rgba(249,115,22,0.5)' },
+                      },
+                      '&:hover': { 
+                        bgcolor: 'linear-gradient(135deg, #FB923C, #FBBF24)',
+                        background: 'linear-gradient(135deg, #FB923C, #FBBF24)',
+                        transform: 'scale(1.02)',
+                      },
                     }}
                   >
-                    Share +10 PP
+                    {isMilestone ? 'Share Milestone +10 PP' : 'Share +10 PP'}
                   </Button>
                 </Tooltip>
               )}

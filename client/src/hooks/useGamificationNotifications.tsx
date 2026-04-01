@@ -3,10 +3,17 @@
  * Listens for gamification events and shows toast notifications
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+
+interface AchievementEvent {
+  achievement_key?: string;
+  achievement_title?: string;
+  xp_earned?: number;
+  pp_earned?: number;
+}
 
 interface GamificationEvent {
   type: 'level_up' | 'achievement_unlocked' | 'quest_completed';
@@ -22,9 +29,19 @@ interface GamificationEvent {
   };
 }
 
-export const useGamificationNotifications = (userId: string | undefined) => {
+export interface GamificationNotificationsState {
+  latestAchievement: AchievementEvent | null;
+  clearLatestAchievement: () => void;
+}
+
+export const useGamificationNotifications = (userId: string | undefined): GamificationNotificationsState => {
   const navigate = useNavigate();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [latestAchievement, setLatestAchievement] = useState<AchievementEvent | null>(null);
+
+  const clearLatestAchievement = useCallback(() => {
+    setLatestAchievement(null);
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -115,6 +132,7 @@ export const useGamificationNotifications = (userId: string | undefined) => {
   };
 
   const handleAchievement = (data: { achievement_key?: string; achievement_title?: string; xp_earned?: number; pp_earned?: number }) => {
+    setLatestAchievement(data);
     toast.success(
       (t) => (
         <div onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
@@ -165,4 +183,6 @@ export const useGamificationNotifications = (userId: string | undefined) => {
       }
     );
   };
+
+  return { latestAchievement, clearLatestAchievement };
 };

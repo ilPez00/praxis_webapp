@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError, BadRequestError, InternalServerError } from '../utils/appErrors';
 import logger from '../utils/logger';
 import { importOSMPlaces } from '../services/OSMImportService';
+import EmailService from '../services/emailService';
 
 /**
  * Demo user profiles + goal trees seeded for beta testing.
@@ -1174,10 +1175,10 @@ export const streakAlerts = catchAsync(async (req: Request, res: Response) => {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // Find users with an active streak
+  // Find users with an active streak + email
   const { data: activeUsers, error } = await supabase
     .from('profiles')
-    .select('id, current_streak')
+    .select('id, current_streak, email, name')
     .gt('current_streak', 0);
 
   if (error) throw new InternalServerError('Failed to fetch profiles.');
@@ -1196,21 +1197,34 @@ export const streakAlerts = catchAsync(async (req: Request, res: Response) => {
 
   const { pushNotification } = await import('./notificationController');
   let alerted = 0;
+  let emailed = 0;
 
   for (const user of (activeUsers ?? [])) {
     if (checkedInSet.has(user.id)) continue; // already checked in
+    
+    // Push notification
     pushNotification({
       userId: user.id,
       type: 'streak_alert',
       title: `Your ${user.current_streak}-day streak is at risk!`,
       body: "Check in before midnight to keep your streak alive.",
       link: '/dashboard',
-    }).catch(err => logger.warn('Fire-and-forget failed:', err?.message));
+    }).catch(err => logger.warn('Push notification failed:', err?.message));
     alerted++;
+
+    // Email (fire-and-forget)
+    if (user.email) {
+      EmailService.sendStreakReminder({
+        email: user.email,
+        name: user.name || 'Explorer',
+        streak: user.current_streak,
+      }).catch(err => logger.warn('Streak reminder email failed:', err?.message));
+      emailed++;
+    }
   }
 
-  logger.info(`[StreakAlerts] Notified ${alerted} at-risk users`);
-  return res.json({ alerted, total_with_streak: userIds.length, already_checked_in: checkedInSet.size });
+  logger.info(`[StreakAlerts] Notified ${alerted} users, emailed ${emailed}`);
+  return res.json({ alerted, emailed, total_with_streak: userIds.length, already_checked_in: checkedInSet.size });
 });
 
 // ── OSM Place Import ──────────────────────────────────────────────────────────

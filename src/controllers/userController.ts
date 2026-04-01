@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express'; // Import NextFunctio
 import { supabase } from '../lib/supabaseClient'; // Import the Supabase client
 import logger from '../utils/logger'; // Import the logger
 import { catchAsync, NotFoundError, InternalServerError, BadRequestError, UnauthorizedError } from '../utils/appErrors'; // Import custom errors and catchAsync
+import EmailService from '../services/emailService';
 
 // ---------------------------------------------------------------------------
 // Leaderboard
@@ -237,10 +238,11 @@ export const getNearbyUsers = catchAsync(async (req: Request, res: Response, _ne
 export const completeOnboarding = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const userId = req.user?.id;
   if (!userId) throw new BadRequestError('Authentication required.');
+  
   // Check if already onboarded (idempotent — don't double-grant PP)
   const { data: existing } = await supabase
     .from('profiles')
-    .select('onboarding_completed, praxis_points')
+    .select('onboarding_completed, praxis_points, name, email')
     .eq('id', userId)
     .single();
 
@@ -253,6 +255,15 @@ export const completeOnboarding = catchAsync(async (req: Request, res: Response,
     .update({ onboarding_completed: true, praxis_points: currentPP + grant })
     .eq('id', userId);
   if (error) throw new InternalServerError(`Failed to complete onboarding: ${error.message}`);
+
+  // Send welcome email (fire-and-forget, non-blocking)
+  if (!alreadyOnboarded && existing?.email) {
+    EmailService.sendWelcomeEmail({
+      email: existing.email,
+      name: existing.name || 'Explorer',
+    }).catch((err) => logger.warn('Welcome email failed (non-fatal):', err));
+  }
+
   res.status(200).json({ message: 'Onboarding complete.', pointsGranted: grant });
 });
 

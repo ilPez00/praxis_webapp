@@ -15,6 +15,7 @@ import PublicIcon from '@mui/icons-material/Public';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import BugReportIcon from '@mui/icons-material/BugReport';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import {
@@ -33,6 +34,7 @@ import AxiomTab from './tabs/AxiomTab';
 import PlacesImportTab from './tabs/PlacesImportTab';
 import CLITab from './tabs/CLITab';
 import DebugTab from './tabs/DebugTab';
+import MetricsTab, { useMetrics } from './tabs/MetricsTab';
 
 // ── Tab panel ─────────────────────────────────────────────────────────────────
 
@@ -41,6 +43,13 @@ const TabPanel: React.FC<{ value: number; index: number; children: React.ReactNo
     {value === index && children}
   </div>
 );
+
+// ── Metrics Tab with Data ─────────────────────────────────────────────────────
+
+const MetricsTabWithData: React.FC = () => {
+  const { metrics, loadingMetrics, fetchMetrics } = useMetrics();
+  return <MetricsTab metrics={metrics} loadingMetrics={loadingMetrics} fetchMetrics={fetchMetrics} />;
+};
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -198,6 +207,7 @@ const AdminPage: React.FC = () => {
         <Tab icon={<AdminPanelSettingsIcon fontSize="small" />} iconPosition="start" label="Users" />
         <Tab icon={<GroupsIcon fontSize="small" />} iconPosition="start" label="Groups" />
         <Tab icon={<BarChartIcon fontSize="small" />} iconPosition="start" label="Stats" />
+        <Tab icon={<TrendingUpIcon fontSize="small" />} iconPosition="start" label="Metrics" />
         <Tab icon={<HubIcon fontSize="small" />} iconPosition="start" label="Network" />
         <Tab icon={<EmojiEventsIcon fontSize="small" />} iconPosition="start" label="Challenges" />
         <Tab icon={<HandshakeIcon fontSize="small" />} iconPosition="start" label="Services" />
@@ -227,6 +237,10 @@ const AdminPage: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tab} index={3}>
+        <MetricsTabWithData />
+      </TabPanel>
+
+      <TabPanel value={tab} index={4}>
         <NetworkTab nodes={netNodes} edges={netEdges} loading={loadingNet} fetchNetwork={fetchNetwork} />
       </TabPanel>
 

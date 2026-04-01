@@ -128,20 +128,37 @@ const LeaderboardPage: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Tooltip title="Share your rank">
                 <IconButton
-                  onClick={() => setShareDialogOpen(true)}
-                  sx={{ mr: 2, bgcolor: 'rgba(245,158,11,0.1)', '&:hover': { bgcolor: 'rgba(245,158,11,0.2)' } }}
+                  onClick={() => {
+                    const text = `I'm ranked #${myRank} in the ${myEntry?.league || 'Gold'} League on Praxis! 🔥 ${myEntry?.praxis_points?.toLocaleString()} PP, ${user?.current_streak}-day streak! → https://praxis-app.vercel.app`;
+                    if (navigator.share) {
+                      navigator.share({ title: 'My Praxis Rank', text }).catch(() => {});
+                    } else {
+                      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                    }
+                  }}
+                  sx={{ 
+                    bgcolor: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
+                    background: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
+                    color: '#fff',
+                    fontWeight: 800,
+                    borderRadius: '10px',
+                    px: 2,
+                    py: 1,
+                    gap: 0.5,
+                    boxShadow: '0 4px 12px rgba(245,158,11,0.4)',
+                    '&:hover': { 
+                      bgcolor: 'linear-gradient(135deg, #FBBF24, #F59E0B)',
+                      background: 'linear-gradient(135deg, #FBBF24, #F59E0B)',
+                      transform: 'scale(1.02)',
+                    },
+                  }}
                 >
-                  <ShareIcon sx={{ color: '#F59E0B' }} />
+                  <ShareIcon sx={{ fontSize: '16px !important' }} />
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.7rem', color: '#fff' }}>
+                    Share
+                  </Typography>
                 </IconButton>
               </Tooltip>
-              <ShareButton
-                open={shareDialogOpen}
-                onClose={() => setShareDialogOpen(false)}
-                sourceTable="leaderboard"
-                sourceId={user?.id || ''}
-                title={`I'm ranked #${myRank} in the ${myEntry?.league || 'Gold'} League on Praxis!`}
-                content={`Check out my progress on Praxis — ${myEntry?.praxis_points?.toLocaleString()} PP, ${user?.current_streak}-day streak!`}
-              />
             </Box>
             <Stack direction="row" spacing={3} alignItems="center">
               <Box sx={{ textAlign: 'center' }}>
@@ -220,6 +237,8 @@ const LeaderboardPage: React.FC = () => {
                 ? Math.round(entry.reliability_score * 100)
                 : null;
 
+              const isTopTen = idx < 10;
+              
               return (
                 <Box
                   key={entry.id}
@@ -227,8 +246,8 @@ const LeaderboardPage: React.FC = () => {
                   sx={{
                     display: 'flex', alignItems: 'center', gap: 2, px: 3, py: 2,
                     cursor: 'pointer',
-                    bgcolor: isMe ? 'rgba(245,158,11,0.05)' : 'transparent',
-                    borderLeft: isMe ? '3px solid' : '3px solid transparent',
+                    bgcolor: isMe ? 'rgba(245,158,11,0.05)' : isTopTen ? 'rgba(245,158,11,0.02)' : 'transparent',
+                    borderLeft: isMe ? '3px solid' : isTopTen ? '3px solid rgba(245,158,11,0.3)' : '3px solid transparent',
                     borderColor: isMe ? 'primary.main' : 'transparent',
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' },
                     transition: 'background 0.15s',
@@ -316,6 +335,32 @@ const LeaderboardPage: React.FC = () => {
                       <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem' }}>pts</Typography>
                     </Box>
                   </Stack>
+
+                  {/* Share button for top 10 */}
+                  {isTopTen && !isMe && (
+                    <Tooltip title="Share this achievement">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const text = `Check out ${entry.name} — ranked #${entry.rank} in the ${entry.league || 'Gold'} League on Praxis with ${entry.praxis_points?.toLocaleString()} PP! → https://praxis-app.vercel.app`;
+                          if (navigator.share) {
+                            navigator.share({ title: `${entry.name}'s Praxis Rank`, text }).catch(() => {});
+                          } else {
+                            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                          }
+                        }}
+                        sx={{
+                          ml: 1,
+                          bgcolor: 'rgba(245,158,11,0.1)',
+                          color: '#F59E0B',
+                          '&:hover': { bgcolor: 'rgba(245,158,11,0.2)' },
+                        }}
+                      >
+                        <ShareIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </Box>
               );
             })}

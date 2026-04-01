@@ -395,6 +395,12 @@ GET /api/admin/metrics
 - Plan: [Starter/Basic]
 - Cost: ~$XX/month
 
+## Resend (Email)
+
+- Plan: Pay-as-you-go (free tier: 100 emails/day)
+- Cost: ~$XX/month (depends on user count)
+- Note: Used for welcome emails, streak reminders, milestones
+
 ## Total Variable Costs
 
 - $XXX/month base

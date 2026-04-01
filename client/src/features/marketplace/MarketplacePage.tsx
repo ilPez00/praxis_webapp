@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageSkeleton from '../../components/common/PageSkeleton';
+import { supabase } from '../../lib/supabase';
 import {
   Box,
   Typography,
@@ -383,6 +384,25 @@ const MarketplacePage: React.FC = () => {
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [ppCurrency, setPpCurrency] = useState<'eur' | 'usd'>('eur');
+  const [billingPortalLoading, setBillingPortalLoading] = useState(false);
+  const [billingPortalError, setBillingPortalError] = useState<string | null>(null);
+
+  const handleManageBilling = async () => {
+    setBillingPortalLoading(true);
+    setBillingPortalError(null);
+    try {
+      const { data } = await api.post('/stripe/create-portal-session');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setBillingPortalError('Failed to get billing portal URL.');
+      }
+    } catch (err: any) {
+      setBillingPortalError(err.response?.data?.error || 'Failed to open billing portal.');
+    } finally {
+      setBillingPortalLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -490,16 +510,21 @@ const MarketplacePage: React.FC = () => {
                 You're on Praxis Pro ✓
               </Typography>
               <Typography color="text.secondary">
-                All Pro features are active. Manage your subscription from your Stripe billing portal.
+                All Pro features are active. Manage your subscription anytime.
               </Typography>
               <Button
                 variant="outlined"
-                href="https://billing.stripe.com/p/login"
-                target="_blank"
+                onClick={handleManageBilling}
+                disabled={billingPortalLoading}
                 sx={{ mt: 3, borderRadius: 2, borderColor: '#10B981', color: '#10B981' }}
               >
-                Manage Billing
+                {billingPortalLoading ? <CircularProgress size={20} /> : 'Manage Billing'}
               </Button>
+              {billingPortalError && (
+                <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+                  {billingPortalError}
+                </Typography>
+              )}
             </Card>
           ) : (
             <>

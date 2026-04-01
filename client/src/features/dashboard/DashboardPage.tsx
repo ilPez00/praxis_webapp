@@ -16,6 +16,7 @@ import LevelBadge from '../../components/common/LevelBadge';
 import DailyQuestsWidget from '../../components/common/DailyQuestsWidget';
 import LevelUpDialog from '../../components/common/LevelUpDialog';
 import PPToast from '../../components/common/PPToast';
+import AchievementShareModal from '../../components/common/AchievementShareModal';
 import { useGamificationNotifications } from '../../hooks/useGamificationNotifications';
 
 import PageSkeleton from '../../components/common/PageSkeleton';
@@ -42,7 +43,10 @@ const DashboardPage: React.FC = () => {
   const { profile: gamificationProfile, quests, loading: gamificationLoading, trackAction } = useGamification(currentUserId || '');
   
   // Gamification notifications
-  useGamificationNotifications(currentUserId);
+  const { latestAchievement, clearLatestAchievement } = useGamificationNotifications(currentUserId);
+
+  // Achievement share modal state
+  const [achievementModalOpen, setAchievementModalOpen] = useState(false);
 
   const [loadingContent, setLoadingContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +131,13 @@ const DashboardPage: React.FC = () => {
     if (!user?.id) return;
     if (!localStorage.getItem(`praxis_tour_seen_${user.id}`)) setTourOpen(true);
   }, [user?.id]);
+
+  // Open achievement share modal when new achievement is unlocked
+  useEffect(() => {
+    if (latestAchievement?.achievement_title) {
+      setAchievementModalOpen(true);
+    }
+  }, [latestAchievement]);
 
   // Curated leaderboard: ranked_score = points × (1 + compatibilityScore)
   const curatedLeaderboard = useMemo(() => {
@@ -414,6 +425,18 @@ const DashboardPage: React.FC = () => {
         onClose={() => {
           setTourOpen(false);
           if (user?.id) localStorage.setItem(`praxis_tour_seen_${user.id}`, '1');
+        }}
+      />
+
+      <AchievementShareModal
+        achievement={{
+          id: latestAchievement?.achievement_key || '',
+          title: latestAchievement?.achievement_title || '',
+        }}
+        open={achievementModalOpen}
+        onClose={() => {
+          setAchievementModalOpen(false);
+          clearLatestAchievement();
         }}
       />
     </Box>

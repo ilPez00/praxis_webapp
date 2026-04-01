@@ -583,19 +583,36 @@ const GoalTreePage: React.FC = () => {
             You finished this. Share the win and inspire your network.
           </Typography>
           <Button
-            fullWidth variant="outlined" size="small"
+            fullWidth variant="contained" size="large"
             startIcon={<ShareIcon />}
-            sx={{ borderRadius: '10px', mb: 1, borderColor: 'rgba(245,158,11,0.4)', color: 'primary.main' }}
+            sx={{ 
+              borderRadius: '12px', 
+              mb: 1, 
+              py: 1.5,
+              background: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
+              color: '#fff',
+              fontWeight: 800,
+              boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
+              animation: 'glow-pulse 2s ease-in-out infinite',
+              '@keyframes glow-pulse': {
+                '0%, 100%': { boxShadow: '0 4px 16px rgba(245,158,11,0.4)' },
+                '50%': { boxShadow: '0 4px 24px rgba(245,158,11,0.6)' },
+              },
+              '&:hover': { 
+                background: 'linear-gradient(135deg, #FBBF24, #F59E0B)',
+                transform: 'scale(1.02)',
+              },
+            }}
             onClick={() => {
-              const text = `Just completed "${achieveNode?.title}" on Praxis. Consistent effort pays off. praxis.app`;
+              const text = `🎯 Just completed "${achieveNode?.title}" on Praxis! Consistent effort pays off. Building discipline one goal at a time → https://praxis-app.vercel.app`;
               if (navigator.share) {
-                navigator.share({ text }).catch(() => {});
+                navigator.share({ title: 'My Goal Completed!', text }).catch(() => {});
               } else {
                 window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
               }
             }}
           >
-            Share your win
+            Share Your Win +10 PP
           </Button>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, flexDirection: 'column', gap: 1 }}>
