@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, NotFoundError } from '../utils/appErrors';
 import { cacheDelete } from '../utils/cache';
+import EmailService from '../services/emailService';
+import logger from '../utils/logger';
 
 /**
  * Computes streak update from last_activity_date.
@@ -132,6 +134,29 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   // Check for streak milestone achievements
   if (streakUpdate.current_streak >= 7) {
     await supabase.rpc('check_user_achievements', { p_user_id: userId });
+  }
+
+  // Send milestone celebration email (7, 30, 90, 365 days)
+  const MILESTONES = [7, 30, 90, 365];
+  if (MILESTONES.includes(streakUpdate.current_streak)) {
+    try {
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('email, name')
+        .eq('id', userId)
+        .single();
+      
+      if (userProfile?.email) {
+        await EmailService.sendMilestoneCelebration({
+          email: userProfile.email,
+          name: userProfile.name || 'Explorer',
+          streak: streakUpdate.current_streak,
+        });
+        logger.info(`Milestone email sent for ${streakUpdate.current_streak} days to ${userProfile.email}`);
+      }
+    } catch (emailErr) {
+      logger.warn('Milestone email failed (non-fatal):', emailErr);
+    }
   }
 
   // Compute Reliability Score R using the whitepaper formula:
