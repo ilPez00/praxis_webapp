@@ -25,20 +25,16 @@ import CloseIcon from '@mui/icons-material/Close';
 
 // Suggested topics per domain (Maslow Levels)
 const DOMAIN_CATEGORIES: Record<Domain, string[]> = {
-  [Domain.BODY_FITNESS]: ['Strength Training', 'Cardio Consistency', 'Mobility & Flexibility', 'Sport Performance'],
-  [Domain.REST_RECOVERY]: ['Sleep Optimization', 'Scheduled Downtime', 'Digital Detox'],
-  [Domain.MENTAL_BALANCE]: ['Daily Meditation', 'Journaling Habit', 'Stress Management'],
-  [Domain.ENVIRONMENT_HOME]: ['Home Organization', 'Workspace Setup', 'Sustainable Living'],
-  [Domain.HEALTH_LONGEVITY]: ['Nutritional Base', 'Supplements & Biohacking', 'Regular Checkups'],
-  [Domain.FINANCIAL_SECURITY]: ['Emergency Fund', 'Debt Elimination', 'Insurance Coverage'],
-  [Domain.FRIENDSHIP_SOCIAL]: ['Expanding Network', 'Deepening Friendships', 'Social Presence'],
-  [Domain.ROMANCE_INTIMACY]: ['Dating Life', 'Relationship Growth', 'Emotional Connection'],
-  [Domain.COMMUNITY_CONTRIBUTION]: ['Volunteering', 'Mentoring Others', 'Local Impact'],
-  [Domain.CAREER_CRAFT]: ['Professional Skillup', 'Project Excellence', 'Job Searching'],
-  [Domain.WEALTH_ASSETS]: ['Investment Portfolio', 'Passive Income', 'Asset Acquisition'],
-  [Domain.GAMING_ESPORTS]: ['Rank Progression', 'Competitive Play', 'Content Creation'],
-  [Domain.IMPACT_LEGACY]: ['Building a Brand', 'Public Speaking', 'Open Source Work'],
-  [Domain.SPIRIT_PURPOSE]: ['Spiritual Practice', 'Philosophy Study', 'Life Alignment'],
+  [Domain.CAREER]: ['Professional Skillup', 'Project Excellence', 'Job Searching'],
+  [Domain.INVESTING]: ['Investment Portfolio', 'Passive Income', 'Emergency Fund'],
+  [Domain.FITNESS]: ['Strength Training', 'Cardio Consistency', 'Mobility & Flexibility'],
+  [Domain.ACADEMICS]: ['Learning New Skills', 'Reading', 'Courses & Certifications'],
+  [Domain.MENTAL_HEALTH]: ['Daily Meditation', 'Journaling Habit', 'Stress Management'],
+  [Domain.PHILOSOPHICAL_DEVELOPMENT]: ['Philosophy Study', 'Spiritual Practice', 'Life Alignment'],
+  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: ['Creative Projects', 'Hobby Development', 'Cultural Exploration'],
+  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: ['Dating Life', 'Relationship Growth', 'Emotional Connection'],
+  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: ['Expanding Network', 'Deepening Friendships', 'Social Presence'],
+  [Domain.PERSONAL_GOALS]: ['Life Adventures', 'Bucket List', 'Personal Milestones'],
 };
 
 const MAX_FREE_GOALS = 3;

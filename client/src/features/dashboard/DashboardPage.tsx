@@ -18,6 +18,7 @@ import LevelUpDialog from '../../components/common/LevelUpDialog';
 import PPToast from '../../components/common/PPToast';
 import AchievementShareModal from '../../components/common/AchievementShareModal';
 import { useGamificationNotifications } from '../../hooks/useGamificationNotifications';
+import toast from 'react-hot-toast';
 
 import PageSkeleton from '../../components/common/PageSkeleton';
 import {

@@ -3,7 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Box, Typography, List, ListItem, ListItemIcon,
   ListItemText, Divider, TextField, IconButton, Chip, Stack,
-  Avatar, Card, CardContent, Tooltip,
+  Avatar, Card, CardContent, Tooltip, Checkbox,
 } from '@mui/material';
 import ShareIcon from '@mui/icons-material/Share';
 import BookIcon from '@mui/icons-material/Book';
@@ -29,6 +29,7 @@ interface ShareDialogProps {
   title?: string;
   content?: string;
   metadata?: any;
+  onSuccess?: () => void;
 }
 
 interface Contact {
@@ -89,7 +90,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
         .limit(20);
 
       if (contactsData) {
-        setContacts(contactsData.map(f => ({
+        setContacts(contactsData.map((f: any) => ({
           id: f.friend_id,
           name: f.profiles?.name || 'User',
           avatar_url: f.profiles?.avatar_url,
@@ -375,25 +376,25 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
               Share to social networks
             </Typography>
             <List>
-              <ListItem button onClick={() => handleShareToSocial('twitter')} sx={{ borderRadius: 2, mb: 1 }}>
+              <ListItem component="button" onClick={() => handleShareToSocial('twitter')} sx={{ borderRadius: 2, mb: 1, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
                 <ListItemIcon sx={{ minWidth: 40 }}>
                   <TwitterIcon sx={{ color: '#1DA1F2' }} />
                 </ListItemIcon>
                 <ListItemText primary="Share to X (Twitter)" />
               </ListItem>
-              <ListItem button onClick={() => handleShareToSocial('telegram')} sx={{ borderRadius: 2, mb: 1 }}>
+              <ListItem component="button" onClick={() => handleShareToSocial('telegram')} sx={{ borderRadius: 2, mb: 1, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
                 <ListItemIcon sx={{ minWidth: 40 }}>
                   <TelegramIcon sx={{ color: '#0088cc' }} />
                 </ListItemIcon>
                 <ListItemText primary="Share to Telegram" />
               </ListItem>
-              <ListItem button onClick={() => handleShareToSocial('whatsapp')} sx={{ borderRadius: 2, mb: 1 }}>
+              <ListItem component="button" onClick={() => handleShareToSocial('whatsapp')} sx={{ borderRadius: 2, mb: 1, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
                 <ListItemIcon sx={{ minWidth: 40 }}>
                   <WhatsAppIcon sx={{ color: '#25D366' }} />
                 </ListItemIcon>
                 <ListItemText primary="Share to WhatsApp" />
               </ListItem>
-              <ListItem button onClick={() => handleShareToSocial('facebook')} sx={{ borderRadius: 2, mb: 1 }}>
+              <ListItem component="button" onClick={() => handleShareToSocial('facebook')} sx={{ borderRadius: 2, mb: 1, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
                 <ListItemIcon sx={{ minWidth: 40 }}>
                   <FacebookIcon sx={{ color: '#1877F2' }} />
                 </ListItemIcon>
@@ -418,12 +419,10 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
               Share with contacts
             </Typography>
-            <List sx={{ maxHeight: 150, overflowY: 'auto', mb: 2 }}>
+            <Box sx={{ maxHeight: 150, overflowY: 'auto', mb: 2 }}>
               {contacts.map(contact => (
-                <ListItem
+                <Box
                   key={contact.id}
-                  button
-                  selected={selectedContacts.includes(contact.id)}
                   onClick={() => {
                     setSelectedContacts(prev =>
                       prev.includes(contact.id)
@@ -431,30 +430,38 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
                         : [...prev, contact.id]
                     );
                   }}
-                  sx={{ borderRadius: 2, mb: 0.5 }}
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1, 
+                    p: 1, 
+                    borderRadius: 2, 
+                    mb: 0.5, 
+                    cursor: 'pointer',
+                    bgcolor: selectedContacts.includes(contact.id) ? 'action.selected' : 'transparent',
+                    '&:hover': { bgcolor: 'action.hover' }
+                  }}
                 >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <Avatar src={contact.avatar_url} sx={{ width: 32, height: 32 }}>
-                      {contact.name?.charAt(0)}
-                    </Avatar>
-                  </ListItemIcon>
-                  <ListItemText primary={contact.name} />
-                  {selectedContacts.includes(contact.id) && (
-                    <CheckIcon color="primary" />
-                  )}
-                </ListItem>
+                  <Avatar src={contact.avatar_url} sx={{ width: 32, height: 32 }}>
+                    {contact.name?.charAt(0)}
+                  </Avatar>
+                  <Typography variant="body2" sx={{ flex: 1 }}>{contact.name}</Typography>
+                  <Checkbox
+                    checked={selectedContacts.includes(contact.id)}
+                    size="small"
+                    sx={{ p: 0 }}
+                  />
+                </Box>
               ))}
-            </List>
+            </Box>
 
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
               Share with groups
             </Typography>
-            <List sx={{ maxHeight: 150, overflowY: 'auto', mb: 2 }}>
+            <Box sx={{ maxHeight: 150, overflowY: 'auto', mb: 2 }}>
               {groups.map(group => (
-                <ListItem
+                <Box
                   key={group.id}
-                  button
-                  selected={selectedGroups.includes(group.id)}
                   onClick={() => {
                     setSelectedGroups(prev =>
                       prev.includes(group.id)
@@ -462,18 +469,28 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
                         : [...prev, group.id]
                     );
                   }}
-                  sx={{ borderRadius: 2, mb: 0.5 }}
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1, 
+                    p: 1, 
+                    borderRadius: 2, 
+                    mb: 0.5, 
+                    cursor: 'pointer',
+                    bgcolor: selectedGroups.includes(group.id) ? 'action.selected' : 'transparent',
+                    '&:hover': { bgcolor: 'action.hover' }
+                  }}
                 >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <GroupIcon />
-                  </ListItemIcon>
-                  <ListItemText primary={group.name} />
-                  {selectedGroups.includes(group.id) && (
-                    <CheckIcon color="primary" />
-                  )}
-                </ListItem>
+                  <GroupIcon sx={{ color: 'text.secondary' }} />
+                  <Typography variant="body2" sx={{ flex: 1 }}>{group.name}</Typography>
+                  <Checkbox
+                    checked={selectedGroups.includes(group.id)}
+                    size="small"
+                    sx={{ p: 0 }}
+                  />
+                </Box>
               ))}
-            </List>
+            </Box>
 
             <Button
               fullWidth

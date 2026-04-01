@@ -15,7 +15,9 @@
       "Bash(chmod *)",
       "Bash(npm pkg *)",
       "Bash(npm test)",
-      "Bash(rm *)"
+      "Bash(rm *)",
+      "Bash(git rm *)",
+      "Bash(true)"
     ]
   },
   "$version": 3
