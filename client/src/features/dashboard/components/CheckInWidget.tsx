@@ -201,22 +201,43 @@ const CheckInWidget: React.FC<Props> = ({
                 </span>
               </Tooltip>
               {currentStreak >= 3 && (
-                <Tooltip title="Share your streak">
+                <Tooltip title="Share your streak & get +10 PP">
                   <Button
                     size="small"
-                    variant="text"
+                    variant="contained"
                     startIcon={<ShareIcon sx={{ fontSize: '14px !important' }} />}
-                    onClick={() => {
+                    onClick={async () => {
                       const text = `I'm on a 🔥 ${currentStreak}-day streak on Praxis! Building goals every day — join me → https://praxis-app.vercel.app`;
+                      
+                      // Share
                       if (navigator.share) {
                         navigator.share({ title: 'My Praxis Streak', text }).catch(() => {});
                       } else {
                         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                       }
+                      
+                      // Award +10 PP (fire-and-forget)
+                      try {
+                        await api.post('/gamification/social/track', {
+                          actionType: 'streak_share',
+                          amount: 1,
+                        });
+                        toast.success('Shared! +10 PP 🎉', { duration: 2000 });
+                      } catch (err) {
+                        // Silent fail — don't ruin the share experience
+                      }
                     }}
-                    sx={{ fontSize: '0.72rem', color: '#F97316', fontWeight: 700, borderRadius: '10px' }}
+                    sx={{
+                      fontSize: '0.72rem',
+                      bgcolor: '#F97316',
+                      color: '#fff',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      boxShadow: '0 4px 12px rgba(249,115,22,0.4)',
+                      '&:hover': { bgcolor: '#FB923C', boxShadow: '0 6px 16px rgba(249,115,22,0.5)' },
+                    }}
                   >
-                    Share
+                    Share +10 PP
                   </Button>
                 </Tooltip>
               )}

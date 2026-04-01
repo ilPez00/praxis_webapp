@@ -203,6 +203,15 @@ export const respondToCompletionRequest = catchAsync(async (req: Request, res: R
           requesterProfile?.name || 'Praxis User',
           requesterProfile?.avatar_url || undefined,
         );
+        
+        // Send notification with share prompt
+        pushNotification({
+          userId: requesterId,
+          type: 'goal_completed',
+          title: 'Goal Completed! 🎉',
+          body: `You earned +20 PP and +100 XP! Share your achievement to inspire others?`,
+          link: `/profile`,  // Will open achievement share
+        }).catch(err => logger.warn('Goal completion notification failed:', err?.message));
       }
     }
   }
