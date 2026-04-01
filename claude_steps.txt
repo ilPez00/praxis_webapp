@@ -1352,3 +1352,40 @@ Comprehensive codebase inspection and cleanup:
 - Settings toggle for location tracking already added by Gemini (session 92)
 
 - Sign: Claude
+
+---
+
+# Session 94: Mega-Component Splitting (2026-04-01)
+
+## What Changed
+
+### ChatRoom.tsx: 1315 → 1024 lines (-291 lines)
+- Removed dead `renderMessage` function (~270 lines) — `MessageList` component handles all rendering; original was never deleted
+- Removed dead `handleCompletionResponse` — only called from dead `renderMessage`
+- Removed dead `messagesEndRef` + scroll useEffect — `MessageList` has its own
+- Removed unused imports: `GradingDialog`, `AxiomDialog`, `IncomingCallDialog` (imported but never used), `Paper`, `VerifiedIcon`
+
+### ProfilePage.tsx: 1313 → 1089 lines (-224 lines)
+- Extracted `GamificationSection` (133 LOC) — level, XP bar, stats grid, equipped title
+- Extracted `AchievementsSection` (82 LOC) — domain-colored achievement badges
+- Extracted `FriendsDialog` (117 LOC) — self-contained: manages own fetch/loading state
+- Simplified `handleOpenFriends` to just open dialog (fetching moved into FriendsDialog)
+- Removed unused imports: `LocalFireDepartmentIcon`, `EmojiEventsIcon`, `ReferralWidget`, `LinearProgress`, `List/ListItem/ListItemAvatar/ListItemText`, `DOMAIN_COLORS`
+
+## Files Modified
+- `client/src/features/chat/ChatRoom.tsx` — dead code removal
+- `client/src/features/profile/ProfilePage.tsx` — section extraction + import cleanup
+- `client/src/features/profile/components/GamificationSection.tsx` — NEW
+- `client/src/features/profile/components/AchievementsSection.tsx` — NEW
+- `client/src/features/profile/components/FriendsDialog.tsx` — NEW
+- `client/src/features/profile/components/index.ts` — NEW barrel export
+
+## Verification
+- Frontend TypeScript: Passes (zero project-level errors)
+
+## Remaining Work
+1. React 19 upgrade — unlocks react-leaflet 5.0, vitejs/plugin-react 6.0
+2. Wire extracted dialog stubs — ChatRoom GradingDialog/AxiomDialog/IncomingCallDialog stubs exist but have incomplete APIs vs inline versions
+3. ProfilePage further splits — hero card / edit form could be extracted (~400 lines) but have heavy state deps
+
+- Sign: Claude
