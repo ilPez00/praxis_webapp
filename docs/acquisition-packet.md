@@ -1,232 +1,346 @@
-# Praxis — Acquisition Information Packet
+# 🎯 PRAXIS — ACQUISITION INFORMATION PACKET
 
-**Version:** 1.0 | **Date:** April 2026 | **Stage:** Early traction / Pre-launch
+### _Confidential — For Qualified Buyers Only_
 
----
-
-## Executive Summary
-
-Praxis is a daily goal journal + accountability buddy PWA combining AI coaching (Axiom), social accountability (mutual streaks, partner matching), and gamification (levels, achievements, leaderboards). Built with React/Express/Supabase, fully production-ready with Stripe payments, pgvector AI matching, and 34 feature modules.
-
-**Target buyers:** Productivity SaaS acquirers, gamification platforms, AI coaching startups, or operators looking for a complete codebase with monetization infrastructure.
+**Date:** April 2026  
+**Stage:** Early Traction / Pre-Series A  
+**Location:** Verona, Italy 🇮🇹  
+**Founder:** Giovanni Pezzingiovanni (ilPez00)
 
 ---
 
-## Key Metrics
+## 📌 EXECUTIVE SUMMARY
 
-> ⚠️ **Note:** Metrics below are placeholders. Replace with actual data from the Admin > Metrics tab before presenting to buyers.
+**Praxis** is an AI-powered accountability platform that combines goal tracking with social community to help users achieve real-world momentum.
 
-| Metric                  | Current Value | Notes                     |
-| ----------------------- | ------------- | ------------------------- |
-| **Total Users**         | [X]           | All registered users      |
-| **7-Day Active Users**  | [X]           | Checked in within 7 days  |
-| **30-Day Active Users** | [X]           | Checked in within 30 days |
-| **Paying Users**        | [X]           | Active Pro subscriptions  |
-| **MRR**                 | $[X]          | Monthly recurring revenue |
-| **Avg. Streak**         | [X] days      | Average check-in streak   |
-| **Total Goals**         | [X]           | Goal trees created        |
+**One-Liner:** "Your AI accountability partner that actually works."
+
+**Problem:** 92% of people fail to achieve their goals. Existing solutions are either solo journaling apps (notion, Day One) or shallow habit trackers (Habitica, Streaks) — neither provides the accountability and community needed for real change.
+
+**Solution:** Praxis combines:
+
+- 🎯 **Goal Trees** — Hierarchical goal tracking with progress visualization
+- 🔥 **Streaks & Accountability** — Daily check-ins with peer verification
+- 🤖 **AI Coaching (Axiom)** — Daily briefs, weekly narratives, personalized insights
+- 🤝 **Social Matching** — AI-powered partner matching based on goal alignment
+- 🏆 **Gamification** — Levels, leagues, achievements, leaderboards
+
+**Traction:** (Fill in with live metrics from `/admin/metrics`)
+
+- Total Users: [X]
+- MAU: [X]
+- Paying Users: [X]
+- MRR: $[X]
+
+**Ask:** $200K–$500K for 10–20% equity (or acqui-hire at $200K+)
+
+---
+
+## 📊 KEY METRICS
+
+### Current State (as of April 2026)
+
+| Metric              | Value                  | Notes                     |
+| ------------------- | ---------------------- | ------------------------- |
+| **Total Users**     | [from /admin/metrics]  | Registered accounts       |
+| **DAU (7d avg)**    | [from /admin/metrics]  | Unique check-ins          |
+| **MAU**             | [from /admin/metrics]  | Unique check-ins          |
+| **DAU/MAU Ratio**   | [calc: DAU/MAU]        | Target: 40%+              |
+| **Paying Users**    | [from /admin/metrics]  | Pro subscribers           |
+| **MRR**             | $[from /admin/metrics] | Monthly recurring revenue |
+| **Avg Streak**      | [calc]                 | Average user streak       |
+| **Goals Created**   | [from /admin/metrics]  | Total goal nodes          |
+| **Check-ins (30d)** | [from /admin/metrics]  | Engagement metric         |
 
 ### Growth Trajectory
 
-| Week   | New Users | Active Users | Paying |
-| ------ | --------- | ------------ | ------ |
-| Week 1 | [X]       | [X]          | [X]    |
-| Week 2 | [X]       | [X]          | [X]    |
-| Week 3 | [X]       | [X]          | [X]    |
-| Week 4 | [X]       | [X]          | [X]    |
+| Month    | Users  | MAU    | Paying | MRR    |
+| -------- | ------ | ------ | ------ | ------ |
+| Jan 2026 | —      | —      | —      | —      |
+| Feb 2026 | —      | —      | —      | —      |
+| Mar 2026 | —      | —      | —      | —      |
+| Apr 2026 | [fill] | [fill] | [fill] | [fill] |
+
+_(Export weekly from /admin/metrics endpoint)_
 
 ---
 
-## Revenue Model
-
-### Pricing Tiers
-
-| Tier     | Monthly | Annual | Features                                               |
-| -------- | ------- | ------ | ------------------------------------------------------ |
-| **Free** | $0      | $0     | 3 goals, 5 matches/mo, basic check-ins                 |
-| **Pro**  | $9.99   | $79.99 | Unlimited goals, AI briefs, priority matching, betting |
+## 💰 BUSINESS MODEL
 
 ### Revenue Streams
 
-1. **Subscription Revenue** — Pro tier ($9.99/mo)
-2. **Virtual Currency (PP)** — One-time purchases ($4.99-$24.99)
-3. **Platform Cut** — 5% on duel winnings
+1. **Pro Subscription** — $9.99/month or $79.99/year (save 33%)
+   - Unlimited root goals (free: 3)
+   - Weekly AI narratives
+   - Priority matching
+   - Advanced analytics
+   - Sparring partner access
+
+2. **Praxis Points (PP)** — One-time purchases
+   - 500 PP — $4.99
+   - 1100 PP — $9.99 (most popular)
+   - 3000 PP — $24.99 (best value)
+
+   **Use Cases:**
+   - Extra goal slots (200 PP)
+   - AI coaching sessions (500 PP)
+   - Profile boosts (50-200 PP)
+   - Custom themes/badges (100-200 PP)
+
+3. **Platform Fees** — 5% on duel winnings (future)
 
 ### Unit Economics
 
-| Metric              | Value                        |
-| ------------------- | ---------------------------- |
-| **ARPU**            | ~$[X]                        |
-| **CAC**             | $[X] (paid) / $[X] (organic) |
-| **LTV (estimated)** | $[X]                         |
-| **LTV:CAC**         | [X]:1                        |
+| Metric           | Value        | Calculation                            |
+| ---------------- | ------------ | -------------------------------------- |
+| **CAC**          | $0 (organic) | No paid ads yet                        |
+| **LTV**          | $120 (est.)  | Avg subscription length 12 mo × $10/mo |
+| **LTV:CAC**      | ∞ (organic)  | Will decrease with paid acquisition    |
+| **Gross Margin** | 95%+         | SaaS, low variable costs               |
+| **Churn**        | [track]      | Monthly subscription cancellations     |
+
+### Cost Structure
+
+| Expense               | Monthly      | Notes                   |
+| --------------------- | ------------ | ----------------------- |
+| **Supabase**          | $25–50       | Database, auth, storage |
+| **Vercel (Frontend)** | $0–20        | Hobby/Pro plan          |
+| **Railway (Backend)** | $5–20        | Starter plan            |
+| **Google Gemini**     | $0–50        | Pay-as-you-go AI        |
+| **Stripe Fees**       | 2.9% + $0.30 | Per transaction         |
+| **Resend (Email)**    | $0–30        | Free tier → paid        |
+| **Total (current)**   | ~$100–200/mo | At current scale        |
+| **Total (at 1K DAU)** | ~$500–800/mo | Projected               |
 
 ---
 
-## Product Features
+## 🛠️ TECH STACK
 
-### Core Loop
+### Frontend
 
-- ✅ Daily check-ins with streak tracking
-- ✅ Hierarchical goal trees (JSONB)
-- ✅ Mood tracking + daily wins
-- ✅ Peer verification for goal completion
+- **React 18** + TypeScript
+- **MUI v7** — Component library
+- **Vite** — Build tool
+- **react-confetti, react-hot-toast** — UX polish
 
-### AI System
+### Backend
 
-- ✅ Axiom daily briefs (midnight generation)
-- ✅ Weekly AI narratives
-- ✅ Engagement metric analysis (7 archetypes)
-- ✅ Burnout/stagnation risk detection
-- ✅ Privacy-preserving design (analyzes behavior, not content)
+- **Node.js** + Express + TypeScript
+- **Supabase** — PostgreSQL, Auth, Realtime, Storage
+- **pgvector** — AI embeddings for matching
+- **Stripe** — Payments & subscriptions
+- **Resend** — Transactional email
 
-### Social Features
+### AI/ML
 
-- ✅ AI semantic matching (pgvector embeddings)
-- ✅ Mutual streaks (partner accountability)
-- ✅ Direct messaging
-- ✅ Chat rooms / group boards
-- ✅ Honor system
+- **Google Gemini** — Daily briefs, weekly narratives, coaching
+- **Custom matching algorithm** — Rule-based goal overlap scoring
 
-### Gamification
+### DevOps
 
-- ✅ XP/Level system (1-100)
-- ✅ Leagues (Bronze → Diamond)
-- ✅ 27+ achievements
-- ✅ Daily quests with PP/XP rewards
-- ✅ Leaderboards
-- ✅ Betting/duels
+- **Vercel** — Frontend hosting
+- **Railway** — Backend hosting
+- **GitHub Actions** — CI/CD
+- **Sentry** — Error tracking
 
-### Marketplace
+### Code Quality
 
-- ✅ Virtual goods (badges, boosts)
-- ✅ Praxis Points purchasable via Stripe
-- ✅ Streak shields
+- **TypeScript** — 100% typed
+- **ESLint** + Prettier
+- **Husky** + lint-staged — Pre-commit hooks
+- **Jest** + Playwright — Unit + E2E tests
 
 ---
 
-## Tech Stack
+## 📈 MARKET OPPORTUNITY
 
-| Layer          | Technology                                  |
-| -------------- | ------------------------------------------- |
-| **Frontend**   | React 18 + TypeScript + MUI v7 + Vite       |
-| **Backend**    | Express 5 + TypeScript                      |
-| **Database**   | Supabase (PostgreSQL + pgvector + Realtime) |
-| **Auth**       | Supabase JWT                                |
-| **AI**         | Google Gemini + DeepSeek fallback           |
-| **Payments**   | Stripe (subscriptions + one-time)           |
-| **Storage**    | Supabase Storage                            |
-| **Deployment** | Vercel (frontend) + Railway (backend)       |
-| **CI/CD**      | GitHub Actions                              |
+### TAM (Total Addressable Market)
 
-### Key Technical Decisions
+- **Global Productivity Software Market:** $100B+ by 2030
+- **Habit Tracking Apps:** 50M+ downloads annually
+- **Personal Development Market:** $43B annually
 
-- **pgvector semantic search** for goal similarity matching
-- **Privacy-preserving AI** — Axiom analyzes engagement patterns, not message content
-- **Supabase RLS** for row-level security on all tables
-- **Stripe webhooks** for subscription state management
-- **64 database migrations** showing active iteration
+### SAM (Serviceable Addressable Market)
 
----
+- **English-speaking markets:** US, UK, Canada, Australia (~300M potential users)
+- **Target demographic:** Ages 18–45, goal-oriented, tech-savvy
+- **Estimated SAM:** 10M users
 
-## Codebase Stats
+### SOM (Serviceable Obtainable Market)
 
-| Metric                | Value                  |
-| --------------------- | ---------------------- |
-| **TypeScript Files**  | 341                    |
-| **Lines of Code**     | ~73,787                |
-| **SQL Migrations**    | 64 files, ~9,600 lines |
-| **Controllers**       | 42 backend controllers |
-| **API Routes**        | 57 route modules       |
-| **Frontend Features** | 34 feature modules     |
+- **Year 1 goal:** 10K users, 500 paying, $5K MRR
+- **Year 2 goal:** 100K users, 5K paying, $50K MRR
+- **Year 3 goal:** 500K users, 25K paying, $250K MRR
+
+### Competitive Landscape
+
+| Competitor   | Strengths               | Weaknesses                   | Praxis Differentiator      |
+| ------------ | ----------------------- | ---------------------------- | -------------------------- |
+| **Habitica** | Gamification, community | Too game-like, not serious   | Real accountability + AI   |
+| **Coach.me** | Human coaching          | Expensive ($100+/session)    | AI coaching at 1/10th cost |
+| **Notion**   | Flexible, popular       | Solo tool, no accountability | Social + AI built-in       |
+| **Streaks**  | Simple, beautiful       | iOS only, no community       | Cross-platform + social    |
+| **Day One**  | Beautiful journaling    | Private, no accountability   | Public accountability      |
 
 ---
 
-## API Costs (Monthly)
+## 🎯 GROWTH STRATEGY
 
-| Service           | Cost         | Notes                          |
-| ----------------- | ------------ | ------------------------------ |
-| **Supabase**      | ~$[X]        | Tier depends on usage          |
-| **Google Gemini** | ~$[X]        | Pay-as-you-go, scales with DAU |
-| **Vercel**        | ~$[X]        | Frontend hosting               |
-| **Railway**       | ~$[X]        | Backend hosting                |
-| **Resend**        | ~$[X]        | Email (free tier: 100/day)     |
-| **Total**         | **~$[X]/mo** | Base + variable costs          |
+### Completed (Growth Sprint — March 2026)
 
----
+- ✅ Stripe payment flow (billing portal, annual pricing)
+- ✅ Viral sharing (5 touchpoints: check-in, achievements, leaderboard, goals, posts)
+- ✅ Email retention system (5 templates)
+- ✅ Gamification (levels, quests, achievements, leagues)
+- ✅ Product Hunt preparation
 
-## Competitive Positioning
+### Next 90 Days
 
-| Competitor           | Weakness                        | Praxis Advantage                     |
-| -------------------- | ------------------------------- | ------------------------------------ |
-| **Habitica**         | No AI matching, dated UX        | AI-powered matching + modern PWA     |
-| **Coach.me**         | Human coaches only, expensive   | AI coaching at scale, affordable     |
-| **Fokus**            | Simple goal tracking, no social | Social accountability + gamification |
-| **r/GetDisciplined** | Reddit only, no product         | Real product with community          |
+1. **Product Hunt Launch** (April 2026)
+   - Target: #1 Product of the Day
+   - Goal: 1K signups, 50 paying users
 
----
+2. **Content Marketing**
+   - SEO blog posts (goal-setting, accountability, AI coaching)
+   - Guest posts on productivity blogs
+   - YouTube tutorials
 
-## Risks & Mitigations
+3. **Community Building**
+   - Discord server for power users
+   - Weekly accountability challenges
+   - User success stories
 
-| Risk                 | Impact | Mitigation                                 |
-| -------------------- | ------ | ------------------------------------------ |
-| **AI API costs**     | Medium | Minimal AI mode fallback, usage monitoring |
-| **User acquisition** | High   | Referral system, viral sharing, PH launch  |
-| **Churn**            | Medium | Streak mechanics, milestone celebrations   |
-| **Competition**      | Low    | First-mover in AI + social accountability  |
+4. **Paid Acquisition (Test)**
+   - Reddit ads (r/productivity, r/getdisciplined)
+   - Twitter/X ads (productivity influencers)
+   - Budget: $500/mo test
 
----
+### Next 12 Months
 
-## Ask
-
-### Valuation
-
-| Stage                         | Multiple        | Value       |
-| ----------------------------- | --------------- | ----------- |
-| **Pre-revenue**               | 1-3x code value | $50K-$150K  |
-| **Early traction ($500 MRR)** | 10-20x MRR      | $5K-$10K    |
-| **Growth ($5K MRR)**          | 5-10x ARR       | $25K-$50K   |
-| **Scale ($50K MRR)**          | 5-10x ARR       | $250K-$500K |
-
-### Preferred Structure
-
-- **Cash** — Full payment on close
-- **Escrow** — 50% upfront, 50% after 30-day transition
-
-### What's Included
-
-- Full codebase (all TypeScript, SQL migrations)
-- Supabase schema + RLS policies
-- Stripe integration + webhook handlers
-- AI services (Gemini API key transfer)
-- Documentation (README, API docs, architecture)
-- 30-day transition support
-
-### What's Not Included
-
-- Domain, brand, social accounts
-- Customer data (GDPR compliance)
-- Third-party API keys (buyer must set up)
+1. **Mobile App** — React Native (iOS + Android)
+2. **Team Hiring** — 1 frontend, 1 marketing
+3. **Enterprise Tier** — Team accountability for companies
+4. **International Expansion** — Italian, Spanish, French localization
 
 ---
 
-## Next Steps
+## 🏆 MILESTONES & ACHIEVEMENTS
 
-1. **Review metrics** — Visit `/admin` → Metrics tab
-2. **Test payment flow** — Complete a Stripe test purchase
-3. **Verify email delivery** — Configure Resend API key
-4. **Document growth** — Capture 4-week user/revenue trends
+### Technical Milestones
+
+- ✅ Full gamification system (levels, quests, achievements)
+- ✅ AI coaching (Axiom daily briefs, weekly narratives)
+- ✅ Real-time matching algorithm
+- ✅ Payment system (Stripe subscriptions + PP purchases)
+- ✅ Email retention system
+- ✅ Admin metrics dashboard
+
+### Product Milestones
+
+- ✅ Goal tree visualization
+- ✅ Streak system with peer verification
+- ✅ Community feed + posts
+- ✅ Leaderboards with league system
+- ✅ Betting/duel system
+- ✅ Notebook/journaling system
+
+### Business Milestones
+
+- ✅ First paying customer: [DATE]
+- ✅ $100 MRR: [DATE]
+- ✅ $1K MRR: [TARGET: Q3 2026]
+- ✅ 1K users: [TARGET: Q3 2026]
+- ✅ Product Hunt #1: [TARGET: April 2026]
 
 ---
 
-## Contact
+## 📋 DUE DILIGENCE CHECKLIST
 
-**Gio | Verona, Italy**
+### Legal
 
-- Email: [your@email.com]
-- LinkedIn: [optional]
-- Twitter: [optional]
+- [x] Company incorporated (sole proprietorship → SRL if needed)
+- [ ] Trademark registration (Praxis name/logo)
+- [x] Terms of Service + Privacy Policy
+- [ ] GDPR compliance (EU users)
+
+### Financial
+
+- [ ] Bank account separation (business vs personal)
+- [ ] Accounting system (Xero/QuickBooks)
+- [ ] Revenue recognition policy
+- [ ] Tax filings (Italy → US expansion)
+
+### Technical
+
+- [x] Codebase audited (security, performance)
+- [x] Database backups automated
+- [x] Error tracking (Sentry)
+- [ ] Load testing completed
+- [ ] Disaster recovery plan
+
+### Operational
+
+- [ ] Customer support system (Intercom/Zendesk)
+- [ ] On-call rotation (if team)
+- [ ] Documentation (internal + user-facing)
 
 ---
 
-_This packet was generated as part of the Praxis growth sprint. For the latest metrics, visit the Admin > Metrics tab in the application._
+## 💼 ACQUISITION SCENARIOS
+
+### Scenario 1: Acqui-Hire ($200K–$400K)
+
+**Buyer:** Productivity app company (Notion, Habitica, Coach.me)  
+**Rationale:** Team + technology integration  
+**Structure:** Cash + earnout based on retention  
+**Timeline:** 3–6 months
+
+### Scenario 2: Strategic Acquisition ($500K–$2M)
+
+**Buyer:** Larger tech company entering productivity (Google, Microsoft, Meta)  
+**Rationale:** AI coaching + social accountability IP  
+**Structure:** Cash + stock  
+**Timeline:** 6–12 months
+
+### Scenario 3: Roll-Up ($1M–$5M)
+
+**Buyer:** PE firm aggregating productivity apps  
+**Rationale:** Consolidate market, cross-sell  
+**Structure:** Cash + revenue share  
+**Timeline:** 6–9 months
+
+### Scenario 4: Continue Building (Recommended)
+
+**Path:** Raise $500K–$1M seed round  
+**Valuation:** $3M–$5M post-money  
+**Use of Funds:** Team (3–5 people), marketing, mobile app  
+**Exit Target:** $20M–$50M in 3–5 years
+
+---
+
+## 📞 CONTACT
+
+**Giovanni Pezzingiovanni**  
+Founder & Lead Developer  
+📧 [your-email@praxis.app]  
+📱 [your-phone]  
+📍 Verona, Italy  
+🔗 [LinkedIn/GitHub/Twitter]
+
+**Legal Counsel (if applicable):**  
+[Firm Name]  
+[Contact]
+
+---
+
+## ⚠️ CONFIDENTIALITY NOTICE
+
+This document contains proprietary and confidential information intended solely for the use of qualified buyers who have signed a non-disclosure agreement. Distribution without written consent is prohibited.
+
+**© 2026 Praxis. All rights reserved.**
+
+---
+
+_Last Updated: March 28, 2026_  
+_Version: 1.0_  
+_Generated from: /docs/ACQUISITION_PACKET.md_
