@@ -18,6 +18,7 @@ import LevelUpDialog from '../../components/common/LevelUpDialog';
 import PPToast from '../../components/common/PPToast';
 import AchievementShareModal from '../../components/common/AchievementShareModal';
 import SeasonalEventCard from '../../components/common/SeasonalEventCard';
+import AccountabilityBuddy from '../../components/common/AccountabilityBuddy';
 import { useGamificationNotifications } from '../../hooks/useGamificationNotifications';
 import { useCelebrations } from '../../hooks/useCelebrations';
 import toast from 'react-hot-toast';
@@ -247,6 +248,15 @@ const DashboardPage: React.FC = () => {
             <Box sx={{ mt: 3 }}>
               <ErrorBoundary label="Seasonal Events">
                 <SeasonalEventCard userId={currentUserId} />
+              </ErrorBoundary>
+            </Box>
+          )}
+
+          {/* ── Accountability Buddy ── */}
+          {currentUserId && (
+            <Box sx={{ mt: 3 }}>
+              <ErrorBoundary label="Accountability Buddy">
+                <AccountabilityBuddy userId={currentUserId} />
               </ErrorBoundary>
             </Box>
           )}
