@@ -17,6 +17,7 @@ import DailyQuestsWidget from '../../components/common/DailyQuestsWidget';
 import LevelUpDialog from '../../components/common/LevelUpDialog';
 import PPToast from '../../components/common/PPToast';
 import AchievementShareModal from '../../components/common/AchievementShareModal';
+import SeasonalEventCard from '../../components/common/SeasonalEventCard';
 import { useGamificationNotifications } from '../../hooks/useGamificationNotifications';
 import { useCelebrations } from '../../hooks/useCelebrations';
 import toast from 'react-hot-toast';
@@ -240,6 +241,15 @@ const DashboardPage: React.FC = () => {
             )}
             </ErrorBoundary>
           </Box>
+
+          {/* ── Seasonal Events ── */}
+          {currentUserId && (
+            <Box sx={{ mt: 3 }}>
+              <ErrorBoundary label="Seasonal Events">
+                <SeasonalEventCard userId={currentUserId} />
+              </ErrorBoundary>
+            </Box>
+          )}
 
           {/* ── Main Grid ── */}
           <Grid container spacing={4}>

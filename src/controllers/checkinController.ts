@@ -216,17 +216,108 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   await supabase.from('profiles').update(profileUpdate).eq('id', userId);
   cacheDelete(`dashboard:${userId}`); // invalidate cached summary so fresh checkedIn state is served
 
+  // Mystery Reward System — random bonus PP on check-in
+  const MYSTERY_TIERS = [
+    { name: 'Common', amount: 5, weight: 60, emoji: '✨' },
+    { name: 'Rare', amount: 15, weight: 25, emoji: '💎' },
+    { name: 'Epic', amount: 30, weight: 12, emoji: '🌟' },
+    { name: 'Legendary', amount: 50, weight: 3, emoji: '🔥' },
+  ];
+  
+  const isMilestoneDay = [7, 14, 21, 30, 60, 90, 100, 180, 365].includes(streakUpdate.current_streak);
+  const rollChance = isMilestoneDay ? 0.5 : 0.1; // 50% on milestones, 10% normally
+  let mysteryReward: { tier: string; amount: number; emoji: string } | null = null;
+  
+  if (Math.random() < rollChance) {
+    // Weighted random selection
+    const totalWeight = MYSTERY_TIERS.reduce((sum, t) => sum + t.weight, 0);
+    let roll = Math.random() * totalWeight;
+    for (const tier of MYSTERY_TIERS) {
+      roll -= tier.weight;
+      if (roll <= 0) {
+        mysteryReward = { tier: tier.name, amount: tier.amount, emoji: tier.emoji };
+        // Award the bonus PP
+        await supabase.rpc('add_xp_to_user', {
+          p_user_id: userId,
+          p_xp_amount: 0,
+          p_pp_amount: tier.amount,
+          p_source: 'mystery_reward',
+        });
+        // Update profile with new balance
+        await supabase
+          .from('profiles')
+          .update({ praxis_points: newPoints + tier.amount })
+          .eq('id', userId);
+        logger.info(`[MysteryReward] User ${userId} rolled ${tier.name} (+${tier.amount} PP)`);
+        break;
+      }
+    }
+  }
+
+  // Update seasonal event progress for streak_challenge events
+  let seasonalEventUpdate = null;
+  try {
+    const now = new Date().toISOString();
+    
+    // Find active streak challenge events
+    const { data: activeEvents } = await supabase
+      .from('seasonal_events')
+      .select('id, slug, name, target_value')
+      .eq('is_active', true)
+      .eq('event_type', 'streak_challenge')
+      .eq('target_metric', 'streak_days')
+      .lte('starts_at', now)
+      .gte('ends_at', now);
+
+    if (activeEvents && activeEvents.length > 0) {
+      for (const event of activeEvents) {
+        // Check if user is participating
+        const { data: participant } = await supabase
+          .from('seasonal_event_participants')
+          .select('id, progress, completed_at')
+          .eq('event_id', event.id)
+          .eq('user_id', userId)
+          .single();
+
+        if (participant) {
+          // Update progress to match current streak (don't exceed target)
+          const newProgress = Math.min(streakUpdate.current_streak, event.target_value);
+          const completed = newProgress >= event.target_value;
+
+          await supabase
+            .from('seasonal_event_participants')
+            .update({
+              progress: newProgress,
+              completed_at: completed && !participant.completed_at ? now : participant.completed_at,
+            })
+            .eq('id', participant.id);
+
+          if (completed && !participant.completed_at) {
+            seasonalEventUpdate = { eventSlug: event.slug, eventName: event.name };
+            logger.info(`[SeasonalEvent] User ${userId} completed ${event.name}`);
+          }
+        }
+      }
+    }
+  } catch (eventErr) {
+    logger.warn('[SeasonalEvent] Failed to update progress:', eventErr);
+  }
+
   return res.json({
     alreadyCheckedIn: false,
     streak: streakUpdate.current_streak,
     pointsAwarded,
     streakBonus,
-    totalPoints: newPoints,
+    totalPoints: newPoints + (mysteryReward?.amount ?? 0),
     shieldConsumed: streakUpdate.shield_consumed,
     // Gamification
     xpAwarded,
     leveledUp,
     newLevel,
+    // Mystery reward
+    mysteryReward,
+    // Seasonal event completion
+    seasonalEventCompleted: seasonalEventUpdate,
   });
 });
 

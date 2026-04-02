@@ -168,12 +168,20 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
     setCheckinLoading(true);
     try {
       const res = await api.post('/checkins', { userId });
-      const { alreadyCheckedIn, streak: newStreak, totalPoints, mysteryReward } = res.data;
+      const { alreadyCheckedIn, streak: newStreak, totalPoints, mysteryReward, seasonalEventCompleted } = res.data;
       setCheckedIn(true);
       if (!alreadyCheckedIn) {
         onCheckIn(newStreak, totalPoints);
         
-        if (mysteryReward) {
+        if (seasonalEventCompleted) {
+          celebrateMilestone({
+            milestone: 100,
+            type: 'achievement',
+            title: `${seasonalEventCompleted.eventName} Complete!`,
+            description: 'You completed the seasonal challenge! Claim your reward.',
+            reward: { pp: 100 },
+          });
+        } else if (mysteryReward) {
           celebrateMysteryReward(mysteryReward);
           toast.success(
             `${mysteryReward.emoji} MYSTERY REWARD! ${mysteryReward.tier} — +${mysteryReward.amount} PP!`,

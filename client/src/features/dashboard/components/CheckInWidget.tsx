@@ -94,12 +94,20 @@ const CheckInWidget: React.FC<Props> = ({
     setLoading(true);
     try {
       const res = await api.post('/checkins', { userId, mood, winOfTheDay: winText });
-      const { alreadyCheckedIn, streak, totalPoints, shieldConsumed, mysteryReward } = res.data;
+      const { alreadyCheckedIn, streak, totalPoints, shieldConsumed, mysteryReward, seasonalEventCompleted } = res.data;
       if (!alreadyCheckedIn) {
         setCheckedIn(true);
         onCheckIn(streak, totalPoints);
 
-        if (mysteryReward) {
+        if (seasonalEventCompleted) {
+          celebrateMilestone({
+            milestone: 100,
+            type: 'achievement',
+            title: `${seasonalEventCompleted.eventName} Complete!`,
+            description: 'You completed the seasonal challenge! Claim your reward.',
+            reward: { pp: 100 },
+          });
+        } else if (mysteryReward) {
           celebrateMysteryReward(mysteryReward);
           toast.success(
             `${mysteryReward.emoji} MYSTERY! ${mysteryReward.tier} — +${mysteryReward.amount} PP!`,
