@@ -1389,3 +1389,51 @@ Comprehensive codebase inspection and cleanup:
 3. ProfilePage further splits — hero card / edit form could be extracted (~400 lines) but have heavy state deps
 
 - Sign: Claude
+
+---
+
+Session 98: Better Celebrations / Confetti System (2026-04-02)
+
+## Summary of Changes
+
+### Installed
+- `react-confetti` library (was used in existing code but not installed)
+
+### Created
+- `client/src/hooks/useCelebrations.tsx` — Celebration provider + hook:
+  - `CelebrationProvider` — wraps app, manages confetti + modal state
+  - `useCelebrations()` — exposes `celebrateMilestone()`, `celebrateMysteryReward()`, `celebrateLevelUp()`
+  - `isStreakMilestone()` — checks if streak is 7/14/30/60/90/100/180/365
+  - `getMilestoneConfig()` — returns emoji, title, description for each milestone
+
+### Tier-based Confetti
+- Common (5 PP): 100 pieces, gray colors, 2s
+- Rare (15 PP): 200 pieces, blue colors, 2.5s
+- Epic (30 PP): 350 pieces, purple/gold, 3s
+- Legendary (50 PP): 500 pieces, rainbow, 4s
+
+### Wire-up
+- `AppRouter.tsx` — Added `CelebrationProvider` wrapper
+- `CheckInWidget.tsx` — Triggers celebration on check-in:
+  - Mystery rewards → confetti (tier-based)
+  - Streak milestones → full-screen modal + confetti
+- `AxiomMorningBrief.tsx` — Same triggers as CheckInWidget
+- `DashboardPage.tsx` — Triggers level-up celebrations when profile updates
+
+### Files Modified
+- `client/package.json` — Added react-confetti
+- `client/src/AppRouter.tsx` — Added CelebrationProvider
+- `client/src/features/dashboard/DashboardPage.tsx` — Added celebration hook + level-up detection
+- `client/src/features/dashboard/components/AxiomMorningBrief.tsx` — Added celebration triggers
+- `client/src/features/dashboard/components/CheckInWidget.tsx` — Added celebration triggers
+- `client/src/hooks/useCelebrations.tsx` — NEW
+
+### Verification
+- TypeScript: ✅ 0 source errors
+- Build: ✅ Passes
+
+### Next Steps
+- Commit + push
+- Build Seasonal Events Framework
+- Create First Seasonal Event (April Accountability Challenge)
+- Sign: Claude
