@@ -1437,3 +1437,70 @@ Session 98: Better Celebrations / Confetti System (2026-04-02)
 - Build Seasonal Events Framework
 - Create First Seasonal Event (April Accountability Challenge)
 - Sign: Claude
+
+---
+
+Session 99: Seasonal Events Framework (2026-04-02)
+
+## Summary of Changes
+
+### Database
+- Created `migrations/2026-04-02-seasonal-events.sql`:
+  - `seasonal_events` table (slug, name, description, theme_color, event_type, dates, target, rewards)
+  - `seasonal_event_participants` table (event_id, user_id, progress, completed_at, reward_claimed)
+  - RLS policies for public read + authenticated participation
+
+### Backend
+- Created `src/controllers/seasonalEventController.ts`:
+  - `getActiveEvents` - list active events
+  - `joinEvent` - join a seasonal challenge
+  - `updateProgress` - manually update progress
+  - `claimReward` - claim completion rewards
+  - `getLeaderboard` - event-specific leaderboard
+- Created `src/routes/seasonalEventRoutes.ts`
+- Updated `src/app.ts` - registered `/api/seasonal-events` routes
+- Updated `checkinController.ts`:
+  - Auto-updates streak_challenge event progress on check-in
+  - Returns `seasonalEventCompleted` flag when user completes an event
+
+### Frontend
+- Created `SeasonalEventCard.tsx`:
+  - Full card view with progress bars, rewards display, join/claim buttons
+  - Compact chip view for inline display
+  - Event detail dialog
+- Updated `DashboardPage.tsx` - added SeasonalEventCard below Morning Brief
+- Updated `AxiomMorningBrief.tsx` - celebrate seasonal event completion
+- Updated `CheckInWidget.tsx` - celebrate seasonal event completion
+
+### Seed Data
+- Created `migrations/2026-04-02-seed-seasonal-events.sql`:
+  - **April Accountability Challenge**: 30-day streak, 500 PP + 200 XP + "April Sprout" badge
+  - **Summer Streak Challenge**: 60-day streak, 1000 PP + 500 XP + "Summer Champion" badge
+
+### Files Modified
+- `src/app.ts` - added seasonalEventRoutes
+- `src/controllers/checkinController.ts` - auto-update event progress
+- `client/src/features/dashboard/DashboardPage.tsx` - add SeasonalEventCard
+- `client/src/features/dashboard/components/AxiomMorningBrief.tsx` - celebration on completion
+- `client/src/features/dashboard/components/CheckInWidget.tsx` - celebration on completion
+
+### Files Created
+- `src/controllers/seasonalEventController.ts`
+- `src/routes/seasonalEventRoutes.ts`
+- `client/src/components/common/SeasonalEventCard.tsx`
+- `migrations/2026-04-02-seasonal-events.sql`
+- `migrations/2026-04-02-seed-seasonal-events.sql`
+
+### Verification
+- TypeScript: ✅ 0 source errors (frontend + backend)
+- Build: ✅ Passes
+
+### Manual Actions Required
+Run SQL migrations in Supabase:
+1. `migrations/2026-04-02-seasonal-events.sql`
+2. `migrations/2026-04-02-seed-seasonal-events.sql`
+
+### Next
+- All gamification features implemented!
+- Consider: Accountability Buddy System, Clans/Tribes
+- Sign: Claude
