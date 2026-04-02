@@ -18,6 +18,7 @@ import LevelUpDialog from '../../components/common/LevelUpDialog';
 import PPToast from '../../components/common/PPToast';
 import AchievementShareModal from '../../components/common/AchievementShareModal';
 import { useGamificationNotifications } from '../../hooks/useGamificationNotifications';
+import { useCelebrations } from '../../hooks/useCelebrations';
 import toast from 'react-hot-toast';
 
 import PageSkeleton from '../../components/common/PageSkeleton';
@@ -45,6 +46,10 @@ const DashboardPage: React.FC = () => {
   
   // Gamification notifications
   const { latestAchievement, clearLatestAchievement } = useGamificationNotifications(currentUserId);
+  const { celebrateLevelUp } = useCelebrations();
+  
+  // Track previous level for level-up detection
+  const [prevLevel, setPrevLevel] = useState<number | null>(null);
 
   // Achievement share modal state
   const [achievementModalOpen, setAchievementModalOpen] = useState(false);
@@ -140,6 +145,17 @@ const DashboardPage: React.FC = () => {
     }
   }, [latestAchievement]);
 
+  // Trigger level up celebration when gamification profile updates
+  useEffect(() => {
+    if (gamificationProfile?.level) {
+      const newLevel = gamificationProfile.level;
+      if (prevLevel !== null && newLevel > prevLevel) {
+        celebrateLevelUp(prevLevel, newLevel);
+      }
+      setPrevLevel(newLevel);
+    }
+  }, [gamificationProfile?.level]);
+
   // Curated leaderboard: ranked_score = points × (1 + compatibilityScore)
   const curatedLeaderboard = useMemo(() => {
     if (leaderboard.length === 0) return leaderboard;
@@ -218,6 +234,7 @@ const DashboardPage: React.FC = () => {
                 userId={currentUserId}
                 initialBriefs={initialBriefs}
                 initialCheckedIn={initialCheckedIn}
+                streakShield={user?.streak_shield ?? false}
                 onCheckIn={() => {}}
               />
             )}

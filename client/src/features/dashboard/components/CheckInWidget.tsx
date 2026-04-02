@@ -8,13 +8,16 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ShareIcon from '@mui/icons-material/Share';
+import ShieldIcon from '@mui/icons-material/Shield';
 import GlassCard from '../../../components/common/GlassCard';
+import { useCelebrations, isStreakMilestone, getMilestoneConfig } from '../../../hooks/useCelebrations';
 
 interface Props {
   userId: string;
   currentStreak: number;
   lastActivityDate?: string;
   praxisPoints: number;
+  streakShield?: boolean;
   onCheckIn: (newStreak: number, newPoints: number) => void;
 }
 
@@ -42,8 +45,10 @@ const CheckInWidget: React.FC<Props> = ({
   currentStreak,
   lastActivityDate,
   praxisPoints,
+  streakShield = false,
   onCheckIn,
 }) => {
+  const { celebrateMilestone, celebrateMysteryReward } = useCelebrations();
   const [checkedIn, setCheckedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -89,26 +94,30 @@ const CheckInWidget: React.FC<Props> = ({
     setLoading(true);
     try {
       const res = await api.post('/checkins', { userId, mood, winOfTheDay: winText });
-      const { alreadyCheckedIn, streak, totalPoints, shieldConsumed } = res.data;
+      const { alreadyCheckedIn, streak, totalPoints, shieldConsumed, mysteryReward } = res.data;
       if (!alreadyCheckedIn) {
         setCheckedIn(true);
         onCheckIn(streak, totalPoints);
 
-        // Milestone celebration toasts
-        const MILESTONES: Record<number, string> = {
-          7:   'One week straight! You\'re building real discipline. 🏆',
-          30:  'One month! You\'re in the top 5% of all users. 🔥',
-          100: 'ONE HUNDRED DAYS. Legendary. Praxis is part of you now. ⚡',
-          365: 'One full year. You are unstoppable. 🌟',
-        };
-        if (MILESTONES[streak]) {
-          setTimeout(() => toast.success(MILESTONES[streak], { duration: 6000, icon: '🎉' }), 600);
-        }
-
-        if (shieldConsumed) {
+        if (mysteryReward) {
+          celebrateMysteryReward(mysteryReward);
+          toast.success(
+            `${mysteryReward.emoji} MYSTERY! ${mysteryReward.tier} — +${mysteryReward.amount} PP!`,
+            { duration: 5000, style: { background: 'linear-gradient(135deg, #8B5CF6, #6366F1)', color: '#fff' } }
+          );
+        } else if (isStreakMilestone(streak)) {
+          const config = getMilestoneConfig(streak);
+          celebrateMilestone({
+            milestone: streak,
+            type: 'streak',
+            title: config.title,
+            description: config.description,
+            reward: { pp: 50 },
+          });
+        } else if (shieldConsumed) {
           toast.success(`Streak shield absorbed your missed day! Streak: ${streak}d`, { icon: '🛡️' });
         } else {
-          toast.success(`+10 points! Streak: ${streak} days 🔥`);
+          toast.success(`+${res.data.pointsAwarded} points! Streak: ${streak} days 🔥`);
         }
       } else {
         setCheckedIn(true);
@@ -160,6 +169,24 @@ const CheckInWidget: React.FC<Props> = ({
               fontSize: '0.7rem',
             }}
           />
+
+          {streakShield && (
+            <Tooltip title="Streak Shield Active — miss a day without losing your streak!">
+              <Chip
+                icon={<ShieldIcon sx={{ fontSize: '14px !important' }} />}
+                label="Shielded"
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(34,197,94,0.15)',
+                  color: '#22C55E',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  fontWeight: 700,
+                  fontSize: '0.7rem',
+                  '& .MuiChip-icon': { color: '#22C55E' },
+                }}
+              />
+            </Tooltip>
+          )}
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <AutoAwesomeIcon sx={{ color: 'primary.main', fontSize: 16 }} />

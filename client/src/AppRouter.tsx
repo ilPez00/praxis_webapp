@@ -12,6 +12,7 @@ import routes from './config/routes';
 import { useLocationSync } from './hooks/useLocationSync';
 import { useUser } from './hooks/useUser';
 import { useOfflineSync } from './hooks/useOfflineSync';
+import { CelebrationProvider } from './hooks/useCelebrations';
 
 const PageLoader = () => <PageSkeleton cards={3} />;
 
@@ -59,22 +60,24 @@ const AppRouter: React.FC = () => {
       <Toaster position="top-right" />
       
       <Suspense fallback={<PageLoader />}>
-        <Routes>
-          {routes.map((route, index) => {
-            const page = (
-              <ErrorBoundary>
-                <route.element />
-              </ErrorBoundary>
-            );
-            return route.private ? (
-              <Route key={index} element={<PrivateRoute />}>
-                <Route path={route.path} element={page} />
-              </Route>
-            ) : (
-              <Route key={index} path={route.path} element={page} />
-            );
-          })}
-        </Routes>
+        <CelebrationProvider>
+          <Routes>
+            {routes.map((route, index) => {
+              const page = (
+                <ErrorBoundary>
+                  <route.element />
+                </ErrorBoundary>
+              );
+              return route.private ? (
+                <Route key={index} element={<PrivateRoute />}>
+                  <Route path={route.path} element={page} />
+                </Route>
+              ) : (
+                <Route key={index} path={route.path} element={page} />
+              );
+            })}
+          </Routes>
+        </CelebrationProvider>
       </Suspense>
     </Router>
   );

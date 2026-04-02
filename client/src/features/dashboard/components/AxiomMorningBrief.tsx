@@ -22,11 +22,13 @@ import {
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
+import ShieldIcon from '@mui/icons-material/Shield';
 import HistoryIcon from '@mui/icons-material/History';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ShareButton from '../../../components/common/ShareButton';
 import BetCommitDialog from '../../../components/common/BetCommitDialog';
+import { useCelebrations, isStreakMilestone, getMilestoneConfig } from '../../../hooks/useCelebrations';
 
 interface MorningBriefProps {
   userName: string;
@@ -39,6 +41,7 @@ interface MorningBriefProps {
   /** Pre-fetched from /dashboard/summary — skips the internal Supabase query. */
   initialBriefs?: BriefRecord[];
   initialCheckedIn?: boolean;
+  streakShield?: boolean;
 }
 
 interface DailyProtocol {
@@ -56,11 +59,12 @@ interface BriefRecord {
 
 const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
   userName, streak, points, avgProgress, hasGoals, userId, onCheckIn,
-  initialBriefs, initialCheckedIn,
+  initialBriefs, initialCheckedIn, streakShield = false,
 }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { celebrateMilestone, celebrateMysteryReward } = useCelebrations();
 
   const [briefs, setBriefs] = useState<BriefRecord[]>(initialBriefs ?? []);
   const [briefIndex, setBriefIndex] = useState(0);
@@ -164,11 +168,29 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
     setCheckinLoading(true);
     try {
       const res = await api.post('/checkins', { userId });
-      const { alreadyCheckedIn, streak: newStreak, totalPoints } = res.data;
+      const { alreadyCheckedIn, streak: newStreak, totalPoints, mysteryReward } = res.data;
       setCheckedIn(true);
       if (!alreadyCheckedIn) {
         onCheckIn(newStreak, totalPoints);
-        toast.success(`Check-in successful! Streak: ${newStreak} days 🔥`, { icon: '⚡' });
+        
+        if (mysteryReward) {
+          celebrateMysteryReward(mysteryReward);
+          toast.success(
+            `${mysteryReward.emoji} MYSTERY REWARD! ${mysteryReward.tier} — +${mysteryReward.amount} PP!`,
+            { duration: 5000, style: { background: 'linear-gradient(135deg, #8B5CF6, #6366F1)', color: '#fff' } }
+          );
+        } else if (isStreakMilestone(newStreak)) {
+          const config = getMilestoneConfig(newStreak);
+          celebrateMilestone({
+            milestone: newStreak,
+            type: 'streak',
+            title: config.title,
+            description: config.description,
+            reward: { pp: 50 },
+          });
+        } else {
+          toast.success(`Check-in successful! Streak: ${newStreak} days 🔥`, { icon: '⚡' });
+        }
       }
     } catch {
       toast.error('Check-in failed.');
@@ -216,6 +238,22 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
               <ElectricBoltIcon sx={{ color: '#A78BFA', fontSize: 18 }} />
               <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#A78BFA' }}>{points.toLocaleString()} PP</Typography>
             </Box>
+            {streakShield && (
+              <Chip
+                icon={<ShieldIcon sx={{ fontSize: '14px !important' }} />}
+                label="Shielded"
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(34,197,94,0.15)',
+                  color: '#22C55E',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  height: 24,
+                  '& .MuiChip-icon': { color: '#22C55E' },
+                }}
+              />
+            )}
             <Box sx={{ width: '1px', height: 28, bgcolor: 'rgba(255,255,255,0.1)', mx: 1 }} />
             <ContributionGraph userId={userId} height={60} width={280} showTooltip={true} />
           </Stack>
