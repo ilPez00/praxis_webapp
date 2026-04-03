@@ -14,11 +14,13 @@ import api from '../../../lib/api';
 interface ProcessStatus {
   running: boolean;
   backend?: {
+    running?: boolean;
     pid?: number;
     port?: number;
     uptime?: string;
   };
   frontend?: {
+    running?: boolean;
     pid?: number;
     port?: number;
     uptime?: string;
@@ -38,7 +40,7 @@ const CLITab: React.FC = () => {
   const [logs, setLogs] = useState<CommandLog[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' as const });
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'info' | 'success' | 'error' | 'warning' }>({ open: false, message: '', severity: 'info' });
 
   // Fetch current process status
   const fetchStatus = useCallback(async () => {

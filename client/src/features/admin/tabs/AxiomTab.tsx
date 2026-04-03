@@ -120,7 +120,7 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
       if (data.llm_briefs > 0) {
         toast.success(`Generated ${data.generated} briefs (${data.llm_briefs} via LLM)!`);
       } else {
-        toast.warning(`Generated ${data.generated} briefs (all algorithm fallback)`);
+        toast(`Generated ${data.generated} briefs (all algorithm fallback)`, { icon: '⚠️' });
       }
     } catch (err: any) {
       toast.error('Failed to generate briefs: ' + (err.message || 'Unknown error'));

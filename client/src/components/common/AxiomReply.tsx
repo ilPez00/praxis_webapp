@@ -31,6 +31,7 @@ interface AxiomReplyProps {
     matchId?: string;
     placeId?: string;
     eventId?: string;
+    challengeType?: string;
   };
 }
 

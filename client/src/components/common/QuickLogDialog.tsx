@@ -226,6 +226,7 @@ const QuickLogDialog: React.FC<QuickLogDialogProps> = ({ open, onClose }) => {
   const toFrontendNode = (raw: RawGoalNode): FrontendGoalNode => ({
     id: raw.id,
     title: raw.name,
+    weight: 1,
     progress: Math.round(raw.progress * 100),
     children: [], // Simplified for widget view
     domain: raw.domain as any,

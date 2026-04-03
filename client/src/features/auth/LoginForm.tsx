@@ -148,7 +148,7 @@ const LoginForm: React.FC = () => {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/dashboard`,
-        data: {
+        queryParams: {
           language: i18n.language
         }
       },

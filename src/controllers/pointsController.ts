@@ -2,17 +2,18 @@ import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, BadRequestError, NotFoundError } from '../utils/appErrors';
 
-const SPEND_CATALOGUE: Record<string, { cost: number; label: string }> = {
-  boost_visibility:    { cost: 150, label: '24h Boosted Visibility'                      },
-  goal_slot:           { cost: 200, label: 'Extra Root Goal Slot'                        },
-  coaching_session:    { cost: 500, label: 'AI Coaching Session (Axiom)'                 },
-  axiom_chat:          { cost:  50, label: 'Axiom Chat Message (free tier)'              },
-  axiom_brief_trigger: { cost: 100, label: 'Trigger Extra Axiom Brief (free tier)'       },
-  super_match:         { cost: 300, label: 'Super Match (Priority Queue)'                },
-  custom_icon:         { cost: 100, label: 'Custom Goal Icon / Theme'                    },
-  skip_grading:        { cost:  80, label: 'Skip Partner Grading Wait'                   },
-  bet_stake:           { cost:  50, label: 'Extra Virtual Bet Stake'                     },
-  suspend_goal:        { cost:  50, label: 'Suspend a Goal (pause without deleting)'     },
+const SPEND_CATALOGUE: Record<string, { cost: number; label: string; description?: string }> = {
+  boost_visibility:    { cost: 150, label: '24h Boosted Visibility', description: 'Appear higher in matching for 24 hours' },
+  goal_slot:           { cost: 200, label: 'Extra Root Goal Slot', description: 'Add another top-level goal to your tree' },
+  coaching_session:    { cost: 500, label: 'AI Coaching Session (Axiom)', description: 'Get personalized guidance from your AI coach' },
+  axiom_chat:          { cost:  50, label: 'Axiom Chat Message', description: 'Ask Axiom anything (free tier: 5/day)' },
+  axiom_brief_trigger: { cost: 100, label: 'Trigger Extra Axiom Brief', description: 'Get your daily brief immediately' },
+  super_match:         { cost: 300, label: 'Super Match', description: 'Jump to the front of the matching queue' },
+  custom_icon:         { cost: 100, label: 'Custom Goal Icon', description: 'Personalize your goal tree with unique icons' },
+  skip_grading:        { cost:  80, label: 'Skip Partner Grading Wait', description: 'Get your submission graded faster' },
+  bet_stake:           { cost:  50, label: 'Extra Virtual Bet Stake', description: 'Increase your betting power' },
+  suspend_goal:        { cost:  50, label: 'Suspend a Goal', description: 'Pause a goal without losing progress' },
+  streak_shield:        { cost: 250, label: 'Streak Shield 🛡️', description: 'Protect your streak if you miss a day' },
 };
 
 export const getCatalogue = (_req: Request, res: Response) => {
@@ -58,6 +59,7 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
 
   const { cost } = SPEND_CATALOGUE[item];
 
+  // Item-specific logic
   if (item === 'suspend_goal') {
     if (!nodeId) throw new BadRequestError('nodeId is required for suspend_goal');
 
@@ -74,6 +76,14 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
     nodes[nodeIndex] = { ...nodes[nodeIndex], status: 'suspended' };
 
     await supabase.from('goal_trees').update({ nodes }).eq('user_id', userId);
+  }
+
+  // Streak Shield: Set flag on profile (doesn't stack, just refreshes)
+  if (item === 'streak_shield') {
+    await supabase
+      .from('profiles')
+      .update({ streak_shield: true })
+      .eq('id', userId);
   }
 
   await supabase.from('marketplace_transactions').insert({
@@ -112,5 +122,6 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
     item,
     spent: cost,
     balance: newBalance,
+    ...(item === 'streak_shield' && { shieldActive: true }),
   });
 });

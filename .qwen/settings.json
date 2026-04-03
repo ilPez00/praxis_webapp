@@ -17,7 +17,11 @@
       "Bash(npm test)",
       "Bash(rm *)",
       "Bash(git rm *)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(git log *)",
+      "Bash(wc *)",
+      "Bash(cloc *)",
+      "Bash(xargs *)"
     ]
   },
   "$version": 3

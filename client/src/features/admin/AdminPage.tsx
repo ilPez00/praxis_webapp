@@ -229,7 +229,7 @@ const AdminPage: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tab} index={1}>
-        <GroupsTab groups={groups} setGroups={setGroups} loadingGroups={loadingGroups} fetchGroups={fetchGroups} />
+        <GroupsTab groups={groups} loadingGroups={loadingGroups} fetchGroups={fetchGroups} />
       </TabPanel>
 
       <TabPanel value={tab} index={2}>
@@ -245,11 +245,11 @@ const AdminPage: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tab} index={4}>
-        <ChallengesTab challenges={challenges} setChallenges={setChallenges} loading={loadingChallenges} fetchChallenges={fetchChallenges} />
+        <ChallengesTab challenges={challenges} loading={loadingChallenges} fetchChallenges={fetchChallenges} />
       </TabPanel>
 
       <TabPanel value={tab} index={5}>
-        <ServicesTab services={services} setServices={setServices} loading={loadingServices} fetchServices={fetchServices} />
+        <ServicesTab services={services} loading={loadingServices} fetchServices={fetchServices} />
       </TabPanel>
 
       <TabPanel value={tab} index={6}>

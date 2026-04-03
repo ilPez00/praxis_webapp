@@ -662,7 +662,7 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
           <EditableTrackerForm
             open={!!logTracker}
             onClose={() => setLogTracker(null)}
-            tracker={logTracker ? { id: tracker?.id || '', type: config.type, def: config } : null}
+            tracker={logTracker ? { id: tracker?.id || '', type: config.type, def: config as any } : null}
             onSave={async (data) => {
               const loc = getLocation();
               await api.post('/trackers/log', { type: config.type, data: { ...data, ...(loc && { _location: loc }) } });
@@ -762,5 +762,6 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], onPro
 };
 
 export default GoalWidgets;
-export { UnifiedGoalCard, MiniChart, ObjectiveRow, findWidget, ALL_WIDGETS };
+export { UnifiedGoalCard, MiniChart, ObjectiveRow, findWidget };
+export { ALL_WIDGETS } from './widgetConfigs';
 export type { WidgetConfig, Tracker, TrackerEntry, GoalNode as WidgetGoalNode, ActiveBet };

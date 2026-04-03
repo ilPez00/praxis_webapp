@@ -11,14 +11,18 @@ import CloseIcon from '@mui/icons-material/Close';
 import PlaceIcon from '@mui/icons-material/Place';
 
 export interface Reference {
-  type: 'goal' | 'service' | 'post' | 'group' | 'event' | 'place';
+  type: 'goal' | 'service' | 'post' | 'group' | 'event' | 'place' | 'person';
   id: string;
-  title: string;
+  title?: string;
+  name?: string;
   subtitle?: string;
   url?: string;
+  avatar_url?: string;
+  city?: string;
 }
 
-const TYPE_META: Record<Reference['type'], { color: string; icon: React.ReactNode; label: string }> = {
+const TYPE_META: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+  person:  { color: '#3B82F6', icon: <FlagIcon sx={{ fontSize: 14 }} />,            label: 'Person'  },
   goal:    { color: '#10B981', icon: <FlagIcon sx={{ fontSize: 14 }} />,            label: 'Goal'    },
   service: { color: '#F59E0B', icon: <WorkOutlineIcon sx={{ fontSize: 14 }} />,     label: 'Service' },
   post:    { color: '#3B82F6', icon: <ArticleOutlinedIcon sx={{ fontSize: 14 }} />, label: 'Post'    },
@@ -74,7 +78,7 @@ const ReferenceCard: React.FC<Props> = ({ reference, onRemove, compact = false }
           sx={{ fontWeight: 600, fontSize: compact ? '0.78rem' : '0.85rem', lineHeight: 1.2 }}
           noWrap
         >
-          {reference.title}
+          {reference.title || reference.name}
         </Typography>
         {reference.subtitle && (
           <Typography variant="caption" color="text.disabled" noWrap sx={{ display: 'block', fontSize: '0.7rem' }}>

@@ -351,7 +351,7 @@ const DiaryPage: React.FC = () => {
           {Object.entries(ENTRY_TYPE_ICONS).map(([type, icon]) => (
             <Chip
               key={type}
-              icon={icon}
+              icon={icon as React.ReactElement}
               label={type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')}
               onClick={() => {
                 setSelectedType(type);
@@ -544,7 +544,7 @@ const DiaryPage: React.FC = () => {
         onClose={() => setAnchorEl(null)}
       >
         <MenuItem onClick={() => {
-          setSelectedEntry && handleDeleteClick(selectedEntry!);
+          if (selectedEntry) handleDeleteClick(selectedEntry);
           setAnchorEl(null);
         }} sx={{ color: '#EF4444' }}>
           <DeleteIcon sx={{ mr: 1, fontSize: 18 }} /> Delete

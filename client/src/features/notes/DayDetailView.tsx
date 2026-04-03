@@ -50,7 +50,7 @@ function formatDateLabel(dateStr: string): string {
 }
 
 /** Safe query */
-async function safeQuery<T>(fn: () => Promise<{ data: T | null; error: any }>): Promise<T> {
+async function safeQuery<T>(fn: () => PromiseLike<{ data: T | null; error: any }>): Promise<T> {
   try {
     const { data, error } = await fn();
     if (error || !data) return [] as unknown as T;

@@ -387,23 +387,6 @@ const AnalyticsPage: React.FC = () => {
           const data = calendarRes.value.data;
           let days: DayData[] = data.calendar ?? [];
           
-          // Apply filters
-          if (!filters.trackers || !filters.notes || !filters.goals) {
-            days = days.map(day => {
-              let count = 0;
-              let trackers: string[] = [];
-              
-              if (filters.trackers) {
-                count += day.trackers.length;
-                trackers = day.trackers;
-              }
-              if (filters.notes) count += day.notes;
-              if (filters.goals) count += day.goalUpdates;
-              
-              return { ...day, count, trackers };
-            }).filter(d => d.count > 0);
-          }
-          
           setCalendarDays(days);
         }
 
@@ -851,7 +834,7 @@ const AnalyticsPage: React.FC = () => {
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Goal Progress Over Time</Typography>
                   <Box sx={{ height: 300 }}>
                     {progressData.length > 0 && (
-                      <ChartContainer
+                      <BarChart
                         series={[{
                           data: progressData.map(g => Math.round(g.progress * 100)),
                           label: 'Progress (%)',
@@ -861,14 +844,12 @@ const AnalyticsPage: React.FC = () => {
                           scaleType: 'band',
                           data: progressData.map(g => g.goalName.length > 15 ? g.goalName.slice(0, 15) + '...' : g.goalName),
                         }]}
+                        height={280}
                         sx={{
                           '& .MuiChartsAxis-line': { stroke: 'rgba(255,255,255,0.1)' },
                           '& .MuiChartsAxis-tick text': { fill: 'rgba(255,255,255,0.6)', fontSize: 10 },
                         }}
-                      >
-                        <LineChart />
-                        <ChartsTooltip />
-                      </ChartContainer>
+                      />
                     )}
                   </Box>
                 </CardContent>
@@ -882,9 +863,8 @@ const AnalyticsPage: React.FC = () => {
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Domain Distribution</Typography>
                   <Box sx={{ height: 300 }}>
                     {domainPerformance.length > 0 && (
-                      <ChartContainer
+                      <PieChart
                         series={[{
-                          type: 'pie',
                           data: domainPerformance.map(d => ({
                             id: d.domain,
                             label: d.domain,
@@ -894,14 +874,11 @@ const AnalyticsPage: React.FC = () => {
                           innerRadius: 30,
                           outerRadius: 100,
                         }]}
+                        height={280}
                         sx={{
                           '& .MuiChartsLegend-root': { display: 'none' },
                         }}
-                      >
-                        <PieChart />
-                        <ChartsTooltip />
-                        <Legend position="bottom" />
-                      </ChartContainer>
+                      />
                     )}
                   </Box>
                 </CardContent>
@@ -915,28 +892,22 @@ const AnalyticsPage: React.FC = () => {
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Feedback Distribution</Typography>
                   <Box sx={{ height: 250 }}>
                     {feedbackTrends.filter(d => d.count > 0).length > 0 && (
-                      <ChartContainer
+                      <BarChart
                         series={[{
-                          type: 'bar',
-                          data: feedbackTrends.map(f => ({
-                            id: f.grade,
-                            label: f.grade,
-                            value: f.count,
-                            color: f.grade === 'A+' ? '#10B981' : f.grade === 'A' ? '#3B82F6' : f.grade === 'B' ? '#F59E0B' : '#EF4444',
-                          })),
+                          data: feedbackTrends.map(f => f.count),
+                          label: 'Feedback',
+                          color: '#F59E0B',
                         }]}
                         xAxis={[{
                           scaleType: 'band',
                           data: feedbackTrends.map(f => f.grade),
                         }]}
+                        height={230}
                         sx={{
                           '& .MuiChartsAxis-line': { stroke: 'rgba(255,255,255,0.1)' },
                           '& .MuiChartsAxis-tick text': { fill: 'rgba(255,255,255,0.6)' },
                         }}
-                      >
-                        <BarChart />
-                        <ChartsTooltip />
-                      </ChartContainer>
+                      />
                     )}
                   </Box>
                 </CardContent>
