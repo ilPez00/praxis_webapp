@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Box, Typography, Button, Dialog, DialogTitle, DialogContent, 
-  DialogActions, TextField, Slider, Divider, CircularProgress, 
-  InputAdornment 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Box, Typography, Button, Dialog, DialogTitle, DialogContent,
+  DialogActions, TextField, Slider, Divider, CircularProgress,
+  InputAdornment
 } from '@mui/material';
-import { 
-  EmojiEvents as TrophyIcon, 
+import {
+  EmojiEvents as TrophyIcon,
   AccountBalanceWallet as WalletIcon,
-  Timer as TimerIcon
+  Timer as TimerIcon,
+  WarningAmber as WarningIcon,
 } from '@mui/icons-material';
 import { useUser } from '../../hooks/useUser';
+import { useUserPoints } from '../../hooks/useUserPoints';
 import api from '../../lib/api';
-import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 interface BetCommitDialogProps {
@@ -28,78 +29,49 @@ interface BetCommitDialogProps {
 
 const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challenge, onSuccess }) => {
   const { user } = useUser();
-  const [stake, setStake] = useState(50); // Lower default from 100 to 50
+  const { points: userPoints, loading: pointsLoading, refresh: refreshPoints } = useUserPoints(user?.id);
+  const [stake, setStake] = useState(50);
   const [deadline, setDeadline] = useState('');
   const [saving, setSaving] = useState(false);
-  const [userPoints, setUserPoints] = useState<number | null>(null);
-  const [createDuel, setCreateDuel] = useState(true); // Default to creating duel
+  const [createDuel, setCreateDuel] = useState(true);
 
-  // Default deadline to tonight 10pm if not provided
+  // Quick-stake presets (as % of available points, capped)
+  const presets = useMemo(() => {
+    if (!userPoints || userPoints <= 0) return [];
+    const base = Math.min(500, Math.floor(userPoints * 0.5));
+    if (base < 10) return [];
+    return [
+      { label: '25%', value: Math.max(10, Math.floor(base * 0.25)) },
+      { label: '50%', value: Math.max(10, Math.floor(base * 0.5)) },
+      { label: '75%', value: Math.max(10, Math.floor(base * 0.75)) },
+      { label: 'MAX', value: base },
+    ];
+  }, [userPoints]);
+
+  // Default deadline to today
   useEffect(() => {
     if (open) {
-      if (challenge.deadline) {
-        // Try to parse relative deadlines like "today by 10pm"
-        // For simplicity, we'll just use a date picker, but default to today
-        const today = new Date();
-        setDeadline(today.toISOString().split('T')[0]);
-      } else {
-        const today = new Date();
-        setDeadline(today.toISOString().split('T')[0]);
-      }
-
-      // Fetch user points directly from Supabase
-      const fetchUserPoints = async () => {
-        try {
-          if (!user?.id) return;
-
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('praxis_points')
-            .eq('id', user.id)
-            .single();
-
-          if (error) {
-            console.error('[BetCommitDialog] Error fetching points:', error);
-            setUserPoints(0);
-          } else {
-            const points = profile?.praxis_points ?? 0;
-            console.debug('[BetCommitDialog] User points:', points);
-            setUserPoints(points);
-          }
-        } catch (err) {
-          console.error('[BetCommitDialog] Fetch error:', err);
-          setUserPoints(0);
-        }
-      };
-
-      fetchUserPoints();
+      const today = new Date();
+      setDeadline(today.toISOString().split('T')[0]);
+      refreshPoints();
     }
-  }, [open, challenge]);
+  }, [open, refreshPoints]);
+
+  // Reset stake if it exceeds new max
+  const maxStake = userPoints ? Math.min(500, Math.floor(userPoints * 0.5)) : 100;
+  useEffect(() => {
+    if (stake > maxStake) setStake(maxStake);
+  }, [maxStake, stake]);
+
+  const canAfford = userPoints !== null && stake <= userPoints && stake > 0;
 
   const handleCommit = async () => {
-    if (!user?.id) {
-      toast.error("Not authenticated");
-      return;
-    }
-    if (!deadline) {
-      toast.error("Please set a deadline.");
-      return;
-    }
-    if (userPoints === null || stake > userPoints) {
-      toast.error(`Insufficient funds. You have ${userPoints ?? 0} PP but need ${stake} PP.`);
-      return;
-    }
+    if (!user?.id) { toast.error('Not authenticated'); return; }
+    if (!deadline) { toast.error('Please set a deadline.'); return; }
+    if (!canAfford) { toast.error(`Insufficient funds. You have ${userPoints ?? 0} PP.`); return; }
 
-    console.debug('[BetCommitDialog] Committing bet:', { 
-      userId: user.id, 
-      goalName: challenge.target, 
-      deadline, 
-      stake,
-      opponentType: createDuel ? 'duel' : 'self'
-    });
     setSaving(true);
     try {
-      // If deadline is just a date string, set it to end of day
       const finalDeadline = deadline.includes('T') ? deadline : `${deadline}T23:59:59Z`;
 
       const res = await api.post('/bets', {
@@ -109,61 +81,59 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
         opponentType: createDuel ? 'duel' : 'self',
       });
 
-      console.debug('[BetCommitDialog] Bet created:', res.data);
       toast.success(`Commitment made! ${stake} PP pledged. 🎯`);
 
-      // Post to community feed
+      // Post to community feed (best-effort)
       try {
         await api.post('/posts', {
           userName: user.name || 'A Praxis member',
           userAvatarUrl: user.avatar_url || null,
           content: `🎯 I just committed to an Axiom Challenge: "${challenge.target}" with ${stake} PP on the line. Accountability activated! 💪`,
           context: 'general',
-          metadata: { betId: res.data.id }
+          metadata: { betId: res.data.id },
         });
-      } catch (e) {
-        console.error("Failed to post to feed", e);
-      }
+      } catch (e) { /* ignore feed failure */ }
 
+      refreshPoints();
       if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err: any) {
       console.error('Bet commit error:', err.response?.data || err.message);
-      toast.error(err.response?.data?.message || "Failed to create bet.");
+      toast.error(err.response?.data?.message || 'Failed to create bet.');
     } finally {
       setSaving(false);
     }
   };
 
-  const maxStake = userPoints ? Math.min(500, Math.floor(userPoints * 0.5)) : 100;
-  const canAfford = userPoints !== null && stake <= userPoints && stake <= maxStake;
-
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="xs" 
-      fullWidth 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
       disableRestoreFocus
-      PaperProps={{ 
-        sx: { 
-          borderRadius: '20px',
+      fullScreen={typeof window !== 'undefined' && window.innerWidth < 480}
+      PaperProps={{
+        sx: {
+          borderRadius: { xs: 0, sm: '20px' },
           bgcolor: 'rgba(30,30,40,0.98)',
           border: '1px solid rgba(245,158,11,0.2)',
           boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(245,158,11,0.1)',
-        } 
+        }
       }}
     >
-      <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
+      <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
         <TrophyIcon sx={{ color: '#F59E0B' }} />
         Commit to Bet
       </DialogTitle>
-      
-      <DialogContent>
+
+      <DialogContent sx={{ pb: 1 }}>
+        {/* Challenge terms */}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {challenge.terms}
         </Typography>
 
+        {/* Target box */}
         <Box sx={{ p: 2, bgcolor: 'rgba(245,158,11,0.05)', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.2)', mb: 3 }}>
           <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 900, display: 'block', mb: 0.5 }}>
             THE TARGET
@@ -173,6 +143,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
           </Typography>
         </Box>
 
+        {/* Stake slider */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
             <WalletIcon fontSize="small" color="primary" />
@@ -180,7 +151,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="caption" color="text.secondary">
-              Available: {userPoints?.toLocaleString() ?? '...'} PP
+              {pointsLoading ? 'Loading...' : `Available: ${userPoints?.toLocaleString() ?? '...'} PP`}
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main' }}>
               {stake} PP
@@ -189,7 +160,6 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
           <Slider
             value={stake}
             onChange={(_, val) => setStake(val as number)}
-            onChangeCommitted={(_, val) => setStake(val as number)}
             min={10}
             max={maxStake > 10 ? maxStake : 50}
             step={10}
@@ -208,13 +178,43 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
               '& .MuiSlider-rail': { height: 8, opacity: 0.3 },
             }}
           />
+
+          {/* Quick-stake presets */}
+          {presets.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 1, mt: 1.5, justifyContent: 'center' }}>
+              {presets.map(p => (
+                <Button
+                  key={p.label}
+                  size="small"
+                  variant={stake === p.value ? 'contained' : 'outlined'}
+                  onClick={() => setStake(p.value)}
+                  sx={{
+                    minWidth: 48,
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    px: 1.5,
+                    py: 0.35,
+                    bgcolor: stake === p.value ? 'rgba(245,158,11,0.2)' : 'transparent',
+                    borderColor: 'rgba(245,158,11,0.3)',
+                    color: '#F59E0B',
+                    '&:hover': { bgcolor: 'rgba(245,158,11,0.15)' },
+                  }}
+                >
+                  {p.label}
+                </Button>
+              ))}
+            </Box>
+          )}
+
+          {/* Zero points help */}
           {!canAfford && userPoints === 0 && (
-            <Box sx={{ mt: 1, p: 1.5, bgcolor: 'rgba(245,158,11,0.1)', borderRadius: 1, border: '1px solid rgba(245,158,11,0.3)' }}>
-              <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                💡 Need Praxis Points?
+            <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'rgba(245,158,11,0.1)', borderRadius: 1, border: '1px solid rgba(245,158,11,0.3)' }}>
+              <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                <WarningIcon sx={{ fontSize: 14 }} /> Need Praxis Points?
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Earn PP by: Daily check-ins (+10), Completing goals (+50-200), Verification claims (+25), or receiving honor from others
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                Earn PP by: Daily check-ins (+10), Completing goals (+50–200), Receiving honor from others
               </Typography>
             </Box>
           )}
@@ -225,6 +225,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
           )}
         </Box>
 
+        {/* Deadline */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
             <TimerIcon fontSize="small" color="primary" />
@@ -241,19 +242,19 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
           />
         </Box>
 
-        {/* Duel Toggle */}
-        <Box sx={{ 
-          p: 2, 
-          bgcolor: createDuel ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)', 
-          borderRadius: 2, 
+        {/* Duel toggle */}
+        <Box sx={{
+          p: 2,
+          bgcolor: createDuel ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)',
+          borderRadius: 2,
           border: `1px solid ${createDuel ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.06)'}`,
           mb: 2,
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Box sx={{ 
-                width: 24, height: 24, 
-                borderRadius: '6px', 
+              <Box sx={{
+                width: 24, height: 24,
+                borderRadius: '6px',
                 bgcolor: createDuel ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.1)',
                 border: `1px solid ${createDuel ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.2)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -265,7 +266,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
                   Challenge a Friend
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem' }}>
-                  {createDuel ? 'Auto-match with someone who has similar goals' : 'Solo commitment'}
+                  {createDuel ? 'Auto-match with similar goals' : 'Solo commitment'}
                 </Typography>
               </Box>
             </Box>
@@ -280,7 +281,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
                 px: 2,
                 py: 0.5,
                 border: `1px solid ${createDuel ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.2)'}`,
-                '&:hover': { 
+                '&:hover': {
                   bgcolor: createDuel ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.15)',
                 },
               }}
@@ -290,6 +291,7 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
           </Box>
         </Box>
 
+        {/* Risk/Reward summary */}
         <Divider sx={{ my: 2, borderStyle: 'dashed' }} />
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
@@ -304,14 +306,14 @@ const BetCommitDialog: React.FC<BetCommitDialogProps> = ({ open, onClose, challe
 
       <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
         <Button onClick={onClose} sx={{ borderRadius: '10px' }}>Not Now</Button>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={handleCommit}
           disabled={saving || !canAfford || !deadline}
           startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <TrophyIcon />}
-          sx={{ 
-            borderRadius: '10px', 
-            fontWeight: 800, 
+          sx={{
+            borderRadius: '10px',
+            fontWeight: 800,
             px: 3,
             background: 'linear-gradient(135deg, #F59E0B, #EF4444)'
           }}
