@@ -1384,9 +1384,10 @@ Comprehensive codebase inspection and cleanup:
 - Frontend TypeScript: Passes (zero project-level errors)
 
 ## Remaining Work
-1. React 19 upgrade — unlocks react-leaflet 5.0, vitejs/plugin-react 6.0
+1. ~~React 19 upgrade~~ ✅ Done in session 98 (commit c22a243) — verified: react 19.2.4, react-leaflet 5.x, @types/react 19.2.14, build passes, 0 source errors
 2. Wire extracted dialog stubs — ChatRoom GradingDialog/AxiomDialog/IncomingCallDialog stubs exist but have incomplete APIs vs inline versions
 3. ProfilePage further splits — hero card / edit form could be extracted (~400 lines) but have heavy state deps
+4. Vite 6 → 8 + @vitejs/plugin-react 4 → 6 (deferred — separate from React upgrade)
 
 - Sign: Claude
 
@@ -1568,4 +1569,39 @@ Run SQL migration in Supabase:
 
 ### Next
 - Consider: Clans/Tribes (highest retention + viral)
+- Sign: Claude
+
+---
+
+Session 101: React 19 Upgrade Verification (2026-04-03)
+
+## What Happened
+React 19 was already upgraded by session 98 (commit c22a243). This session verified the upgrade is clean.
+
+### Verified
+- react 19.2.4 + react-dom 19.2.4 + react-leaflet 5.0.0
+- @types/react 19.2.14 + @types/react-dom 19.2.3
+- overrides updated from pinned 18.x to ^19.x
+- `npx tsc --noEmit` — 0 source errors (node_modules-only errors from i18next/MUI using TS 5.x syntax)
+- `npm run build` — passes in 12s
+- Zero breaking changes: no defaultProps, no bare useRef(), no implicit children on FC
+
+### All Peer Dependencies Compatible
+- @sentry/react, @stripe/react-stripe-js, react-hot-toast, react-i18next, qrcode.react, @testing-library/react — all support React 19
+- react-leaflet 5.x requires React 19 (was blocked on 4.x with React 18)
+- react-qr-barcode-scanner: >=18.0.0 (works fine)
+
+### Still Blocked
+- @vitejs/plugin-react 6.0 requires Vite 8 (currently on Vite 6)
+- TypeScript 4.9.5 → 5.x would fix node_modules type errors
+
+## Files Modified
+- `claude_steps.txt` — updated remaining work + added this session
+
+## Next
+1. Wire ChatRoom dialog stubs (GradingDialog/AxiomDialog/IncomingCallDialog)
+2. ProfilePage further splits
+3. Vite 8 upgrade (unblocks @vitejs/plugin-react 6.0)
+4. TypeScript 5.x upgrade (fixes node_modules type errors)
+
 - Sign: Claude
