@@ -22,7 +22,8 @@
       "Bash(wc *)",
       "Bash(cloc *)",
       "Bash(xargs *)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(ls *)"
     ]
   },
   "$version": 3

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   listCoaches,
+  listPersonalities,
   getCoachByUserId,
   upsertCoachProfile,
   updateCoachProfile,
@@ -10,6 +11,7 @@ import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = Router();
 
+router.get('/personalities', listPersonalities);
 router.get('/', listCoaches);
 router.post('/', authenticateToken, upsertCoachProfile);
 router.get('/:userId', getCoachByUserId);

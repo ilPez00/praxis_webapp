@@ -193,6 +193,29 @@ export const handleWebhook = async (req: Request, res: Response) => {
       }
 
       try {
+        // ── Idempotency guard ─────────────────────────────────────
+        // Stripe may retry webhook delivery for the same event.
+        // If we already processed this session, skip provisioning to avoid
+        // double-crediting premium access or creating duplicate rows.
+        const { data: existingSub } = await supabase
+          .from('user_subscriptions')
+          .select('id, status')
+          .eq('id', subscriptionId)
+          .maybeSingle();
+
+        if (existingSub) {
+          logger.info(`Subscription already exists (${subscriptionId}, status=${existingSub.status}), skipping provisioning.`);
+          // Update status if needed (e.g. Stripe sent us a newer status)
+          const { error: updateErr } = await supabase
+            .from('user_subscriptions')
+            .update({ status: 'active', updated_at: new Date().toISOString() })
+            .eq('id', subscriptionId);
+          if (updateErr) {
+            logger.error('Failed to update existing subscription status:', updateErr);
+          }
+          return res.json({ received: true });
+        }
+
         // Retrieve the full subscription object from Stripe to get all details,
         // including product and price IDs which might not be fully available on the session object.
         const fullSubscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription;

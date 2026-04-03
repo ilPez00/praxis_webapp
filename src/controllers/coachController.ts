@@ -2,11 +2,21 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, NotFoundError, BadRequestError, InternalServerError } from '../utils/appErrors';
+import { COACH_PERSONALITIES, getAllPersonalities } from '../config/coach_personalities';
 
 const handleSupabaseError = (error: any) => {
   logger.error('Supabase error (coach):', error);
   throw new InternalServerError(error.message || 'Internal server error during Supabase operation.');
 };
+
+// ---------------------------------------------------------------------------
+// GET /coaches/personalities
+// Returns all available AI coach personalities
+// ---------------------------------------------------------------------------
+export const listPersonalities = catchAsync(async (_req: Request, res: Response, _next: NextFunction) => {
+  const personalities = getAllPersonalities();
+  res.json(personalities);
+});
 
 // ---------------------------------------------------------------------------
 // GET /coaches?userId=<uuid>
