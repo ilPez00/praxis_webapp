@@ -95,7 +95,7 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
         // Calculate streak (consecutive days with entries)
         let streakCount = 0;
         if (entries && entries.length > 0) {
-          const uniqueDays = [...new Set(entries.map(e => e.occurred_at.slice(0, 10)))].sort().reverse();
+          const uniqueDays = Array.from(new Set(entries.map(e => e.occurred_at.slice(0, 10)))).sort().reverse();
           const today = new Date().toISOString().slice(0, 10);
           let expectedDate = new Date(today);
 
