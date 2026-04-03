@@ -191,17 +191,17 @@ const DashboardPage: React.FC = () => {
   }
 
   const allNodes = Array.isArray(goalTree?.nodes) ? goalTree!.nodes : [];
-  const raw_root_data = (goalTree as any)?.root_nodes || (goalTree as any)?.rootNodes || [];
+  const raw_root_data = (goalTree as { root_nodes?: string[] } | null)?.root_nodes || (goalTree as { rootNodes?: string[] } | null)?.rootNodes || [];
   const root_data = Array.isArray(raw_root_data) ? raw_root_data : [];
 
-  const rootGoals = allNodes.filter(n => {
-    const isInRootList = root_data.some((r: any) => {
+  const rootGoals = allNodes.filter((n: { id: string; parentId?: string; parent_id?: string }) => {
+    const isInRootList = root_data.some((r: string | { id: string }) => {
       if (typeof r === 'string') return r === n.id;
-      if (typeof r === 'object' && r !== null) return (r as any).id === n.id;
+      if (typeof r === 'object' && r !== null) return (r as { id: string }).id === n.id;
       return false;
     });
     if (isInRootList) return true;
-    const pid = n.parentId || (n as any).parent_id;
+    const pid = n.parentId || (n as { parent_id?: string }).parent_id;
     return !pid || pid === '' || pid === 'root' || pid === 'null';
   });
 
@@ -213,7 +213,7 @@ const DashboardPage: React.FC = () => {
 
   const userName = user?.name || 'Explorer';
   const avgProgress = hasGoals
-    ? Math.round(rootGoals.reduce((s, g) => s + (g.progress || 0) * 100, 0) / (rootGoals.length || 1))
+    ? Math.round(rootGoals.reduce((s: number, g: { progress?: number }) => s + (g.progress || 0) * 100, 0) / (rootGoals.length || 1))
     : 0;
 
   const handleOpenCompose = () => {
