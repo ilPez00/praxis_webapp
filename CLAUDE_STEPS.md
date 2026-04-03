@@ -6,6 +6,25 @@
 
 ---
 
+## Session 107: i18n Expansion (18→100+ keys, Italian-first) + Dead Code Removal
+
+- Expanded i18n from 18 to 100+ keys per language:
+  - Auth (login/signup), Navigation, Dashboard, Goals, Onboarding
+  - Goal Selection (first-run vs re-edit labels, placeholders)
+  - Common (loading, saving, error, CRUD, search)
+  - Community (hub, filters)
+- Italian: 100% coverage for all new keys
+- ES/FR/RU: core coverage (auth, common, nav)
+- Key format: snake_case → dot notation (login.title)
+- Dead code: 8 unused components removed (confirmed never imported)
+- Type check: 0 errors frontend + backend
+- **Commit:** `f79d964` — feat: expand i18n to 100+ keys
+- **Next:** Final summary and launch readiness
+
+- Sign: Claude
+
+---
+
 ## Session 106: Stripe Idempotency + RLS Audit + E2E Tests
 
 - Stripe webhook idempotency guard on `checkout.session.completed`:
