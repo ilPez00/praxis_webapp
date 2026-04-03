@@ -664,3 +664,75 @@ export const generateAxiomBrief = catchAsync(async (req: Request, res: Response,
 
   res.json(fresh ?? null);
 });
+
+// ---------------------------------------------------------------------------
+// POST /ai-coaching/chat — personality-aware chat with AI coach
+// ---------------------------------------------------------------------------
+export const personalityChat = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { message, personality = 'buddy' } = req.body;
+  const userId = req.user?.id;
+
+  if (!userId) throw new UnauthorizedError('User ID not found.');
+  if (!message?.trim()) {
+    return res.status(400).json({ message: 'message is required.' });
+  }
+
+  if (!aiCoachingService.isConfigured) {
+    return res.status(503).json({
+      message: 'Axiom is offline — the AI service is not configured on this server.',
+    });
+  }
+
+  try {
+    const context = await buildContext(userId);
+    
+    // Get user goals for context
+    const { data: goalTree } = await supabase
+      .from('goal_trees')
+      .select('nodes')
+      .eq('user_id', userId)
+      .single();
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('current_streak')
+      .eq('id', userId)
+      .single();
+
+    // Use the personality service to generate response
+    const { coachPersonalityService } = await import('../services/coachPersonalityService');
+    
+    const result = coachPersonalityService.processUserMessage({
+      userMessage: message,
+      userGoals: goalTree?.nodes || [],
+      userStreak: profile?.current_streak || 0,
+      recentProgress: '',
+      personality: personality as any,
+    });
+
+    // If AI service is configured, enhance with AI
+    let enhancedMessage = result.message;
+    try {
+      const aiResponse = await aiCoachingService.generateCoachingResponse(
+        `As a ${personality} personality coach, respond to: ${message}`,
+        context,
+        true
+      );
+      if (aiResponse && aiResponse.length > 10) {
+        enhancedMessage = aiResponse;
+      }
+    } catch (aiErr) {
+      logger.warn('AI enhancement failed, using fallback:', aiErr);
+    }
+
+    res.json({
+      message: enhancedMessage,
+      personality,
+      action: result.action,
+      suggestions: result.suggestions,
+    });
+  } catch (err: any) {
+    logger.error('Personality chat error:', err);
+    res.status(500).json({ message: 'Failed to generate response.' });
+  }
+});

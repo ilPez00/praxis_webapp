@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requestReport, requestCoaching, getBrief, getDailyBrief, triggerBriefUpdate, getWeeklyNarrative, generateAxiomBrief } from '../controllers/aiCoachingController';
+import { requestReport, requestCoaching, getBrief, getDailyBrief, triggerBriefUpdate, getWeeklyNarrative, generateAxiomBrief, personalityChat } from '../controllers/aiCoachingController';
 import { requirePro } from '../middleware/requireTier';
 import { authenticateToken } from '../middleware/authenticateToken';
 
@@ -25,5 +25,8 @@ router.post('/report', ...requirePro, requestReport);
 
 // Conversational chat — free users pay 50 PP/message, Pro users free
 router.post('/request', authenticateToken, requestCoaching);
+
+// Personality-aware chat with AI coach
+router.post('/chat', authenticateToken, personalityChat);
 
 export default router;

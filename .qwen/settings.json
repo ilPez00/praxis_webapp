@@ -23,7 +23,8 @@
       "Bash(cloc *)",
       "Bash(xargs *)",
       "Bash(grep *)",
-      "Bash(ls *)"
+      "Bash(ls *)",
+      "Bash(rmdir *)"
     ]
   },
   "$version": 3

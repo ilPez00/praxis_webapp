@@ -116,9 +116,9 @@ export const COACH_PERSONALITIES: Record<CoachPersonality, CoachPersonalityConfi
       'Know thyself. Understanding your "why" will unlock your potential. 🔑',
     ],
     celebrationTemplates: [
-      'A moment of actualization. You\'ve moved closer to your authentic self. 🌟',
+      'A moment of actualization. You have moved closer to your authentic self. 🌟',
       'Existence precedes essence. Through action, you create yourself. 🎭',
-      'You've demonstrated the unity of thought and action. Rare and valuable. ✨',
+      'You have demonstrated the unity of thought and action. Rare and valuable. ✨',
     ],
     challengeTemplates: [
       'The heavy guard is the soul\'s greatest enemy. Face your resistance. 🛡️',
@@ -135,22 +135,22 @@ export const COACH_PERSONALITIES: Record<CoachPersonality, CoachPersonalityConfi
     primaryColor: '#22C55E',
     greetingTemplates: [
       'Hey buddy! Good to see you! 👋',
-      'What\'s up! Ready to get stuff done? 😎',
-      'Yo! Let\'s make some progress today! 🚀',
+      'What is up! Ready to get stuff done? 😎',
+      'Yo! Let us make some progress today! 🚀',
     ],
     motivationTemplates: [
-      'We\'ve got this! Just take it one step at a time. No pressure! 👍',
-      'It\'s cool if things get tough, we\'ll figure it out together. That\'s what friends are for! 🫂',
-      'Hey, you\'re doing great. Even showing up counts for something! 💙',
+      'We have got this! Just take it one step at a time. No pressure! 👍',
+      'It is cool if things get tough, we will figure it out together. That is what friends are for! 🫂',
+      'Hey, you are doing great. Even showing up counts for something! 💙',
     ],
     celebrationTemplates: [
       'Dude! You crushed it! So proud of you! 🎉',
-      'That\'s awesome! We should celebrate! High five! ✋',
+      'That is awesome! We should celebrate! High five! ✋',
       'See? I knew you had it in you! Go team! 🏅',
     ],
     challengeTemplates: [
-      'I know it\'s hard, but I also know you can do this. No rush, we\'ve got time. 👍',
-      'Don\'t overthink it - just start. We\'ll adjust along the way! 🎯',
+      'I know it is hard, but I also know you can do this. No rush, we have got time. 👍',
+      'Do not overthink it - just start. We will adjust along the way! 🎯',
     ],
     tone: 'casual',
     emoji: '🤝',
