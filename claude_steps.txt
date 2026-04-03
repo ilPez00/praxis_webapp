@@ -1605,3 +1605,75 @@ React 19 was already upgraded by session 98 (commit c22a243). This session verif
 4. TypeScript 5.x upgrade (fixes node_modules type errors)
 
 - Sign: Claude
+
+---
+
+Session 102: TypeScript 5.9 Upgrade + Type Error Sweep (2026-04-03)
+
+## What Changed
+
+### TypeScript Upgrade
+- client TypeScript: 4.9.5 → 5.9.3 (matches backend)
+- tsconfig target: es5 → es2018 (fixes Set iteration, enables modern syntax)
+- overrides updated for @types/react 19.x
+
+### Fixed 92 of 129 Type Errors (71% reduction)
+TS 5.x is stricter — exposed many hidden bugs from multi-agent code.
+
+**Missing imports (44 errors fixed):**
+- TrackerWidget: Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, RemoveIcon
+- GoalWidgets: Dialog, DialogTitle, DialogContent, DialogActions, EditableTrackerForm
+- TrackerSection: TextField, DialogActions
+- GoalTreePage: supabase
+- AxiomDailyProtocol: supabase, toast
+- DiaryPage: useNavigate + navigate variable
+- DiaryFeed: destructured onItemClick, onItemContextMenu from props
+
+**Wrong import paths (4 errors fixed):**
+- AxiomSchedule: ../../lib/api → ../../../lib/api (3 paths)
+- NotebookPage: ./NoteEditDialog → ../notes/NoteEditDialog
+
+**Invalid Domain enum keys (16 errors fixed):**
+- ChallengesTab, InitialGoalSetup: BODY_FITNESS → FITNESS
+- GoalTreeTimeline: 14 invalid keys remapped to actual Domain enum values
+- loggingSuggestions: 10 plain string keys → Domain enum computed keys
+
+**MUI v7 fixes (2 errors fixed):**
+- ReferencePicker: ListItem button → ListItemButton
+
+**Type mismatches (26 errors fixed):**
+- ReferencePicker: added userId prop + title to Reference interface
+- GoalProgressWidget: scoped color variable via IIFE
+- EditableTrackerForm: added value to expenses TrackerRow defaults
+- GamificationProfile: exported from useGamification hook, imported in GamificationSection
+- User model: added avatar_url, latitude, longitude, city
+- AnalyticsPage: removed references to undefined filters variable
+- GoalTreeTimeline: goal.name → goal.title
+
+### 37 Remaining Errors (non-blocking)
+- AnalyticsPage (8): MUI X Charts API series type changes
+- CLITab (4): custom status type mismatch
+- AdminPage (3): extra props passed to tab components
+- Various (22): interface mismatches between agent-written components
+- Build passes cleanly — Vite ignores TS errors
+
+## Files Modified (23 files)
+- client/package.json, client/package-lock.json, client/tsconfig.json
+- TrackerWidget, TrackerSection, EditableTrackerForm
+- GoalWidgets, GoalProgressWidget, AxiomDailyProtocol, AxiomSchedule
+- GoalTreePage, GoalTreeTimeline, DiaryPage, DiaryFeed
+- AnalyticsPage, NotebookPage, ChallengesTab, InitialGoalSetup
+- GamificationSection, ReferencePicker, User.ts, useGamification.ts, loggingSuggestions.ts
+
+## Verification
+- Build: ✅ passes in 12s
+- Source errors: 129 → 37 (71% reduction)
+- Commit: 60e2a83
+
+## Next
+1. Vite 8 upgrade (unblocks @vitejs/plugin-react 6.0)
+2. Fix remaining 37 type errors (interface alignment)
+3. Wire ChatRoom dialog stubs
+4. ProfilePage further splits
+
+- Sign: Claude
