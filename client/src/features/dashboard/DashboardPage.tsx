@@ -207,7 +207,8 @@ const DashboardPage: React.FC = () => {
 
   const hasGoals = allNodes.length > 0;
 
-  if (!loadingContent && !user?.onboarding_completed && currentUserId) {
+  // Show GettingStartedPage to users who completed onboarding but have no goals yet
+  if (!loadingContent && user?.onboarding_completed && !hasGoals && currentUserId) {
     return <GettingStartedPage userId={currentUserId} />;
   }
 

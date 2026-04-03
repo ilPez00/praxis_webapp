@@ -21,7 +21,8 @@
       "Bash(git log *)",
       "Bash(wc *)",
       "Bash(cloc *)",
-      "Bash(xargs *)"
+      "Bash(xargs *)",
+      "Bash(grep *)"
     ]
   },
   "$version": 3

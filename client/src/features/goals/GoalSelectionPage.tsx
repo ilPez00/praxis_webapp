@@ -139,10 +139,14 @@ const GoalSelectionPage: React.FC = () => {
   const handleSave = async () => {
     if (!currentUserId || selectedGoals.length === 0) return;
 
-    const invalid = selectedGoals.find(g => !g.description.trim() || !g.completionMetric.trim());
-    if (invalid) {
-      toast.error(`Fill in description and success metric for "${invalid.customName || invalid.category}".`);
-      return;
+    // During onboarding, only require topic name (not description + metric)
+    const isFirstRun = !user?.onboarding_completed;
+    if (!isFirstRun) {
+      const invalid = selectedGoals.find(g => !g.description.trim() || !g.completionMetric.trim());
+      if (invalid) {
+        toast.error(`Fill in description and success metric for "${invalid.customName || invalid.category}".`);
+        return;
+      }
     }
 
     setSaving(true);
@@ -179,9 +183,12 @@ const GoalSelectionPage: React.FC = () => {
         await supabase.from('profiles').update({ onboarding_completed: true }).eq('id', currentUserId);
         await supabase.auth.updateUser({ data: { onboarding_completed: true } });
         await refetch();
+        toast.success('Notebook setup complete! Welcome to Praxis. 🎉');
+        navigate('/dashboard');
+      } else {
+        toast.success('Notebook updated!');
+        navigate('/notes');
       }
-
-      navigate(`/notes`);
     } catch (err: any) {
       console.error('Failed to save notebook:', err);
       const msg = err.response?.data?.message || 'Failed to save notebook. Please try again.';
@@ -196,19 +203,45 @@ const GoalSelectionPage: React.FC = () => {
   };
 
   const canAddMore = selectedGoals.length < MAX_FREE_GOALS;
+  const isFirstRun = !user?.onboarding_completed;
 
   return (
-    <Container component="main" maxWidth="md" sx={{ py: 4 }}>
+    <Container component="main" maxWidth="md" sx={{ py: 4, position: 'relative' }}>
+      {/* Progress bar: 50-100% of full onboarding flow */}
+      {isFirstRun && (
+        <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1100 }}>
+          <Box sx={{ height: 4, bgcolor: 'rgba(255,255,255,0.05)' }}>
+            <Box sx={{
+              height: 4,
+              bgcolor: 'primary.main',
+              width: '75%',
+              boxShadow: '0 0 8px rgba(245,158,11,0.5)',
+            }} />
+          </Box>
+        </Box>
+      )}
+
       <Box sx={{ textAlign: 'center', mb: 4 }}>
         <Typography component="h1" variant="h4" gutterBottom sx={{ color: 'primary.main', fontWeight: 800 }}>
-          Setup your Notebook
+          {isFirstRun ? 'Define Your First Goals' : 'Edit Your Notebook'}
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-          Select up to {MAX_FREE_GOALS} primary topics to organize your life and find aligned partners.
+          {isFirstRun
+            ? 'Pick 1–3 areas of life you want to focus on. You can always add details later.'
+            : `Select up to ${MAX_FREE_GOALS} primary topics to organize your life and find aligned partners.`
+          }
         </Typography>
-        <Typography variant="h6" sx={{ color: theme.palette.action.active, fontWeight: 700 }}>
-          {selectedGoals.length} / {MAX_FREE_GOALS} Topics Selected
-        </Typography>
+        {isFirstRun && (
+          <Chip
+            label="Step 2 of 2 — Almost there!"
+            sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#F59E0B', fontWeight: 700, fontSize: '0.85rem' }}
+          />
+        )}
+        {!isFirstRun && (
+          <Typography variant="h6" sx={{ color: theme.palette.action.active, fontWeight: 700 }}>
+            {selectedGoals.length} / {MAX_FREE_GOALS} Topics Selected
+          </Typography>
+        )}
       </Box>
 
       {selectedGoals.length > 0 && (
@@ -255,11 +288,11 @@ const GoalSelectionPage: React.FC = () => {
                   />
                   <TextField
                     fullWidth
-                    required
+                    required={isFirstRun === false}
                     variant="outlined"
                     margin="dense"
-                    label="Description *"
-                    placeholder="What is this topic about?"
+                    label="Description"
+                    placeholder={isFirstRun ? "What's this about? (optional, you can add details later)" : "What is this topic about?"}
                     multiline
                     rows={2}
                     value={goal.description}
@@ -268,11 +301,11 @@ const GoalSelectionPage: React.FC = () => {
                   />
                   <TextField
                     fullWidth
-                    required
+                    required={isFirstRun === false}
                     variant="outlined"
                     margin="dense"
-                    label="Success Metric *"
-                    placeholder="How will you know when this topic is complete?"
+                    label="Success Metric"
+                    placeholder={isFirstRun ? "How will you measure progress? (optional)" : "How will you know when this is complete?"}
                     multiline
                     rows={2}
                     value={goal.completionMetric}
@@ -369,17 +402,34 @@ const GoalSelectionPage: React.FC = () => {
       </Box>
 
       <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 4 }}>
-        <Button
-          variant="outlined"
-          onClick={() => navigate(-1)}
-          sx={{ borderRadius: '10px' }}
-        >
-          Cancel
-        </Button>
+        {isFirstRun && (
+          <Button
+            variant="text"
+            onClick={() => {
+              // Complete onboarding without goals — user can add later
+              supabase.from('profiles').update({ onboarding_completed: true }).eq('id', currentUserId);
+              supabase.auth.updateUser({ data: { onboarding_completed: true } });
+              refetch();
+              navigate('/dashboard');
+            }}
+            sx={{ borderRadius: '10px', color: 'text.secondary' }}
+          >
+            Skip for now
+          </Button>
+        )}
+        {!isFirstRun && (
+          <Button
+            variant="outlined"
+            onClick={() => navigate(-1)}
+            sx={{ borderRadius: '10px' }}
+          >
+            Cancel
+          </Button>
+        )}
         <Button
           variant="contained"
           onClick={handleSave}
-          disabled={selectedGoals.length === 0 || saving}
+          disabled={saving || (!isFirstRun && selectedGoals.length === 0)}
           sx={{
             borderRadius: '10px',
             px: 4,
@@ -391,7 +441,7 @@ const GoalSelectionPage: React.FC = () => {
             },
           }}
         >
-          {saving ? 'Saving...' : `Save ${selectedGoals.length} Topics ${user?.onboarding_completed ? '(150 PP)' : '(Free)'}`}
+          {saving ? 'Saving...' : isFirstRun ? `Continue${selectedGoals.length > 0 ? ` with ${selectedGoals.length} topic${selectedGoals.length !== 1 ? 's' : ''}` : ''}` : `Save ${selectedGoals.length} Topics (150 PP)`}
         </Button>
       </Stack>
     </Container>

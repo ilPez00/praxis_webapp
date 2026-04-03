@@ -353,7 +353,20 @@ const OnboardingPage: React.FC = () => {
 
   return (
     <Container maxWidth="sm" sx={{ minHeight: '100vh', py: { xs: 3, sm: 6 }, display: 'flex', flexDirection: 'column' }}>
-      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: { xs: 3, sm: 6 } }}>
+      {/* Progress bar at top */}
+      <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1100 }}>
+        <Box sx={{ height: 4, bgcolor: 'rgba(255,255,255,0.05)' }}>
+          <Box sx={{
+            height: 4,
+            bgcolor: 'primary.main',
+            width: `${((activeStep + 1) / steps.length) * 50}%`,
+            transition: 'width 0.4s ease',
+            boxShadow: '0 0 8px rgba(245,158,11,0.5)',
+          }} />
+        </Box>
+      </Box>
+
+      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: { xs: 3, sm: 6 }, mt: 2 }}>
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
