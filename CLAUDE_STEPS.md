@@ -1,8 +1,27 @@
 # Praxis - Development Roadmap
 
 **Last Updated:** April 3, 2026
-**Current Version:** 1.4.0 (Launch Prep — TypeScript Clean + Media Kit)
+**Current Version:** 1.4.1 (Launch Prep — BetDialog Refactor + Points Hook)
 **Next Milestone:** v1.5.0 (Onboarding Polish + Mobile Audit + E2E Tests)
+
+---
+
+## Session 104: BetCommitDialog Refactor + useUserPoints Hook
+
+- Created `useUserPoints` hook — eliminates duplicated Supabase points-fetching across 3 components
+- Refactored `BetCommitDialog`:
+  - Uses `useUserPoints` hook (was doing inline Supabase fetch)
+  - Full-screen dialog on mobile (<480px) for better UX
+  - Added quick-stake preset buttons (25%, 50%, 75%, MAX)
+  - Auto-refresh points after bet creation
+  - Auto-reset stake if max changes
+  - Cleaner validation and error messages
+  - Removed unused supabase import
+- Type check: Backend 0 errors, Frontend 0 errors
+- **Commit:** `cb5a412` — refactor: centralize points logic + improve BetCommitDialog UX
+- **Next:** Continue with onboarding polish, RLS verification, Stripe idempotency
+
+- Sign: Claude
 
 ---
 
