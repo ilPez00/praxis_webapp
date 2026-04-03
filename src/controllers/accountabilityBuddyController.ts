@@ -19,6 +19,14 @@ export const getMyBuddyPairs = catchAsync(async (req: Request, res: Response) =>
     .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
     .order('created_at', { ascending: false });
 
+  if (error) {
+    // Table might not exist yet - return empty gracefully
+    if (error.code === '42P01') {
+      return res.json({ buddies: [] });
+    }
+    throw error;
+  }
+
   if (error) throw error;
   
   // Get today's checkin status for each pair
@@ -63,7 +71,12 @@ export const getPendingRequests = catchAsync(async (req: Request, res: Response)
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === '42P01') {
+      return res.json({ requests: [] });
+    }
+    throw error;
+  }
   res.json({ requests: requests || [] });
 });
 
@@ -272,11 +285,26 @@ export const getBuddyStats = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user!.id;
   
   // Get all accepted buddy pairs
-  const { data: pairs } = await supabase
+  const { data: pairs, error: pairsError } = await supabase
     .from('accountability_buddies')
     .select('*')
     .eq('status', 'accepted')
     .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`);
+  
+  if (pairsError) {
+    if (pairsError.code === '42P01') {
+      return res.json({
+        stats: {
+          activePairs: 0,
+          thisWeekMutual: 0,
+          totalMutualDays: 0,
+          longestStreak: 0,
+          currentStreak: 0,
+        }
+      });
+    }
+    throw pairsError;
+  }
   
   // Get this week's check-ins for each pair
   const weekStart = new Date();

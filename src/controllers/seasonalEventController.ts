@@ -13,7 +13,13 @@ export const getActiveEvents = catchAsync(async (_req: Request, res: Response) =
     .gte('ends_at', now)
     .order('ends_at', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    // Table might not exist yet - return empty gracefully
+    if (error.code === '42P01') {
+      return res.json({ events: [] });
+    }
+    throw error;
+  }
   res.json({ events: events || [] });
 });
 
