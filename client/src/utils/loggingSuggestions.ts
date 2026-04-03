@@ -17,8 +17,8 @@ export interface LoggingSuggestion {
 /**
  * Goal-specific suggestions organized by domain
  */
-export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
-  Fitness: [
+export const GOAL_SUGGESTIONS: Record<string, LoggingSuggestion[]> = {
+  [Domain.FITNESS]: [
     { id: 'fitness_1', text: 'What exercise did you complete today? 🏋️', category: 'action', priority: 10 },
     { id: 'fitness_2', text: 'How did your body feel during training? 💪', category: 'reflection', priority: 9 },
     { id: 'fitness_3', text: 'Did you hit your nutrition targets? 🥗', category: 'action', priority: 8 },
@@ -28,7 +28,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'fitness_7', text: 'How consistent were you with your routine? 📊', category: 'reflection', priority: 6 },
   ],
   
-  Career: [
+  [Domain.CAREER]: [
     { id: 'career_1', text: 'What meaningful work did you complete today? 💼', category: 'action', priority: 10 },
     { id: 'career_2', text: 'Did you move closer to a career milestone? 🎯', category: 'milestone', priority: 9 },
     { id: 'career_3', text: 'What skills did you practice or learn? 📚', category: 'learning', priority: 8 },
@@ -38,7 +38,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'career_7', text: 'What would make tomorrow more productive? 💡', category: 'reflection', priority: 5 },
   ],
   
-  Learning: [
+  [Domain.ACADEMICS]: [
     { id: 'learning_1', text: 'What did you study or practice today? 📖', category: 'action', priority: 10 },
     { id: 'learning_2', text: 'What new concept clicked for you? 💡', category: 'learning', priority: 9 },
     { id: 'learning_3', text: 'How long did you focus today (minutes)? ⏱️', category: 'action', priority: 8 },
@@ -48,7 +48,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'learning_7', text: 'Any breakthroughs or "aha" moments? ✨', category: 'milestone', priority: 8 },
   ],
   
-  Relationships: [
+  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: [
     { id: 'relationship_1', text: 'Who did you connect with today? 👥', category: 'action', priority: 10 },
     { id: 'relationship_2', text: 'How did you show up for others today? ❤️', category: 'reflection', priority: 9 },
     { id: 'relationship_3', text: 'Any meaningful conversations or moments? 💬', category: 'milestone', priority: 8 },
@@ -58,7 +58,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'relationship_7', text: 'What relationship skill are you working on? 💪', category: 'learning', priority: 5 },
   ],
   
-  Finance: [
+  [Domain.INVESTING]: [
     { id: 'finance_1', text: 'What financial action did you take today? 💰', category: 'action', priority: 10 },
     { id: 'finance_2', text: 'Did you stay within budget today? 📊', category: 'action', priority: 9 },
     { id: 'finance_3', text: 'Any income earned or savings made? 📈', category: 'milestone', priority: 8 },
@@ -68,7 +68,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'finance_7', text: 'What financial habit are you building? 🏗️', category: 'learning', priority: 5 },
   ],
   
-  Creative: [
+  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: [
     { id: 'creative_1', text: 'What did you create or work on today? 🎨', category: 'action', priority: 10 },
     { id: 'creative_2', text: 'How long did you spend in flow state? ⏱️', category: 'reflection', priority: 8 },
     { id: 'creative_3', text: 'Any new ideas or inspiration today? 💡', category: 'milestone', priority: 9 },
@@ -78,7 +78,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'creative_7', text: 'What skill or technique did you practice? 🎯', category: 'learning', priority: 6 },
   ],
   
-  Health: [
+  [Domain.MENTAL_HEALTH]: [
     { id: 'health_1', text: 'How did you prioritize your health today? 🏥', category: 'action', priority: 10 },
     { id: 'health_2', text: 'What was your stress level (1-10)? 😌', category: 'reflection', priority: 9 },
     { id: 'health_3', text: 'How many hours did you sleep? 😴', category: 'action', priority: 9 },
@@ -88,7 +88,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'health_7', text: 'How energized do you feel today? ⚡', category: 'reflection', priority: 7 },
   ],
   
-  Spiritual: [
+  [Domain.PHILOSOPHICAL_DEVELOPMENT]: [
     { id: 'spiritual_1', text: 'How did you nurture your spirit today? 🧘', category: 'action', priority: 10 },
     { id: 'spiritual_2', text: 'What are you grateful for today? 🙏', category: 'reflection', priority: 9 },
     { id: 'spiritual_3', text: 'Did you meditate or pray today? 📿', category: 'action', priority: 8 },
@@ -98,7 +98,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'spiritual_7', text: 'How can you deepen your practice? 📈', category: 'learning', priority: 5 },
   ],
   
-  Business: [
+  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: [
     { id: 'business_1', text: 'What business milestone did you hit today? 📈', category: 'milestone', priority: 10 },
     { id: 'business_2', text: 'What revenue or growth action did you take? 💰', category: 'action', priority: 9 },
     { id: 'business_3', text: 'Did you talk to customers or users today? 👥', category: 'action', priority: 8 },
@@ -108,7 +108,7 @@ export const GOAL_SUGGESTIONS: Record<Domain, LoggingSuggestion[]> = {
     { id: 'business_7', text: 'What did you learn about your market? 📚', category: 'learning', priority: 6 },
   ],
   
-  Personal: [
+  [Domain.PERSONAL_GOALS]: [
     { id: 'personal_1', text: 'What made you smile today? 😊', category: 'reflection', priority: 10 },
     { id: 'personal_2', text: 'What important thing did you do today? ✅', category: 'action', priority: 9 },
     { id: 'personal_3', text: 'How are you really feeling right now? 💭', category: 'reflection', priority: 9 },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, TextField, Tabs, Tab, Box, Typography, List, ListItem,
+  Button, TextField, Tabs, Tab, Box, Typography, List, ListItemButton,
   ListItemAvatar, Avatar, ListItemText, CircularProgress, Chip,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
@@ -12,19 +12,21 @@ import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 
 export interface Reference {
-  type: 'person' | 'event' | 'place';
+  type: 'person' | 'event' | 'place' | 'goal' | 'service' | 'post' | 'group';
   id: string;
   name: string;
+  title?: string;
   subtitle?: string;
   city?: string;
   avatar_url?: string;
 }
 
-interface ReferencePickerProps {
+export interface ReferencePickerProps {
   open: boolean;
   onClose: () => void;
   onSelect: (ref: Reference | null) => void;
   selected?: Reference | null;
+  userId?: string;
 }
 
 const ReferencePicker: React.FC<ReferencePickerProps> = ({
@@ -154,9 +156,8 @@ const ReferencePicker: React.FC<ReferencePickerProps> = ({
         ) : (
           <List sx={{ maxHeight: 400, overflow: 'auto' }}>
             {items.map((item) => (
-              <ListItem
+              <ListItemButton
                 key={item.id}
-                button
                 onClick={() => handleSelect(item)}
                 sx={{
                   bgcolor: selected?.id === item.id ? 'primary.light' : 'transparent',
@@ -179,7 +180,7 @@ const ReferencePicker: React.FC<ReferencePickerProps> = ({
                 {selected?.id === item.id && (
                   <Chip label="Selected" size="small" color="primary" />
                 )}
-              </ListItem>
+              </ListItemButton>
             ))}
           </List>
         )}

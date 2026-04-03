@@ -27,6 +27,7 @@ import MicIcon from '@mui/icons-material/Mic';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import CloseIcon from '@mui/icons-material/Close';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
@@ -83,6 +84,7 @@ interface DiaryEntry {
 
 const DiaryPage: React.FC = () => {
   const { user } = useUser();
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [quickAddOpen, setQuickAddOpen] = useState(false);

@@ -91,9 +91,9 @@ const DEFAULT_ROWS: Record<string, TrackerRow[]> = {
     { id: '4', label: 'Shoulder Press', value: 0, weight: 0, reps: 0, sets: 0 },
   ],
   expenses: [
-    { id: '1', label: 'Groceries', category: 'Food', amount: 0, merchant: '' },
-    { id: '2', label: 'Transport', category: 'Transport', amount: 0, merchant: '' },
-    { id: '3', label: 'Subscriptions', category: 'Entertainment', amount: 0, merchant: '' },
+    { id: '1', label: 'Groceries', value: 0, category: 'Food', amount: 0, merchant: '' },
+    { id: '2', label: 'Transport', value: 0, category: 'Transport', amount: 0, merchant: '' },
+    { id: '3', label: 'Subscriptions', value: 0, category: 'Entertainment', amount: 0, merchant: '' },
   ],
   cardio: [
     { id: '1', label: 'Running', value: 0, duration: 30, distance: 5 },

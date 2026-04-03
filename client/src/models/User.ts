@@ -9,6 +9,10 @@ export interface User {
   goalTree: GoalNode[];
   username?: string;
   avatarUrl?: string;
+  avatar_url?: string;
+  latitude?: number;
+  longitude?: number;
+  city?: string;
   ageRange?: string;
   verified?: boolean;
   domains?: string[];

@@ -18,20 +18,16 @@ import { Domain } from '../../../models/Domain';
 const ALL_DOMAINS = Object.values(Domain);
 
 const DOMAIN_SHORT: Record<string, string> = {
-  [Domain.BODY_FITNESS]: 'Fitness',
-  [Domain.REST_RECOVERY]: 'Recovery',
-  [Domain.MENTAL_BALANCE]: 'Mental',
-  [Domain.ENVIRONMENT_HOME]: 'Home',
-  [Domain.HEALTH_LONGEVITY]: 'Longevity',
-  [Domain.FINANCIAL_SECURITY]: 'Safety',
-  [Domain.FRIENDSHIP_SOCIAL]: 'Social',
-  [Domain.ROMANCE_INTIMACY]: 'Romance',
-  [Domain.COMMUNITY_CONTRIBUTION]: 'Impact',
-  [Domain.CAREER_CRAFT]: 'Career',
-  [Domain.WEALTH_ASSETS]: 'Wealth',
-  [Domain.GAMING_ESPORTS]: 'Gaming',
-  [Domain.IMPACT_LEGACY]: 'Legacy',
-  [Domain.SPIRIT_PURPOSE]: 'Spirit',
+  [Domain.FITNESS]: 'Fitness',
+  [Domain.MENTAL_HEALTH]: 'Mental',
+  [Domain.CAREER]: 'Career',
+  [Domain.ACADEMICS]: 'Academics',
+  [Domain.INVESTING]: 'Investing',
+  [Domain.CULTURE_HOBBIES_CREATIVE_PURSUITS]: 'Creative',
+  [Domain.INTIMACY_ROMANTIC_EXPLORATION]: 'Romance',
+  [Domain.FRIENDSHIP_SOCIAL_ENGAGEMENT]: 'Social',
+  [Domain.PHILOSOPHICAL_DEVELOPMENT]: 'Philosophy',
+  [Domain.PERSONAL_GOALS]: 'Personal',
 };
 
 interface Props {
@@ -276,7 +272,7 @@ const GoalTreeTimeline: React.FC<Props> = ({
                               </Box>
                               <Box sx={{ flexGrow: 1 }}>
                                 <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
-                                  {goal.name}
+                                  {goal.title}
                                 </Typography>
                                 {goal.description && (
                                   <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', display: 'block', mt: 0.25 }}>

@@ -190,9 +190,9 @@ function HabitCalendar({ dayData, goalDates }: { dayData: DayData[]; goalDates: 
                   const noteCount = data?.notes ?? 0;
                   const goalCount = data?.goalUpdates ?? 0;
                   
-                  if (filters.trackers && trackerCount > 0) tooltipLines.push(`📊 ${trackerCount} tracker${trackerCount !== 1 ? 's' : ''}`);
-                  if (filters.notes && noteCount > 0) tooltipLines.push(`📓 ${noteCount} note${noteCount !== 1 ? 's' : ''}`);
-                  if (filters.goals && goalCount > 0) tooltipLines.push(`🎯 ${goalCount} goal update${goalCount !== 1 ? 's' : ''}`);
+                  if (trackerCount > 0) tooltipLines.push(`📊 ${trackerCount} tracker${trackerCount !== 1 ? 's' : ''}`);
+                  if (noteCount > 0) tooltipLines.push(`📓 ${noteCount} note${noteCount !== 1 ? 's' : ''}`);
+                  if (goalCount > 0) tooltipLines.push(`🎯 ${goalCount} goal update${goalCount !== 1 ? 's' : ''}`);
                 } else {
                   tooltipLines.push('No activity');
                 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import { useParams, useNavigate } from 'react-router-dom';
 import { GoalNode as FrontendGoalNode, Domain } from '../../types/goal';
 import GoalCardTree from './components/GoalCardTree';

@@ -6,6 +6,7 @@ import {
   Box, Typography, Button, TextField, Chip,
   Tooltip, IconButton, Stack, Collapse, Divider, LinearProgress,
   Popover, Slider,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -23,6 +24,7 @@ import { supabase } from '../../../lib/supabase';
 import api from '../../../lib/api';
 import { useCurrentLocation } from '../../../hooks/useCurrentLocation';
 import { DOMAIN_COLORS } from '../../../types/goal';
+import EditableTrackerForm from '../../../features/trackers/EditableTrackerForm';
 import { FieldConfig, ObjectiveField, WidgetConfig, findWidget } from './widgetConfigs';
 
 // ── Shared types ───────────────────────────────────────────────────────────────

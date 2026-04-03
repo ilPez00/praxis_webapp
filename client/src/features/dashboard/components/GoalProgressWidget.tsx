@@ -188,7 +188,9 @@ const GoalProgressWidget: React.FC<Props> = ({ userId, nodes, onProgressUpdate }
           },
         }}
       >
-        {activeNode && (
+        {activeNode && (() => {
+          const color = DOMAIN_COLORS[activeNode.domain as Domain] ?? '#8B5CF6';
+          return (
           <Box>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>
               Update: {activeNode.name}
@@ -240,7 +242,8 @@ const GoalProgressWidget: React.FC<Props> = ({ userId, nodes, onProgressUpdate }
               </Button>
             </Stack>
           </Box>
-        )}
+          );
+        })()}
       </Popover>
     </Box>
   );

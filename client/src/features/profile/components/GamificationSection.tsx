@@ -10,19 +10,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GlassCard from '../../../components/common/GlassCard';
 import ErrorBoundary from '../../../components/common/ErrorBoundary';
 import LevelBadge from '../../../components/common/LevelBadge';
-
-interface GamificationProfile {
-  level: number;
-  league: string;
-  xp_progress?: number;
-  xp_needed?: number;
-  xp_percent?: number;
-  praxis_points?: number;
-  total_xp?: number;
-  reputation_score?: number;
-  current_streak?: number;
-  equipped_title?: string;
-}
+import { GamificationProfile } from '../../../hooks/useGamification';
 
 interface GamificationSectionProps {
   profile: GamificationProfile;

@@ -34,7 +34,7 @@ import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import api from '../../lib/api';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
-import NoteEditDialog from './NoteEditDialog';
+import NoteEditDialog from '../notes/NoteEditDialog';
 import ShareDialog from '../../components/common/ShareDialog';
 import ContentRenderer from '../../components/common/ContentRenderer';
 import NoteAttachmentBar from '../../components/common/NoteAttachmentBar';

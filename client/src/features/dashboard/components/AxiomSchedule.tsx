@@ -26,10 +26,10 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import PersonIcon from '@mui/icons-material/Person';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EventIcon from '@mui/icons-material/Event';
-import api from '../../lib/api';
-import { useCurrentLocation } from '../../hooks/useCurrentLocation';
+import api from '../../../lib/api';
+import { useCurrentLocation } from '../../../hooks/useCurrentLocation';
 import toast from 'react-hot-toast';
-import GlassCard from '../../components/common/GlassCard';
+import GlassCard from '../../../components/common/GlassCard';
 
 // Types
 interface TimeSlot {

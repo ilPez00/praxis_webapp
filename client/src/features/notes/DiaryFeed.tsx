@@ -114,7 +114,7 @@ async function safeQuery<T>(fn: () => Promise<{ data: T | null; error: any }>): 
 }
 
 /* ─── Component ─────────────────────────────────── */
-const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30 }) => {
+const DiaryFeed: React.FC<DiaryFeedProps> = ({ userId, days = 30, onItemClick, onItemContextMenu }) => {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<FeedItem | null>(null);

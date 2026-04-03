@@ -38,7 +38,7 @@
     "react-qr-barcode-scanner": "^2.1.23",
     "react-router-dom": "^7.13.0",
     "swr": "^2.4.1",
-    "typescript": "^4.9.5",
+    "typescript": "^5.9.3",
     "web-vitals": "^2.1.4"
   },
   "overrides": {

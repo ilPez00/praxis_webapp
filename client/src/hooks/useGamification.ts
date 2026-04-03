@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../lib/api';
 import hotToast from 'react-hot-toast';
 
-interface GamificationProfile {
+export interface GamificationProfile {
   id: string;
   name: string;
   avatar_url: string | null;
