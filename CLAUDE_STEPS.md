@@ -6,6 +6,43 @@
 
 ---
 
+## Session 106: Stripe Idempotency + RLS Audit + E2E Tests
+
+- Stripe webhook idempotency guard on `checkout.session.completed`:
+  - Checks if subscription already exists before provisioning
+  - Updates status if duplicate instead of creating duplicate rows
+  - PP purchase path already had idempotency (kept)
+  - Updated/Deleted events already use upsert/delete by id (DB-level idempotent)
+- RLS audit script (`migrations/audit_rls_policies.sql`):
+  - Checks all 50+ Praxis tables for RLS enabled/disabled
+  - Identifies tables with RLS on but zero policies (blocks all access)
+  - Finds overly permissive policies (USING true)
+  - Provides fix templates for missing RLS policies
+  - Run in Supabase SQL Editor for production audit
+- E2E test scaffolding (`tests/e2e/core-flows.spec.ts`):
+  - System health (frontend + backend)
+  - Auth flow (signup, login, logout, invalid creds)
+  - Onboarding flow (profile → goals → dashboard)
+  - Dashboard interactions (greeting, streak, check-in)
+  - Goal creation
+  - Notebook access
+  - Mobile responsiveness (375px viewport)
+  - Performance checks (load time, console errors)
+- Dead code audit: identified 8 exported-but-unused components
+  (InitialGoalSetup, UnifiedGoalWidget, AccountabilityNetworkWidget,
+  BalanceWidget, CommonWordsWidget, GoalProgressWidget,
+  WeeklyNarrativeWidget, AxiomSchedule — kept for future features)
+- Also includes new features from parallel work:
+  - Team challenges system (controller, routes, migration)
+  - Cowork rooms (controller, routes, migration, presence service)
+  - Coach personalities config
+- **Commit:** `062defc` — feat: Stripe idempotency + RLS audit script + E2E test scaffolding
+- **Next:** Final launch readiness review
+
+- Sign: Claude
+
+---
+
 ## Session 105: Onboarding Flow Polish + GettingStartedPage Fix
 
 - OnboardingPage: added fixed progress bar (0-50% of full flow)
