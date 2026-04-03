@@ -280,7 +280,7 @@ const NotesPage: React.FC = () => {
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('current_streak, praxis_points')
+          .select('current_streak, praxis_points, is_premium')
           .eq('id', currentUserId)
           .single();
         if (profile?.current_streak) setStreak(profile.current_streak);

@@ -60,6 +60,7 @@ interface ShareButtonProps {
   userId?: string;
   tooltip?: string;
   onSuccess?: () => void; // Callback after successful share
+  iconOnly?: boolean;
 }
 
 const ShareButton: React.FC<ShareButtonProps> = ({

@@ -660,7 +660,7 @@ const NotebookPage: React.FC = () => {
             setEditDialogOpen(false);
             setEditingEntry(null);
           }}
-          onUpdated={handleEntryUpdated}
+          onUpdated={(updatedItem: any) => handleEntryUpdated(updatedItem as any)}
         />
       )}
 

@@ -128,7 +128,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
         entry_type: 'note',
         content: newNote,
         mood: selectedMood,
-        goal_id: isFreeNote ? null : nodeId,
+        goal_id: isFreeNote ? undefined : nodeId,
         domain: isFreeNote ? 'Personal' : (notes[0]?.domain || 'General'),
         title: isFreeNote ? 'Free Note' : `Note for ${nodeTitle}`,
         source_table: 'manual_entry',
@@ -151,6 +151,7 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
           id: `offline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           synced: false,
           sync_attempted: 0,
+          mood: selectedMood || undefined,
         });
       } else {
         // Send to API immediately
@@ -167,8 +168,9 @@ const GoalNotesPanel: React.FC<GoalNotesPanelProps> = ({ nodeId, nodeTitle, user
         const entry = {
           entry_type: 'note',
           content: newNote,
-          mood: selectedMood,
-          // ... rest of entry
+          mood: selectedMood || undefined,
+          occurred_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
         };
         await saveForLater({
           ...entry,

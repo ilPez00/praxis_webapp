@@ -16,6 +16,8 @@ interface FeedItem {
   icon: string;
   color: string;
   badge: string;
+  originalId?: string;
+  originalType?: string;
 }
 
 interface NoteEditDialogProps {

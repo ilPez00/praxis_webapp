@@ -538,9 +538,9 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                 )}
 
                 {/* Linked reference */}
-                {post.reference && (
+                {post.reference && (post.reference as any).type && (post.reference as any).id && (
                   <Box sx={{ mb: 1.5 }}>
-                    <ReferenceCard reference={post.reference} />
+                    <ReferenceCard reference={post.reference as any} />
                   </Box>
                 )}
 
