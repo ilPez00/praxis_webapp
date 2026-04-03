@@ -6,6 +6,27 @@
 
 ---
 
+## Session 105: Onboarding Flow Polish + GettingStartedPage Fix
+
+- OnboardingPage: added fixed progress bar (0-50% of full flow)
+- GoalSelectionPage improvements:
+  - Progress bar (50-100% of full flow)
+  - "Step 2 of 2 — Almost there!" chip for first-run
+  - Description + Success Metric optional during first-run (required for re-edits)
+  - After first-run: redirect to /dashboard (was /notes)
+  - "Skip for now" button — complete onboarding without goals
+  - Dynamic button text ("Continue with X topics" vs "Save 150 PP")
+- DashboardPage: fixed logic bug — GettingStartedPage now shows to users
+  who completed onboarding but have no goals (was checking `!completed`)
+- New user flow: Onboarding → GoalSelection → Dashboard → GettingStarted
+- Type check: 0 errors frontend + backend
+- **Commit:** `b4e8e0a` — feat: improve onboarding flow
+- **Next:** RLS verification, Stripe idempotency, dead code cleanup
+
+- Sign: Claude
+
+---
+
 ## Session 104: BetCommitDialog Refactor + useUserPoints Hook
 
 - Created `useUserPoints` hook — eliminates duplicated Supabase points-fetching across 3 components
