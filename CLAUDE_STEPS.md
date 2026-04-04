@@ -6,6 +6,27 @@
 
 ---
 
+## Session 109: CLI v3 — Map, Messages, Axiom, Enhanced Bets, Notebook Pull
+
+- Added new CLI commands:
+  - **Map (places):** `praxis map ls/add/join` — list/create/join places with GPS coords
+  - **Messages:** `praxis msg view/send` — view chat history, send messages
+  - **Axiom AI:** `praxis axiom brief/regenerate/narrative/chat` — daily brief, regenerate, weekly narrative, AI chat
+  - **Bets enhanced:** `praxis bets ls/add/cancel` — list with IDs, create bets, cancel bets
+  - **Notebook pull:** `praxis nb pull [topic]` — pull webapp entries into local git-like store
+    - Groups entries by topic, creates local topics
+    - Filters by type, domain, search, limit
+    - Shows latest 5 entries after pull
+  - **Notebook stats:** `praxis nb stats` — total entries, topics, weekly count, streak
+  - **Matches:** `praxis matches` — view partner matches with score/streak
+- API class expanded: +20 new endpoints (messages, axiom, notebook, places, matches, bets)
+- All commands type-safe, 0 TypeScript errors
+- **Commit (praxis_cli):** `55465a9` — feat: add map, messages, axiom, enhanced bets, notebook pull, matches
+
+- Sign: Claude
+
+---
+
 ## Session 108: Praxis CLI v2 — Full TUI with Git-Like Notebook
 
 - Rebuilt Praxis CLI from bash TUI to Node.js/TypeScript full webapp client
