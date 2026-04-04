@@ -6,6 +6,19 @@
 
 ---
 
+## Session 110: CLI `praxis man` command
+
+- Added `praxis man` — formatted man-page style reference
+- All commands documented with aliases, sections, and descriptions
+- Styled with colored headers, aligned columns, ASCII tree borders
+- Sections: Auth, Dashboard, Notebook, Goals, Daily, Bets, Axiom,
+  Messages, Map, Matches, Sync, Config, Entry Format, Storage, Env
+- **Commit (praxis_cli):** `35b5b46` — feat: add 'praxis man' command
+
+- Sign: Claude
+
+---
+
 ## Session 109: CLI v3 — Map, Messages, Axiom, Enhanced Bets, Notebook Pull
 
 - Added new CLI commands:
