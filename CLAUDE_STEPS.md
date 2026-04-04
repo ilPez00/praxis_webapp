@@ -6,6 +6,33 @@
 
 ---
 
+## Session 108: Praxis CLI v2 — Full TUI with Git-Like Notebook
+
+- Rebuilt Praxis CLI from bash TUI to Node.js/TypeScript full webapp client
+- Git-like notebook model:
+  - Each topic = "repo" stored in ~/.praxis/notebook/<topic>/
+  - Each entry = "commit" with SHA (12-char), parent chain, message, content, mood, tags
+  - Commands: init, list (git branch), log (git log), entry (git commit),
+    show (git show), tag (git tag), diff (git diff)
+  - SHA prefix matching (like git — 7+ chars resolves to full entry)
+  - Parent-linked history traversal (walk parent chain like git log)
+- Full webapp API integration:
+  - auth login/logout/status
+  - dashboard (streak, points, goals summary)
+  - goals list/add
+  - checkin (daily), streak, bets
+  - sync pull/push (fetch goals/entries from webapp, auto-push on entry creation)
+  - config get/set (API URL, etc.)
+- Terminal UI: colored cards, tables (cli-table3), progress bars, spinners (ora)
+- All commands aliased: `nb`/`notebook`, `ci`/`checkin`, `dash`/`dashboard`, `ls`/`list`
+- Type-safe: 0 TypeScript errors
+- **Commit (praxis_cli):** `4f45bd8` — refactor: rebuild CLI as full TUI webapp client
+- **Next:** Final polish, test with real webapp API, update praxis_webapp docs
+
+- Sign: Claude
+
+---
+
 ## Session 107: i18n Expansion (18→100+ keys, Italian-first) + Dead Code Removal
 
 - Expanded i18n from 18 to 100+ keys per language:
