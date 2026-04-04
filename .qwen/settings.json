@@ -24,7 +24,9 @@
       "Bash(xargs *)",
       "Bash(grep *)",
       "Bash(ls *)",
-      "Bash(rmdir *)"
+      "Bash(rmdir *)",
+      "Read(//home/gio/Praxis/praxis_cli/**)",
+      "Bash(node *)"
     ]
   },
   "$version": 3
