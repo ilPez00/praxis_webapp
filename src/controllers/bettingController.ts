@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, BadRequestError, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors';
 import { pushNotification } from './notificationController';
+import { logFail } from './failsController';
 
 /**
  * Find users with similar goals for duel matching
@@ -252,7 +253,7 @@ export const resolveExpiredBets = catchAsync(async (req: Request, res: Response,
 
   const { data: expiredBets, error } = await supabase
     .from('bets')
-    .select('id, user_id, goal_node_id, stake_points, status, deadline')
+    .select('id, user_id, goal_node_id, goal_name, stake_points, status, deadline')
     .eq('status', 'active')
     .lt('deadline', now);
 
@@ -275,6 +276,8 @@ export const resolveExpiredBets = catchAsync(async (req: Request, res: Response,
       resolved++;
       totalForfeited += bet.stake_points;
       logger.info(`Bet ${bet.id} EXPIRED/LOST for user ${bet.user_id}: ${bet.stake_points} pts forfeited`);
+      
+      logFail('failed_bet', bet.goal_name, `Lost ${bet.stake_points} PP stake`);
     }
   }
 
@@ -304,11 +307,11 @@ export const resolveBetsOnGoalCompletion = async (userId: string, goalNodeId: st
 
     for (const bet of activeBets) {
       await supabase.from('bets').update({ status: 'won' }).eq('id', bet.id);
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('praxis_points')
-        .eq('id', userId)
-        .single();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('praxis_points, name')
+    .eq('id', userId)
+    .single();
       // Award 1.8× stake on win (10% house edge — makes bets a net sink for the economy)
       const winnings = Math.round(bet.stake_points * 1.8);
       await supabase
@@ -349,3 +352,229 @@ export const resolveBetsOnGoalCompletion = async (userId: string, goalNodeId: st
     logger.error('Bet resolution failed (non-fatal):', err);
   }
 };
+
+/**
+ * POST /bets/challenge
+ * Create a duel challenge against an opponent
+ * Body: { goalName, deadline, stakePoints, opponentType: 'random' | 'specific', opponentId? }
+ */
+export const createDuel = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  const { goalName, deadline, stakePoints, opponentType, opponentId } = req.body;
+
+  if (!userId) throw new BadRequestError('Authentication required.');
+  if (!goalName || !deadline || !stakePoints) {
+    throw new BadRequestError('goalName, deadline, and stakePoints are required.');
+  }
+  if (stakePoints < 50 || stakePoints > 2000) {
+    throw new BadRequestError('Stake must be between 50 and 2000 PP.');
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('praxis_points, name')
+    .eq('id', userId)
+    .single();
+
+  const currentPoints = profile?.praxis_points ?? 0;
+  const totalStake = stakePoints * 1.8;
+
+  if (currentPoints < totalStake) {
+    throw new BadRequestError(`Insufficient PP. Need ${totalStake} PP (1.8× stake to cover winnings).`);
+  }
+
+  let targetOpponentId = opponentId;
+
+  if (opponentType === 'random') {
+    const { data: matches } = await supabase.rpc('match_users_by_goals', {
+      query_user_id: userId,
+      match_limit: 10,
+    });
+
+    if (matches && matches.length > 0) {
+      const randomMatch = matches[Math.floor(Math.random() * matches.length)];
+      targetOpponentId = randomMatch.id || randomMatch.user_id;
+    }
+  }
+
+  const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+  const { data: duel, error: duelError } = await supabase
+    .from('duels')
+    .insert({
+      creator_id: userId,
+      challenger_id: userId,
+      opponent_id: targetOpponentId,
+      title: goalName,
+      stake_pp: stakePoints,
+      deadline,
+      status: targetOpponentId ? 'pending' : 'open',
+      opponent_type: opponentType || 'random',
+      invite_code: inviteCode,
+      challenger_stake_locked: true,
+    })
+    .select()
+    .single();
+
+  if (duelError) {
+    logger.error('[createDuel] Duel insert failed:', duelError);
+    throw new InternalServerError('Failed to create duel: ' + duelError.message);
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ praxis_points: currentPoints - totalStake })
+    .eq('id', userId);
+
+  if (targetOpponentId) {
+    pushNotification({
+      userId: targetOpponentId,
+      type: 'duel_challenge',
+      title: `Duel challenge from ${profile?.name || 'Someone'}: ${goalName} (${stakePoints} PP)`,
+      link: `/commitments?duel=${duel.id}`,
+    });
+  }
+
+  res.status(201).json({ 
+    duel, 
+    message: targetOpponentId ? 'Duel created, awaiting opponent acceptance' : 'Open duel created' 
+  });
+});
+
+/**
+ * POST /bets/duel/:id/accept
+ * Accept a duel challenge
+ */
+export const acceptDuel = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+
+  if (!userId) throw new BadRequestError('Authentication required.');
+
+  const { data: duel, error: fetchError } = await supabase
+    .from('duels')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !duel) throw new NotFoundError('Duel not found.');
+  if (duel.opponent_id !== userId) throw new ForbiddenError('This duel is not for you.');
+  if (duel.status !== 'pending') throw new BadRequestError('Duel is not pending.');
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('praxis_points, name')
+    .eq('id', userId)
+    .single();
+
+  const totalStake = (duel.stake_pp || 100) * 1.8;
+
+  if ((profile?.praxis_points ?? 0) < totalStake) {
+    throw new BadRequestError(`Insufficient PP. Need ${totalStake} PP to match the stake.`);
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ praxis_points: (profile?.praxis_points ?? 0) - totalStake })
+    .eq('id', userId);
+
+  const { error: updateErr } = await supabase
+    .from('duels')
+    .update({ 
+      status: 'active',
+      opponent_stake_locked: true,
+    })
+    .eq('id', id);
+
+  if (updateErr) throw new InternalServerError('Failed to accept duel: ' + updateErr.message);
+
+  pushNotification({
+    userId: duel.creator_id,
+    type: 'duel_accepted',
+    title: `${profile?.name || 'Your opponent'} accepted your duel on ${duel.title}!`,
+    link: '/commitments',
+  });
+
+  res.json({ success: true, message: 'Duel accepted! Both stakes locked.' });
+});
+
+/**
+ * POST /bets/duel/:id/decline
+ * Decline a duel challenge
+ */
+export const declineDuel = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+
+  if (!userId) throw new BadRequestError('Authentication required.');
+
+  const { data: duel, error: fetchError } = await supabase
+    .from('duels')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !duel) throw new NotFoundError('Duel not found.');
+  if (duel.opponent_id !== userId) throw new ForbiddenError('This duel is not for you.');
+  if (duel.status !== 'pending') throw new BadRequestError('Duel is not pending.');
+
+  const stakeAmount = (duel.stake_pp || 100) * 1.8;
+
+  await Promise.all([
+    supabase.from('duels').update({ status: 'declined' }).eq('id', id),
+    supabase.rpc('add_xp_to_user', {
+      p_user_id: duel.creator_id,
+      p_xp_amount: 0,
+      p_pp_amount: stakeAmount,
+      p_source: 'duel_declined_refund',
+    }),
+  ]);
+
+  res.json({ success: true, message: 'Duel declined. Challenger refunded.' });
+});
+
+/**
+ * GET /bets/duel/:id
+ * Get duel details
+ */
+export const getDuel = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+
+  if (!userId) throw new BadRequestError('Authentication required.');
+
+  const { data: duel, error } = await supabase
+    .from('duels')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !duel) throw new NotFoundError('Duel not found.');
+  if (duel.creator_id !== userId && duel.opponent_id !== userId && userId !== duel.creator_id) {
+    throw new ForbiddenError('Not authorized to view this duel.');
+  }
+
+  res.json(duel);
+});
+
+/**
+ * GET /bets/duel/invite/:code
+ * Join a duel by invite code
+ */
+export const getDuelByInvite = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  const { code } = req.params;
+
+  if (!userId) throw new BadRequestError('Authentication required.');
+
+  const { data: duel, error } = await supabase
+    .from('duels')
+    .select('*')
+    .eq('invite_code', String(code).toUpperCase())
+    .single();
+
+  if (error || !duel) throw new NotFoundError('Duel not found.');
+  if (duel.status !== 'open') throw new BadRequestError('Duel is no longer open.');
+
+  res.json(duel);
+});

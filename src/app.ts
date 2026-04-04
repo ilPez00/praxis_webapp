@@ -58,6 +58,7 @@ import healthRoutes from './routes/healthRoutes';
 import gamificationRoutes from './routes/gamificationRoutes';
 import seasonalEventRoutes from './routes/seasonalEventRoutes';
 import accountabilityBuddyRoutes from './routes/accountabilityBuddyRoutes';
+import failsRoutes from './routes/failsRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -276,6 +277,7 @@ apiRouter.use('/sparring', generalLimiter, sparringRoutes);
 apiRouter.use('/gamification', generalLimiter, gamificationRoutes);
 apiRouter.use('/seasonal-events', generalLimiter, seasonalEventRoutes);
 apiRouter.use('/buddies', generalLimiter, accountabilityBuddyRoutes);
+apiRouter.use('/fails', generalLimiter, failsRoutes);
 
 app.use('/api', apiRouter);
 

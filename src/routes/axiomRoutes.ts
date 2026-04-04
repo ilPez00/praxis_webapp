@@ -1,10 +1,13 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { AxiomScanService } from '../services/AxiomScanService';
 import { AxiomDailySummaryService } from '../services/AxiomDailySummaryService';
 import { AxiomProgressEstimationService } from '../services/AxiomProgressEstimationService';
 import { AxiomUnifiedScanService } from '../services/AxiomUnifiedScanService';
+import { AICoachingService } from '../services/AICoachingService';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
+import { authenticateToken } from '../middleware/authenticateToken';
+import * as axiomAgentController from '../controllers/axiomAgentController';
 
 const router = Router();
 const unifiedScanService = new AxiomUnifiedScanService();
@@ -92,5 +95,45 @@ router.post('/run-unified-scan', catchAsync(async (req: Request, res: Response) 
     message: 'Unified scan complete',
   });
 }));
+
+/**
+ * POST /axiom/agent
+ * Interactive Axiom agent that can search notebooks and the web
+ * Body: { query: string, allow_web_search?: boolean }
+ */
+router.post('/agent', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { query, allow_web_search = false } = req.body;
+    if (!query?.trim()) {
+      return res.status(400).json({ error: 'QUERY_REQUIRED', message: 'query is required' });
+    }
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Not authenticated' });
+    }
+    
+    const aiCoachingService = new AICoachingService();
+    if (!aiCoachingService.isConfigured) {
+      return res.status(503).json({ error: 'AXIOM_OFFLINE', message: 'Axiom is not configured on this server' });
+    }
+    
+    const { buildAgentContext, searchNotebooks, buildAgentPrompt } = await import('../controllers/axiomAgentController');
+    const context = await buildAgentContext(userId, query);
+    const notebookResults = await searchNotebooks(userId, query);
+    const prompt = buildAgentPrompt(context, query, notebookResults, []);
+    const response = await aiCoachingService.generateCoachingResponse(prompt, context, true);
+    
+    const sources = notebookResults.slice(0, 5).map((e: any) => ({
+      type: e.entry_type,
+      id: e.id,
+      title: e.title,
+      content: e.content?.slice(0, 100),
+    }));
+    
+    res.json({ message: response, sources, notebookResultsCount: notebookResults.length });
+  } catch (err) {
+    next(err);
+  }
+});
 
 export default router;

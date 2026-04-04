@@ -19,6 +19,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import ShareIcon from '@mui/icons-material/Share';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import { GoalNode } from '../../models/GoalNode';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
@@ -61,6 +62,13 @@ const BettingPage: React.FC = () => {
   const [selectedNodeId, setSelectedNodeId] = useState('');
   const [deadline, setDeadline] = useState('');
   const [stake, setStake] = useState(100);
+
+  // Duel state
+  const [duelDialogOpen, setDuelDialogOpen] = useState(false);
+  const [opponentType, setOpponentType] = useState<'random' | 'specific'>('random');
+  const [selectedOpponentId, setSelectedOpponentId] = useState('');
+  const [creatingDuel, setCreatingDuel] = useState(false);
+  const [duelInviteCode, setDuelInviteCode] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => setCurrentUserId(u?.id));
@@ -180,7 +188,16 @@ const BettingPage: React.FC = () => {
             disabled={points < MIN_STAKE || goalNodes.length === 0}
             sx={{ borderRadius: '12px', fontWeight: 700, px: 3 }}
           >
-            New Commitment
+            Solo Pledge
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<GroupAddIcon />}
+            onClick={() => setDuelDialogOpen(true)}
+            disabled={points < MIN_STAKE * 1.8 || goalNodes.length === 0}
+            sx={{ borderRadius: '12px', fontWeight: 700, px: 3, borderColor: '#F59E0B', color: '#F59E0B' }}
+          >
+            Challenge Friend
           </Button>
         </Box>
 
@@ -451,6 +468,139 @@ const BettingPage: React.FC = () => {
             sx={{ borderRadius: '10px', fontWeight: 800, px: 3, bgcolor: '#A78BFA', '&:hover': { bgcolor: '#9333EA' } }}
           >
             {creating ? 'Committing…' : `Pledge ${stake} PP`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Duel Challenge Dialog */}
+      <Dialog open={duelDialogOpen} onClose={() => setDuelDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <GroupAddIcon sx={{ color: '#F59E0B' }} />
+            Challenge a Friend
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 400 }}>
+            Bet against an opponent — winner takes 1.8× their stake!
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ pt: 1 }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                Available: {points.toLocaleString()} PP (need {Math.round(stake * 1.8)} to duel)
+              </Typography>
+            </Box>
+
+            <TextField
+              select
+              fullWidth
+              label="Goal to compete on"
+              value={selectedNodeId}
+              onChange={e => setSelectedNodeId(e.target.value)}
+            >
+              {goalNodes.length === 0
+                ? <MenuItem value="" disabled>No incomplete goals</MenuItem>
+                : goalNodes.map(n => (
+                    <MenuItem key={n.id} value={n.id}>
+                      {n.name} ({Math.round((n.progress ?? 0) * 100)}% done)
+                    </MenuItem>
+                  ))
+              }
+            </TextField>
+
+            <TextField
+              type="date"
+              fullWidth
+              label="Deadline"
+              value={deadline}
+              onChange={e => setDeadline(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ min: minDeadlineStr }}
+            />
+
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>Stake (PP)</Typography>
+              <Slider
+                value={stake}
+                onChange={(_, v) => setStake(v as number)}
+                min={50}
+                max={Math.min(2000, Math.floor(points / 1.8))}
+                step={50}
+                marks={[
+                  { value: 50, label: '50' },
+                  { value: 500, label: '500' },
+                  { value: 1000, label: '1000' },
+                  { value: Math.min(2000, Math.floor(points / 1.8)), label: 'max' },
+                ]}
+                sx={{ color: '#F59E0B' }}
+              />
+              <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(245,158,11,0.1)', flex: 1, textAlign: 'center' }}>
+                  <Typography variant="caption" color="text.secondary">Your stake</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#F59E0B' }}>{stake} PP</Typography>
+                </Box>
+                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(16,185,129,0.1)', flex: 1, textAlign: 'center' }}>
+                  <Typography variant="caption" color="text.secondary">Win reward</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#10B981' }}>{Math.round(stake * 1.8)} PP</Typography>
+                </Box>
+              </Stack>
+            </Box>
+
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>Opponent</Typography>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant={opponentType === 'random' ? 'contained' : 'outlined'}
+                  onClick={() => setOpponentType('random')}
+                  size="small"
+                  sx={{ flex: 1, bgcolor: opponentType === 'random' ? '#F59E0B' : undefined, color: opponentType === 'random' ? '#000' : undefined }}
+                >
+                  Random Match
+                </Button>
+                <Button
+                  variant={opponentType === 'specific' ? 'contained' : 'outlined'}
+                  onClick={() => setOpponentType('specific')}
+                  size="small"
+                  sx={{ flex: 1, bgcolor: opponentType === 'specific' ? '#F59E0B' : undefined, color: opponentType === 'specific' ? '#000' : undefined }}
+                >
+                  Select Friend
+                </Button>
+              </Stack>
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button onClick={() => setDuelDialogOpen(false)} sx={{ borderRadius: '10px' }}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              if (!selectedNodeId || !deadline) {
+                toast.error('Select a goal and deadline');
+                return;
+              }
+              const node = goalNodes.find(n => n.id === selectedNodeId);
+              setCreatingDuel(true);
+              try {
+                await api.post('/bets/challenge', {
+                  goalName: node?.name || '',
+                  deadline,
+                  stakePoints: stake,
+                  opponentType,
+                  opponentId: opponentType === 'specific' ? selectedOpponentId : null,
+                });
+                toast.success('Duel created! Invite link generated.');
+                setDuelDialogOpen(false);
+              } catch (err: any) {
+                toast.error(err.response?.data?.message || 'Failed to create duel');
+              } finally {
+                setCreatingDuel(false);
+              }
+            }}
+            disabled={creatingDuel || !selectedNodeId || !deadline || stake * 1.8 > points}
+            startIcon={creatingDuel ? <CircularProgress size={16} color="inherit" /> : <GroupAddIcon />}
+            sx={{ borderRadius: '10px', fontWeight: 800, px: 3, bgcolor: '#F59E0B', color: '#000', '&:hover': { bgcolor: '#D97706' } }}
+          >
+            {creatingDuel ? 'Creating…' : `Challenge (${Math.round(stake * 1.8)} PP)`}
           </Button>
         </DialogActions>
       </Dialog>

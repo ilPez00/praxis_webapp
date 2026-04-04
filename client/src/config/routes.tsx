@@ -42,6 +42,7 @@ const SettingsPage = React.lazy(() => import('../features/settings/SettingsPage'
 const ChallengesPage = React.lazy(() => import('../features/challenges/ChallengesPage'));
 const TeamChallengesPage = React.lazy(() => import('../features/challenges/TeamChallengesPage'));
 const CoworkRoomPage = React.lazy(() => import('../features/cowork/CoworkRoomPage'));
+const FailsPage = React.lazy(() => import('../features/fails/FailsPage'));
 const NotesPage = React.lazy(() => import('../features/notes/NotesPage'));
 
 interface RouteConfig {
@@ -100,6 +101,7 @@ const routes: RouteConfig[] = [
   { path: '/challenges', element: ChallengesPage, private: true },
   { path: '/team-challenges', element: TeamChallengesPage, private: true },
   { path: '/cowork', element: CoworkRoomPage, private: true },
+  { path: '/fails', element: FailsPage, private: true },
 ];
 
 export default routes;

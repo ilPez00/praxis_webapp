@@ -57,6 +57,7 @@ import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import NoteIcon from '@mui/icons-material/Note';
 import GroupsIcon from '@mui/icons-material/Groups';
 import TimerIcon from '@mui/icons-material/Timer';
+import WarningIcon from '@mui/icons-material/Warning';
 
 interface AppNotification {
   id: string;
@@ -702,6 +703,7 @@ const Navbar: React.FC = () => {
                 { label: 'Team Challenges', to: '/team-challenges', icon: <GroupsIcon />, primary: true },
                 { label: 'Co-work', to: '/cowork', icon: <TimerIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
+                { label: 'Fails', to: '/fails', icon: <WarningIcon />, primary: false },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
                 { label: 'Settings', to: '/settings', icon: <SettingsIcon />, primary: false },

@@ -31,14 +31,19 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
+  Card,
+  CardContent,
+  CardActionArea,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
 import SendIcon from '@mui/icons-material/Send';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DownloadIcon from '@mui/icons-material/Download';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import HistoryIcon from '@mui/icons-material/History';
+import { Tooltip } from '@mui/material';
 import BetCommitDialog from '../../components/common/BetCommitDialog';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
@@ -73,6 +78,13 @@ interface ChatMessage {
   text: string;
 }
 
+interface MatchRecommendation {
+  id: string;
+  name: string;
+  reason: string;
+  avatarUrl?: string;
+}
+
 // ── component ─────────────────────────────────────────────────────────────────
 
 const AICoachPage: React.FC = () => {
@@ -105,6 +117,10 @@ const AICoachPage: React.FC = () => {
 
   // Bet dialog state
   const [isBetDialogOpen, setIsBetDialogOpen] = useState(false);
+
+  // Match recommendation dialog state
+  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<MatchRecommendation | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -336,6 +352,41 @@ const AICoachPage: React.FC = () => {
     } finally {
       setAsking(false);
     }
+  };
+
+  const handleSearchNotebooks = async () => {
+    const q = question.trim();
+    if (!q || asking) return;
+    setQuestion('');
+    setAsking(true);
+    setChat(prev => [...prev, { role: 'user', text: `🔍 Search notebooks: ${q}` }]);
+    try {
+      const res = await api.post('/axiom/agent', { query: q, allow_web_search: false });
+      const { message, sources, matches, notebookResultsCount } = res.data;
+      
+      let responseText = message;
+      if (sources?.length) {
+        responseText += `\n\n📚 *Found ${notebookResultsCount} notebook entries - cited ${sources.length}*`;
+      }
+      if (matches?.length) {
+        responseText += `\n\n🤝 *Recommended:* ${matches.map((m: any) => `**${m.name}**`).join(', ')} — tap to view`;
+        // Store first match for dialog
+        setSelectedMatch(matches[0]);
+      }
+      
+      setChat(prev => [...prev, { role: 'coach', text: responseText }]);
+    } catch (err: any) {
+      const body = err.response?.data || {};
+      const msg = body.detailed ? `${body.message} (${body.detailed})` : (body.message || err.message);
+      setChat(prev => [...prev, { role: 'coach', text: `Search failed. ${msg}` }]);
+    } finally {
+      setAsking(false);
+    }
+  };
+
+  const handleMatchClick = (match: MatchRecommendation) => {
+    setSelectedMatch(match);
+    setMatchDialogOpen(true);
   };
 
   const SectionHeader: React.FC<{ icon: React.ReactNode; label: string; color?: string }> = ({ icon, label, color = 'primary.main' }) => (
@@ -594,7 +645,7 @@ const AICoachPage: React.FC = () => {
             ))}
             <div ref={chatEndRef} />
           </Stack>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField
               fullWidth multiline maxRows={4}
               placeholder="Ask Axiom about goals, people, places, events, notes…"
@@ -602,7 +653,17 @@ const AICoachPage: React.FC = () => {
               onChange={e => setQuestion(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(); } }}
               size="small"
+              sx={{ flex: 1 }}
             />
+            <Tooltip title="Search notebooks">
+              <IconButton 
+                onClick={handleSearchNotebooks} 
+                disabled={!question.trim() || asking}
+                sx={{ bgcolor: 'rgba(139,92,246,0.2)', color: '#A78BFA', borderRadius: '12px', '&:hover': { bgcolor: 'rgba(139,92,246,0.3)' } }}
+              >
+                <SearchIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
             <IconButton onClick={handleAsk} disabled={!question.trim() || asking} sx={{ bgcolor: 'primary.main', color: '#0A0B14', borderRadius: '12px' }}>
               {asking ? <CircularProgress size={18} color="inherit" /> : <SendIcon fontSize="small" />}
             </IconButton>
@@ -619,6 +680,55 @@ const AICoachPage: React.FC = () => {
           onSuccess={() => navigate('/betting')}
         />
       )}
+
+      {/* Match Recommendation Dialog */}
+      <Dialog
+        open={matchDialogOpen}
+        onClose={() => setMatchDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+            🤝 Sparring Partner
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedMatch && (
+            <Box sx={{ textAlign: 'center', py: 2 }}>
+              <Avatar
+                src={selectedMatch.avatarUrl}
+                sx={{ width: 80, height: 80, mx: 'auto', mb: 2, bgcolor: 'primary.main' }}
+              >
+                {selectedMatch.name?.[0]?.toUpperCase()}
+              </Avatar>
+              <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
+                {selectedMatch.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                {selectedMatch.reason}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setMatchDialogOpen(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setMatchDialogOpen(false);
+                    navigate(`/discover?user=${selectedMatch.id}`);
+                  }}
+                >
+                  View Profile
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
       
       {/* Narratives History Dialog */}
       <Dialog 
