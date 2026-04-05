@@ -214,6 +214,10 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   if (streakUpdate.shield_consumed) profileUpdate.streak_shield = false;
 
   await supabase.from('profiles').update(profileUpdate).eq('id', userId);
+  
+  // Update login streak for XP bonuses
+  await supabase.rpc('update_login_streak', { p_user_id: userId });
+  
   cacheDelete(`dashboard:${userId}`); // invalidate cached summary so fresh checkedIn state is served
 
   // Mystery Reward System — random bonus PP on check-in

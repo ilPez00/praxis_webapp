@@ -297,13 +297,20 @@ export class AxiomScanService {
 
     logger.info(`[AxiomScan] ${activeUsers.length} active users found for daily brief generation.`);
 
+    // Filter to only users who logged in TODAY (not just active in last 30 days)
+    const usersLoggedInToday = activeUsers.filter(u => 
+      u.last_activity_date && u.last_activity_date.slice(0, 10) === today
+    );
+
+    logger.info(`[AxiomScan] ${usersLoggedInToday.length} users logged in today - generating briefs only for these users.`);
+
     // Process up to 5 concurrently (increased for better throughput)
     const CONCURRENCY = 5;
     let successCount = 0;
     let failCount = 0;
     
-    for (let i = 0; i < activeUsers.length; i += CONCURRENCY) {
-      const batch = activeUsers.slice(i, i + CONCURRENCY);
+    for (let i = 0; i < usersLoggedInToday.length; i += CONCURRENCY) {
+      const batch = usersLoggedInToday.slice(i, i + CONCURRENCY);
       const results = await Promise.allSettled(batch.map(async user => {
         try {
           // ALWAYS use LLM for all users now
