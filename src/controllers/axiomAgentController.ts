@@ -248,7 +248,7 @@ export const axiomAgent = catchAsync(async (req: Request, res: Response, _next: 
     ]);
 
     const prompt = buildAgentPrompt(context, query, notebookResults, webResults);
-    const response = await aiCoachingService.generateCoachingResponse(prompt, context, true);
+    const response = await aiCoachingService.generateCoachingResponse(prompt, context, true, 'fast');
 
     const sources = notebookResults.slice(0, 5).map((e: any) => ({
       type: e.entry_type,

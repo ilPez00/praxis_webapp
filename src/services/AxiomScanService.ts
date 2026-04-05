@@ -304,8 +304,8 @@ export class AxiomScanService {
 
     logger.info(`[AxiomScan] ${usersLoggedInToday.length} users logged in today - generating briefs only for these users.`);
 
-    // Process up to 5 concurrently (increased for better throughput)
-    const CONCURRENCY = 5;
+    // Process up to 3 concurrently (reduced to avoid rate limits)
+    const CONCURRENCY = 3;
     let successCount = 0;
     let failCount = 0;
     
@@ -313,18 +313,18 @@ export class AxiomScanService {
       const batch = usersLoggedInToday.slice(i, i + CONCURRENCY);
       const results = await Promise.allSettled(batch.map(async user => {
         try {
-          // ALWAYS use LLM for all users now
-          await this.generateDailyBrief(user.id, user.name || 'Student', user.city || 'Unknown', true);
+          // Use retry logic with exponential backoff for LLM calls
+          await this.generateDailyBriefWithRetry(user.id, user.name || 'Student', user.city || 'Unknown', true);
           successCount++;
         } catch (err: any) {
           logger.warn(`[AxiomScan] Failed for ${user.name || user.id}: ${err.message}`);
           failCount++;
         }
       }));
-      
-      // Small pause between batches to respect RPM limits
-      if (i + CONCURRENCY < activeUsers.length) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+       
+      // Larger pause between batches to respect RPM limits (3s instead of 2s)
+      if (i + CONCURRENCY < usersLoggedInToday.length) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
     
@@ -1077,6 +1077,40 @@ ${resources.map((r: any, i: number) => `${i + 1}. **${r.goal}**: ${r.suggestion}
     // Use pre-fetched data instead of fetching again
     // This is a simplified version that skips data fetching
     return AxiomScanService.generateDailyBrief(userId, userName, userCity, useLLM);
+  }
+
+  /**
+   * Generate daily brief with exponential backoff retry
+   * Retries 3 times with increasing delays: 1s, 2s, 4s
+   */
+  public static async generateDailyBriefWithRetry(
+    userId: string,
+    userName: string,
+    userCity: string,
+    useLLM: boolean = true
+  ): Promise<void> {
+    const RETRY_DELAYS = [1000, 2000, 4000]; // 1s, 2s, 4s
+    
+    for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+      try {
+        await AxiomScanService.generateDailyBrief(userId, userName, userCity, useLLM);
+        return; // Success
+      } catch (err: any) {
+        const isLastAttempt = attempt === RETRY_DELAYS.length;
+        const isRetryable = err?.message?.includes('429') || 
+                           err?.message?.includes('rate') ||
+                           err?.message?.includes('RESOURCE_EXHAUSTED') ||
+                           err?.message?.includes('503');
+        
+        if (isLastAttempt || !isRetryable) {
+          throw err; // No more retries or non-retryable error
+        }
+        
+        const delay = RETRY_DELAYS[attempt];
+        logger.info(`[AxiomScan] Retry ${attempt + 1}/${RETRY_DELAYS.length} for ${userId} after ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
   }
 }
 

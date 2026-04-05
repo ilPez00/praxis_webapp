@@ -121,7 +121,7 @@ router.post('/agent', authenticateToken, async (req: Request, res: Response, nex
     const context = await buildAgentContext(userId, query);
     const notebookResults = await searchNotebooks(userId, query);
     const prompt = buildAgentPrompt(context, query, notebookResults, []);
-    const response = await aiCoachingService.generateCoachingResponse(prompt, context, true);
+    const response = await aiCoachingService.generateCoachingResponse(prompt, context, true, 'fast');
     
     const sources = notebookResults.slice(0, 5).map((e: any) => ({
       type: e.entry_type,

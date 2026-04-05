@@ -594,7 +594,7 @@ export const requestCoaching = catchAsync(async (req: Request, res: Response, _n
       message_type: 'text'
     });
 
-    const response = await aiCoachingService.generateCoachingResponse(userPrompt.trim(), context, useLLM);
+    const response = await aiCoachingService.generateCoachingResponse(userPrompt.trim(), context, useLLM, 'fast');
 
     // Log Axiom's answer to the database
     await supabase.from('messages').insert({
@@ -716,7 +716,8 @@ export const personalityChat = catchAsync(async (req: Request, res: Response, _n
       const aiResponse = await aiCoachingService.generateCoachingResponse(
         `As a ${personality} personality coach, respond to: ${message}`,
         context,
-        true
+        true,
+        'fast'
       );
       if (aiResponse && aiResponse.length > 10) {
         enhancedMessage = aiResponse;

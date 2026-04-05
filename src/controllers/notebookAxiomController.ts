@@ -279,7 +279,7 @@ export const queryNotebookAxiom = catchAsync(async (req: Request, res: Response)
 
     // Generate response using Gemini
     const useLLM = true; // Always use LLM for notebook queries
-    const response = await aiCoachingService.generateCoachingResponse(prompt, context, useLLM);
+    const response = await aiCoachingService.generateCoachingResponse(prompt, context, useLLM, 'fast');
 
     // Log the query to messages table for history
     await supabase.from('messages').insert({

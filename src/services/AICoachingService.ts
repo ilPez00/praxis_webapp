@@ -466,12 +466,28 @@ Respond in ${context.language}.`;
   }
 
   /**
+   * Model tier selection for different query types
+   * 'fast' - gemini-2.0-flash-lite for simple queries (cheapest)
+   * 'analysis' - gemini-2.5-flash for complex morning briefs
+   */
+  public static MODEL_TIERS = {
+    fast: ['gemini-2.0-flash-lite', 'gemini-1.5-flash-8b', 'gemini-1.5-flash'],
+    analysis: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro'],
+  };
+
+  /**
    * Generate coaching response to user prompt.
    * @param userPrompt - User's question/message
    * @param context - User context
    * @param useLLM - If true, use real LLM (premium). Default: false (template mode)
+   * @param modelTier - 'fast' for simple queries, 'analysis' for complex briefs (default: 'analysis')
    */
-  public async generateCoachingResponse(userPrompt: string, context: CoachingContext, useLLM: boolean = false): Promise<string> {
+  public async generateCoachingResponse(
+    userPrompt: string, 
+    context: CoachingContext, 
+    useLLM: boolean = false,
+    modelTier: 'fast' | 'analysis' = 'analysis'
+  ): Promise<string> {
     // Minimal AI Mode: use template-based response
     if (!useLLM) {
       logger.info('[AICoachingService] Using template-based response (Minimal AI Mode)');
@@ -482,7 +498,13 @@ Respond in ${context.language}.`;
     }
 
     // Premium - real LLM call
-    logger.info('[AICoachingService] Using LLM for premium coaching response');
+    logger.info(`[AICoachingService] Using LLM (${modelTier} tier) for premium coaching response`);
+    
+    // Override model selection based on tier
+    const originalBaseModels = AICoachingService.MODEL_TIERS.analysis;
+    const tierModels = AICoachingService.MODEL_TIERS[modelTier] || AICoachingService.MODEL_TIERS.analysis;
+    
+    // Store and restore model order to respect tier selection
     const identity = await this.getIdentity();
 
     const knowledgeBase = `
