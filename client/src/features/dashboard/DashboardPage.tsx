@@ -18,9 +18,6 @@ import LevelUpDialog from '../../components/common/LevelUpDialog';
 import PPToast from '../../components/common/PPToast';
 import AchievementShareModal from '../../components/common/AchievementShareModal';
 import SeasonalEventCard from '../../components/common/SeasonalEventCard';
-import AccountabilityBuddy from '../../components/common/AccountabilityBuddy';
-import QuickLogBar from '../trackers/QuickLogBar';
-import TrackerSuggestions from '../trackers/TrackerSuggestions';
 import { useGamificationNotifications } from '../../hooks/useGamificationNotifications';
 import { useCelebrations } from '../../hooks/useCelebrations';
 import toast from 'react-hot-toast';
@@ -252,28 +249,6 @@ const DashboardPage: React.FC = () => {
               <ErrorBoundary label="Seasonal Events">
                 <SeasonalEventCard userId={currentUserId} />
               </ErrorBoundary>
-            </Box>
-          )}
-
-          {/* ── Accountability Buddy ── */}
-          {currentUserId && (
-            <Box sx={{ mt: 3 }}>
-              <ErrorBoundary label="Accountability Buddy">
-                <AccountabilityBuddy userId={currentUserId} />
-              </ErrorBoundary>
-            </Box>
-          )}
-
-          {/* ── Quick Log Bar ── */}
-          {currentUserId && (
-            <Box sx={{ mt: 3, mx: -2 }}>
-              <QuickLogBar userId={currentUserId} />
-              <TrackerSuggestions 
-                userId={currentUserId} 
-                onLog={(type) => {
-                  // Could trigger quick log or open dialog
-                }} 
-              />
             </Box>
           )}
 
