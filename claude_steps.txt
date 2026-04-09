@@ -1848,9 +1848,42 @@ Date: 2026-04-09
 - `npm audit`: ✅ 0 vulnerabilities
 
 ## Next
-1. Dashboard UX overhaul (today's focus hero, check-in flow)
+1. ~~Dashboard UX overhaul~~ ✅ Done (session 105)
 2. React Router data router migration (createBrowserRouter)
 3. Notification system (push + in-app bell)
 4. Offline-first expansion (check-ins, trackers)
+
+- Sign: Claude
+
+---
+
+# Session 105: Dashboard Two-Column Redesign
+Date: 2026-04-09
+
+- Restructured dashboard from single-column to **two-column layout** (8/4 split on desktop)
+- Left column: Morning Brief → Today's Goals (root goals with domain-colored progress bars) → Activity Feed
+- Right column: Gamification (level/XP/quests) → Top Alignments → Leaderboard → Near You
+- Mobile: collapses to single prioritized column (goals before social)
+- Added "Today's Goals" section: domain-colored accent bars, click-to-navigate, overall progress footer
+- Condensed social widgets for sidebar form factor (smaller avatars, tighter spacing)
+- Fixed GamificationProfile field names (xp→xp_progress, xpToNextLevel→xp_needed)
+- Fixed LevelBadge size prop (number→string union)
+- Fixed DailyQuestsWidget (takes no props, fetches own data)
+- Removed unused imports (ShareSnippetButton, LevelUpDialog, PPToast, QuickActionFAB)
+
+## Files Modified
+- client/src/features/dashboard/DashboardPage.tsx (304 insertions, 241 deletions)
+- claude_steps.txt
+
+## Verification
+- `npx tsc --noEmit`: ✅ 0 errors
+- `npm run build`: ✅ 7s
+- Commit: 78c78b8
+
+## Next
+1. React Router data router migration
+2. Notification system (push + in-app bell)
+3. Offline-first expansion
+4. Chat polish (wire dialog stubs)
 
 - Sign: Claude
