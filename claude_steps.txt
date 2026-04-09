@@ -1671,9 +1671,186 @@ TS 5.x is stricter — exposed many hidden bugs from multi-agent code.
 - Commit: 60e2a83
 
 ## Next
-1. Vite 8 upgrade (unblocks @vitejs/plugin-react 6.0)
-2. Fix remaining 37 type errors (interface alignment)
+1. ~~Vite 8 upgrade (unblocks @vitejs/plugin-react 6.0)~~
+2. ~~Fix remaining 37 type errors (interface alignment)~~ ✅ Done (session 103)
 3. Wire ChatRoom dialog stubs
 4. ProfilePage further splits
+
+- Sign: Claude
+
+---
+
+# Session 103: TypeScript 5.9 — Final Error Resolution + Verification
+Date: 2026-04-09
+
+- Verified all 37 remaining TS errors from session 102 are resolved (tsc exits 0, no output)
+- Production build succeeds (1m 26s, all chunks generated)
+- Changes were already committed in a prior session between 102 and 103
+- Current stack: React 19.2.4, TypeScript 5.9.3, Vite 6.2, react-router-dom 7.13
+- tsconfig target: es2018 (enables Set iteration, modern syntax)
+
+## Verification
+- `npx tsc --noEmit`: ✅ 0 errors (exit code 0)
+- `npm run build`: ✅ succeeds
+- Working tree: clean (no uncommitted changes)
+
+## Codebase Audit — Current State (36 feature modules, 50+ API routes)
+
+### Frontend Routes (47 pages)
+Public: /, /login, /signup, /success, /cancel, /desktop-widget, /mobile-widget
+Private: /notes, /dashboard, /discover, /profile, /matches, /chat, /onboarding,
+  /goals, /goal-selection, /upgrade, /verify-identity, /analytics, /communication,
+  /groups, /boards, /coaching, /search, /marketplace, /admin, /leaderboard,
+  /services, /commitments, /words, /events, /friends, /posts/:postId, /settings,
+  /challenges, /team-challenges, /cowork, /fails
+
+### Backend API Routes (50+)
+auth, ai-coaching, axiom, stripe, admin, admin/cli, users, messages, goals,
+matches, feedback, achievements, analytics, completions, groups, bets,
+challenges, team-challenges, cowork, coaches, search, marketplace, posts,
+checkins, points, services, words, events, friends, notifications, mutes,
+places, offers, duels, trackers, dashboard, journal, axiom-unlock, notebook,
+diary, schedule, narratives, sparring, gamification, seasonal-events, buddies, fails
+
+### Feature Modules (36)
+admin, analytics, auth, betting, challenges, chat, coaching, communication,
+cowork, dashboard, diary, discover, duels, events, fails, friends, goals,
+groups, home, identity, leaderboard, marketplace, matches, notebook, notes,
+onboarding, payments, places, posts, profile, referral, search, services,
+settings, trackers, widgets
+
+---
+
+# Development Plan — Phase 4: Polish, Performance, UX
+
+## Tier 1 — Foundation (do first, unblocks everything)
+
+### 1.1 Vite 6 → 8 Upgrade
+- Current: Vite 6.2, @vitejs/plugin-react (version TBD)
+- Target: Vite 8.x + @vitejs/plugin-react 6.x
+- Why: faster HMR, Rolldown bundler, smaller builds, security patches
+- Risk: low (Vite 7→8 was mostly Rolldown internals)
+
+### 1.2 React Router 7 → Data Router Migration
+- Current: `<BrowserRouter>` + `<Routes>` + `<Route>` (classic pattern)
+- Target: `createBrowserRouter` + `RouterProvider` with loaders/actions
+- Why: enables route-level data loading, error boundaries per route, prefetching
+- Risk: medium (touches AppRouter.tsx + every page that reads params)
+- Can be incremental — wrap existing routes first, migrate loaders one page at a time
+
+### 1.3 Pending SQL Migrations
+- Run all unexecuted migrations from manual_actions.txt in Supabase
+- Verify SUPABASE_SERVICE_ROLE_KEY on Railway (known issue from session 34)
+- Seed demo users via POST /admin/seed-demo-users
+
+## Tier 2 — UX & Product Quality
+
+### 2.1 Dashboard Overhaul
+- Dashboard is the core daily loop — morning brief, one-tap check-in, evening recap
+- Current: widget-heavy, dense; needs hierarchy (today's focus → progress → social)
+- Action: reorder widgets, add "Today's Focus" hero section, reduce visual noise
+
+### 2.2 Offline-First Reliability
+- useOffline + offlineSyncManager exist but only cover notebook entries
+- Extend to: check-ins, tracker logs, goal progress updates
+- Add service worker for true PWA offline shell
+
+### 2.3 Notification System
+- Backend route exists (`/notifications`) but frontend integration unclear
+- Need: push notifications (FCM/web-push), in-app notification bell, badge counts
+- Critical for accountability buddy features (partner check-in reminders)
+
+### 2.4 Chat Polish
+- Wire ChatRoom dialog stubs (file sharing, video call improvements)
+- Group chat needs member list sidebar, join/leave, group description
+- Reference linking in chat already works — verify production behavior
+
+## Tier 3 — Growth & Social
+
+### 3.1 Onboarding Flow Polish
+- Current flow works but could use progressive disclosure
+- Add sample goals, guided first check-in, "invite a buddy" step
+- Username selection already in place
+
+### 3.2 Social Feed Algorithm
+- Smart feed exists (`/posts/feed`) with weighted scoring
+- Needs: infinite scroll, pull-to-refresh, empty state for new users
+- Board posts vs personal feed distinction
+
+### 3.3 Referral System Activation
+- Backend exists (referral_codes, referral_claims, +100 PP)
+- ReferralWidget on dashboard — verify it works end-to-end
+- Add deep link support for referral codes
+
+### 3.4 Streak Widget & Sharing
+- Embeddable streak widget exists (GET /public/widget/:userId)
+- Share snippet with canvas PNG export
+- Verify social sharing (Twitter intent, navigator.share)
+
+## Tier 4 — Revenue & Scale
+
+### 4.1 Stripe Production Setup
+- Current: test mode keys
+- Need: production STRIPE_PRICE_ID, webhook registration
+- PP purchase tiers (500/1100/3000 PP) need live Stripe products
+
+### 4.2 Performance Optimization
+- Large chunks: index.js (628KB), mui (469KB), AnalyticsPage (302KB)
+- Action: code-split MUI imports, tree-shake unused icons, lazy-load charts
+- Consider manualChunks in Vite config for vendor splitting
+
+### 4.3 E2E Testing
+- Scaffolding exists from session 106
+- Expand: auth flow, goal creation, check-in, chat, betting
+- CI integration (GitHub Actions)
+
+## Next Session Should Tackle
+1. ~~Vite 8 upgrade (quick win, low risk)~~ ✅ Done below
+2. Dashboard UX overhaul (high user impact)
+3. Or: pick any Tier 2/3 item based on user priority
+
+- Sign: Claude
+
+---
+
+# Session 104: Vite 8 Upgrade + Bundle Optimization
+Date: 2026-04-09
+
+- Upgraded Vite 6.4.1 → 8.0.8 + @vitejs/plugin-react 4.7 → 6.0.1
+- Migrated `rollupOptions` → `rolldownOptions` (Vite 8 uses Rolldown bundler)
+- Converted `manualChunks` from object to function (Rolldown requirement)
+- Switched minifier from `esbuild` → `oxc` (esbuild deprecated in Vite 8)
+- Added `charts` chunk (MUI X Charts + D3) and `leaflet` chunk to manualChunks
+- Fixed 2 npm audit vulnerabilities (picomatch, yaml)
+
+### Build Performance
+- Build time: **1m 26s → 7s** (12× faster via Rolldown)
+- index.js: 628KB → 150KB (76% smaller)
+- AnalyticsPage: 291KB → 25KB (charts extracted to cacheable vendor chunk)
+- MUI: 469KB → 322KB (charts separated out)
+- New cacheable vendor chunks: charts (414KB), leaflet (152KB)
+- 0 npm vulnerabilities (was 2)
+
+### Breaking Changes Handled
+1. `manualChunks` must be a function, not an object (Rolldown)
+2. `minify: 'esbuild'` → `minify: 'oxc'` (esbuild no longer bundled)
+3. `rollupOptions` → `rolldownOptions` config key
+
+## Files Modified
+- client/package.json, client/package-lock.json
+- client/vite.config.ts
+- claude_steps.txt
+
+## Verification
+- `npx tsc --noEmit`: ✅ 0 errors
+- `npm run build`: ✅ 7s, all chunks generated
+- `npx vite`: ✅ dev server starts on :5173
+- `npm audit`: ✅ 0 vulnerabilities
+
+## Next
+1. Dashboard UX overhaul (today's focus hero, check-in flow)
+2. React Router data router migration (createBrowserRouter)
+3. Notification system (push + in-app bell)
+4. Offline-first expansion (check-ins, trackers)
 
 - Sign: Claude

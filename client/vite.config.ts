@@ -8,17 +8,16 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // Ensure we use 'esnext' or similar to avoid issues with some mobile browsers
-    // and disable any aggressive minification that might cause reference errors
-    minify: 'esbuild',
-    rollupOptions: {
+    minify: 'oxc',
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          // Separate cacheable chunks — a MUI update won't bust the React chunk
-          'react-core': ['react', 'react-dom', 'react-router-dom'],
-          'mui':        ['@mui/material', '@emotion/react', '@emotion/styled'],
-          'mui-icons':  ['@mui/icons-material'],
-          'supabase':   ['@supabase/supabase-js'],
+        manualChunks(id: string) {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router')) return 'react-core';
+          if (id.includes('node_modules/@mui/x-charts/') || id.includes('node_modules/d3-')) return 'charts';
+          if (id.includes('node_modules/@mui/material/') || id.includes('node_modules/@emotion/')) return 'mui';
+          if (id.includes('node_modules/@mui/icons-material/')) return 'mui-icons';
+          if (id.includes('node_modules/@supabase/')) return 'supabase';
+          if (id.includes('node_modules/leaflet/')) return 'leaflet';
         },
       },
     },
