@@ -1881,9 +1881,41 @@ Date: 2026-04-09
 - Commit: 78c78b8
 
 ## Next
-1. React Router data router migration
+1. ~~React Router data router migration~~ ✅ Done (session 106)
 2. Notification system (push + in-app bell)
 3. Offline-first expansion
 4. Chat polish (wire dialog stubs)
+
+- Sign: Claude
+
+---
+
+# Session 106: React Router Data Router Migration
+Date: 2026-04-09
+
+- Migrated from `<BrowserRouter>/<Routes>` to `createBrowserRouter` + `<RouterProvider>`
+- Created `RootLayout` component (Navbar, Toaster, FAB, global hooks via `<Outlet>`)
+- Created `RouteErrorBoundary` (per-route error UI with Reload/Dashboard buttons)
+- Refactored `routes.tsx` from flat array to `publicRoutes`/`privateRoutes` RouteObject arrays
+- PrivateRoute auth guard remains as parent layout route for all private children
+- Supports BrowserRouter (web) + HashRouter (Electron) via conditional `createRouter`
+- 57 files using react-router-dom hooks required zero changes
+
+## Files Modified/Created
+- client/src/AppRouter.tsx (rewritten)
+- client/src/config/routes.tsx (refactored to RouteObject arrays)
+- client/src/components/common/RouteErrorBoundary.tsx (NEW)
+
+## Verification
+- `npx tsc --noEmit`: ✅ 0 errors
+- `npm run build`: ✅ 7.4s
+- Dev server: ✅ starts on :5173
+- Commit: 6a6d757
+
+## Next
+1. Notification system (push + in-app bell)
+2. Offline-first expansion (check-ins, trackers)
+3. Chat polish (wire dialog stubs)
+4. Bundle size: AnalyticsPage 25KB but charts vendor chunk 414KB (consider dynamic import)
 
 - Sign: Claude
