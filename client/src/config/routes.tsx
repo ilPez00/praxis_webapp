@@ -1,6 +1,7 @@
 import React from 'react';
+import type { RouteObject } from 'react-router-dom';
 
-// Public Pages — eagerly loaded (needed immediately on first paint)
+// Public Pages — eagerly loaded
 import Root from '../layout/Root';
 import LoginPage from '../features/auth/LoginPage';
 import SignupPage from '../features/auth/SignupPage';
@@ -9,7 +10,7 @@ import CancelPage from '../features/payments/CancelPage';
 import DesktopWidget from '../features/dashboard/components/DesktopWidget';
 import MobileWidget from '../features/widgets/MobileWidget';
 
-// Private Pages — lazy loaded (code-split per route, loaded on demand)
+// Private Pages — lazy loaded
 const DashboardPage = React.lazy(() => import('../features/dashboard/DashboardPage'));
 const DiscoverPage = React.lazy(() => import('../features/discover/DiscoverPage'));
 const ProfilePage = React.lazy(() => import('../features/profile/ProfilePage'));
@@ -45,63 +46,56 @@ const CoworkRoomPage = React.lazy(() => import('../features/cowork/CoworkRoomPag
 const FailsPage = React.lazy(() => import('../features/fails/FailsPage'));
 const NotesPage = React.lazy(() => import('../features/notes/NotesPage'));
 
-interface RouteConfig {
-  path: string;
-  element: React.ElementType;
-  private: boolean;
-  param?: string; // Optional parameter for routes like /profile/:id
-}
-
-const routes: RouteConfig[] = [
-  // Public Routes
-  { path: '/', element: Root, private: false },
-  { path: '/login', element: LoginPage, private: false },
-  { path: '/signup', element: SignupPage, private: false },
-  { path: '/success', element: SuccessPage, private: false },
-  { path: '/cancel', element: CancelPage, private: false },
-  { path: '/desktop-widget', element: DesktopWidget, private: false }, // Should be accessible for the desktop app
-  { path: '/mobile-widget', element: MobileWidget, private: false }, // Home screen PWA shortcut
-
-  // Private Routes
-
-  { path: '/notes', element: NotesPage, private: true },
-  { path: '/dashboard', element: DashboardPage, private: true },
-  { path: '/discover', element: DiscoverPage, private: true },
-  { path: '/profile', element: ProfilePage, private: true },
-  { path: '/profile/:id', element: ProfilePage, private: true, param: 'id' },
-  { path: '/matches', element: MatchesPage, private: true },
-  { path: '/matches/:id', element: MatchesPage, private: true, param: 'id' },
-  { path: '/chat', element: ChatPage, private: true },
-  { path: '/chat/:user1Id/:user2Id', element: ChatRoom, private: true, param: 'user1Id' },
-  { path: '/onboarding', element: OnboardingPage, private: true },
-  { path: '/goals', element: GoalTreePage, private: true },
-  { path: '/goals/:id', element: GoalTreePage, private: true, param: 'id' },
-  { path: '/goal-selection', element: GoalSelectionPage, private: true },
-  { path: '/upgrade', element: UpgradePage, private: true },
-  { path: '/verify-identity', element: IdentityVerificationPage, private: true },
-  { path: '/analytics', element: AnalyticsPage, private: true },
-  { path: '/communication', element: CommunicationPage, private: true },
-  { path: '/groups', element: GroupsPage, private: true },
-  { path: '/groups/:roomId', element: GroupRoom, private: true, param: 'roomId' },
-  { path: '/boards', element: BoardsPage, private: true },
-  { path: '/boards/:roomId', element: GroupRoom, private: true, param: 'roomId' },
-  { path: '/coaching', element: CoachingPage, private: true },
-  { path: '/search', element: SearchPage, private: true },
-  { path: '/marketplace', element: MarketplacePage, private: true },
-  { path: '/admin', element: AdminPage, private: true },
-  { path: '/leaderboard', element: LeaderboardPage, private: true },
-  { path: '/services', element: ServicesPage, private: true },
-  { path: '/commitments', element: BettingPage, private: true },
-  { path: '/words', element: WordsPage, private: true },
-  { path: '/events', element: EventsPage, private: true },
-  { path: '/events/checkin', element: EventCheckinPage, private: false },
-  { path: '/friends', element: FriendsPage, private: true },
-  { path: '/posts/:postId', element: PostThreadPage, private: true },
-  { path: '/settings', element: SettingsPage, private: true },
-  { path: '/challenges', element: ChallengesPage, private: true },
-  { path: '/team-challenges', element: TeamChallengesPage, private: true },
-  { path: '/cowork', element: CoworkRoomPage, private: true },
-  { path: '/fails', element: FailsPage, private: true },
+// Route definitions used by AppRouter to build the data router
+export const publicRoutes: RouteObject[] = [
+  { index: true, element: <Root /> },
+  { path: 'login', element: <LoginPage /> },
+  { path: 'signup', element: <SignupPage /> },
+  { path: 'success', element: <SuccessPage /> },
+  { path: 'cancel', element: <CancelPage /> },
+  { path: 'desktop-widget', element: <DesktopWidget /> },
+  { path: 'mobile-widget', element: <MobileWidget /> },
+  { path: 'events/checkin', element: <EventCheckinPage /> },
 ];
 
-export default routes;
+export const privateRoutes: RouteObject[] = [
+  { path: 'notes', element: <NotesPage /> },
+  { path: 'dashboard', element: <DashboardPage /> },
+  { path: 'discover', element: <DiscoverPage /> },
+  { path: 'profile', element: <ProfilePage /> },
+  { path: 'profile/:id', element: <ProfilePage /> },
+  { path: 'matches', element: <MatchesPage /> },
+  { path: 'matches/:id', element: <MatchesPage /> },
+  { path: 'chat', element: <ChatPage /> },
+  { path: 'chat/:user1Id/:user2Id', element: <ChatRoom /> },
+  { path: 'onboarding', element: <OnboardingPage /> },
+  { path: 'goals', element: <GoalTreePage /> },
+  { path: 'goals/:id', element: <GoalTreePage /> },
+  { path: 'goal-selection', element: <GoalSelectionPage /> },
+  { path: 'upgrade', element: <UpgradePage /> },
+  { path: 'verify-identity', element: <IdentityVerificationPage /> },
+  { path: 'analytics', element: <AnalyticsPage /> },
+  { path: 'communication', element: <CommunicationPage /> },
+  { path: 'groups', element: <GroupsPage /> },
+  { path: 'groups/:roomId', element: <GroupRoom /> },
+  { path: 'boards', element: <BoardsPage /> },
+  { path: 'boards/:roomId', element: <GroupRoom /> },
+  { path: 'coaching', element: <CoachingPage /> },
+  { path: 'search', element: <SearchPage /> },
+  { path: 'marketplace', element: <MarketplacePage /> },
+  { path: 'admin', element: <AdminPage /> },
+  { path: 'leaderboard', element: <LeaderboardPage /> },
+  { path: 'services', element: <ServicesPage /> },
+  { path: 'commitments', element: <BettingPage /> },
+  { path: 'words', element: <WordsPage /> },
+  { path: 'events', element: <EventsPage /> },
+  { path: 'friends', element: <FriendsPage /> },
+  { path: 'posts/:postId', element: <PostThreadPage /> },
+  { path: 'settings', element: <SettingsPage /> },
+  { path: 'challenges', element: <ChallengesPage /> },
+  { path: 'team-challenges', element: <TeamChallengesPage /> },
+  { path: 'cowork', element: <CoworkRoomPage /> },
+  { path: 'fails', element: <FailsPage /> },
+];
+
+export default { publicRoutes, privateRoutes };
