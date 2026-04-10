@@ -1919,3 +1919,51 @@ Date: 2026-04-09
 4. Bundle size: AnalyticsPage 25KB but charts vendor chunk 414KB (consider dynamic import)
 
 - Sign: Claude
+
+---
+
+# Session 107: Code Audit + Security Patch
+Date: 2026-04-10
+
+## Audit Findings
+- **Backend tsc**: ✅ 0 errors
+- **Client tsc**: ✅ 0 errors
+- **Client build**: ✅ 762ms (Rolldown cache hit)
+- **Convention scan**: clean — no `Grid item xs` usage, no hardcoded `localhost:3001`
+  outside the documented dev fallback in `client/src/lib/api.ts`
+- **Dead code**: 1 TODO comment project-wide (`DesktopWidget.tsx:46` —
+  cosmetic: widget `goalName: ''` placeholder, non-blocking, left as-is)
+- **Dependency vulnerabilities** (PATCHED this session):
+  - Backend: 3 (1 high, 1 moderate, 1 critical)
+  - Client: 1 (critical)
+
+## Security Patches (`npm audit fix`)
+Non-major bumps only — zero API surface change:
+- **axios** 1.13.5 → 1.15.0 — **CRITICAL** SSRF via NO_PROXY hostname normalization bypass
+  (GHSA-3p68-rc4w-qgx5). Affects `client/src/lib/api.ts` transitively.
+- **path-to-regexp** 8.3.0 → 8.4.2 — **HIGH** ReDoS via sequential optional groups /
+  multiple wildcards (GHSA-j3q9-mxjg-w52f, GHSA-27v5-c462-wpq7). Backend routing dep.
+- **handlebars** 4.7.8 → 4.7.9 — **MODERATE** DoS via malformed decorator syntax
+  (GHSA-9cx6-37pm-9jff). Backend template dep.
+- Transitive: `proxy-from-env` 1.x → 2.1.0, `brace-expansion` patch bumps
+
+## Files Modified
+- `package-lock.json`
+- `client/package-lock.json`
+- `claude_steps.txt`
+
+## Verification
+- `npm audit` (backend): ✅ 0 vulnerabilities (was 3)
+- `npm audit` (client): ✅ 0 vulnerabilities (was 1)
+- `npx tsc --noEmit` (backend): ✅ 0 errors
+- `npx tsc --noEmit` (client): ✅ 0 errors
+- `npm run build` (client): ✅ 762ms, all chunks generated
+
+## Next
+1. Notification system (push + in-app bell) — still priority 1
+2. Offline-first expansion (check-ins, trackers)
+3. Chat polish (wire dialog stubs)
+4. Bundle: dynamic-import `charts` chunk (currently 414KB eager on AnalyticsPage)
+5. Resolve DesktopWidget.tsx:46 TODO (fetch topGoal name for native widget payload)
+
+- Sign: Claude
