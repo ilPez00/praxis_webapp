@@ -38,6 +38,7 @@ import honorRoutes from './routes/honorRoutes';
 import referralRoutes from './routes/referralRoutes';
 import friendRoutes from './routes/friendRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import pushRoutes from './routes/pushRoutes';
 import muteRoutes from './routes/muteRoutes';
 import placesRoutes from './routes/placesRoutes';
 import offersRoutes from './routes/offersRoutes';
@@ -59,6 +60,7 @@ import gamificationRoutes from './routes/gamificationRoutes';
 import seasonalEventRoutes from './routes/seasonalEventRoutes';
 import accountabilityBuddyRoutes from './routes/accountabilityBuddyRoutes';
 import failsRoutes from './routes/failsRoutes';
+import weeklyChallengeRoutes from './routes/weeklyChallengeRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -260,6 +262,7 @@ apiRouter.use('/honor', generalLimiter, honorRoutes);
 apiRouter.use('/referrals', generalLimiter, referralRoutes);
 apiRouter.use('/friends', generalLimiter, friendRoutes);
 apiRouter.use('/notifications', generalLimiter, notificationRoutes);
+apiRouter.use('/push', generalLimiter, pushRoutes);
 apiRouter.use('/mutes', generalLimiter, muteRoutes);
 apiRouter.use('/places', generalLimiter, placesRoutes);
 apiRouter.use('/offers', generalLimiter, offersRoutes);
@@ -278,6 +281,7 @@ apiRouter.use('/gamification', generalLimiter, gamificationRoutes);
 apiRouter.use('/seasonal-events', generalLimiter, seasonalEventRoutes);
 apiRouter.use('/buddies', generalLimiter, accountabilityBuddyRoutes);
 apiRouter.use('/fails', generalLimiter, failsRoutes);
+apiRouter.use('/weekly-challenge', generalLimiter, weeklyChallengeRoutes);
 
 app.use('/api', apiRouter);
 

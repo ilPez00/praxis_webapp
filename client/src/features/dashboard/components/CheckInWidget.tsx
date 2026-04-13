@@ -94,10 +94,14 @@ const CheckInWidget: React.FC<Props> = ({
     setLoading(true);
     try {
       const res = await api.post('/checkins', { userId, mood, winOfTheDay: winText });
-      const { alreadyCheckedIn, streak, totalPoints, shieldConsumed, mysteryReward, seasonalEventCompleted } = res.data;
+      const { alreadyCheckedIn, streak, totalPoints, shieldConsumed, shieldEarned, mysteryReward, seasonalEventCompleted } = res.data;
       if (!alreadyCheckedIn) {
         setCheckedIn(true);
         onCheckIn(streak, totalPoints);
+
+        if (shieldEarned) {
+          toast.success(`Free Streak Shield earned at ${streak}-day milestone!`, { icon: '🛡️', duration: 5000 });
+        }
 
         if (seasonalEventCompleted) {
           celebrateMilestone({
@@ -178,7 +182,7 @@ const CheckInWidget: React.FC<Props> = ({
             }}
           />
 
-          {streakShield && (
+          {streakShield ? (
             <Tooltip title="Streak Shield Active — miss a day without losing your streak!">
               <Chip
                 icon={<ShieldIcon sx={{ fontSize: '14px !important' }} />}
@@ -191,6 +195,35 @@ const CheckInWidget: React.FC<Props> = ({
                   fontWeight: 700,
                   fontSize: '0.7rem',
                   '& .MuiChip-icon': { color: '#22C55E' },
+                }}
+              />
+            </Tooltip>
+          ) : currentStreak >= 3 && (
+            <Tooltip title="Buy a Streak Shield (250 PP) — protects your streak if you miss a day">
+              <Chip
+                icon={<ShieldIcon sx={{ fontSize: '14px !important' }} />}
+                label="Buy Shield"
+                size="small"
+                clickable
+                onClick={async () => {
+                  try {
+                    const res = await api.post('/points/spend', { item: 'streak_shield' });
+                    if (res.data.success) {
+                      toast.success('Streak Shield activated!', { icon: '🛡️' });
+                    }
+                  } catch (err: any) {
+                    const msg = err.response?.data?.message || err.response?.data?.error || 'Not enough PP';
+                    toast.error(msg);
+                  }
+                }}
+                sx={{
+                  bgcolor: 'rgba(96,165,250,0.12)',
+                  color: '#60A5FA',
+                  border: '1px dashed rgba(96,165,250,0.4)',
+                  fontWeight: 700,
+                  fontSize: '0.7rem',
+                  '& .MuiChip-icon': { color: '#60A5FA' },
+                  '&:hover': { bgcolor: 'rgba(96,165,250,0.2)' },
                 }}
               />
             </Tooltip>

@@ -677,7 +677,7 @@ const AICoachPage: React.FC = () => {
           open={isBetDialogOpen}
           onClose={() => setIsBetDialogOpen(false)}
           challenge={dailyBrief.challenge}
-          onSuccess={() => navigate('/betting')}
+          onSuccess={() => navigate('/commitments')}
         />
       )}
 

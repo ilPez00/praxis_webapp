@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
+import { sendPush } from './pushController';
 
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('does not exist') || msg?.includes('42P01');
@@ -45,6 +46,9 @@ export async function pushNotification(opts: {
     if (error && !SCHEMA_MISSING(error.message)) {
       logger.warn(`[Notification] Insert failed for ${userId}:`, error.message);
     }
+
+    // Fire-and-forget browser push
+    sendPush(userId, { title, body: body ?? undefined, link: link ?? undefined });
   } catch (err: any) {
     if (!SCHEMA_MISSING(err?.message ?? '')) {
       logger.warn(`[Notification] pushNotification threw for ${userId}:`, err?.message);

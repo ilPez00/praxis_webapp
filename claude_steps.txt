@@ -1967,3 +1967,72 @@ Non-major bumps only — zero API surface change:
 5. Resolve DesktopWidget.tsx:46 TODO (fetch topGoal name for native widget payload)
 
 - Sign: Claude
+
+---
+
+Session 107: Gamification Upgrades — Weekly Track, Combos, Achievement Collection
+- Date: 2026-04-12
+
+## Changes
+
+### 1. Streak Shield Upgrade
+- `checkinController.ts`: auto-grants free streak shield at every 30-day streak milestone (30, 60, 90...)
+- `CheckInWidget.tsx`: added "Buy Shield" chip CTA when shield not active (250 PP), shows toast on free shield earn
+- Response now includes `shieldEarned` flag
+
+### 2. Weekly Challenge Track (new feature)
+- `weeklyChallengeController.ts` (NEW): 7-tier weekly progression — cumulative XP thresholds reset each Monday
+  - Tiers: 100/300/600/1000/1500/2200/3000 XP → escalating PP+XP rewards
+  - Endpoints: GET /, POST /add-xp, POST /claim/:tier, GET /history
+- `weeklyChallengeRoutes.ts` (NEW): wired at `/api/weekly-challenge`
+- `weeklyXP.ts` (NEW utility): `bumpWeeklyXP()` helper — fire-and-forget, called from checkinController + gamificationController
+- `WeeklyChallengeWidget.tsx` (NEW): 7-node "battle pass" visual with tooltips, pulse animation on claimable tiers, progress bar
+
+### 3. Achievement Collection Screen (new feature)
+- `gamificationController.ts`: added `getAchievementCollection` endpoint — returns full master catalogue grouped by category, locked achievements as silhouettes (secret ones show hints)
+- `AchievementCollectionPage.tsx` (NEW): full gallery with categories, locked/unlocked states, progress bars, secret achievement support
+- `GamificationSection.tsx`: added "View Achievement Collection" link button
+- Route: `/achievements` added to `routes.tsx`
+
+### 4. Combo / Chain Bonus System (new feature)
+- `gamificationController.ts`: added `checkCombos` + `getCombos` — tracks daily action bitmask, awards bonus XP/PP when combo recipes completed
+  - Recipes: Full Day (checkin+tracker+journal = +50XP/+15PP), Social Butterfly (post+comment+honor = +40XP/+10PP), Grind Mode (checkin+tracker+goal = +75XP/+25PP)
+- `DailyCombosWidget.tsx` (NEW): action checklist per combo with progress chips
+- Routes: GET /gamification/combos, POST /gamification/combos/check
+
+### 5. SQL Migration
+- `migrations/2026-04-12-gamification-upgrades.sql`: weekly_challenge_progress, user_badges, combo_claims tables + achievements_master enhancements (category, hint, is_secret) + 10 seed achievements
+
+### 6. Dashboard Integration
+- `DashboardPage.tsx`: added WeeklyChallengeWidget + DailyCombosWidget below DailyQuestsWidget
+- `app.ts`: registered `/api/weekly-challenge` routes
+
+## Files Modified
+- src/controllers/checkinController.ts
+- src/controllers/gamificationController.ts
+- src/controllers/weeklyChallengeController.ts (NEW)
+- src/routes/gamificationRoutes.ts
+- src/routes/weeklyChallengeRoutes.ts (NEW)
+- src/utils/weeklyXP.ts (NEW)
+- src/app.ts
+- client/src/features/dashboard/DashboardPage.tsx
+- client/src/features/dashboard/components/CheckInWidget.tsx
+- client/src/features/profile/components/GamificationSection.tsx
+- client/src/features/achievements/AchievementCollectionPage.tsx (NEW)
+- client/src/components/common/WeeklyChallengeWidget.tsx (NEW)
+- client/src/components/common/DailyCombosWidget.tsx (NEW)
+- client/src/config/routes.tsx
+- migrations/2026-04-12-gamification-upgrades.sql (NEW)
+
+## Verification
+- `npx tsc --noEmit` (backend): 0 errors
+- `npx tsc --noEmit` (client): 0 errors
+
+## Next
+1. Run SQL migration `migrations/2026-04-12-gamification-upgrades.sql` in Supabase
+2. Streak freeze inventory (upgrade boolean to integer count for stacking multiple shields)
+3. Spectator betting on duels
+4. PP sink rotation (weekly cosmetics shop)
+5. XP curve rebalance (logarithmic instead of linear 1000/level)
+
+- Sign: Claude

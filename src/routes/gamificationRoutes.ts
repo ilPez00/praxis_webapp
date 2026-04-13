@@ -12,11 +12,14 @@ import {
   progressQuest,
   claimQuestReward,
   getAchievements,
+  getAchievementCollection,
   trackSocialAction,
   getSocialTracking,
   getTitles,
   equipTitle,
   unequipTitle,
+  checkCombos,
+  getCombos,
 } from '../controllers/gamificationController';
 
 const router = Router();
@@ -32,6 +35,7 @@ router.post('/quests/:questId/claim', authenticateToken, claimQuestReward);
 
 // Achievements
 router.get('/achievements', authenticateToken, getAchievements);
+router.get('/achievements/collection', authenticateToken, getAchievementCollection);
 
 // Social Rewards
 router.post('/social/track', authenticateToken, trackSocialAction);
@@ -41,5 +45,9 @@ router.get('/social/tracking', authenticateToken, getSocialTracking);
 router.get('/titles', authenticateToken, getTitles);
 router.post('/titles/equip', authenticateToken, equipTitle);
 router.post('/titles/unequip', authenticateToken, unequipTitle);
+
+// Combos / Action Chains
+router.get('/combos', authenticateToken, getCombos);
+router.post('/combos/check', authenticateToken, checkCombos);
 
 export default router;

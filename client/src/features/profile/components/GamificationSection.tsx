@@ -1,12 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
+  Button,
   Chip,
   Grid,
   Typography,
 } from '@mui/material';
 import { LinearProgress } from '@mui/material';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import CollectionsIcon from '@mui/icons-material/Collections';
 import GlassCard from '../../../components/common/GlassCard';
 import ErrorBoundary from '../../../components/common/ErrorBoundary';
 import LevelBadge from '../../../components/common/LevelBadge';
@@ -17,6 +20,7 @@ interface GamificationSectionProps {
 }
 
 const GamificationSection: React.FC<GamificationSectionProps> = ({ profile }) => {
+  const navigate = useNavigate();
   return (
     <ErrorBoundary label="Gamification">
     <GlassCard glowColor="rgba(167,139,250,0.1)" sx={{ p: 3, mb: 3 }}>
@@ -117,6 +121,23 @@ const GamificationSection: React.FC<GamificationSectionProps> = ({ profile }) =>
           />
         </Box>
       )}
+
+      {/* Achievement Collection link */}
+      <Box sx={{ mt: 2, textAlign: 'center' }}>
+        <Button
+          size="small"
+          startIcon={<CollectionsIcon sx={{ fontSize: '16px !important' }} />}
+          onClick={() => navigate('/achievements')}
+          sx={{
+            color: '#F59E0B',
+            fontWeight: 700,
+            fontSize: '0.78rem',
+            '&:hover': { bgcolor: 'rgba(245,158,11,0.1)' },
+          }}
+        >
+          View Achievement Collection
+        </Button>
+      </Box>
     </GlassCard>
     </ErrorBoundary>
   );

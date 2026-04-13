@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, NotFoundError } from '../utils/appErrors';
 import { cacheDelete } from '../utils/cache';
+import { bumpWeeklyXP } from '../utils/weeklyXP';
 import EmailService from '../services/emailService';
 import logger from '../utils/logger';
 
@@ -124,6 +125,9 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   const leveledUp = levelData?.[0]?.leveled_up || false;
   const newLevel = levelData?.[0]?.new_level || profileWithLevel?.level || 1;
 
+  // Bump weekly challenge track (fire-and-forget)
+  bumpWeeklyXP(userId, xpAwarded);
+
   // Progress daily quest for check-in
   await supabase.rpc('progress_user_quest', {
     p_user_id: userId,
@@ -134,6 +138,15 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
   // Check for streak milestone achievements
   if (streakUpdate.current_streak >= 7) {
     await supabase.rpc('check_user_achievements', { p_user_id: userId });
+  }
+
+  // Auto-grant free streak shield at 30-day milestones (30, 60, 90...)
+  const isShieldMilestone = streakUpdate.current_streak > 0
+    && streakUpdate.current_streak % 30 === 0
+    && !(profile.streak_shield);
+  if (isShieldMilestone) {
+    await supabase.from('profiles').update({ streak_shield: true }).eq('id', userId);
+    logger.info(`[StreakShield] Auto-granted free shield to ${userId} at ${streakUpdate.current_streak}d streak`);
   }
 
   // Send milestone celebration email (7, 30, 90, 365 days)
@@ -322,6 +335,8 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
     mysteryReward,
     // Seasonal event completion
     seasonalEventCompleted: seasonalEventUpdate,
+    // Free shield earned at 30-day milestones
+    shieldEarned: isShieldMilestone,
   });
 });
 

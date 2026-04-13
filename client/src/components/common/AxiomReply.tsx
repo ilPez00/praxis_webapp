@@ -4,20 +4,15 @@ import ReplyIcon from '@mui/icons-material/Reply';
 import CloseIcon from '@mui/icons-material/Close';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { Domain } from '../../models/Domain';
+import { DOMAIN_COLORS, DOMAIN_ICONS } from '../../types/goal';
 
-// Goal domains for categorization
-const GOAL_DOMAINS = [
-  { value: 'career', label: '💼 Career', color: '#8B5CF6' },
-  { value: 'fitness', label: '💪 Fitness', color: '#EF4444' },
-  { value: 'learning', label: '📚 Learning', color: '#10B981' },
-  { value: 'relationships', label: '👥 Relationships', color: '#EC4899' },
-  { value: 'finance', label: '💰 Finance', color: '#F59E0B' },
-  { value: 'health', label: '🏥 Health', color: '#3B82F6' },
-  { value: 'creativity', label: '🎨 Creativity', color: '#F472B6' },
-  { value: 'spirituality', label: '🧘 Spirituality', color: '#A78BFA' },
-  { value: 'community', label: '🌍 Community', color: '#14B8A6' },
-  { value: 'personal', label: '🎯 Personal', color: '#6B7280' },
-];
+// Build domain options from canonical enum
+const GOAL_DOMAINS = Object.values(Domain).map(d => ({
+  value: d,
+  label: `${DOMAIN_ICONS[d] || '🎯'} ${d}`,
+  color: DOMAIN_COLORS[d] || '#9CA3AF',
+}));
 
 interface AxiomReplyProps {
   type: 'bet' | 'match' | 'place' | 'event' | 'resource';
@@ -44,7 +39,7 @@ const AxiomReply: React.FC<AxiomReplyProps> = ({
 }) => {
   const [replyOpen, setReplyOpen] = useState(false);
   const [reply, setReply] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState(metadata?.domain || GOAL_DOMAINS[0].value);
+  const [selectedDomain, setSelectedDomain] = useState(metadata?.domain || Domain.PERSONAL_GOALS);
   const [saving, setSaving] = useState(false);
   const [isPrivate, setIsPrivate] = useState(true);
 

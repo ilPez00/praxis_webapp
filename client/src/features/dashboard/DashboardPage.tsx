@@ -12,6 +12,8 @@ import GettingStartedPage from '../onboarding/GettingStartedPage';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import LevelBadge from '../../components/common/LevelBadge';
 import DailyQuestsWidget from '../../components/common/DailyQuestsWidget';
+import WeeklyChallengeWidget from '../../components/common/WeeklyChallengeWidget';
+import DailyCombosWidget from '../../components/common/DailyCombosWidget';
 import AchievementShareModal from '../../components/common/AchievementShareModal';
 import SeasonalEventCard from '../../components/common/SeasonalEventCard';
 import { useGamificationNotifications } from '../../hooks/useGamificationNotifications';
@@ -353,6 +355,12 @@ const DashboardPage: React.FC = () => {
                     />
                     <Box sx={{ mt: 2 }}>
                       <DailyQuestsWidget />
+                    </Box>
+                    <Box sx={{ mt: 2 }}>
+                      <WeeklyChallengeWidget />
+                    </Box>
+                    <Box sx={{ mt: 2 }}>
+                      <DailyCombosWidget />
                     </Box>
                   </GlassCard>
                 </ErrorBoundary>

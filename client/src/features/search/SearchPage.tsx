@@ -451,7 +451,7 @@ const SearchPage: React.FC = () => {
                 {results.notes!.map(n => (
                   <Card
                     key={n.id}
-                    onClick={() => navigate(n.entry_type === 'axiom_brief' ? '/coaching' : '/notebook')}
+                    onClick={() => navigate(n.entry_type === 'axiom_brief' ? '/coaching' : '/notes')}
                     sx={{
                       cursor: 'pointer',
                       bgcolor: 'rgba(255,255,255,0.03)',

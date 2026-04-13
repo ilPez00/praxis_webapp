@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import { useNavigate } from 'react-router-dom';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 const NOTIF_PREFS_KEY = 'praxis_notif_prefs';
 const ANALYTICS_OPT_KEY = 'praxis_analytics_opt';
@@ -54,6 +55,9 @@ const Section: React.FC<{ icon: React.ReactNode; title: string; children: React.
 const SettingsPage: React.FC = () => {
   const { user, refetch } = useUser();
   const navigate = useNavigate();
+
+  // Push notifications
+  const { permission, subscribed, loading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications(user?.id);
 
   // Notification prefs (localStorage)
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
@@ -232,6 +236,48 @@ const SettingsPage: React.FC = () => {
 
       {/* Notifications */}
       <Section icon={<NotificationsIcon sx={{ color: '#60A5FA' }} />} title="Notifications">
+        {/* Browser push toggle */}
+        {'PushManager' in window && (
+          <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(96,165,250,0.06)', borderRadius: '12px', border: '1px solid rgba(96,165,250,0.15)' }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={subscribed}
+                  disabled={pushLoading || permission === 'denied'}
+                  onChange={async () => {
+                    if (subscribed) {
+                      await pushUnsubscribe();
+                      toast.success('Push notifications disabled');
+                    } else {
+                      const ok = await pushSubscribe();
+                      if (ok) toast.success('Push notifications enabled!');
+                      else if (permission === 'denied') toast('Notifications blocked by browser — check site permissions', { icon: '🚫' });
+                    }
+                  }}
+                  size="small"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>Browser Push Notifications</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {permission === 'denied'
+                      ? 'Blocked by browser — enable in site settings'
+                      : subscribed
+                      ? 'You\'ll get notified even when the app is closed'
+                      : 'Get notified about messages, matches, and more'}
+                  </Typography>
+                </Box>
+              }
+              sx={{ justifyContent: 'space-between', ml: 0, mr: 0 }}
+              labelPlacement="start"
+            />
+          </Box>
+        )}
+
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', display: 'block', mb: 1 }}>
+          In-App Categories
+        </Typography>
         <Stack spacing={0.5}>
           {[
             { key: 'messages', label: 'New messages' },

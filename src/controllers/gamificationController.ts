@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, BadRequestError, NotFoundError } from '../utils/appErrors';
+import { bumpWeeklyXP } from '../utils/weeklyXP';
 import logger from '../utils/logger';
 
 // =============================================================================
@@ -349,6 +350,83 @@ export const getAchievements = catchAsync(async (req: Request, res: Response) =>
   });
 });
 
+/**
+ * GET /gamification/achievements/collection
+ * Full achievement catalogue — locked with hints, unlocked with progress
+ */
+export const getAchievementCollection = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id || (req.query.userId as string);
+  if (!userId) throw new BadRequestError('Authentication or userId required');
+
+  // Get the full master catalogue
+  const { data: master, error: masterErr } = await supabase
+    .from('achievements_master')
+    .select('id, achievement_key, title, description, icon, tier, category, xp_reward, pp_reward, title_unlock, requirement_target, hint, is_secret')
+    .order('category')
+    .order('tier');
+
+  if (masterErr) {
+    logger.error('Achievement master query error:', masterErr.message);
+    return res.json({ categories: [], totalUnlocked: 0, totalAchievements: 0 });
+  }
+
+  // Get user's progress
+  const { data: userProgress } = await supabase
+    .from('user_achievements')
+    .select('achievement_id, progress, completed, completed_at')
+    .eq('user_id', userId);
+
+  const progressMap = new Map(
+    (userProgress ?? []).map((u: any) => [u.achievement_id, u])
+  );
+
+  // Group by category
+  const categoryMap = new Map<string, any[]>();
+  let totalUnlocked = 0;
+
+  for (const a of (master ?? [])) {
+    const userEntry = progressMap.get(a.id);
+    const completed = userEntry?.completed ?? false;
+    if (completed) totalUnlocked++;
+
+    const entry = {
+      id: a.id,
+      achievement_key: a.achievement_key,
+      // Secret achievements: hide title/description until unlocked
+      title: a.is_secret && !completed ? '???' : a.title,
+      description: a.is_secret && !completed ? (a.hint || 'Complete a hidden challenge...') : a.description,
+      icon: a.is_secret && !completed ? '❓' : (a.icon || '🏆'),
+      tier: a.tier,
+      xp_reward: a.xp_reward,
+      pp_reward: a.pp_reward,
+      title_unlock: completed ? a.title_unlock : null,
+      requirement_target: a.requirement_target,
+      progress: userEntry?.progress ?? 0,
+      completed,
+      completed_at: userEntry?.completed_at ?? null,
+      is_secret: a.is_secret ?? false,
+      hint: a.hint,
+    };
+
+    const cat = a.category || 'General';
+    if (!categoryMap.has(cat)) categoryMap.set(cat, []);
+    categoryMap.get(cat)!.push(entry);
+  }
+
+  const categories = Array.from(categoryMap.entries()).map(([name, achievements]) => ({
+    name,
+    achievements,
+    unlocked: achievements.filter((a: any) => a.completed).length,
+    total: achievements.length,
+  }));
+
+  return res.json({
+    categories,
+    totalUnlocked,
+    totalAchievements: (master ?? []).length,
+  });
+});
+
 // =============================================================================
 // Social Interaction Rewards
 // =============================================================================
@@ -437,6 +515,9 @@ export const trackSocialAction = catchAsync(async (req: Request, res: Response) 
     p_pp_amount: ppToAward,
     p_source: `social_${actionType}`,
   });
+
+  // Bump weekly challenge track
+  bumpWeeklyXP(userId, xpToAward);
 
   // Progress quest if applicable
   if (config.quest_type) {
@@ -592,7 +673,7 @@ export const equipTitle = catchAsync(async (req: Request, res: Response) => {
  */
 export const unequipTitle = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
-  
+
   if (!userId) {
     throw new BadRequestError('Authentication required');
   }
@@ -605,5 +686,232 @@ export const unequipTitle = catchAsync(async (req: Request, res: Response) => {
   return res.json({
     success: true,
     equipped: null,
+  });
+});
+
+// =============================================================================
+// Combo / Chain Bonus System
+// =============================================================================
+
+const COMBO_RECIPES: {
+  id: string;
+  label: string;
+  actions: string[];
+  xp_bonus: number;
+  pp_bonus: number;
+  description: string;
+}[] = [
+  {
+    id: 'full_day',
+    label: 'Full Day',
+    actions: ['check_in', 'log_tracker', 'journal_entry'],
+    xp_bonus: 50,
+    pp_bonus: 15,
+    description: 'Check in + log a tracker + write a journal entry',
+  },
+  {
+    id: 'social_butterfly',
+    label: 'Social Butterfly',
+    actions: ['create_post', 'comment_post', 'give_honor'],
+    xp_bonus: 40,
+    pp_bonus: 10,
+    description: 'Create a post + comment on someone + give honor',
+  },
+  {
+    id: 'grind_mode',
+    label: 'Grind Mode',
+    actions: ['check_in', 'log_tracker', 'complete_goal'],
+    xp_bonus: 75,
+    pp_bonus: 25,
+    description: 'Check in + log a tracker + complete a goal',
+  },
+];
+
+/**
+ * POST /gamification/combos/check
+ * Check if any combos completed today and award bonus.
+ * Called after any action that might complete a combo.
+ */
+export const checkCombos = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { actionType } = req.body;
+  if (!userId) throw new BadRequestError('Authentication required');
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Get all actions completed today from social_rewards_tracking + checkins + tracker entries
+  const [trackingRes, checkinRes, trackerRes, journalRes] = await Promise.all([
+    supabase.from('social_rewards_tracking')
+      .select('action_type')
+      .eq('user_id', userId)
+      .eq('action_date', today),
+    supabase.from('checkins')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('checked_in_at', `${today}T00:00:00.000Z`)
+      .lt('checked_in_at', `${today}T23:59:59.999Z`)
+      .limit(1),
+    supabase.from('tracker_entries')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('created_at', `${today}T00:00:00.000Z`)
+      .lt('created_at', `${today}T23:59:59.999Z`)
+      .limit(1),
+    supabase.from('journal_entries')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('created_at', `${today}T00:00:00.000Z`)
+      .lt('created_at', `${today}T23:59:59.999Z`)
+      .limit(1),
+  ]);
+
+  // Build set of completed actions today
+  const completedActions = new Set<string>();
+  if ((checkinRes.data ?? []).length > 0) completedActions.add('check_in');
+  if ((trackerRes.data ?? []).length > 0) completedActions.add('log_tracker');
+  if ((journalRes.data ?? []).length > 0) completedActions.add('journal_entry');
+
+  for (const t of (trackingRes.data ?? [])) {
+    // Map social tracking types to combo action names
+    if (t.action_type === 'post_created') completedActions.add('create_post');
+    if (t.action_type === 'comment_created') completedActions.add('comment_post');
+    if (t.action_type === 'honor_given') completedActions.add('give_honor');
+    if (t.action_type === 'goal_completed') completedActions.add('complete_goal');
+  }
+
+  // Also add the current action
+  if (actionType) completedActions.add(actionType);
+
+  // Check which combos are now complete
+  const { data: claimedToday } = await supabase
+    .from('combo_claims')
+    .select('combo_id')
+    .eq('user_id', userId)
+    .eq('claim_date', today);
+
+  const alreadyClaimed = new Set((claimedToday ?? []).map((c: any) => c.combo_id));
+
+  const newCombos: typeof COMBO_RECIPES = [];
+  for (const recipe of COMBO_RECIPES) {
+    if (alreadyClaimed.has(recipe.id)) continue;
+    if (recipe.actions.every(a => completedActions.has(a))) {
+      newCombos.push(recipe);
+    }
+  }
+
+  // Award combos
+  const awarded = [];
+  for (const combo of newCombos) {
+    await supabase.rpc('add_xp_to_user', {
+      p_user_id: userId,
+      p_xp_amount: combo.xp_bonus,
+      p_pp_amount: combo.pp_bonus,
+      p_source: `combo_${combo.id}`,
+    });
+
+    bumpWeeklyXP(userId, combo.xp_bonus);
+
+    await supabase.from('combo_claims').insert({
+      user_id: userId,
+      combo_id: combo.id,
+      claim_date: today,
+    });
+
+    awarded.push({
+      id: combo.id,
+      label: combo.label,
+      xp_bonus: combo.xp_bonus,
+      pp_bonus: combo.pp_bonus,
+    });
+
+    logger.info(`[Combo] User ${userId} completed "${combo.label}" (+${combo.xp_bonus} XP, +${combo.pp_bonus} PP)`);
+  }
+
+  return res.json({
+    completedActions: Array.from(completedActions),
+    awarded,
+    // Also return active combo progress for the frontend
+    combos: COMBO_RECIPES.map(r => ({
+      id: r.id,
+      label: r.label,
+      description: r.description,
+      xp_bonus: r.xp_bonus,
+      pp_bonus: r.pp_bonus,
+      actions: r.actions,
+      progress: r.actions.filter(a => completedActions.has(a)).length,
+      total: r.actions.length,
+      completed: r.actions.every(a => completedActions.has(a)),
+      claimed: alreadyClaimed.has(r.id) || newCombos.some(n => n.id === r.id),
+    })),
+  });
+});
+
+/**
+ * GET /gamification/combos
+ * Get available combos and today's progress
+ */
+export const getCombos = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new BadRequestError('Authentication required');
+
+  // Redirect to check with no action — returns current state
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [trackingRes, checkinRes, trackerRes, journalRes, claimedRes] = await Promise.all([
+    supabase.from('social_rewards_tracking')
+      .select('action_type')
+      .eq('user_id', userId)
+      .eq('action_date', today),
+    supabase.from('checkins')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('checked_in_at', `${today}T00:00:00.000Z`)
+      .lt('checked_in_at', `${today}T23:59:59.999Z`)
+      .limit(1),
+    supabase.from('tracker_entries')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('created_at', `${today}T00:00:00.000Z`)
+      .lt('created_at', `${today}T23:59:59.999Z`)
+      .limit(1),
+    supabase.from('journal_entries')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('created_at', `${today}T00:00:00.000Z`)
+      .lt('created_at', `${today}T23:59:59.999Z`)
+      .limit(1),
+    supabase.from('combo_claims')
+      .select('combo_id')
+      .eq('user_id', userId)
+      .eq('claim_date', today),
+  ]);
+
+  const completedActions = new Set<string>();
+  if ((checkinRes.data ?? []).length > 0) completedActions.add('check_in');
+  if ((trackerRes.data ?? []).length > 0) completedActions.add('log_tracker');
+  if ((journalRes.data ?? []).length > 0) completedActions.add('journal_entry');
+  for (const t of (trackingRes.data ?? [])) {
+    if (t.action_type === 'post_created') completedActions.add('create_post');
+    if (t.action_type === 'comment_created') completedActions.add('comment_post');
+    if (t.action_type === 'honor_given') completedActions.add('give_honor');
+    if (t.action_type === 'goal_completed') completedActions.add('complete_goal');
+  }
+
+  const alreadyClaimed = new Set((claimedRes.data ?? []).map((c: any) => c.combo_id));
+
+  return res.json({
+    completedActions: Array.from(completedActions),
+    combos: COMBO_RECIPES.map(r => ({
+      id: r.id,
+      label: r.label,
+      description: r.description,
+      xp_bonus: r.xp_bonus,
+      pp_bonus: r.pp_bonus,
+      actions: r.actions,
+      progress: r.actions.filter(a => completedActions.has(a)).length,
+      total: r.actions.length,
+      completed: r.actions.every(a => completedActions.has(a)),
+      claimed: alreadyClaimed.has(r.id),
+    })),
   });
 });

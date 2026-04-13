@@ -722,7 +722,7 @@ const GoalWidgets: React.FC<Props> = ({ userId, allNodes, activeBets = [], onPro
           Your Goals
         </Typography>
         <Tooltip title="Open goal tree">
-          <IconButton size="small" onClick={() => navigate('/goal-tree')} sx={{ color: 'text.disabled', width: 22, height: 22 }}>
+          <IconButton size="small" onClick={() => navigate('/goals')} sx={{ color: 'text.disabled', width: 22, height: 22 }}>
             <OpenInNewIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>

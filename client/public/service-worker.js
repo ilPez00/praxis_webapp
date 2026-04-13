@@ -190,7 +190,57 @@ async function refetchAndCache(request: Request, cache: Cache) {
 /**
  * Helper to wait for async operations in event handlers
  */
-function eventWaitUntil(promise: Promise<any>) {
-  // @ts-ignore - self is ServiceWorkerGlobalScope
+function eventWaitUntil(promise) {
   self.waitUntil(promise);
 }
+
+// ---------------------------------------------------------------------------
+// Push notifications
+// ---------------------------------------------------------------------------
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch {
+    payload = { title: 'Praxis', body: event.data.text() };
+  }
+
+  const options = {
+    body:  payload.body || '',
+    icon:  payload.icon || '/icons/icon-192x192.png',
+    badge: payload.badge || '/icons/icon-72x72.png',
+    data:  { url: payload.url || '/' },
+    vibrate: [100, 50, 100],
+    tag: payload.tag || 'praxis-notification',
+    renotify: true,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || 'Praxis', options)
+  );
+});
+
+// Clicking a notification opens the app at the target URL
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If the app is already open, focus it and navigate
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          client.navigate(targetUrl);
+          return;
+        }
+      }
+      // Otherwise open a new window
+      return self.clients.openWindow(targetUrl);
+    })
+  );
+});
