@@ -33,16 +33,18 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
   // Split into two queries and combine results (more reliable than .or() with and())
   const [result1, result2] = await Promise.all([
     // Messages from user1 to user2
+    // NOTE: `messages` table has `media_url` + `message_type` but NOT `media_type`.
+    // (media_type lives on `posts`, not messages — don't re-add it here.)
     supabase
       .from('messages')
-      .select('id, sender_id, receiver_id, room_id, content, media_url, media_type, metadata, timestamp, created_at')
+      .select('id, sender_id, receiver_id, room_id, content, media_url, message_type, metadata, timestamp, created_at')
       .eq('sender_id', user1Id)
       .eq('receiver_id', user2Id)
       .order('timestamp', { ascending: true }),
     // Messages from user2 to user1
     supabase
       .from('messages')
-      .select('id, sender_id, receiver_id, room_id, content, media_url, media_type, metadata, timestamp, created_at')
+      .select('id, sender_id, receiver_id, room_id, content, media_url, message_type, metadata, timestamp, created_at')
       .eq('sender_id', user2Id)
       .eq('receiver_id', user1Id)
       .order('timestamp', { ascending: true }),

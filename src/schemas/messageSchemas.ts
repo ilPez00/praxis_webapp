@@ -7,21 +7,32 @@ import { z } from 'zod';
 /**
  * Send message validation
  */
-export const sendMessageSchema = z.object({
-  receiver_id: z
-    .string()
-    .uuid('Invalid receiver ID format'),
-  
-  content: z
-    .string()
-    .min(1, 'Message content is required')
-    .max(5000, 'Message too long (max 5000 characters)'),
-  
-  message_type: z
-    .enum(['text', 'image', 'voice'])
-    .optional()
-    .default('text'),
-});
+// Frontend (ChatRoom.tsx) sends camelCase `receiverId` / `messageType`.
+// Accept both camelCase and snake_case so either contract works, and normalize
+// after parsing so the controller can keep reading camelCase.
+export const sendMessageSchema = z
+  .object({
+    receiverId: z.string().uuid('Invalid receiver ID format').optional(),
+    receiver_id: z.string().uuid('Invalid receiver ID format').optional(),
+    content: z
+      .string()
+      .min(1, 'Message content is required')
+      .max(5000, 'Message too long (max 5000 characters)'),
+    messageType: z.enum(['text', 'image', 'voice']).optional(),
+    message_type: z.enum(['text', 'image', 'voice']).optional(),
+    goalNodeId: z.string().optional(),
+    mediaUrl: z.string().optional(),
+    metadata: z.any().optional(),
+  })
+  .refine((v) => v.receiverId || v.receiver_id, {
+    message: 'receiverId is required',
+    path: ['receiverId'],
+  })
+  .transform((v) => ({
+    ...v,
+    receiverId: v.receiverId ?? v.receiver_id!,
+    messageType: v.messageType ?? v.message_type ?? 'text',
+  }));
 
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
