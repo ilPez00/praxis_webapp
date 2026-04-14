@@ -49,8 +49,8 @@ run_old_praxis.sh
 claude.sh
 debug.txt
 gemini_prompt.txt
-business/
-claude_steps.txt
+/business/
+/claude_steps.txt
 console-export-*.txt
 .playwright-mcp/
 .claude/
