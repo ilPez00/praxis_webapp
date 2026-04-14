@@ -37,6 +37,8 @@ const VideoCall: React.FC<Props> = ({ open, onClose, channelName, currentUserId,
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const sigRef = useRef<any>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+  const remoteDescSetRef = useRef(false);
 
   const [status, setStatus] = useState<'connecting' | 'connected'>('connecting');
   const [micMuted, setMicMuted] = useState(false);
@@ -49,6 +51,15 @@ const VideoCall: React.FC<Props> = ({ open, onClose, channelName, currentUserId,
     localStreamRef.current = null;
     pcRef.current = null;
     sigRef.current = null;
+    pendingIceRef.current = [];
+    remoteDescSetRef.current = false;
+  };
+
+  const flushPendingIce = async (pc: RTCPeerConnection) => {
+    for (const c of pendingIceRef.current) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+    }
+    pendingIceRef.current = [];
   };
 
   useEffect(() => {
@@ -74,8 +85,15 @@ const VideoCall: React.FC<Props> = ({ open, onClose, channelName, currentUserId,
         stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
         pc.ontrack = (e) => {
-          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = e.streams[0];
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = e.streams[0];
+            remoteVideoRef.current.play?.().catch(() => {/* autoplay may be blocked; user can tap */});
+          }
           setStatus('connected');
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          console.log('[VideoCall] iceConnectionState:', pc.iceConnectionState);
         };
 
         pc.onicecandidate = (e) => {
@@ -103,6 +121,7 @@ const VideoCall: React.FC<Props> = ({ open, onClose, channelName, currentUserId,
           .on('broadcast', { event: 'call-ready' }, async ({ payload }) => {
             // Initiator creates offer only after receiver signals ready
             if (!isInitiator || payload.from === currentUserId) return;
+            if (pc.signalingState !== 'stable') return; // already negotiating
             try {
               const offer = await pc.createOffer();
               await pc.setLocalDescription(offer);
@@ -115,10 +134,21 @@ const VideoCall: React.FC<Props> = ({ open, onClose, channelName, currentUserId,
               console.error('Error creating offer:', err);
             }
           })
+          .on('broadcast', { event: 'caller-here' }, ({ payload }) => {
+            // Receiver: re-send call-ready if initiator arrived late
+            if (isInitiator || payload.from === currentUserId) return;
+            sig.send({
+              type: 'broadcast',
+              event: 'call-ready',
+              payload: { from: currentUserId },
+            });
+          })
           .on('broadcast', { event: 'webrtc-offer' }, async ({ payload }) => {
             if (payload.from === currentUserId) return;
             try {
               await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+              remoteDescSetRef.current = true;
+              await flushPendingIce(pc);
               const answer = await pc.createAnswer();
               await pc.setLocalDescription(answer);
               sig.send({
@@ -134,15 +164,21 @@ const VideoCall: React.FC<Props> = ({ open, onClose, channelName, currentUserId,
             if (payload.from === currentUserId) return;
             try {
               await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+              remoteDescSetRef.current = true;
+              await flushPendingIce(pc);
             } catch (err) {
               console.error('Error setting remote description:', err);
             }
           })
           .on('broadcast', { event: 'webrtc-ice' }, async ({ payload }) => {
             if (payload.from === currentUserId) return;
+            if (!remoteDescSetRef.current) {
+              pendingIceRef.current.push(payload.candidate);
+              return;
+            }
             try {
               await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-            } catch (err) {
+            } catch {
               // ICE errors are common and usually non-fatal
             }
           })
@@ -151,9 +187,17 @@ const VideoCall: React.FC<Props> = ({ open, onClose, channelName, currentUserId,
             cleanup();
             if (mounted) onClose();
           })
-          .subscribe(() => {
-            // Receiver signals ready → triggers initiator to create offer
-            if (!isInitiator && mounted) {
+          .subscribe((subStatus) => {
+            if (subStatus !== 'SUBSCRIBED' || !mounted) return;
+            if (isInitiator) {
+              // Announce presence so a receiver that subscribed first will re-send call-ready
+              sig.send({
+                type: 'broadcast',
+                event: 'caller-here',
+                payload: { from: currentUserId },
+              });
+            } else {
+              // Receiver signals ready → triggers initiator to create offer
               sig.send({
                 type: 'broadcast',
                 event: 'call-ready',
