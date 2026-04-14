@@ -989,9 +989,9 @@ const ProfilePage: React.FC = () => {
                     {profile.latest_axiom_report.summary}
                   </Typography>
                 )}
-                <Button 
-                  size="small" variant="text" 
-                  onClick={() => navigate('/notes')}
+                <Button
+                  size="small" variant="text"
+                  onClick={() => navigate(isOwnProfile ? '/notes' : `/notes/${paramId}`)}
                   sx={{ color: '#F59E0B', fontWeight: 700, p: 0 }}
                 >
                   Go to Notebook
@@ -1021,7 +1021,7 @@ const ProfilePage: React.FC = () => {
             variant="outlined"
             size="small"
             color="secondary"
-            onClick={() => navigate('/notes')}
+            onClick={() => navigate(isOwnProfile ? '/notes' : `/notes/${paramId}`)}
           >
             Open Notebook
           </Button>
