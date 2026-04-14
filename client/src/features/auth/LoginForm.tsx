@@ -220,7 +220,7 @@ const LoginForm: React.FC = () => {
         )}
 
         <Box sx={{ mt: 6, display: 'flex', flexDirection: 'column', gap: 3, width: '100%', maxWidth: 300 }}>
-          {['AI-powered goal matching', 'Peer accountability network', 'Structured progress tracking'].map((feat) => (
+          {['AI-powered goal matching', 'Supportive peer network', 'Gentle progress tracking'].map((feat) => (
             <Box key={feat} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main', boxShadow: '0 0 8px #F59E0B', flexShrink: 0 }} />
               <Typography variant="body2" color="text.secondary">{feat}</Typography>

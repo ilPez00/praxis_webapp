@@ -9,7 +9,7 @@ const resources = {
     translation: {
       // Auth
       "login.title": "Welcome back",
-      "login.subtitle": "Align your will. Design your intent.",
+      "login.subtitle": "Your goals, at your pace.",
       "login.email": "Email Address",
       "login.password": "Password",
       "login.sign_in": "Sign In",
@@ -19,7 +19,7 @@ const resources = {
       "login.mobile_issues": "Having issues on mobile?",
       "login.force_refresh": "Force Hard Refresh & Clear Cache",
       "signup.title": "Join Praxis",
-      "signup.subtitle": "Start your accountability journey today.",
+      "signup.subtitle": "Begin when you're ready.",
       "signup.name": "Full Name",
       "signup.create_account": "Create Account",
       "signup.already_have": "Already have an account?",
@@ -121,7 +121,7 @@ const resources = {
     translation: {
       // Auth
       "login.title": "Bentornato",
-      "login.subtitle": "Allinea la tua volontà. Disegna il tuo intento.",
+      "login.subtitle": "I tuoi obiettivi, con il tuo ritmo.",
       "login.email": "Indirizzo Email",
       "login.password": "Password",
       "login.sign_in": "Accedi",
@@ -131,7 +131,7 @@ const resources = {
       "login.mobile_issues": "Problemi su mobile?",
       "login.force_refresh": "Forza Refresh & Svuota Cache",
       "signup.title": "Unisciti a Praxis",
-      "signup.subtitle": "Inizia oggi il tuo percorso di accountability.",
+      "signup.subtitle": "Inizia quando ti senti pronto.",
       "signup.name": "Nome Completo",
       "signup.create_account": "Crea Account",
       "signup.already_have": "Hai già un account?",
@@ -232,7 +232,7 @@ const resources = {
   es: {
     translation: {
       "login.title": "Bienvenido de nuevo",
-      "login.subtitle": "Alinea tu voluntad. Diseña tu intención.",
+      "login.subtitle": "Tus metas, a tu ritmo.",
       "login.email": "Correo electrónico",
       "login.password": "Contraseña",
       "login.sign_in": "Iniciar sesión",
@@ -242,7 +242,7 @@ const resources = {
       "login.force_refresh": "Forzar actualización y borrar caché",
       "login.mobile_issues": "¿Problemas en el móvil?",
       "signup.title": "Únete a Praxis",
-      "signup.subtitle": "Comienza tu camino de responsabilidad hoy.",
+      "signup.subtitle": "Empieza cuando estés listo.",
       "common.loading": "Cargando...",
       "common.error": "Algo salió mal",
       "common.save": "Guardar",
@@ -254,7 +254,7 @@ const resources = {
   fr: {
     translation: {
       "login.title": "Bon retour",
-      "login.subtitle": "Alignez votre volonté. Concevez votre intention.",
+      "login.subtitle": "Vos objectifs, à votre rythme.",
       "login.email": "Adresse e-mail",
       "login.password": "Mot de passe",
       "login.sign_in": "Se connecter",
@@ -264,7 +264,7 @@ const resources = {
       "login.force_refresh": "Forcer le rafraîchissement et vider le cache",
       "login.mobile_issues": "Problèmes sur mobile ?",
       "signup.title": "Rejoignez Praxis",
-      "signup.subtitle": "Commencez votre parcours de responsabilité aujourd'hui.",
+      "signup.subtitle": "Commencez quand vous êtes prêt.",
       "common.loading": "Chargement...",
       "common.error": "Une erreur est survenue",
       "common.save": "Sauvegarder",
@@ -276,7 +276,7 @@ const resources = {
   ru: {
     translation: {
       "login.title": "С возвращением",
-      "login.subtitle": "Направьте свою волю. Создайте свое намерение.",
+      "login.subtitle": "Ваши цели — в вашем ритме.",
       "login.email": "Электронная почта",
       "login.password": "Пароль",
       "login.sign_in": "Войти",
@@ -286,7 +286,7 @@ const resources = {
       "login.force_refresh": "Принудительно обновить и очистить кэш",
       "login.mobile_issues": "Проблемы на мобильном?",
       "signup.title": "Присоединяйтесь к Praxis",
-      "signup.subtitle": "Начните свой путь ответственности сегодня.",
+      "signup.subtitle": "Начните, когда будете готовы.",
       "common.loading": "Загрузка...",
       "common.error": "Что-то пошло не так",
       "common.save": "Сохранить",
