@@ -2036,3 +2036,110 @@ Session 107: Gamification Upgrades — Weekly Track, Combos, Achievement Collect
 5. XP curve rebalance (logarithmic instead of linear 1000/level)
 
 - Sign: Claude
+
+---
+
+Session 108: Playwright QA Audit + Bug Fixes
+Date: 2026-04-13
+
+## QA Audit (Playwright browser automation on praxisweb.xyz)
+Pages visited: Login, Dashboard, Notes, Goals, Goal Selection, Discover, Profile,
+Matches, Chat, Coaching, Search, Marketplace, Leaderboard, Services, Commitments,
+Events, Friends, Analytics, Challenges, Team Challenges, Settings, Admin, Achievements
+
+### Bugs Found & Fixed
+
+**Bug 1 — Nav link 404s (3 stale routes)**
+- `AICoachPage.tsx:680` navigated to `/betting` → fixed to `/commitments`
+- `GoalWidgets.tsx:725` navigated to `/goal-tree` → fixed to `/goals`
+- `SearchPage.tsx:454` navigated to `/notebook` → fixed to `/notes`
+
+**Bug 2 — LeaderboardPage crash (`entry.domains` undefined)**
+- Backend `/gamification/leaderboard` doesn't return `domains` or `similarity`
+- `entry.domains.length` on line 291 crashed — added `Array.isArray(entry.domains)` guard
+- `e.similarity <= 0` on line 78 — added `?? 0` fallback for undefined
+
+**Bug 3 — AnalyticsPage 404 on goal tree fetch**
+- `AnalyticsPage.tsx:382` called `/goals/tree/${user.id}` but route is `/goals/:userId`
+- Fixed to `/goals/${user.id}`
+
+**Bug 4 — Login i18n keys showing raw strings**
+- `LoginForm.tsx` used `t('login_title')` but i18n resources use dotted keys `login.title`
+- Fixed all 8 translation calls: login_title→login.title, login_subtitle→login.subtitle,
+  email→login.email, password→login.password, sign_in→login.sign_in,
+  no_account→login.no_account, sign_up→login.sign_up, mobile_issues→login.mobile_issues,
+  force_refresh→login.force_refresh
+- Added missing `login.sign_up` key to en + it translations
+
+### Bugs Not Fixed (need investigation)
+- Chat messages 500 — likely resolved after migrations ran
+- Coaching Supabase 400 on `is_ai` column — resolved if `2026-03-11-message-ai-flag.sql` was run
+- Notes IDBKeyRange error — transient browser issue, code is correct
+- Feedback-trends 500 — may be missing `feedback` table or premium gate
+
+## Files Modified
+- client/src/features/coaching/AICoachPage.tsx (nav fix)
+- client/src/features/dashboard/components/GoalWidgets.tsx (nav fix)
+- client/src/features/search/SearchPage.tsx (nav fix)
+- client/src/features/leaderboard/LeaderboardPage.tsx (Array.isArray guard, similarity fallback)
+- client/src/features/analytics/AnalyticsPage.tsx (goal tree URL fix)
+- client/src/features/auth/LoginForm.tsx (i18n key fixes)
+- client/src/i18n.ts (added missing login.sign_up key)
+
+## Verification
+- `npx tsc --noEmit` (client): 0 errors
+
+## Next
+1. Commit and deploy to Vercel
+2. Verify chat/coaching work after migrations
+3. Add missing `domains` field to leaderboard backend query (enrich from goal_trees)
+4. Fix feedback-trends endpoint (check if `feedback` table exists)
+5. Security migration `2026-04-13-security-fixes.sql` — review and run
+
+- Sign: Claude
+
+---
+
+Session 108b (continuation): Deeper QA + Resilience
+Date: 2026-04-14
+
+### Additional Bugs Fixed
+
+**Bug 5 — Notes page IDBKeyRange crash (`offlineDB.ts`)**
+- `IDBKeyRange.only(false)` is invalid — booleans aren't valid IndexedDB keys
+- Switched `synced` storage to 0/1 integer at the IDB layer; kept the TS interface as boolean
+- Coerce on write (`saveEntry`: `entry.synced ? 1 : 0`); map back on read in `getUnsyncedEntries`, `getAllEntries`
+- `markAsSynced` sets `entry.synced = 1`; `clearSynced` queries `IDBKeyRange.only(1)`
+
+**Bug 6 — useUser AbortError "Lock 'lock:sb-...-auth-token' stolen"**
+- Multiple `useUser` instances racing `supabase.auth.getUser()` contend over the Supabase Web Locks API
+- Switched to `supabase.auth.getSession()` (local, lock-free) — cached session user is fine for UI
+- Eliminates the transient auth flicker / random signed-out state on page load
+
+**Bug 7 — Analytics feedback-trends 500**
+- The `feedback` table uses quoted camelCase columns (outlier — see `migrations/setup.sql:356`)
+- `analyticsController.ts:140`: `.eq('receiver_id', ...)` → `.eq('receiverId', ...)`
+- Added note comment so future refactors don't re-snake-case it
+
+**Bug 8 — Commitments /api/bets/:userId 500**
+- `bets` table in some envs (those bootstrapped from `setup.sql`) lacks the `outcome` column
+- Hardened `getUserBets` in `bettingController.ts` to treat `42P01` / `42703` / schema-cache errors as soft-fail → return `[]`
+- Added migration `migrations/2026-04-14-bets-outcome-column.sql` (additive `ADD COLUMN IF NOT EXISTS outcome TEXT` + optional CHECK)
+
+## Files Modified
+- client/src/lib/offlineDB.ts (IDB synced as 0/1 integer)
+- client/src/hooks/useUser.ts (getSession instead of getUser)
+- src/controllers/analyticsController.ts (feedback camelCase)
+- src/controllers/bettingController.ts (tolerate missing table/column)
+- migrations/2026-04-14-bets-outcome-column.sql (NEW)
+
+## Verification
+- `npx tsc --noEmit` (client + backend): 0 errors
+
+## Next
+1. Apply `2026-04-14-bets-outcome-column.sql` in Supabase
+2. Confirm `2026-03-11-message-ai-flag.sql` ran (unblocks coaching page)
+3. Review + run `2026-04-13-security-fixes.sql`
+4. Resume QA: Friends, Services, Posts, Team Challenges, Settings, Achievements
+
+- Sign: Claude

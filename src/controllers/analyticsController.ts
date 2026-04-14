@@ -133,11 +133,12 @@ export const getFeedbackTrends = catchAsync(async (req: Request, res: Response, 
     throw new ForbiddenError('Advanced Analytics is a premium feature.');
   }
 
+  // NOTE: feedback table uses quoted camelCase columns (see migrations/setup.sql:356)
   const { data: feedbackData, error: feedbackError } = await supabase
     .from('feedback')
     .select('grade')
-    .eq('receiver_id', userId)
-    .limit(100); // Limit to recent feedback for trends
+    .eq('receiverId', userId)
+    .limit(100);
 
   if (feedbackError) {
     logger.error('Error fetching feedback for trends:', feedbackError.message);

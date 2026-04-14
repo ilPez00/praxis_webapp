@@ -379,7 +379,7 @@ const AnalyticsPage: React.FC = () => {
         // Fetch combined calendar data from new endpoint
         const [calendarRes, goalRes] = await Promise.allSettled([
           api.get('/trackers/calendar?days=112'),
-          api.get(`/goals/tree/${user.id}`),
+          api.get(`/goals/${user.id}`),
         ]);
 
         // Build day map from combined data

@@ -19,7 +19,11 @@ export const useUser = () => {
   const fetchUserProfile = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      // Use getSession() (local, lock-free) instead of getUser() (network + Web Locks).
+      // Multiple useUser instances racing on getUser() trigger AbortError from Supabase's
+      // 'steal' lock-break. The cached session user is fine for UI rendering.
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      const authUser = session?.user ?? null;
 
       if (authError || !authUser) {
         setUser(null);

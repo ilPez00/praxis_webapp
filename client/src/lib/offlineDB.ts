@@ -26,7 +26,7 @@ interface OfflineEntry {
   is_private?: boolean;
   occurred_at: string;
   created_at: string;
-  synced: boolean;
+  synced: boolean; // stored as 0/1 in IDB (booleans aren't valid IndexedDB keys)
   sync_attempted: number;
 }
 
@@ -80,11 +80,13 @@ class OfflineDB {
    */
   async saveEntry(entry: OfflineEntry): Promise<void> {
     const db = await this.open();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
-      const request = store.put(entry);
+      // Store synced as 0/1 — booleans aren't valid IndexedDB keys
+      const stored = { ...entry, synced: entry.synced ? 1 : 0 };
+      const request = store.put(stored);
 
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
@@ -101,9 +103,11 @@ class OfflineDB {
       const transaction = db.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const index = store.index('synced');
-      const request = index.getAll(IDBKeyRange.only(false));
+      const request = index.getAll(IDBKeyRange.only(0));
 
-      request.onsuccess = () => resolve(request.result || []);
+      request.onsuccess = () => resolve(
+        (request.result || []).map((r: any) => ({ ...r, synced: !!r.synced }))
+      );
       request.onerror = () => reject(request.error);
     });
   }
@@ -119,7 +123,9 @@ class OfflineDB {
       const store = transaction.objectStore(STORE_NAME);
       const request = store.getAll();
 
-      request.onsuccess = () => resolve(request.result || []);
+      request.onsuccess = () => resolve(
+        (request.result || []).map((r: any) => ({ ...r, synced: !!r.synced }))
+      );
       request.onerror = () => reject(request.error);
     });
   }
@@ -138,7 +144,7 @@ class OfflineDB {
       getRequest.onsuccess = () => {
         const entry = getRequest.result;
         if (entry) {
-          entry.synced = true;
+          entry.synced = 1;
           const putRequest = store.put(entry);
           putRequest.onsuccess = () => resolve();
           putRequest.onerror = () => reject(putRequest.error);
@@ -177,7 +183,7 @@ class OfflineDB {
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const index = store.index('synced');
-      const request = index.openCursor(IDBKeyRange.only(true));
+      const request = index.openCursor(IDBKeyRange.only(1));
 
       request.onsuccess = (event) => {
         const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;

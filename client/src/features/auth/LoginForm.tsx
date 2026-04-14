@@ -264,9 +264,9 @@ const LoginForm: React.FC = () => {
         </Box>
 
         <Box sx={{ width: '100%', maxWidth: 400 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>{t('login_title')}</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>{t('login.title')}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-            {t('login_subtitle')}
+            {t('login.subtitle')}
           </Typography>
 
           {message && <Alert severity={isError ? 'error' : 'success'} sx={{ mb: 3 }}>{message}</Alert>}
@@ -274,12 +274,12 @@ const LoginForm: React.FC = () => {
           <Box component="form" onSubmit={handleLogin} noValidate>
             <Stack spacing={2}>
               <TextField
-                fullWidth required label={t('email')} type="email"
+                fullWidth required label={t('login.email')} type="email"
                 autoComplete="email" autoFocus
                 value={email} onChange={(e) => setEmail(e.target.value)}
               />
               <TextField
-                fullWidth required label={t('password')} type="password"
+                fullWidth required label={t('login.password')} type="password"
                 autoComplete="current-password"
                 value={password} onChange={(e) => setPassword(e.target.value)}
               />
@@ -290,7 +290,7 @@ const LoginForm: React.FC = () => {
               endIcon={<ArrowForwardIcon />}
               sx={{ mt: 3, mb: 2, py: 1.5 }}
             >
-              {t('sign_in')}
+              {t('login.sign_in')}
             </Button>
 
             <Divider sx={{ my: 2, color: 'text.disabled', fontSize: '0.75rem' }}>or</Divider>
@@ -305,15 +305,15 @@ const LoginForm: React.FC = () => {
             </Button>
 
             <Typography variant="body2" color="text.secondary" textAlign="center">
-              {t('no_account')}{' '}
+              {t('login.no_account')}{' '}
               <MuiLink component={RouterLink} to="/signup" sx={{ fontWeight: 600 }}>
-                {t('sign_up')}
+                {t('login.sign_up')}
               </MuiLink>
             </Typography>
 
             <Box sx={{ mt: 6, p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
               <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1, textAlign: 'center' }}>
-                {t('mobile_issues')}
+                {t('login.mobile_issues')}
               </Typography>
               <Button
                 fullWidth size="small" variant="text" color="inherit"
@@ -321,7 +321,7 @@ const LoginForm: React.FC = () => {
                 startIcon={<RestartAltIcon sx={{ fontSize: '1rem' }} />}
                 sx={{ fontSize: '0.65rem', opacity: 0.6, '&:hover': { opacity: 1 } }}
               >
-                {t('force_refresh')}
+                {t('login.force_refresh')}
               </Button>
             </Box>
 

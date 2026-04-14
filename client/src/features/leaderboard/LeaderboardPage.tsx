@@ -75,7 +75,7 @@ const LeaderboardPage: React.FC = () => {
   const myRank = myEntry?.rank ?? null;
 
   const visible = entries.filter(e => {
-    if (filter === 'aligned' && e.similarity <= 0) return false;
+    if (filter === 'aligned' && (e.similarity ?? 0) <= 0) return false;
     if (leagueFilter !== 'all' && e.league !== leagueFilter) return false;
     return true;
   });
@@ -288,7 +288,7 @@ const LeaderboardPage: React.FC = () => {
                       )}
                     </Box>
                     {/* Domain chips — max 3 */}
-                    {entry.domains.length > 0 && (
+                    {Array.isArray(entry.domains) && entry.domains.length > 0 && (
                       <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
                         {entry.domains.slice(0, 3).map(d => (
                           <Chip

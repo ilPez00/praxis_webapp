@@ -171,10 +171,20 @@ export const getUserBets = catchAsync(async (req: Request, res: Response, _next:
     .order('created_at', { ascending: false });
 
   if (error) {
-    if (error.message?.includes('schema cache') || error.message?.includes('not found')) {
-      logger.warn('bets table not found — returning empty list. Run migrations/setup.sql.');
+    // Tolerate missing table / missing columns — this feature is additive
+    const msg = error.message || '';
+    const code = (error as any).code;
+    if (
+      msg.includes('schema cache') ||
+      msg.includes('not found') ||
+      msg.includes('does not exist') ||
+      code === '42P01' ||  // undefined_table
+      code === '42703'     // undefined_column
+    ) {
+      logger.warn(`bets query soft-fail (code ${code}): ${msg} — returning empty list`);
       return res.json([]);
     }
+    logger.error('getUserBets Supabase error:', JSON.stringify({ message: msg, code, details: (error as any).details, hint: (error as any).hint }));
     throw new InternalServerError('Failed to fetch bets.');
   }
   res.json(data || []);
