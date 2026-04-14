@@ -1,12 +1,15 @@
 # Axiom Auto-Progress Logging Feature
 
 ## Overview
+
 Axiom now automatically logs user progress to the notebook during nightly operations. When the midnight scan detects significant progress changes (≥10%), it creates detailed notebook entries documenting the progress updates.
 
 ## Features
 
 ### 1. Individual Progress Updates
+
 For each goal with significant progress change (≥10%), Axiom creates a notebook entry with:
+
 - **Progress Change**: Before → After percentages
 - **Status Badge**: Based on new progress level
   - 🎉 COMPLETED (100%)
@@ -18,7 +21,9 @@ For each goal with significant progress change (≥10%), Axiom creates a noteboo
 - **Metadata**: Tagged for filtering and tracking
 
 ### 2. Daily Progress Summary
+
 At the end of each nightly scan, Axiom creates a summary entry with:
+
 - **Date**: Formatted date header
 - **Statistics**:
   - Total Goals Updated
@@ -30,6 +35,7 @@ At the end of each nightly scan, Axiom creates a summary entry with:
 ## Implementation Details
 
 ### Modified Files
+
 - `src/services/AxiomProgressEstimationService.ts`
   - Added `autoLogProgressToNotebook()` method
   - Added `logDailyProgressSummary()` method
@@ -38,6 +44,7 @@ At the end of each nightly scan, Axiom creates a summary entry with:
 ### Entry Structure
 
 #### Individual Progress Entry
+
 ```typescript
 {
   entry_type: 'goal_progress',
@@ -66,6 +73,7 @@ At the end of each nightly scan, Axiom creates a summary entry with:
 ```
 
 #### Daily Summary Entry
+
 ```typescript
 {
   entry_type: 'note',
@@ -98,6 +106,7 @@ At the end of each nightly scan, Axiom creates a summary entry with:
 ```
 
 ### Thresholds
+
 - **Individual Logging**: Only logs changes ≥10%
 - **All Updates Summarized**: Daily summary includes all changes regardless of size
 - **Significant Change Detection**: Progress updates only applied if change >5%
@@ -105,6 +114,7 @@ At the end of each nightly scan, Axiom creates a summary entry with:
 ## User Experience
 
 ### What Users See
+
 When users open their notebook in the morning, they'll find:
 
 1. **Individual Progress Entries** (for significant changes)
@@ -118,6 +128,7 @@ When users open their notebook in the morning, they'll find:
    - Motivation from seeing cumulative progress
 
 ### Example User Journey
+
 ```
 User wakes up → Opens notebook → Sees:
 ├── 🎉 Daily Progress Summary - Today
@@ -134,12 +145,14 @@ User wakes up → Opens notebook → Sees:
 ## Benefits
 
 ### For Users
+
 1. **Automatic Tracking**: No manual logging required
 2. **Morning Motivation**: Wake up to progress insights
 3. **Pattern Recognition**: See progress trends over time
 4. **Accountability**: Visual record of progress (or lack thereof)
 
 ### For System
+
 1. **Notebook Enrichment**: Auto-populates notebook with meaningful entries
 2. **Engagement Signal**: Progress entries indicate active goal pursuit
 3. **Data for Axiom**: More context for future coaching
@@ -148,18 +161,23 @@ User wakes up → Opens notebook → Sees:
 ## Technical Notes
 
 ### Performance
+
 - Only processes active users (logged activity in last 7 days)
 - Batches all progress updates efficiently
 - Minimal database overhead (uses existing progress estimation data)
 
 ### Filtering
+
 Users can filter auto-logged entries using:
+
 - `metadata.auto_logged = true`
 - `entry_type = 'goal_progress'`
 - `metadata.logged_by = 'axiom_midnight_scan'`
 
 ### Customization
+
 Thresholds can be adjusted in code:
+
 ```typescript
 // Current threshold: 10%
 if (Math.abs(change) < 10) {
@@ -168,6 +186,7 @@ if (Math.abs(change) < 10) {
 ```
 
 ## Future Enhancements
+
 - [ ] User preferences for auto-logging (opt-out, threshold adjustment)
 - [ ] Weekly/Monthly progress summary compilations
 - [ ] Progress trend visualizations in dashboard
@@ -175,13 +194,16 @@ if (Math.abs(change) < 10) {
 - [ ] Shareable progress reports for accountability partners
 
 ## Deployment
+
 - No database migrations required
 - Feature activates automatically on deploy
 - Backwards compatible (existing entries unaffected)
 - Logs are additive (don't modify existing data)
 
 ## Monitoring
+
 Watch for these log messages:
+
 - `[AxiomProgress] Auto-logged progress update to notebook for goal [id]`
 - `[AxiomProgress] Logged daily progress summary for user [id]`
 - `[AxiomProgress] No significant progress changes for user [id]`

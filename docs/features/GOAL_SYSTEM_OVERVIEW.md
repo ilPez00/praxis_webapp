@@ -72,6 +72,7 @@ Level 1: PHYSIOLOGICAL (Basic Survival Needs)
 ### Trackers
 
 #### 🎮 Gaming Session
+
 ```
 Fields:
 - Game (text): e.g. "Elden Ring", "Valorant"
@@ -84,6 +85,7 @@ Example Entry: "🎮 Elden Ring — 90min (Completionist)"
 ```
 
 #### 🏆 Achievement Hunter
+
 ```
 Fields:
 - Game (text): e.g. "Dark Souls 3"
@@ -95,6 +97,7 @@ Example Entry: "🏆 Dark Lord trophy in Dark Souls 3"
 ```
 
 #### 📊 Rank Progress
+
 ```
 Fields:
 - Game (text): e.g. "Valorant", "LoL", "CS:GO"
@@ -106,6 +109,7 @@ Example Entry: "📊 Diamond 2 in Valorant (Peak: Ascendant 1)"
 ```
 
 #### 📹 Streaming/Content
+
 ```
 Fields:
 - Platform: Twitch, YouTube, TikTok, Kick, Other
@@ -230,10 +234,10 @@ Axiom can now provide insights based on Maslow levels:
 
 "🔍 I notice you're focusing heavily on Level 4 (Career, Wealth)
    while Level 1 (Rest, Mental Balance) is neglected.
-   
+
    Remember: You can't build esteem on a shaky foundation.
-   
-   Suggestion: Schedule 3 rest days this week and try 
+
+   Suggestion: Schedule 3 rest days this week and try
    meditation for mental balance."
 ```
 
@@ -244,12 +248,12 @@ Based on domain activity patterns:
 
 ✅ "Great job maintaining balance across all 5 levels!"
 
-⚠️ "Your gaming goals are strong (Level 4), but you're 
-    neglecting physical fitness (Level 1). Consider 
+⚠️ "Your gaming goals are strong (Level 4), but you're
+    neglecting physical fitness (Level 1). Consider
     adding workout sessions between gaming."
 
-💡 "You have 15 goals in Career but 0 in Community. 
-    Volunteering could provide fresh perspective and 
+💡 "You have 15 goals in Career but 0 in Community.
+    Volunteering could provide fresh perspective and
     meaningful connections."
 ```
 
@@ -259,13 +263,13 @@ Based on domain activity patterns:
 
 ### Before → After
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| **Total Domains** | 9 | 14 | +55% |
-| **Scientific Basis** | None | Maslow | ✅ |
-| **Gaming Support** | ❌ | ✅ 4 trackers | +4 |
-| **Analytics Depth** | Basic | 5-level | +400% |
-| **AI Coaching** | Generic | Level-specific | ✅ |
+| Metric               | Before  | After          | Change |
+| -------------------- | ------- | -------------- | ------ |
+| **Total Domains**    | 9       | 14             | +55%   |
+| **Scientific Basis** | None    | Maslow         | ✅     |
+| **Gaming Support**   | ❌      | ✅ 4 trackers  | +4     |
+| **Analytics Depth**  | Basic   | 5-level        | +400%  |
+| **AI Coaching**      | Generic | Level-specific | ✅     |
 
 ### Domain Distribution (Example User)
 
@@ -294,20 +298,20 @@ After Migration:
 ✅ **Clearer Goal Setting** - More specific domains = less confusion  
 ✅ **Better Life Balance** - See which levels need attention  
 ✅ **Gaming Recognition** - Finally, a system that values gaming  
-✅ **AI Insights** - Smarter coaching based on psychology  
+✅ **AI Insights** - Smarter coaching based on psychology
 
 ### For Gamers
 
 ✅ **Legitimate Domain** - Gaming is treated seriously  
 ✅ **Specialized Trackers** - Built for gaming goals  
 ✅ **Achievement System** - Track trophies, ranks, milestones  
-✅ **Community** - Find other gamers in the platform  
+✅ **Community** - Find other gamers in the platform
 
 ### For Coaches
 
 ✅ **Better Diagnostics** - See imbalances at a glance  
 ✅ **Scientific Framework** - Maslow-backed recommendations  
-✅ **Level-Based Strategy** - Address foundational needs first  
+✅ **Level-Based Strategy** - Address foundational needs first
 
 ---
 

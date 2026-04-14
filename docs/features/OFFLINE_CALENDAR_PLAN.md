@@ -5,12 +5,14 @@
 ### ✅ What Works Offline
 
 #### 1. **IndexedDB Database (Dexie.js)**
+
 - **Location:** `client/src/lib/db.ts`
 - **Database Name:** `PraxisOfflineDB`
 - **Tables:**
   - `journalEntries` - Local journal/note entries with sync status
 
 **Schema:**
+
 ```typescript
 interface LocalJournalEntry {
   id?: string;
@@ -18,12 +20,13 @@ interface LocalJournalEntry {
   note: string;
   mood: string | null;
   logged_at: string;
-  sync_status: 'synced' | 'pending' | 'failed';
+  sync_status: "synced" | "pending" | "failed";
   error?: string;
 }
 ```
 
 #### 2. **Offline Sync Hook**
+
 - **Location:** `client/src/hooks/useOfflineSync.ts`
 - **Features:**
   - Periodic sync every 5 minutes
@@ -32,23 +35,25 @@ interface LocalJournalEntry {
   - Handles 401/403 errors gracefully
 
 **How it works:**
+
 ```typescript
 // 1. User writes note offline → saved to IndexedDB
 await db.journalEntries.add({
   node_id: goalId,
   note: "Made progress today",
   mood: "Good",
-  sync_status: 'pending'
+  sync_status: "pending",
 });
 
 // 2. When online, sync hook posts to server
-await api.post('/journal/entries', { nodeId, note, mood });
+await api.post("/journal/entries", { nodeId, note, mood });
 
 // 3. Updates sync status
-await db.journalEntries.update(id, { sync_status: 'synced' });
+await db.journalEntries.update(id, { sync_status: "synced" });
 ```
 
 #### 3. **PWA Manifest**
+
 - **Location:** `client/public/manifest.json`
 - **Configuration:**
   - Display: `standalone`
@@ -57,6 +62,7 @@ await db.journalEntries.update(id, { sync_status: 'synced' });
   - Icons: 192x192, 512x512
 
 #### 4. **Version Control & Cache Busting**
+
 - **Location:** `client/src/utils/versionControl.ts`
 - **Features:**
   - Forces cache clear on major updates
@@ -81,6 +87,7 @@ await db.journalEntries.update(id, { sync_status: 'synced' });
 **Location:** `client/src/features/analytics/AnalyticsPage.tsx`
 
 **Features:**
+
 - **16-week contribution graph** (GitHub-style)
 - Shows tracker log frequency per day
 - Color intensity = number of logs (0-4+ entries)
@@ -89,6 +96,7 @@ await db.journalEntries.update(id, { sync_status: 'synced' });
 - Legend for activity levels
 
 **Data Source:**
+
 ```typescript
 interface DayData {
   date: string;        // YYYY-MM-DD
@@ -101,6 +109,7 @@ GET /api/trackers/my?days=112
 ```
 
 **Visual Design:**
+
 ```
 Less                                          More
 [ ][ ][ ][ ][ ]  (opacity gradient)
@@ -110,6 +119,7 @@ Less                                          More
 ```
 
 **Code Structure:**
+
 ```tsx
 function HabitCalendar({ dayData, goalDates }) {
   // Builds 16-week grid
@@ -125,6 +135,7 @@ function HabitCalendar({ dayData, goalDates }) {
 ## Enhancement Plan: Calendar for Notes
 
 ### Feature Request
+
 > "In notes I would like a calendar-style view in which frequency of notes/trackers or any step toward goal completion has been registered"
 
 ### Implementation Options
@@ -134,20 +145,23 @@ function HabitCalendar({ dayData, goalDates }) {
 **File:** `client/src/features/analytics/AnalyticsPage.tsx`
 
 **Changes:**
+
 1. Add **Notes/Journal entries** to calendar data
 2. Add **Goal progress updates** to calendar
 3. Add **filter toggles** (Trackers, Notes, Goals, All)
 
 **Modified Data Structure:**
+
 ```typescript
 interface DayData {
   date: string;
   count: number;
   trackers: string[];
-  notes: number;        // NEW: number of journal entries
-  goalUpdates: number;  // NEW: number of goal progress changes
-  activities: Array<{   // NEW: detailed activity list
-    type: 'tracker' | 'note' | 'goal';
+  notes: number; // NEW: number of journal entries
+  goalUpdates: number; // NEW: number of goal progress changes
+  activities: Array<{
+    // NEW: detailed activity list
+    type: "tracker" | "note" | "goal";
     description: string;
     timestamp: string;
   }>;
@@ -155,23 +169,24 @@ interface DayData {
 ```
 
 **UI Enhancements:**
+
 ```tsx
 // Add filter toggles above calendar
 <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-  <ToggleChip 
-    label="Trackers" 
+  <ToggleChip
+    label="Trackers"
     icon="📊"
     active={filters.trackers}
     onChange={setFilters}
   />
-  <ToggleChip 
-    label="Notes" 
+  <ToggleChip
+    label="Notes"
     icon="📓"
     active={filters.notes}
     onChange={setFilters}
   />
-  <ToggleChip 
-    label="Goals" 
+  <ToggleChip
+    label="Goals"
     icon="🎯"
     active={filters.goals}
     onChange={setFilters}
@@ -196,6 +211,7 @@ interface DayData {
 ```
 
 **Backend Changes:**
+
 ```typescript
 // src/controllers/trackerController.ts
 
@@ -225,67 +241,61 @@ GET /api/activity/calendar?days=112
 **New File:** `client/src/features/notes/NotesCalendar.tsx`
 
 **Features:**
+
 - Dedicated calendar view for notes only
 - Click day to view/write notes
 - Month/week/day views
 - Integration with existing NotesPage
 
 **Component Structure:**
+
 ```tsx
 interface NotesCalendarProps {
   goalTree: GoalNode[];
   selectedNodeId?: string;
 }
 
-const NotesCalendar: React.FC<NotesCalendarProps> = ({ goalTree, selectedNodeId }) => {
-  const [view, setView] = useState<'month' | 'week' | 'day'>('month');
+const NotesCalendar: React.FC<NotesCalendarProps> = ({
+  goalTree,
+  selectedNodeId,
+}) => {
+  const [view, setView] = useState<"month" | "week" | "day">("month");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [notes, setNotes] = useState<JournalEntry[]>([]);
-  
+
   // Fetch notes for selected period
   useEffect(() => {
     const fetchNotes = async () => {
-      const entries = await api.get('/journal/entries', {
-        params: { 
-          startDate, 
+      const entries = await api.get("/journal/entries", {
+        params: {
+          startDate,
           endDate,
-          nodeId: selectedNodeId 
-        }
+          nodeId: selectedNodeId,
+        },
       });
       setNotes(entries);
     };
     fetchNotes();
   }, [selectedDate, selectedNodeId]);
-  
+
   return (
     <Box>
-      <CalendarHeader 
-        view={view} 
+      <CalendarHeader
+        view={view}
         date={selectedDate}
         onViewChange={setView}
         onDateChange={setSelectedDate}
       />
-      
-      {view === 'month' && (
-        <MonthGrid 
-          notes={notes}
-          onDayClick={setSelectedDate}
-        />
+
+      {view === "month" && (
+        <MonthGrid notes={notes} onDayClick={setSelectedDate} />
       )}
-      
-      {view === 'week' && (
-        <WeekView 
-          notes={notes}
-          onNoteClick={openNoteEditor}
-        />
+
+      {view === "week" && (
+        <WeekView notes={notes} onNoteClick={openNoteEditor} />
       )}
-      
-      {view === 'day' && (
-        <DayView 
-          notes={notes}
-          onAddNote={createNote}
-        />
-      )}
+
+      {view === "day" && <DayView notes={notes} onAddNote={createNote} />}
     </Box>
   );
 };
@@ -296,19 +306,19 @@ const NotesCalendar: React.FC<NotesCalendarProps> = ({ goalTree, selectedNodeId 
 **File:** `client/src/features/notes/NotesPage.tsx`
 
 **Add Tab Navigation:**
+
 ```tsx
 <Tabs value={activeTab} onChange={handleTabChange}>
   <Tab label="Tree View" icon={<AccountTreeIcon />} />
   <Tab label="Calendar" icon={<CalendarTodayIcon />} />
   <Tab label="List" icon={<ViewListIcon />} />
-</Tabs>
+</Tabs>;
 
-{activeTab === 'calendar' && (
-  <NotesCalendar 
-    goalTree={treeData}
-    selectedNodeId={selectedNode?.id}
-  />
-)}
+{
+  activeTab === "calendar" && (
+    <NotesCalendar goalTree={treeData} selectedNodeId={selectedNode?.id} />
+  );
+}
 ```
 
 ---
@@ -318,6 +328,7 @@ const NotesCalendar: React.FC<NotesCalendarProps> = ({ goalTree, selectedNodeId 
 ### Phase 1: Offline Support for Trackers (Week 1)
 
 **Extend IndexedDB:**
+
 ```typescript
 // client/src/lib/db.ts
 
@@ -327,45 +338,49 @@ export interface LocalTrackerEntry {
   tracker_type: string;
   data: Record<string, any>;
   logged_at: string;
-  sync_status: 'synced' | 'pending' | 'failed';
+  sync_status: "synced" | "pending" | "failed";
 }
 
 export class PraxisDatabase extends Dexie {
   journalEntries!: Table<LocalJournalEntry>;
   trackerEntries!: Table<LocalTrackerEntry>; // NEW
-  
+
   constructor() {
-    super('PraxisOfflineDB');
+    super("PraxisOfflineDB");
     this.version(2).stores({
-      journalEntries: '++id, node_id, sync_status, logged_at',
-      trackerEntries: '++id, tracker_id, sync_status, logged_at' // NEW
+      journalEntries: "++id, node_id, sync_status, logged_at",
+      trackerEntries: "++id, tracker_id, sync_status, logged_at", // NEW
     });
   }
 }
 ```
 
 **Update Tracker Logging:**
+
 ```typescript
 // client/src/features/trackers/TrackerWidget.tsx
 
-const handleLogTracker = async (tracker: Tracker, data: Record<string, any>) => {
+const handleLogTracker = async (
+  tracker: Tracker,
+  data: Record<string, any>,
+) => {
   try {
     // Try online first
-    await api.post('/trackers/log', { type: tracker.type, data });
-    toast.success('Logged!');
+    await api.post("/trackers/log", { type: tracker.type, data });
+    toast.success("Logged!");
   } catch (err) {
-    if (err.message === 'Network Error') {
+    if (err.message === "Network Error") {
       // Save offline
       await db.trackerEntries.add({
         tracker_id: tracker.id,
         tracker_type: tracker.type,
         data: data,
         logged_at: new Date().toISOString(),
-        sync_status: 'pending'
+        sync_status: "pending",
       });
-      toast.success('Saved offline (will sync when online)');
+      toast.success("Saved offline (will sync when online)");
     } else {
-      toast.error('Failed to log');
+      toast.error("Failed to log");
     }
   }
 };
@@ -374,26 +389,34 @@ const handleLogTracker = async (tracker: Tracker, data: Record<string, any>) => 
 ### Phase 2: Calendar Enhancement (Week 2)
 
 **Extend Analytics Page:**
+
 ```typescript
 // client/src/features/analytics/AnalyticsPage.tsx
 
 // Enhanced data fetching
 const fetchCalendarData = async () => {
   const [trackersRes, notesRes, goalsRes] = await Promise.allSettled([
-    api.get('/trackers/my?days=112'),
-    api.get('/journal/entries?days=112'),
-    api.get('/goals/progress-history?days=112')
+    api.get("/trackers/my?days=112"),
+    api.get("/journal/entries?days=112"),
+    api.get("/goals/progress-history?days=112"),
   ]);
-  
+
   // Merge into unified day data
   const dayMap: Record<string, DayData> = {};
-  
+
   // Process trackers
-  if (trackersRes.status === 'fulfilled') {
-    trackersRes.value.data.forEach(tracker => {
-      tracker.entries.forEach(entry => {
+  if (trackersRes.status === "fulfilled") {
+    trackersRes.value.data.forEach((tracker) => {
+      tracker.entries.forEach((entry) => {
         const date = entry.logged_at.slice(0, 10);
-        if (!dayMap[date]) dayMap[date] = { date, count: 0, trackers: [], notes: 0, goalUpdates: 0 };
+        if (!dayMap[date])
+          dayMap[date] = {
+            date,
+            count: 0,
+            trackers: [],
+            notes: 0,
+            goalUpdates: 0,
+          };
         dayMap[date].count++;
         if (!dayMap[date].trackers.includes(tracker.type)) {
           dayMap[date].trackers.push(tracker.type);
@@ -401,32 +424,47 @@ const fetchCalendarData = async () => {
       });
     });
   }
-  
+
   // Process notes
-  if (notesRes.status === 'fulfilled') {
-    notesRes.value.data.forEach(entry => {
+  if (notesRes.status === "fulfilled") {
+    notesRes.value.data.forEach((entry) => {
       const date = entry.logged_at.slice(0, 10);
-      if (!dayMap[date]) dayMap[date] = { date, count: 0, trackers: [], notes: 0, goalUpdates: 0 };
+      if (!dayMap[date])
+        dayMap[date] = {
+          date,
+          count: 0,
+          trackers: [],
+          notes: 0,
+          goalUpdates: 0,
+        };
       dayMap[date].notes++;
       dayMap[date].count++;
     });
   }
-  
+
   // Process goal updates
-  if (goalsRes.status === 'fulfilled') {
-    goalsRes.value.data.forEach(update => {
+  if (goalsRes.status === "fulfilled") {
+    goalsRes.value.data.forEach((update) => {
       const date = update.timestamp.slice(0, 10);
-      if (!dayMap[date]) dayMap[date] = { date, count: 0, trackers: [], notes: 0, goalUpdates: 0 };
+      if (!dayMap[date])
+        dayMap[date] = {
+          date,
+          count: 0,
+          trackers: [],
+          notes: 0,
+          goalUpdates: 0,
+        };
       dayMap[date].goalUpdates++;
       dayMap[date].count++;
     });
   }
-  
+
   setCalendarDays(Object.values(dayMap));
 };
 ```
 
 **Add Filter Controls:**
+
 ```tsx
 const [filters, setFilters] = useState({
   trackers: true,
@@ -436,33 +474,33 @@ const [filters, setFilters] = useState({
 
 // In render
 <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
-  <Chip 
-    label="📊 Trackers" 
+  <Chip
+    label="📊 Trackers"
     color={filters.trackers ? 'primary' : 'default'}
     onClick={() => setFilters(f => ({ ...f, trackers: !f.trackers }))}
   />
-  <Chip 
-    label="📓 Notes" 
+  <Chip
+    label="📓 Notes"
     color={filters.notes ? 'primary' : 'default'}
     onClick={() => setFilters(f => ({ ...f, notes: !f.notes }))}
   />
-  <Chip 
-    label="🎯 Goals" 
+  <Chip
+    label="🎯 Goals"
     color={filters.goals ? 'primary' : 'default'}
     onClick={() => setFilters(f => ({ ...f, goals: !f.goals }))}
   />
 </Box>
 
 // Pass filtered data to calendar
-<HabitCalendar 
+<HabitCalendar
   dayData={calendarDays.filter(d => {
     let count = 0;
     if (filters.trackers) count += d.trackers.length;
     if (filters.notes) count += d.notes;
     if (filters.goals) count += d.goalUpdates;
     return count > 0;
-  })} 
-  goalDates={goalDates} 
+  })}
+  goalDates={goalDates}
 />
 ```
 
@@ -471,58 +509,61 @@ const [filters, setFilters] = useState({
 **Service Worker Implementation:**
 
 **New File:** `client/src/service-worker.ts`
+
 ```typescript
 /// <reference lib="webworker" />
 
-import { precacheAndRoute } from 'workbox-precaching';
-import { registerRoute } from 'workbox-routing';
-import { CacheFirst, NetworkFirst } from 'workbox-strategies';
-import { ExpirationPlugin } from 'workbox-expiration';
+import { precacheAndRoute } from "workbox-precaching";
+import { registerRoute } from "workbox-routing";
+import { CacheFirst, NetworkFirst } from "workbox-strategies";
+import { ExpirationPlugin } from "workbox-expiration";
 
 // Precache static assets
 precacheAndRoute(self.__WB_MANIFEST);
 
 // Cache API responses
 registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/'),
+  ({ url }) => url.pathname.startsWith("/api/"),
   new NetworkFirst({
-    cacheName: 'api-cache',
+    cacheName: "api-cache",
     plugins: [
       new ExpirationPlugin({
         maxEntries: 100,
         maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
       }),
     ],
-  })
+  }),
 );
 
 // Cache static assets
 registerRoute(
   ({ request, url }) =>
-    request.destination === 'image' ||
-    url.pathname.endsWith('.css') ||
-    url.pathname.endsWith('.js'),
+    request.destination === "image" ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".js"),
   new CacheFirst({
-    cacheName: 'static-resources',
+    cacheName: "static-resources",
     plugins: [
       new ExpirationPlugin({
         maxEntries: 60,
         maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
       }),
     ],
-  })
+  }),
 );
 ```
 
 **Register Service Worker:**
+
 ```typescript
 // client/src/index.tsx
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(reg => console.log('SW registered:', reg.scope))
-      .catch(err => console.log('SW registration failed:', err));
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/service-worker.js")
+      .then((reg) => console.log("SW registered:", reg.scope))
+      .catch((err) => console.log("SW registration failed:", err));
   });
 }
 ```
@@ -566,6 +607,7 @@ CREATE INDEX idx_goal_progress_history_date ON goal_progress_history(user_id, ti
 ## Summary
 
 ### Current State
+
 - ✅ Basic offline support for journal entries (IndexedDB)
 - ✅ Auto-sync when online
 - ✅ Habit calendar for trackers (16-week view)
@@ -583,6 +625,7 @@ CREATE INDEX idx_goal_progress_history_date ON goal_progress_history(user_id, ti
 ### Files to Modify
 
 **Frontend:**
+
 - `client/src/lib/db.ts` - Add tracker entries table
 - `client/src/hooks/useOfflineSync.ts` - Sync trackers
 - `client/src/features/analytics/AnalyticsPage.tsx` - Enhanced calendar
@@ -590,6 +633,7 @@ CREATE INDEX idx_goal_progress_history_date ON goal_progress_history(user_id, ti
 - `client/src/service-worker.ts` - NEW (full offline support)
 
 **Backend:**
+
 - `src/controllers/trackerController.ts` - Enhanced calendar endpoint
 - `src/routes/trackerRoutes.ts` - Add new routes
 - `src/migrations/` - Add database migrations

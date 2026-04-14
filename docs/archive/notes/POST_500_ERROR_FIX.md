@@ -18,11 +18,13 @@ Post submit error: Error: An internal server error occurred.
 The `posts` table is missing the `reference` column that the backend code tries to insert.
 
 **Error location:**
+
 - File: `src/controllers/postController.ts`
 - Function: `createPost()`
 - Line: Tries to insert `reference: reference ?? null`
 
 **Database schema mismatch:**
+
 - Code expects: `reference` column (JSONB)
 - Database has: NO `reference` column
 
@@ -33,6 +35,7 @@ The `posts` table is missing the `reference` column that the backend code tries 
 ### Step 1: Run Database Migration
 
 **Option A: Quick Fix (Recommended)**
+
 ```sql
 -- Copy this to Supabase SQL Editor and run
 ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS reference JSONB;
@@ -41,6 +44,7 @@ COMMENT ON COLUMN public.posts.reference IS 'Linked reference data (goal, servic
 ```
 
 **Option B: Run Migration File**
+
 ```bash
 # File: migrations/fix_posts_table.sql
 # Copy contents and run in Supabase SQL Editor
@@ -50,9 +54,9 @@ COMMENT ON COLUMN public.posts.reference IS 'Linked reference data (goal, servic
 
 ```sql
 -- Check column exists
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'posts' 
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'posts'
   AND column_name = 'reference';
 
 -- Should return:
@@ -73,21 +77,26 @@ WHERE table_name = 'posts'
 ### Backend (Improved Error Logging)
 
 **src/controllers/postController.ts**
+
 ```typescript
 const handleSupabaseError = (error: any) => {
-  logger.error('Supabase error (posts):', {
+  logger.error("Supabase error (posts):", {
     message: error.message,
     details: error.details,
     hint: error.hint,
     code: error.code,
   });
-  
+
   // Check for specific errors
-  if (error.message?.includes('reference')) {
-    logger.error('Posts table missing "reference" column - run migrations/fix_posts_table.sql');
+  if (error.message?.includes("reference")) {
+    logger.error(
+      'Posts table missing "reference" column - run migrations/fix_posts_table.sql',
+    );
   }
-  
-  throw new InternalServerError(error.message || 'Internal server error during Supabase operation.');
+
+  throw new InternalServerError(
+    error.message || "Internal server error during Supabase operation.",
+  );
 };
 ```
 
@@ -108,6 +117,7 @@ const handleSupabaseError = (error: any) => {
 ## Why This Happened
 
 The codebase evolved to include a `reference` field for linking posts to:
+
 - Goals
 - Services
 - Other posts
@@ -205,6 +215,7 @@ npm run build
 ## Error Messages Explained
 
 ### Before Fix
+
 ```
 HTTP 500 Internal Server Error
 "An internal server error occurred"
@@ -213,6 +224,7 @@ HTTP 500 Internal Server Error
 **Cause:** Supabase rejects INSERT due to unknown column `reference`
 
 ### After Fix
+
 ```
 HTTP 201 Created
 { "id": "...", "content": "...", ... }
@@ -238,6 +250,7 @@ After deploying fix:
 ### Expected Log Output
 
 **If column still missing:**
+
 ```
 [ERROR] Supabase error (posts): {
   "message": "column \"reference\" of relation \"posts\" does not exist",
@@ -247,6 +260,7 @@ After deploying fix:
 ```
 
 **If column exists (success):**
+
 ```
 [INFO] POST /api/posts 201 - 45ms
 ```

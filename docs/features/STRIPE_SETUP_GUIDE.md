@@ -20,6 +20,7 @@
    - Tax ID: Codice Fiscale (required for Italy)
 
 **Bank Account:**
+
 - Add your Italian bank account (IBAN)
 - Stripe will make 2 small deposits in 2-3 days to verify
 - **For now:** You can test with test mode without verified bank account
@@ -41,7 +42,7 @@ Description: Unlimited goals, AI coaching, mutual streaks
 Pricing:
   - Recurring (subscription)
   - Billing period: Monthly
-  
+
 Price: €9.99/month
 Currency: EUR (Euro)
 
@@ -59,7 +60,7 @@ Description: Priority matching, streak shield, advanced analytics
 Pricing:
   - Recurring (subscription)
   - Billing period: Monthly
-  
+
 Price: €24.99/month
 Currency: EUR (Euro)
 
@@ -73,10 +74,12 @@ Trial period: 7 days
 For each product, add a second price:
 
 **Praxis Pro Annual:**
+
 - Price: €79.99/year (33% savings vs monthly)
 - Billing period: Yearly
 
 **Praxis Elite Annual:**
+
 - Price: €199.99/year (33% savings vs monthly)
 
 ---
@@ -99,10 +102,12 @@ PORT=3001
 ### Where to Find Each:
 
 **STRIPE_SECRET_KEY:**
+
 1. Stripe Dashboard → Developers → API keys
 2. Copy "Secret key" (starts with `sk_test_` in test mode)
 
 **STRIPE_WEBHOOK_SECRET:**
+
 1. Stripe Dashboard → Developers → Webhooks
 2. Click "Add endpoint"
 3. Endpoint URL: `https://your-railway-url.railway.app/api/stripe/webhook`
@@ -114,6 +119,7 @@ PORT=3001
 5. Copy "Signing secret" → Looks like `whsec_...`
 
 **STRIPE_PRICE_ID:**
+
 - From Step 2, copy the Price ID for "Praxis Pro Monthly"
 
 ---
@@ -144,6 +150,7 @@ stripe listen --forward-to localhost:3001/api/stripe/webhook
 ```
 
 **Output:**
+
 ```
 Ready! Your webhook signing secret is whsec_1234567890abcdef
 ```
@@ -172,7 +179,8 @@ stripe trigger customer.subscription.deleted
 Ensure the API URL is correct:
 
 ```typescript
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+export const API_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:3001/api";
 ```
 
 ### Edit `/home/gio/Praxis/praxis_webapp/client/.env`
@@ -184,6 +192,7 @@ REACT_APP_API_URL=http://localhost:3001/api  # For local testing
 ```
 
 **For production (Vercel):**
+
 ```bash
 REACT_APP_API_URL=https://your-railway-url.railway.app/api
 ```
@@ -220,12 +229,14 @@ npm start
 ### 4. Verify Webhook:
 
 Check backend logs for:
+
 ```
 info: Stripe Webhook Event Received: checkout.session.completed
 info: Credited premium access to user [userId]
 ```
 
 Check database:
+
 ```sql
 -- In Supabase SQL Editor
 SELECT * FROM user_subscriptions WHERE user_id = 'your-user-id';
@@ -252,6 +263,7 @@ SELECT * FROM profiles WHERE id = 'your-user-id';
    - **Italian customers:** No IVA added (you're exempt under forfettario)
 
 **Important:** Consult a commercialista (accountant) in Verona for:
+
 - Partita IVA opening (required if revenue > €5,000/year)
 - Regime forfettario application
 - INPS Gestione Separata contributions (~26% of net income)
@@ -260,13 +272,14 @@ SELECT * FROM profiles WHERE id = 'your-user-id';
 
 **Recommended launch pricing:**
 
-| Tier | Monthly | Annual | USD Equivalent |
-|------|---------|--------|----------------|
-| Free | €0 | €0 | $0 |
-| Pro | €9.99 | €79.99 | $9.99 / $79.99 |
-| Elite | €24.99 | €199.99 | $24.99 / $199.99 |
+| Tier  | Monthly | Annual  | USD Equivalent   |
+| ----- | ------- | ------- | ---------------- |
+| Free  | €0      | €0      | $0               |
+| Pro   | €9.99   | €79.99  | $9.99 / $79.99   |
+| Elite | €24.99  | €199.99 | $24.99 / $199.99 |
 
 **Psychology:**
+
 - €9.99 = "less than a pizza" (easy yes)
 - €79.99 annual = "less than €7/month" (value anchor)
 - €24.99 = "premium but accessible" (aspirational)
@@ -274,11 +287,13 @@ SELECT * FROM profiles WHERE id = 'your-user-id';
 ### Customer Support (Italian)
 
 **Required by EU law:**
+
 - Email address for support
 - Response within 14 days (EU consumer rights)
 - 14-day refund policy (mandatory for EU digital products)
 
 **Add to Terms:**
+
 ```
 Diritto di recesso: Hai 14 giorni per richiedere un rimborso completo.
 Contattaci a: support@praxis.app
@@ -295,6 +310,7 @@ Contattaci a: support@praxis.app
    - Add: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`
 
 2. **Deploy:**
+
    ```bash
    git push origin main
    # Railway auto-deploys
@@ -416,6 +432,7 @@ vercel --prod
 ### Manual Tracking (Google Sheet):
 
 Use the `ANALYTICS_DASHBOARD_TEMPLATE.md` file to track:
+
 - Daily MRR
 - New subscriptions
 - Cancellations
@@ -428,6 +445,7 @@ Use the `ANALYTICS_DASHBOARD_TEMPLATE.md` file to track:
 ### Issue: Webhook not firing
 
 **Fix:**
+
 1. Check Railway logs: `railway logs`
 2. Verify webhook URL is correct in Stripe Dashboard
 3. Test locally with Stripe CLI first
@@ -436,6 +454,7 @@ Use the `ANALYTICS_DASHBOARD_TEMPLATE.md` file to track:
 ### Issue: Payment fails with "Card declined"
 
 **Fix:**
+
 1. Use test card `4242 4242 4242 4242` in test mode
 2. In live mode, try a different card
 3. Check Stripe Dashboard → Payments for decline reason
@@ -443,6 +462,7 @@ Use the `ANALYTICS_DASHBOARD_TEMPLATE.md` file to track:
 ### Issue: User doesn't get premium access
 
 **Fix:**
+
 1. Check webhook logs in Railway
 2. Verify `user_subscriptions` table has new row
 3. Check Supabase RLS policies allow insert
@@ -451,17 +471,18 @@ Use the `ANALYTICS_DASHBOARD_TEMPLATE.md` file to track:
 ### Issue: Euro symbol displays wrong
 
 **Fix:**
+
 ```typescript
 // Frontend: Format currency correctly
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: 'EUR',
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
   }).format(price);
 };
 
 // Usage:
-formatPrice(9.99) // "9,99 €"
+formatPrice(9.99); // "9,99 €"
 ```
 
 ---
@@ -491,6 +512,7 @@ formatPrice(9.99) // "9,99 €"
 - [ ] Renew INPS registration
 
 **Recommended Commercialisti in Verona:**
+
 - Studio Commercialista Verona (search Google Maps)
 - Ask for referral from other indie hackers in Italy
 - Cost: €500-1,500/year for forfettario
@@ -534,16 +556,19 @@ formatPrice(9.99) // "9,99 €"
 ## Support & Resources
 
 ### Stripe Documentation:
+
 - [Stripe Payments](https://stripe.com/docs/payments)
 - [Stripe Subscriptions](https://stripe.com/docs/billing/subscriptions)
 - [Stripe Webhooks](https://stripe.com/docs/webhooks)
 
 ### Italian Resources:
+
 - [Agenzia delle Entrate](https://www.agenziaentrate.gov.it/)
 - [INPS Gestione Separata](https://www.inps.it/)
 - [Regime Forfettario Guide](https://www.bussola24.it/regime-forfettario/)
 
 ### Community:
+
 - Indie Hackers Italia (Facebook group)
 - Build in Public Italia (Discord)
 - r/forfettario (Reddit)
@@ -552,12 +577,12 @@ formatPrice(9.99) // "9,99 €"
 
 ## Quick Reference: Test Cards
 
-| Card Number | Purpose |
-|-------------|---------|
-| `4242 4242 4242 4242` | Success |
-| `4000 0000 0000 0002` | Declined |
+| Card Number           | Purpose                             |
+| --------------------- | ----------------------------------- |
+| `4242 4242 4242 4242` | Success                             |
+| `4000 0000 0000 0002` | Declined                            |
 | `4000 0025 0000 0003` | Requires authentication (3D Secure) |
-| `4000 0000 0000 9995` | Declined (insufficient funds) |
+| `4000 0000 0000 9995` | Declined (insufficient funds)       |
 
 **Expiry:** Any future date  
 **CVC:** Any 3 digits  

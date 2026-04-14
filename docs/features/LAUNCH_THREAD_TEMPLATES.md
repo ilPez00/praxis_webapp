@@ -901,21 +901,21 @@ Follow along if you want to see the real numbers.
 
 ## Posting Schedule
 
-| Day | Platform | Time (Italy) | Content |
-|-----|----------|--------------|---------|
-| 1 | Twitter + LinkedIn + Reddit | 20:00 | Launch thread |
-| 2 | Twitter | 20:00 | Day 1 metrics |
-| 3 | LinkedIn | 09:00 | "Why Italy" article |
-| 4 | Twitter | 20:00 | First user win screenshot |
-| 5 | Twitter + Reddit | 20:00 | Day 5 update |
-| 7 | Twitter | 20:00 | Week 1 recap |
-| 10 | LinkedIn | 09:00 | "First €50 MRR" post |
-| 12 | Twitter | 20:00 | First revenue thread |
-| 15 | Twitter + Reddit | 20:00 | Mid-month update |
-| 18 | LinkedIn + Twitter | 09:00 | Italian market angle |
-| 21 | Twitter | 20:00 | Week 3 update |
-| 25 | Twitter | 20:00 | €250 MRR milestone |
-| 30 | Twitter + LinkedIn + Reddit | 20:00 | Final results |
+| Day | Platform                    | Time (Italy) | Content                   |
+| --- | --------------------------- | ------------ | ------------------------- |
+| 1   | Twitter + LinkedIn + Reddit | 20:00        | Launch thread             |
+| 2   | Twitter                     | 20:00        | Day 1 metrics             |
+| 3   | LinkedIn                    | 09:00        | "Why Italy" article       |
+| 4   | Twitter                     | 20:00        | First user win screenshot |
+| 5   | Twitter + Reddit            | 20:00        | Day 5 update              |
+| 7   | Twitter                     | 20:00        | Week 1 recap              |
+| 10  | LinkedIn                    | 09:00        | "First €50 MRR" post      |
+| 12  | Twitter                     | 20:00        | First revenue thread      |
+| 15  | Twitter + Reddit            | 20:00        | Mid-month update          |
+| 18  | LinkedIn + Twitter          | 09:00        | Italian market angle      |
+| 21  | Twitter                     | 20:00        | Week 3 update             |
+| 25  | Twitter                     | 20:00        | €250 MRR milestone        |
+| 30  | Twitter + LinkedIn + Reddit | 20:00        | Final results             |
 
 ---
 

@@ -20,6 +20,7 @@ Full-featured AI-powered daily scheduling system has been implemented for Praxis
 ### Backend Files
 
 #### 1. **AxiomScheduleService.ts** (`src/services/AxiomScheduleService.ts`)
+
 - ✅ `TimeSlot` interface with all metadata fields
 - ✅ `DailySchedule` interface with energy curve and focus theme
 - ✅ `generateSchedule()` - AI-powered schedule generation using Gemini
@@ -33,6 +34,7 @@ Full-featured AI-powered daily scheduling system has been implemented for Praxis
 - ✅ Template-based fallback when AI fails
 
 #### 2. **scheduleController.ts** (`src/controllers/scheduleController.ts`)
+
 - ✅ `getTodaySchedule` - GET /api/schedule/today
 - ✅ `getSchedule` - GET /api/schedule/:date
 - ✅ `generateSchedule` - POST /api/schedule/generate
@@ -42,19 +44,23 @@ Full-featured AI-powered daily scheduling system has been implemented for Praxis
 - ✅ `getShareableSlot` - GET /api/schedule/:scheduleId/slots/:hour/share
 
 #### 3. **scheduleRoutes.ts** (`src/routes/scheduleRoutes.ts`)
+
 - ✅ All route definitions with authentication middleware
 
 #### 4. **app.ts** (Modified)
+
 - ✅ Added scheduleRoutes import
 - ✅ Registered /api/schedule routes
 
 #### 5. **AxiomScanService.ts** (Modified)
+
 - ✅ Added schedule generation to daily brief workflow
 - ✅ Schedule summary included in `axiom_daily_briefs`
 
 ### Frontend Files
 
 #### 6. **AxiomSchedule.tsx** (`client/src/features/dashboard/components/AxiomSchedule.tsx`)
+
 - ✅ Full schedule display with 16 time slots (6am-10pm)
 - ✅ Category-based color coding (deep_work, rest, exercise, etc.)
 - ✅ Priority badges (high/medium/low)
@@ -71,6 +77,7 @@ Full-featured AI-powered daily scheduling system has been implemented for Praxis
 ### Database Files
 
 #### 7. **add_axiom_schedules.sql** (`migrations/add_axiom_schedules.sql`)
+
 - ✅ `axiom_schedules` table
 - ✅ `schedule_time_slots` table (16 slots per schedule)
 - ✅ `schedule_completions` table
@@ -88,12 +95,14 @@ Full-featured AI-powered daily scheduling system has been implemented for Praxis
 ### 1. AI-Powered Schedule Generation
 
 **How it works:**
+
 ```
 User opens schedule → Check if exists → If not, call AI endpoint →
 Gemini generates 16 time slots → Store in DB → Display to user
 ```
 
 **AI Prompt includes:**
+
 - User archetype and motivation style
 - Goal list with progress percentages
 - Tracker trends (improving/declining)
@@ -103,6 +112,7 @@ Gemini generates 16 time slots → Store in DB → Display to user
 - Suggested matches, events, places
 
 **Output:**
+
 ```typescript
 {
   date: "2026-03-15",
@@ -135,6 +145,7 @@ Gemini generates 16 time slots → Store in DB → Display to user
 ### 2. Person Matching Algorithm
 
 **Scoring logic:**
+
 ```typescript
 score = 0
 if matchDomain in userDomains: score += 2
@@ -144,6 +155,7 @@ return match with highest score
 ```
 
 **Displayed in UI:**
+
 - Chip with person name
 - Click to view profile
 - Suggested for social time slots
@@ -151,6 +163,7 @@ return match with highest score
 ### 3. Place Suggestion Algorithm
 
 **Scoring logic:**
+
 ```typescript
 score = 0
 if place.city === user.city: score += 5
@@ -161,6 +174,7 @@ return places with highest scores
 ```
 
 **Displayed in UI:**
+
 - Chip with place name
 - Suggested for exercise/deep_work slots
 - Click to view place details
@@ -168,6 +182,7 @@ return places with highest scores
 ### 4. Event Suggestion Algorithm
 
 **Scoring logic:**
+
 ```typescript
 score = 0
 if event.city === user.city: score += 5
@@ -177,6 +192,7 @@ return events with highest scores
 ```
 
 **Displayed in UI:**
+
 - Chip with event title
 - Scheduled at appropriate time
 - Click to view event details
@@ -184,12 +200,14 @@ return events with highest scores
 ### 5. Interactive Time Slots
 
 **Click behavior:**
+
 ```
 Click slot → Open dialog → Show task + alignment + preparation →
 Text area for note → Mood selector → Save button
 ```
 
 **Save creates:**
+
 - Diary entry linked to schedule slot
 - Metadata includes hour, category, priority
 - Content includes quoted task and alignment
@@ -197,12 +215,14 @@ Text area for note → Mood selector → Save button
 ### 6. Share Mechanism
 
 **Share flow:**
+
 ```
 Click share icon → Fetch shareable data → Show preview dialog →
 "Share to Diary" button → Create diary entry with formatted content
 ```
 
 **Diary entry format:**
+
 ```markdown
 📅 **Scheduled: 06:00 - 07:00**
 
@@ -225,22 +245,25 @@ Description here...
 
 ---
 
-*From Axiom's daily schedule for 2026-03-15*
+_From Axiom's daily schedule for 2026-03-15_
 ```
 
 **Visibility:**
+
 - Default: `is_private: false` (visible to accountability network)
 - Can be edited later to private
 
 ### 7. Completion Tracking
 
 **Mark complete:**
+
 ```
 Click checkmark → API call → Create completion record →
 Optional: prompt for note → Update UI
 ```
 
 **Completion includes:**
+
 - Timestamp
 - Optional note
 - Optional mood
@@ -249,6 +272,7 @@ Optional: prompt for note → Update UI
 ### 8. Filter System
 
 **Available filters:**
+
 - All (default)
 - High Priority (shows `priority: 'high'` slots)
 - Pending (shows `!isCompleted` slots)
@@ -256,6 +280,7 @@ Optional: prompt for note → Update UI
 - By category (deep_work, rest, exercise, etc.)
 
 **UI:**
+
 - Chip buttons with color coding
 - Active filter highlighted
 - Real-time filtering
@@ -265,6 +290,7 @@ Optional: prompt for note → Update UI
 ## 🗄️ Database Schema
 
 ### axiom_schedules
+
 ```sql
 CREATE TABLE axiom_schedules (
   id UUID PRIMARY KEY,
@@ -282,6 +308,7 @@ CREATE TABLE axiom_schedules (
 ```
 
 ### schedule_time_slots
+
 ```sql
 CREATE TABLE schedule_time_slots (
   id UUID PRIMARY KEY,
@@ -303,6 +330,7 @@ CREATE TABLE schedule_time_slots (
 ```
 
 ### schedule_completions
+
 ```sql
 CREATE TABLE schedule_completions (
   id UUID PRIMARY KEY,
@@ -321,9 +349,11 @@ CREATE TABLE schedule_completions (
 ## 📊 API Endpoints
 
 ### GET /api/schedule/today
+
 Get today's schedule (auto-generates if missing)
 
 **Response:**
+
 ```json
 {
   "schedule_id": "...",
@@ -335,36 +365,45 @@ Get today's schedule (auto-generates if missing)
 ```
 
 ### GET /api/schedule/:date
+
 Get schedule for specific date
 
 ### POST /api/schedule/generate
+
 Regenerate schedule with AI
 
 **Body:**
+
 ```json
 { "date": "2026-03-15" }
 ```
 
 ### POST /api/schedule/:scheduleId/slots/:hour/complete
+
 Mark slot as completed
 
 **Body:**
+
 ```json
 { "note": "Felt productive today", "mood": "focused" }
 ```
 
 ### POST /api/schedule/:scheduleId/slots/:hour/note
+
 Add note without marking complete
 
 ### GET /api/schedule/stats
+
 Get completion statistics
 
 **Query:**
+
 ```
 ?startDate=2026-03-01&endDate=2026-03-15
 ```
 
 ### GET /api/schedule/:scheduleId/slots/:hour/share
+
 Get shareable slot data
 
 ---
@@ -372,53 +411,60 @@ Get shareable slot data
 ## 🎨 UI Components
 
 ### Category Colors
-| Category | Background | Border | Text |
-|----------|-----------|--------|------|
-| deep_work | rgba(139,92,246,0.08) | rgba(139,92,246,0.3) | #A78BFA |
-| admin | rgba(107,114,128,0.08) | rgba(107,114,128,0.3) | #9CA3AF |
-| rest | rgba(59,130,246,0.08) | rgba(59,130,246,0.3) | #60A5FA |
-| exercise | rgba(239,68,68,0.08) | rgba(239,68,68,0.3) | #F87171 |
-| social | rgba(236,72,153,0.08) | rgba(236,72,153,0.3) | #F472B6 |
-| learning | rgba(16,185,129,0.08) | rgba(16,185,129,0.3) | #34D399 |
-| planning | rgba(245,158,11,0.08) | rgba(245,158,11,0.3) | #FBBF24 |
-| reflection | rgba(139,92,246,0.08) | rgba(139,92,246,0.3) | #C084FC |
+
+| Category   | Background             | Border                | Text    |
+| ---------- | ---------------------- | --------------------- | ------- |
+| deep_work  | rgba(139,92,246,0.08)  | rgba(139,92,246,0.3)  | #A78BFA |
+| admin      | rgba(107,114,128,0.08) | rgba(107,114,128,0.3) | #9CA3AF |
+| rest       | rgba(59,130,246,0.08)  | rgba(59,130,246,0.3)  | #60A5FA |
+| exercise   | rgba(239,68,68,0.08)   | rgba(239,68,68,0.3)   | #F87171 |
+| social     | rgba(236,72,153,0.08)  | rgba(236,72,153,0.3)  | #F472B6 |
+| learning   | rgba(16,185,129,0.08)  | rgba(16,185,129,0.3)  | #34D399 |
+| planning   | rgba(245,158,11,0.08)  | rgba(245,158,11,0.3)  | #FBBF24 |
+| reflection | rgba(139,92,246,0.08)  | rgba(139,92,246,0.3)  | #C084FC |
 
 ### Priority Colors
-| Priority | Color |
-|----------|-------|
-| high | #EF4444 |
-| medium | #F59E0B |
-| low | #10B981 |
+
+| Priority | Color   |
+| -------- | ------- |
+| high     | #EF4444 |
+| medium   | #F59E0B |
+| low      | #10B981 |
 
 ---
 
 ## 🧪 Testing Checklist
 
 ### Schedule Generation
+
 - [ ] Open dashboard without schedule → Should auto-generate
 - [ ] Click regenerate → Should create new AI schedule
 - [ ] Check AI response includes 16 time slots
 - [ ] Verify suggested matches/events/places appear
 
 ### Time Slot Interaction
+
 - [ ] Click time slot → Should open note dialog
 - [ ] Add note + mood → Save → Should create diary entry
 - [ ] Click checkmark → Should mark complete
 - [ ] Click again → Should mark incomplete
 
 ### Share Functionality
+
 - [ ] Click share icon → Should show preview dialog
 - [ ] Click "Share to Diary" → Should create diary entry
 - [ ] Check diary entry has quoted content
 - [ ] Verify suggestions (match/place/event) included
 
 ### Filters
+
 - [ ] Click "High Priority" → Should show only high priority slots
 - [ ] Click "Completed" → Should show completed slots
 - [ ] Click category chip → Should filter by category
 - [ ] Click "All" → Should reset filters
 
 ### Completion Tracking
+
 - [ ] Complete multiple slots → Check stats update
 - [ ] Add note on completion → Verify saved
 - [ ] Check diary for linked entries
@@ -428,6 +474,7 @@ Get shareable slot data
 ## 🚀 Deployment Steps
 
 ### 1. Run Database Migration
+
 ```sql
 -- Copy migrations/add_axiom_schedules.sql
 -- Paste into Supabase SQL Editor
@@ -435,6 +482,7 @@ Get shareable slot data
 ```
 
 ### 2. Deploy Backend
+
 ```bash
 cd /home/gio/Praxis/praxis_webapp
 npm run build
@@ -442,6 +490,7 @@ npm run build
 ```
 
 ### 3. Deploy Frontend
+
 ```bash
 cd /home/gio/Praxis/praxis_webapp/client
 npm run build
@@ -449,6 +498,7 @@ npm run build
 ```
 
 ### 4. Test Integration
+
 1. Open dashboard
 2. Navigate to schedule section
 3. Verify schedule displays
@@ -459,17 +509,20 @@ npm run build
 ## 📈 Metrics to Track
 
 ### Engagement
+
 - Schedule views per day
 - Time slots completed
 - Notes added to slots
 - Shares to diary
 
 ### AI Quality
+
 - Regenerate rate (how often users regenerate)
 - Completion rate by category
 - User retention with schedule feature
 
 ### Suggestions
+
 - Match suggestion click-through rate
 - Place suggestion click-through rate
 - Event suggestion click-through rate
@@ -479,6 +532,7 @@ npm run build
 ## 🔮 Future Enhancements
 
 ### Phase 2: Advanced Features
+
 1. **Drag-to-reschedule** - Move flexible time slots
 2. **Recurring templates** - Save favorite schedules
 3. **Partner sync** - Share schedules with accountability partner
@@ -488,6 +542,7 @@ npm run build
 7. **Schedule analytics** - Best times for deep work
 
 ### Phase 3: AI Improvements
+
 1. **Learning from completions** - AI adjusts based on what you complete
 2. **Mood correlation** - Suggest tasks based on mood patterns
 3. **Context awareness** - Consider location, weather, etc.
@@ -508,6 +563,7 @@ npm run build
 ## 💡 Best Practices
 
 ### For Users
+
 1. **Review schedule each morning** - Set intentions
 2. **Mark slots complete** - Track progress
 3. **Add notes** - Build self-awareness
@@ -515,6 +571,7 @@ npm run build
 5. **Use filters** - Focus on high priority
 
 ### For Developers
+
 1. **Always check RLS** - Test with different users
 2. **Handle AI failures** - Template fallback exists
 3. **Respect rate limits** - AI endpoint limited
@@ -540,4 +597,4 @@ All features are ready for testing and deployment.
 
 ---
 
-*Built with ❤️ for Praxis - Aligning Will. Designing Intent.*
+_Built with ❤️ for Praxis - Aligning Will. Designing Intent._

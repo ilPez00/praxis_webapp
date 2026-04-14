@@ -7,6 +7,7 @@ You have **7 RLS policies** on the `posts` table instead of the expected **3**. 
 ## Root Cause
 
 Multiple migrations created duplicate policies:
+
 - Old migrations weren't cleaned up
 - Different policy names for same operations
 - Conflicting rules

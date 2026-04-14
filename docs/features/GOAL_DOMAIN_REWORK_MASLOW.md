@@ -63,19 +63,25 @@ Level 1: Physiological (Basic Needs)
 ### Level 1: Physiological Needs (Survival)
 
 #### 1. 💪 Body & Fitness
+
 **Replaces:** `Body & Health` (partial)
+
 - Physical fitness, strength, athletics
 - Exercise routines, sports performance
 - **Trackers:** lift, cardio, steps, sports
 
 #### 2. 😴 Rest & Recovery
+
 **NEW** - Split from health
+
 - Sleep optimization, rest days
 - Stress management, relaxation
 - **Trackers:** sleep, meditation, rest
 
 #### 3. 🧠 Mental Balance
+
 **Replaces:** `Mind & Learning` (partial) + `Mental Health`
+
 - Emotional regulation, psychological resilience
 - Therapy, mindfulness, mental wellness
 - **Trackers:** mood, journal, meditation
@@ -85,19 +91,25 @@ Level 1: Physiological (Basic Needs)
 ### Level 2: Safety Needs (Security)
 
 #### 4. 🏠 Environment & Home
+
 **Replaces:** `Environment & Gear`
+
 - Living space, organization, cleanliness
 - Home improvement, relocation
 - **Trackers:** cleaning, home projects
 
 #### 5. 🛡️ Health & Longevity
+
 **Replaces:** `Body & Health` (partial)
+
 - Medical checkups, preventive care
 - Nutrition, supplements, health metrics
 - **Trackers:** meals, health metrics, medical appointments
 
 #### 6. 💰 Financial Security
+
 **NEW** - Split from investing
+
 - Budget management, emergency fund
 - Debt reduction, financial stability
 - **Trackers:** budget, expenses, savings
@@ -107,19 +119,25 @@ Level 1: Physiological (Basic Needs)
 ### Level 3: Love/Belonging (Social)
 
 #### 7. 👥 Friendship & Social
+
 **Keeps:** `Friendship & Social`
+
 - Platonic relationships, social circles
 - Networking, social events
 - **Trackers:** hangout, social events
 
 #### 8. ❤️ Romance & Intimacy
+
 **Keeps:** `Intimacy & Romance`
+
 - Romantic relationships, dating
 - Physical intimacy, emotional connection
 - **Trackers:** dates, relationship check-ins
 
 #### 9. 🏛️ Community & Contribution
+
 **NEW** - Elevated from sub-category
+
 - Volunteering, community service
 - Religious/spiritual community participation
 - **Trackers:** volunteer hours, community events
@@ -129,19 +147,25 @@ Level 1: Physiological (Basic Needs)
 ### Level 4: Esteem Needs (Achievement)
 
 #### 10. 💼 Career & Craft
+
 **Replaces:** `Craft & Career`
+
 - Professional advancement, skill mastery
 - Business building, entrepreneurship
 - **Trackers:** job applications, projects, deep work
 
 #### 11. 📈 Wealth & Assets
+
 **Replaces:** `Money & Assets` + `Investing`
+
 - Investment growth, wealth building
 - Asset acquisition, passive income
 - **Trackers:** investments, portfolio value, passive income
 
 #### 12. 🎮 Gaming & Esports
+
 **NEW** - Modern addition
+
 - Video game achievements, skill progression
 - Esports competition, streaming
 - Game completion, collection building
@@ -152,13 +176,17 @@ Level 1: Physiological (Basic Needs)
 ### Level 5: Self-Transcendence (Beyond Self)
 
 #### 13. 🎯 Impact & Legacy
+
 **NEW** - Split from personal goals
+
 - Making a difference, leaving a mark
 - Mentoring, teaching, influencing others
 - **Trackers:** people helped, content created, students mentored
 
 #### 14. 🌟 Spirit & Purpose
+
 **Keeps:** `Spirit & Purpose` (refocused)
+
 - Life meaning, existential exploration
 - Philosophical development, personal values
 - **Trackers:** journal, reflection, meditation
@@ -168,11 +196,13 @@ Level 1: Physiological (Basic Needs)
 ## Why Add Video Games as a Domain?
 
 ### Cultural Significance
+
 - **$200B+ industry** - Larger than movies and music combined
 - **3+ billion gamers worldwide** - Majority of global population
 - **Legitimate skill development** - Problem-solving, reflexes, strategy, teamwork
 
 ### Common Gaming Goals
+
 1. **Achievement Hunting** - 100% completion, platinum trophies
 2. **Skill Progression** - Rank climbing in competitive games (LoL, CS:GO, Valorant)
 3. **Content Creation** - Streaming, YouTube, building audience
@@ -183,15 +213,18 @@ Level 1: Physiological (Basic Needs)
 8. **Creative Gaming** - Minecraft builds, game modding
 
 ### Integration with Existing Features
+
 - **Trackers:** gaming hours, achievements unlocked, rank progression
 - **Events:** Gaming tournaments, launch parties, LAN events
 - **Challenges:** "Complete Dark Souls no-hit run", "Reach Diamond rank"
 - **Matches:** Find gaming buddies, accountability partners for grind
 
 ### Addressing Concerns
+
 > "Isn't gaming just a waste of time?"
 
 **Response:** Gaming is what you make of it:
+
 - **Passive consumption** → Entertainment (like TV)
 - **Active engagement** → Skill development, social connection, achievement
 - **Professional pursuit** → Career (streaming, esports, content creation)
@@ -211,22 +244,22 @@ CREATE TYPE new_domain AS ENUM (
   'body_fitness',
   'rest_recovery',
   'mental_balance',
-  
+
   -- Level 2: Safety
   'environment_home',
   'health_longevity',
   'financial_security',
-  
+
   -- Level 3: Love/Belonging
   'friendship_social',
   'romance_intimacy',
   'community_contribution',
-  
+
   -- Level 4: Esteem
   'career_craft',
   'wealth_assets',
   'gaming_esports',
-  
+
   -- Level 5: Self-Transcendence
   'impact_legacy',
   'spirit_purpose'
@@ -240,23 +273,23 @@ UPDATE goal_trees SET new_domain = CASE
   -- Level 1
   WHEN domain IN ('Fitness', 'Body & Health') THEN 'body_fitness'
   WHEN domain = 'Mental Health' THEN 'mental_balance'
-  
+
   -- Level 2
   WHEN domain = 'Environment & Gear' THEN 'environment_home'
   WHEN domain IN ('Investing / Financial Growth', 'Money & Assets') THEN 'financial_security'
-  
+
   -- Level 3
   WHEN domain = 'Friendship / Social Engagement' THEN 'friendship_social'
   WHEN domain = 'Intimacy / Romantic Exploration' THEN 'romance_intimacy'
-  
+
   -- Level 4
   WHEN domain = 'Career' THEN 'career_craft'
   WHEN domain IN ('Investing / Financial Growth', 'Money & Assets') THEN 'wealth_assets'
-  
+
   -- Level 5
   WHEN domain = 'Philosophical Development' THEN 'spirit_purpose'
   WHEN domain = 'Personal Goals' THEN 'impact_legacy'
-  
+
   -- Default
   ELSE 'career_craft'
 END;
@@ -286,28 +319,28 @@ ALTER TABLE goal_trees RENAME COLUMN new_domain TO domain;
 ```typescript
 const MASLOW_LEVEL_COLORS = {
   // Level 1: Physiological (Red/Orange - Survival)
-  'body_fitness': '#EF4444',
-  'rest_recovery': '#F97316',
-  'mental_balance': '#FB923C',
-  
+  body_fitness: "#EF4444",
+  rest_recovery: "#F97316",
+  mental_balance: "#FB923C",
+
   // Level 2: Safety (Blue/Green - Stability)
-  'environment_home': '#10B981',
-  'health_longevity': '#3B82F6',
-  'financial_security': '#6366F1',
-  
+  environment_home: "#10B981",
+  health_longevity: "#3B82F6",
+  financial_security: "#6366F1",
+
   // Level 3: Love/Belonging (Pink/Purple - Connection)
-  'friendship_social': '#EC4899',
-  'romance_intimacy': '#F472B6',
-  'community_contribution': '#A78BFA',
-  
+  friendship_social: "#EC4899",
+  romance_intimacy: "#F472B6",
+  community_contribution: "#A78BFA",
+
   // Level 4: Esteem (Gold/Yellow - Achievement)
-  'career_craft': '#F59E0B',
-  'wealth_assets': '#FBBF24',
-  'gaming_esports': '#8B5CF6',
-  
+  career_craft: "#F59E0B",
+  wealth_assets: "#FBBF24",
+  gaming_esports: "#8B5CF6",
+
   // Level 5: Self-Transcendence (Purple/White - Transcendence)
-  'impact_legacy': '#8B5CF6',
-  'spirit_purpose': '#C4B5FD',
+  impact_legacy: "#8B5CF6",
+  spirit_purpose: "#C4B5FD",
 };
 ```
 
@@ -316,26 +349,31 @@ const MASLOW_LEVEL_COLORS = {
 ## Benefits of This Rework
 
 ### 1. **Scientific Foundation**
+
 - Based on proven psychological framework (Maslow)
 - Users understand the "why" behind domain structure
 - Clear progression from basic needs to self-actualization
 
 ### 2. **Better Granularity**
+
 - Split overly broad domains (Health → Body + Health + Mental)
 - Focused domains = clearer goal setting
 - Reduced cognitive load when categorizing goals
 
 ### 3. **Modern Relevance**
+
 - Gaming recognized as legitimate pursuit
 - Reflects how modern users actually spend time
 - Attracts younger demographic
 
 ### 4. **Improved Analytics**
+
 - Track balance across Maslow levels
 - Identify neglected life areas
 - "Are you focusing only on Level 4 while ignoring Level 1?"
 
 ### 5. **Better AI Coaching**
+
 - Axiom can give level-specific advice
 - "You're neglecting physiological needs"
 - "Great balance across all levels this month!"
@@ -345,21 +383,25 @@ const MASLOW_LEVEL_COLORS = {
 ## Implementation Priority
 
 ### Phase 1: Core Changes (Week 1)
+
 - [ ] Update domain enum and types
 - [ ] Create database migration
 - [ ] Update frontend domain selectors
 
 ### Phase 2: Tracker Integration (Week 2)
+
 - [ ] Update tracker auto-assignment
 - [ ] Add gaming-specific trackers
 - [ ] Test tracker-domain mapping
 
 ### Phase 3: UI/UX Updates (Week 3)
+
 - [ ] Update all filter dropdowns
 - [ ] Update domain icons and colors
 - [ ] Add Maslow level visualization
 
 ### Phase 4: Analytics & AI (Week 4)
+
 - [ ] Add Maslow level balance analytics
 - [ ] Update Axiom to reference levels
 - [ ] Add "life balance" insights
@@ -369,6 +411,7 @@ const MASLOW_LEVEL_COLORS = {
 ## Example User Goal Trees
 
 ### Example 1: Gamer/Streamer
+
 ```
 🎮 Gaming & Esports (Level 4)
 ├─ Reach Diamond in Valorant
@@ -394,6 +437,7 @@ const MASLOW_LEVEL_COLORS = {
 ```
 
 ### Example 2: Work-Life Balance Seeker
+
 ```
 Level 1: Physiological ✅ 85%
 ├─ 💪 Body & Fitness: 90%
@@ -419,7 +463,7 @@ Level 5: Self-Transcendence ⚠️ 30%
 ├─ 🎯 Impact & Legacy: 25%
 └─ 🌟 Spirit & Purpose: 35%
 
-🔍 Axiom Insight: "You're excelling at Levels 1-2, but neglecting social connection (Level 3) 
+🔍 Axiom Insight: "You're excelling at Levels 1-2, but neglecting social connection (Level 3)
    and meaning (Level 5). Consider joining a local community group or volunteering."
 ```
 
@@ -430,28 +474,28 @@ Level 5: Self-Transcendence ⚠️ 30%
 ```typescript
 const DOMAIN_TRACKERS = {
   // Level 1
-  'body_fitness': ['lift', 'cardio', 'steps', 'sports'],
-  'rest_recovery': ['sleep', 'meditation', 'rest_day'],
-  'mental_balance': ['mood', 'journal', 'meditation', 'therapy'],
-  
+  body_fitness: ["lift", "cardio", "steps", "sports"],
+  rest_recovery: ["sleep", "meditation", "rest_day"],
+  mental_balance: ["mood", "journal", "meditation", "therapy"],
+
   // Level 2
-  'environment_home': ['cleaning', 'home_projects', 'organization'],
-  'health_longevity': ['meals', 'water', 'supplements', 'medical'],
-  'financial_security': ['budget', 'expenses', 'savings', 'debt'],
-  
+  environment_home: ["cleaning", "home_projects", "organization"],
+  health_longevity: ["meals", "water", "supplements", "medical"],
+  financial_security: ["budget", "expenses", "savings", "debt"],
+
   // Level 3
-  'friendship_social': ['hangout', 'social_events', 'networking'],
-  'romance_intimacy': ['dates', 'relationship_checkin'],
-  'community_contribution': ['volunteer', 'community_events'],
-  
+  friendship_social: ["hangout", "social_events", "networking"],
+  romance_intimacy: ["dates", "relationship_checkin"],
+  community_contribution: ["volunteer", "community_events"],
+
   // Level 4
-  'career_craft': ['deep_work', 'job_apps', 'projects', 'learning'],
-  'wealth_assets': ['investments', 'portfolio', 'passive_income'],
-  'gaming_esports': ['gaming', 'achievements', 'rank', 'streaming'],
-  
+  career_craft: ["deep_work", "job_apps", "projects", "learning"],
+  wealth_assets: ["investments", "portfolio", "passive_income"],
+  gaming_esports: ["gaming", "achievements", "rank", "streaming"],
+
   // Level 5
-  'impact_legacy': ['mentoring', 'teaching', 'content_creation'],
-  'spirit_purpose': ['journal', 'reflection', 'meditation', 'reading'],
+  impact_legacy: ["mentoring", "teaching", "content_creation"],
+  spirit_purpose: ["journal", "reflection", "meditation", "reading"],
 };
 ```
 
@@ -464,11 +508,11 @@ This rework:
 ✅ **Adds scientific foundation** (Maslow's hierarchy)  
 ✅ **Includes modern pursuits** (Video games as legitimate domain)  
 ✅ **Improves user experience** (Clearer categorization, better insights)  
-✅ **Enables advanced analytics** (Life balance across levels)  
+✅ **Enables advanced analytics** (Life balance across levels)
 
 **Recommendation:** Proceed with implementation, starting with database migration and type updates.
 
 ---
 
-*Prepared by: AI Code Analysis*  
-*Date: March 18, 2026*
+_Prepared by: AI Code Analysis_  
+_Date: March 18, 2026_

@@ -8,8 +8,8 @@
 
 ### Column Structure
 
-| A | B | C | D | E | F | G | H | I | J | K | L |
-|---|---|---|---|---|---|---|---|---|---|---|---|
+| A    | B     | C           | D                  | E           | F             | G                | H                     | I         | J       | K                 | L     |
+| ---- | ----- | ----------- | ------------------ | ----------- | ------------- | ---------------- | --------------------- | --------- | ------- | ----------------- | ----- |
 | Date | Day # | Total Users | Active Users (DAU) | New Signups | Churned Users | Check-ins Logged | Mutual Streaks Active | Pro Users | MRR (€) | Annual Plans Sold | Notes |
 
 ### Example Rows
@@ -30,16 +30,17 @@
 ### Formulas to Add
 
 **Row 52 (Week 1 Totals):**
+
 - `C52`: `=SUM(C2:C8)` — Total user-weeks
 - `D52`: `=AVERAGE(D2:D8)` — Avg DAU
 - `G52`: `=SUM(G2:G8)` — Total check-ins
 
 **Calculated Metrics (add in columns M-Q):**
 
-| M | N | O | P | Q |
-|---|---|---|---|---|
+| M             | N                | O                | P        | Q             |
+| ------------- | ---------------- | ---------------- | -------- | ------------- |
 | DAU/MAU Ratio | Week 1 Retention | Pro Conversion % | ARPU (€) | Burn Rate (€) |
-| `=D2/C2` | `=D8/C2` | `=I2/C2` | `=J2/C2` | `=-K2` |
+| `=D2/C2`      | `=D8/C2`         | `=I2/C2`         | `=J2/C2` | `=-K2`        |
 
 ---
 
@@ -49,8 +50,8 @@
 
 ### Column Structure
 
-| A | B | C | D | E | F | G | H | I |
-|---|---|---|---|---|---|---|---|---|
+| A           | B              | C            | D            | E            | F             | G             | H            | I             |
+| ----------- | -------------- | ------------ | ------------ | ------------ | ------------- | ------------- | ------------ | ------------- |
 | Cohort Week | Users at Start | Day 1 Active | Day 3 Active | Day 7 Active | Day 14 Active | Day 30 Active | Retention D7 | Retention D30 |
 
 ### Example Rows
@@ -66,18 +67,21 @@
 ### Formulas
 
 **Retention D7 (Column H):**
+
 ```
 H2: =E2/B2
 Format as percentage
 ```
 
 **Retention D30 (Column I):**
+
 ```
 I2: =G2/B2
 Format as percentage
 ```
 
 **Conditional Formatting:**
+
 - Green if > 60%
 - Yellow if 40-60%
 - Red if < 40%
@@ -90,8 +94,8 @@ Format as percentage
 
 ### Column Structure
 
-| A | B | C | D | E | F | G | H | I |
-|---|---|---|---|---|---|---|---|---|
+| A    | B          | C                     | D                        | E          | F                | G         | H          | I     |
+| ---- | ---------- | --------------------- | ------------------------ | ---------- | ---------------- | --------- | ---------- | ----- |
 | Date | User Email | Plan (Free/Pro/Elite) | Billing (Monthly/Annual) | Amount (€) | Transaction Type | Stripe ID | MRR Impact | Notes |
 
 ### Example Rows
@@ -109,16 +113,19 @@ Format as percentage
 ### Formulas
 
 **Total MRR (cell J2):**
+
 ```
 J2: =SUM(H:H)
 ```
 
 **Monthly Recurring Revenue Trend (create chart):**
+
 - X-axis: Date
 - Y-axis: Cumulative MRR
 - Chart type: Line chart
 
 **Annual Revenue Equivalent (cell K2):**
+
 ```
 K2: =J2 * 12
 ```
@@ -131,11 +138,12 @@ K2: =J2 * 12
 
 ### Column Structure
 
-| A | B | C | D | E | F | G |
-|---|---|---|---|---|---|---|
+| A    | B    | C        | D        | E              | F      | G            |
+| ---- | ---- | -------- | -------- | -------------- | ------ | ------------ |
 | Date | User | Category | Feedback | Severity (1-5) | Status | Action Taken |
 
 ### Categories (Dropdown)
+
 - Bug
 - Feature Request
 - UX Friction
@@ -144,6 +152,7 @@ K2: =J2 * 12
 - Other
 
 ### Severity Scale
+
 - 1 = Nice to have
 - 2 = Minor annoyance
 - 3 = Almost quit
@@ -165,11 +174,13 @@ K2: =J2 * 12
 ### Pivot Table (create new sheet)
 
 **Feedback by Category:**
+
 - Rows: Category
 - Values: COUNT of Feedback
 - Sort: Descending
 
 **Feedback by Severity:**
+
 - Rows: Severity
 - Values: COUNT of Feedback
 - Filter: Severity >= 3 only
@@ -182,11 +193,12 @@ K2: =J2 * 12
 
 ### Column Structure
 
-| A | B | C | D | E | F | G | H |
-|---|---|---|---|---|---|---|---|
+| A    | B        | C            | D            | E            | F        | G      | H     |
+| ---- | -------- | ------------ | ------------ | ------------ | -------- | ------ | ----- |
 | Date | Platform | Contact Name | Handle/Email | Message Sent | Response | Status | Notes |
 
 ### Platforms (Dropdown)
+
 - Twitter DM
 - Instagram DM
 - LinkedIn Message
@@ -196,6 +208,7 @@ K2: =J2 * 12
 - WhatsApp
 
 ### Status (Dropdown)
+
 - Sent
 - Replied
 - Signed Up
@@ -218,12 +231,14 @@ K2: =J2 * 12
 ### Formulas
 
 **Conversion Rate (cell I2):**
+
 ```
 I2: =COUNTIF(G:G, "Signed Up") / COUNTA(G:G)
 Format as percentage
 ```
 
 **Response Rate (cell J2):**
+
 ```
 J2: =COUNTIF(F:F, "<>No") / COUNTA(F:F)
 Format as percentage
@@ -274,12 +289,12 @@ Format as percentage
 
 ### Conditional Formatting Rules
 
-| Metric | Green | Yellow | Red |
-|--------|-------|--------|-----|
-| DAU/MAU | > 45% | 25-45% | < 25% |
-| Week 1 Retention | > 70% | 50-70% | < 50% |
-| Pro Conversion | > 10% | 5-10% | < 5% |
-| MRR Growth | > 20%/week | 10-20%/week | < 10%/week |
+| Metric           | Green      | Yellow      | Red        |
+| ---------------- | ---------- | ----------- | ---------- |
+| DAU/MAU          | > 45%      | 25-45%      | < 25%      |
+| Week 1 Retention | > 70%      | 50-70%      | < 50%      |
+| Pro Conversion   | > 10%      | 5-10%       | < 5%       |
+| MRR Growth       | > 20%/week | 10-20%/week | < 10%/week |
 
 ---
 
@@ -366,6 +381,7 @@ Format as percentage
 ## Quick Start: First Week Data Entry
 
 **Day 1 (Launch Day):**
+
 ```
 Date: 2026-03-16
 Day #: 1
@@ -382,6 +398,7 @@ Notes: "Launch day. Twitter thread posted at 20:00"
 ```
 
 **Day 2:**
+
 ```
 Date: 2026-03-17
 Day #: 2

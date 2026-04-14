@@ -47,11 +47,11 @@ DROP POLICY IF EXISTS "Users can insert own posts" ON public.posts;
 CREATE POLICY "Anyone can read posts" ON public.posts FOR SELECT USING (true);
 
 -- Allow authenticated users to insert their own posts
-CREATE POLICY "Users can insert own posts" ON public.posts FOR INSERT 
+CREATE POLICY "Users can insert own posts" ON public.posts FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Allow users to delete their own posts
-CREATE POLICY "Own posts delete" ON public.posts FOR DELETE 
+CREATE POLICY "Own posts delete" ON public.posts FOR DELETE
   USING (auth.uid() = user_id);
 
 -- 3. Ensure chat-media bucket exists
@@ -81,6 +81,7 @@ After deploying and attempting a post:
 ### Expected Log Output
 
 **Success:**
+
 ```
 [INFO] [createPost] Received request: { userId: "...", userName: "...", ... }
 [INFO] [createPost] Validation passed, attempting insert...
@@ -88,6 +89,7 @@ After deploying and attempting a post:
 ```
 
 **RLS Error:**
+
 ```
 [ERROR] [createPost] Supabase insert failed: {
   "message": "new row violates row-level security policy for table \"posts\"",
@@ -96,6 +98,7 @@ After deploying and attempting a post:
 ```
 
 **Missing Column:**
+
 ```
 [ERROR] [createPost] Supabase insert failed: {
   "message": "column \"reference\" of relation \"posts\" does not exist",
@@ -105,6 +108,7 @@ After deploying and attempting a post:
 ```
 
 **Auth Error:**
+
 ```
 [ERROR] [createPost] Supabase insert failed: {
   "message": "insert or update on table \"posts\" violates foreign key \"user_id\"",
@@ -120,13 +124,14 @@ After deploying and attempting a post:
 
 ```sql
 -- Run in Supabase SQL Editor
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'posts' 
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'posts'
 ORDER BY ordinal_position;
 ```
 
 **Expected columns (11+):**
+
 1. id (uuid)
 2. user_id (uuid)
 3. user_name (text)
@@ -148,6 +153,7 @@ WHERE tablename = 'posts';
 ```
 
 **Expected policies (3):**
+
 1. `Anyone can read posts` - SELECT - USING (true)
 2. `Users can insert own posts` - INSERT - WITH CHECK (auth.uid() = user_id)
 3. `Own posts delete` - DELETE - USING (auth.uid() = user_id)
@@ -155,8 +161,8 @@ WHERE tablename = 'posts';
 ### C. Verify Storage Bucket
 
 ```sql
-SELECT name, public 
-FROM storage.buckets 
+SELECT name, public
+FROM storage.buckets
 WHERE name = 'chat-media';
 ```
 
@@ -184,6 +190,7 @@ If this fails, the issue is with RLS or permissions.
 ### Issue 1: RLS Policy Violation
 
 **Error:**
+
 ```
 "new row violates row-level security policy"
 ```
@@ -193,6 +200,7 @@ If this fails, the issue is with RLS or permissions.
 **Solution:** Ensure frontend sends correct user ID from authenticated session
 
 **Frontend fix (PostFeed.tsx):**
+
 ```typescript
 // Make sure user is authenticated before posting
 const { data: { session } } = await supabase.auth.getSession();
@@ -211,6 +219,7 @@ body: JSON.stringify({
 ### Issue 2: Foreign Key Violation
 
 **Error:**
+
 ```
 "insert or update on table \"posts\" violates foreign key \"user_id\""
 ```
@@ -220,15 +229,17 @@ body: JSON.stringify({
 **Solution:** User must be signed up via Supabase Auth first
 
 **Check:**
+
 ```sql
-SELECT id, email, created_at 
-FROM auth.users 
+SELECT id, email, created_at
+FROM auth.users
 WHERE id = 'YOUR_USER_ID';
 ```
 
 ### Issue 3: Missing Reference Column
 
 **Error:**
+
 ```
 "column \"reference\" does not exist"
 ```
@@ -238,6 +249,7 @@ WHERE id = 'YOUR_USER_ID';
 ### Issue 4: Storage Upload Fails
 
 **Error:**
+
 ```
 "Storage bucket not found" or "Permission denied"
 ```
@@ -262,6 +274,7 @@ FOR INSERT WITH CHECK (bucket_id = 'chat-media' AND auth.uid() = owner);
 **Cause:** `context` value doesn't match what frontend expects
 
 **Solution:** Ensure context matches:
+
 - Dashboard: `context = 'general'`
 - Coaching: `context = 'coaching'`
 - Marketplace: `context = 'marketplace'`
@@ -305,7 +318,7 @@ Open browser console and add logging:
 
 ```javascript
 // In PostFeed.tsx, before fetch:
-console.log('Posting with data:', {
+console.log("Posting with data:", {
   userId: user.id,
   userName: user.name,
   content: text,
@@ -319,8 +332,8 @@ console.log('Posting with data:', {
 ```javascript
 // In browser console:
 const { data } = await supabase.auth.getSession();
-console.log('Session:', data.session);
-console.log('User:', data.session?.user);
+console.log("Session:", data.session);
+console.log("User:", data.session?.user);
 ```
 
 ---
@@ -351,9 +364,9 @@ DROP POLICY IF EXISTS "Users can insert own posts" ON public.posts;
 DROP POLICY IF EXISTS "Own posts delete" ON public.posts;
 
 CREATE POLICY "Anyone can read posts" ON public.posts FOR SELECT USING (true);
-CREATE POLICY "Users can insert own posts" ON public.posts FOR INSERT 
+CREATE POLICY "Users can insert own posts" ON public.posts FOR INSERT
   WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Own posts delete" ON public.posts FOR DELETE 
+CREATE POLICY "Own posts delete" ON public.posts FOR DELETE
   USING (auth.uid() = user_id);
 ```
 

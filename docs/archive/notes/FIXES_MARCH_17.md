@@ -10,12 +10,14 @@
 ## Issue 1: Messages 500 Error
 
 ### Root Cause
+
 The backend API (`https://web-production-646a4.up.railway.app/api`) is returning HTTP 500 when trying to fetch messages from the Supabase `messages` table. This is happening because:
 
 1. The Railway production environment is missing the `SUPABASE_SERVICE_ROLE_KEY` environment variable
 2. OR the key is set incorrectly (e.g., using the anon key instead of service role key)
 
 ### Evidence from Logs
+
 ```
 Fetch messages error: AxiosError: Request failed with status code 500
 GET https://web-production-646a4.up.railway.app/api/messages/af2138c5-d0db-4de4-8e2d-3fd3dbed67b1/95c94f77-a364-422a-a4ac-2770bbb76a90
@@ -36,6 +38,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # Must be the
 ```
 
 **How to find the correct key:**
+
 - Go to Supabase Dashboard → Your Project → Settings (⚙️) → API
 - Copy the **service_role** key (NOT the anon/public key)
 - The service_role key is much longer and starts with `eyJhbGci`
@@ -43,16 +46,19 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # Must be the
 
 **How to verify in Railway logs:**
 After deploying, open a chat and check Railway logs. You should see:
+
 ```
 [getMessages] Supabase URL set: true, Key set: true, Key starts with: eyJhbGciOiJ...
 ```
 
 If you see:
+
 - `Key set: false` → Environment variable is missing
 - `Key starts with: sb_` → You're using the wrong key (anon key)
 
 **Verify the fix:**
 After updating Railway env vars, the server will restart automatically. Then:
+
 1. Open a private chat
 2. Messages should load without the 500 error
 3. Check Railway logs to confirm no more Supabase authentication errors
@@ -62,9 +68,11 @@ After updating Railway env vars, the server will restart automatically. Then:
 ## Issue 2: Share Button Broken
 
 ### Root Cause
+
 The ShareButton component (`client/src/components/common/ShareButton.tsx`) is failing when trying to insert into the `notebook_entries` table. The error is caught but the specific error message isn't always clear.
 
 ### Possible Causes
+
 1. The `notebook_entries` table doesn't exist in your Supabase database (missing migrations)
 2. The table exists but is missing required columns (`metadata`, `source_table`, `source_id`)
 3. RLS (Row Level Security) policies are blocking inserts
@@ -253,6 +261,7 @@ VITE_API_URL=https://web-production-646a4.up.railway.app/api
 ---
 
 **Need help?** Check Railway logs after deploying env vars:
+
 ```bash
 # In Railway dashboard → Logs
 # Look for: "[supabase] URL set: true | key type: service_role_jwt"

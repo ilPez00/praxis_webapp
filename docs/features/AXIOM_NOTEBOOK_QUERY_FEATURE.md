@@ -1,11 +1,13 @@
 # Axiom Notebook Query Feature
 
 ## Overview
+
 Added an "Ask Axiom" button to the Smart Notebook page that allows users to query their logged notebook data using AI-powered insights.
 
 ## Features
 
 ### User Experience
+
 - **Button Location**: Top-right corner of the Notebook page, next to "New Note" button
 - **Cost Structure**:
   - **Free Users**: 50 PP per query
@@ -20,6 +22,7 @@ Added an "Ask Axiom" button to the Smart Notebook page that allows users to quer
 ### Backend Implementation
 
 #### New Files Created
+
 1. **`src/controllers/notebookAxiomController.ts`**
    - `queryNotebookAxiom()` - Main controller function
    - `buildNotebookContext()` - Gathers user's notebook data
@@ -34,6 +37,7 @@ Added an "Ask Axiom" button to the Smart Notebook page that allows users to quer
    - Response formatting
 
 #### Modified Files
+
 1. **`src/routes/notebookRoutes.ts`**
    - Added `POST /notebook/axiom-query` endpoint
 
@@ -43,7 +47,9 @@ Added an "Ask Axiom" button to the Smart Notebook page that allows users to quer
    - User profile fetching for PP display
 
 ### Data Context
+
 When a user asks a question, Axiom analyzes:
+
 - **Notebook Entries**: Last 30 days (up to 100 entries)
 - **Tags**: All user's tags
 - **Goals**: Root goals from goal tree
@@ -52,7 +58,9 @@ When a user asks a question, Axiom analyzes:
 - **Profile**: Name, streak, PP balance
 
 ### AI Prompt Structure
+
 The prompt includes:
+
 - User identity and question
 - Formatted summary of recent notebook entries
 - Tags, goals, trackers, and check-ins
@@ -60,6 +68,7 @@ The prompt includes:
 - Request for specific, data-driven insights
 
 ### Payment Flow
+
 1. User clicks "Ask Axiom" button
 2. Dialog opens showing current PP balance
 3. User enters question and submits
@@ -71,6 +80,7 @@ The prompt includes:
 7. Query and response logged to `messages` table
 
 ### Error Handling
+
 - **Insufficient Points**: 402 error with helpful message
 - **AI Service Unavailable**: 503 error with friendly message
 - **Rate Limiting**: Handled gracefully with retry suggestion
@@ -79,6 +89,7 @@ The prompt includes:
 ## Usage Examples
 
 ### Suggested Questions
+
 - "What patterns do you see in my recent entries?"
 - "How consistent have I been with my goals?"
 - "What's my most common mood this week?"
@@ -86,7 +97,9 @@ The prompt includes:
 - "Am I making progress on my main goals?"
 
 ### Custom Questions
+
 Users can ask anything about their logged data:
+
 - "Why am I feeling down lately?"
 - "What goals am I neglecting?"
 - "Show me my productivity trends"
@@ -95,6 +108,7 @@ Users can ask anything about their logged data:
 ## Technical Details
 
 ### API Endpoint
+
 ```
 POST /api/notebook/axiom-query
 Content-Type: application/json
@@ -116,18 +130,22 @@ Response:
 ```
 
 ### Database Changes
+
 No new migrations required. Uses existing tables:
+
 - `notebook_entries` - User's logged data
 - `profiles` - PP balance and premium status
 - `marketplace_transactions` - Transaction logging
 - `messages` - Query/response history
 
 ### Constants
+
 ```typescript
 const AXIOM_NOTEBOOK_QUERY_COST = 50; // PP per query (free tier)
 ```
 
 ## Future Enhancements
+
 - Query history view
 - Follow-up questions in same session
 - Export insights as notebook entry
@@ -136,6 +154,7 @@ const AXIOM_NOTEBOOK_QUERY_COST = 50; // PP per query (free tier)
 - Batch analysis (weekly/monthly reports)
 
 ## Testing Checklist
+
 - [ ] Free user with sufficient PP can query
 - [ ] Free user with insufficient PP gets error
 - [ ] Premium user can query without PP deduction
@@ -148,6 +167,7 @@ const AXIOM_NOTEBOOK_QUERY_COST = 50; // PP per query (free tier)
 - [ ] Multi-line input works
 
 ## Deployment Notes
+
 1. No database migrations required
 2. Backend builds without errors
 3. Frontend builds without errors

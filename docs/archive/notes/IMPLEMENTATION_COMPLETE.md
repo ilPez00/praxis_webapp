@@ -17,17 +17,20 @@ All phases have been successfully implemented! The Praxis webapp now supports:
 ### Frontend Changes
 
 #### 1. **IndexedDB Extension** (`client/src/lib/db.ts`)
+
 - ✅ Added `LocalTrackerEntry` interface
 - ✅ Upgraded database to version 2
 - ✅ Added `trackerEntries` table with sync status
 
 #### 2. **Offline Sync Hook** (`client/src/hooks/useOfflineSync.ts`)
+
 - ✅ Added `syncTrackerEntries()` function
 - ✅ Syncs both journal and tracker entries
 - ✅ Shows toast notifications on successful sync
 - ✅ Handles auth errors gracefully
 
 #### 3. **Tracker Widget** (`client/src/features/trackers/TrackerWidget.tsx`)
+
 - ✅ Added offline-first logging
 - ✅ Tries online first, falls back to IndexedDB
 - ✅ Shows "Saved offline 📡" message
@@ -35,6 +38,7 @@ All phases have been successfully implemented! The Praxis webapp now supports:
 - ✅ Imports `db` and `axios` for offline support
 
 #### 4. **Analytics Page** (`client/src/features/analytics/AnalyticsPage.tsx`)
+
 - ✅ Updated `DayData` interface with `notes`, `goalUpdates`, `activities`
 - ✅ Added filter state (`trackers`, `notes`, `goals`)
 - ✅ Fetches from new `/api/trackers/calendar` endpoint
@@ -43,6 +47,7 @@ All phases have been successfully implemented! The Praxis webapp now supports:
 - ✅ Applies filters to calendar data
 
 #### 5. **Service Worker** (`client/public/service-worker.js`)
+
 - ✅ Network-first caching strategy
 - ✅ Caches static assets on install
 - ✅ Cleans up old caches on activate
@@ -50,28 +55,33 @@ All phases have been successfully implemented! The Praxis webapp now supports:
 - ✅ Handles navigation requests
 
 #### 6. **Service Worker Utils** (`client/src/utils/serviceWorker.ts`)
+
 - ✅ `registerServiceWorker()` - Registers SW
 - ✅ `unregisterServiceWorker()` - For debugging
 - ✅ `isOffline()` - Check connection status
 - ✅ `onOnlineStatusChange()` - Listen for changes
 
 #### 7. **Main App** (`client/src/index.tsx`)
+
 - ✅ Imports and calls `registerServiceWorker()`
 - ✅ Enables offline PWA support
 
 ### Backend Changes
 
 #### 1. **Tracker Controller** (`src/controllers/trackerController.ts`)
+
 - ✅ Added `getCalendarData()` function
 - ✅ Fetches trackers + notes + goal updates
 - ✅ Builds combined day-by-day map
 - ✅ Returns structured calendar data with summary
 
 #### 2. **Tracker Routes** (`src/routes/trackerRoutes.ts`)
+
 - ✅ Added `GET /calendar` endpoint
 - ✅ Protected with `authenticateToken` middleware
 
 #### 3. **Database Migration** (`migrations/add_journal_and_goal_history.sql`)
+
 - ✅ Creates `journal_entries` table
 - ✅ Creates `goal_progress_history` table
 - ✅ Adds indexes for performance
@@ -86,6 +96,7 @@ All phases have been successfully implemented! The Praxis webapp now supports:
 ### 1. Offline Tracker Logging
 
 **How it works:**
+
 ```
 User logs tracker → Try API call → Network error? → Save to IndexedDB → Show "Saved offline 📡"
                                                                  ↓
@@ -93,6 +104,7 @@ When online: IndexedDB entry → Auto-sync → API success → Mark as synced �
 ```
 
 **User Experience:**
+
 - No disruption when network drops
 - Clear feedback ("Saved offline")
 - Automatic sync when connection restored
@@ -101,6 +113,7 @@ When online: IndexedDB entry → Auto-sync → API success → Mark as synced �
 ### 2. Combined Calendar View
 
 **Before:**
+
 ```typescript
 interface DayData {
   date: string;
@@ -110,15 +123,17 @@ interface DayData {
 ```
 
 **After:**
+
 ```typescript
 interface DayData {
   date: string;
-  count: number;           // Total activities
-  trackers: string[];      // Tracker types logged
-  notes?: number;          // Journal entries count
-  goalUpdates?: number;    // Goal progress updates
-  activities?: Array<{     // Detailed activity list
-    type: 'tracker' | 'note' | 'goal';
+  count: number; // Total activities
+  trackers: string[]; // Tracker types logged
+  notes?: number; // Journal entries count
+  goalUpdates?: number; // Goal progress updates
+  activities?: Array<{
+    // Detailed activity list
+    type: "tracker" | "note" | "goal";
     description: string;
     timestamp: string;
   }>;
@@ -128,6 +143,7 @@ interface DayData {
 ### 3. Filter Toggles
 
 **UI:**
+
 ```
 ┌────────────────────────────────────────────────┐
 │ [📊 Trackers] [📓 Notes] [🎯 Goals]           │
@@ -135,6 +151,7 @@ interface DayData {
 ```
 
 **Behavior:**
+
 - Click to toggle on/off
 - Updates calendar in real-time
 - Filters both display count and tooltips
@@ -143,11 +160,13 @@ interface DayData {
 ### 4. Enhanced Tooltips
 
 **Before:**
+
 ```
 3 logs · Jan 15
 ```
 
 **After:**
+
 ```
 📊 2 trackers · 📓 1 note · 🎯 1 goal update · Jan 15
 ```
@@ -173,6 +192,7 @@ Request → Try Network → Success? → Cache response → Return
 ### New Tables
 
 #### `journal_entries`
+
 ```sql
 CREATE TABLE journal_entries (
   id UUID PRIMARY KEY,
@@ -186,6 +206,7 @@ CREATE TABLE journal_entries (
 ```
 
 #### `goal_progress_history`
+
 ```sql
 CREATE TABLE goal_progress_history (
   id UUID PRIMARY KEY,
@@ -202,6 +223,7 @@ CREATE TABLE goal_progress_history (
 ### Trigger
 
 Auto-logs goal progress changes:
+
 ```sql
 CREATE TRIGGER on_goal_progress_change
   AFTER UPDATE ON goal_trees
@@ -218,12 +240,14 @@ CREATE TRIGGER on_goal_progress_change
 **`GET /api/trackers/calendar?days=112`**
 
 **Request:**
+
 ```http
 GET /api/trackers/calendar?days=112
 Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "days": 112,
@@ -267,6 +291,7 @@ Authorization: Bearer <token>
 ## 🧪 Testing Checklist
 
 ### Offline Tracker Logging
+
 - [ ] Log tracker while online → Should save immediately
 - [ ] Log tracker while offline → Should save to IndexedDB with "pending" status
 - [ ] Go offline, log 3 trackers → Go online → Should auto-sync all 3
@@ -274,6 +299,7 @@ Authorization: Bearer <token>
 - [ ] Verify today's count includes offline entries
 
 ### Calendar View
+
 - [ ] Open Analytics page → Should show combined data
 - [ ] Toggle "Notes" off → Calendar should update
 - [ ] Toggle "Goals" off → Calendar should update
@@ -281,12 +307,14 @@ Authorization: Bearer <token>
 - [ ] Hover over day with mixed activity → Tooltip should show breakdown
 
 ### Service Worker
+
 - [ ] Load app → Check console for "SW registered"
 - [ ] Disconnect network → Reload app → Should load from cache
 - [ ] Modify service-worker.js → Reload → Should prompt for update
 - [ ] Check Application tab → Service Worker should be active
 
 ### Database
+
 - [ ] Run migration SQL in Supabase
 - [ ] Create journal entry → Check table
 - [ ] Update goal progress → Check goal_progress_history
@@ -358,9 +386,10 @@ After deployment, monitor:
 ### Issue: Trackers not syncing offline
 
 **Check:**
+
 ```javascript
 // In browser console
-const db = await caches.open('praxis-cache-v1');
+const db = await caches.open("praxis-cache-v1");
 const keys = await db.keys();
 console.log(keys);
 ```
@@ -368,6 +397,7 @@ console.log(keys);
 ### Issue: Calendar shows no data
 
 **Check:**
+
 1. Backend logs for `/api/trackers/calendar` errors
 2. Browser console for API errors
 3. Supabase RLS policies allow read access
@@ -375,6 +405,7 @@ console.log(keys);
 ### Issue: Service Worker not registering
 
 **Check:**
+
 1. `/service-worker.js` exists and is served
 2. No CORS errors in console
 3. Browser supports service workers
