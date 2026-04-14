@@ -27,12 +27,16 @@ export type CreatePostInput = z.infer<typeof createPostBodySchema>;
 /**
  * Add comment validation
  */
-export const addCommentBodySchema = z.object({
-  content: z
-    .string()
-    .min(1, 'Content is required')
-    .max(10000, 'Content must be less than 10000 characters'),
-});
+// Same issue as createPostBodySchema — controller reads userName/userAvatarUrl
+// off req.body, so `.passthrough()` keeps them after validation.
+export const addCommentBodySchema = z
+  .object({
+    content: z
+      .string()
+      .min(1, 'Content is required')
+      .max(10000, 'Content must be less than 10000 characters'),
+  })
+  .passthrough();
 
 /**
  * Vote post validation
