@@ -8,15 +8,19 @@ import { z } from 'zod';
 /**
  * Create post validation
  */
-export const createPostBodySchema = z.object({
-  content: z
-    .string()
-    .min(1, 'Content is required')
-    .max(10000, 'Content must be less than 10000 characters'),
-  tags: z
-    .array(z.string().max(50))
-    .optional(),
-});
+// Zod's default `.strip()` silently removes unknown keys. The controller
+// reads userName/userAvatarUrl/title/mediaUrl/mediaType/context/reference
+// off req.body — if we strip them, controller throws "userName is required."
+// `.passthrough()` preserves them after validation.
+export const createPostBodySchema = z
+  .object({
+    content: z
+      .string()
+      .min(1, 'Content is required')
+      .max(10000, 'Content must be less than 10000 characters'),
+    tags: z.array(z.string().max(50)).optional(),
+  })
+  .passthrough();
 
 export type CreatePostInput = z.infer<typeof createPostBodySchema>;
 
