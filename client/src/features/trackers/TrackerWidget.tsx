@@ -121,15 +121,24 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
   const handleQuickLog = async (tracker: Tracker, data?: any) => {
     setSaving(true);
     try {
+      if (!data || Object.keys(data).length === 0) {
+        toast.error('No data to log');
+        return;
+      }
       const loc = getLocation();
-      await api.post('/trackers/log', {
+      const res = await api.post('/trackers/log', {
         type: tracker.type,
         data: { ...data, ...(loc && { _location: loc }) },
       });
-      toast.success('Logged!');
-      loadData();
+      if (res.data?.limitReached) {
+        toast('Daily logging limit reached', { icon: '⚠️' });
+      } else {
+        toast.success('Logged!');
+        loadData();
+      }
     } catch (err: any) {
-      toast.error('Failed to log');
+      const msg = err.response?.data?.message || 'Failed to log';
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

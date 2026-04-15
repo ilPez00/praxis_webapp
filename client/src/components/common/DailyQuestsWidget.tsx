@@ -71,19 +71,29 @@ const DailyQuestsWidget: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState<string | null>(null);
 
-  const fetchQuests = async () => {
+  const fetchQuests = async (signal?: AbortSignal) => {
     try {
-      const { data } = await api.get('/gamification/quests');
+      const { data } = await api.get('/gamification/quests', { signal });
       setQuests(data.quests || []);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        return;
+      }
       console.error('Failed to fetch quests:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
+  const handleRefresh = () => {
+    setLoading(true);
     fetchQuests();
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchQuests(controller.signal);
+    return () => controller.abort();
   }, []);
 
   const handleClaimReward = async (quest: Quest) => {
@@ -174,7 +184,7 @@ const DailyQuestsWidget: React.FC = () => {
           )}
         </Box>
         <Tooltip title="Refresh quests">
-          <IconButton size="small" onClick={fetchQuests} sx={{ color: '#F59E0B' }}>
+          <IconButton size="small" onClick={handleRefresh} sx={{ color: '#F59E0B' }}>
             <RefreshIcon fontSize="small" />
           </IconButton>
         </Tooltip>

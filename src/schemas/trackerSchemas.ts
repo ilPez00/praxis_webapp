@@ -29,6 +29,25 @@ export const trackerEntrySchema = z.object({
 export type TrackerEntryInput = z.infer<typeof trackerEntrySchema>;
 
 /**
+ * Tracker log validation (POST /trackers/log)
+ * Matches what the frontend sends: { type: string, data: object, logged_at?: string }
+ */
+export const trackerLogSchema = z.object({
+  type: z
+    .string()
+    .min(1, 'type is required'),
+  
+  data: z.record(z.string(), z.any()),
+  
+  logged_at: z
+    .string()
+    .datetime()
+    .optional(),
+});
+
+export type TrackerLogInput = z.infer<typeof trackerLogSchema>;
+
+/**
  * Tracker creation validation
  */
 export const createTrackerSchema = z.object({

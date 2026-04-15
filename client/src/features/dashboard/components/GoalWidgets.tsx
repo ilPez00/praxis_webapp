@@ -273,13 +273,20 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
     setSaving(true);
     try {
       const loc = getLocation();
-      await api.post('/trackers/log', {
+      const res = await api.post('/trackers/log', {
         type: config.type,
         data: { items: [{ name: item.name, value: 1, unit: item.unit || '' }], ...(loc && { _location: loc }) }
       });
-      toast.success(`${config.emoji} Logged: ${item.name}`);
-      onLogged();
-    } catch { toast.error('Failed to log.'); }
+      if (res.data?.limitReached) {
+        toast('Daily logging limit reached', { icon: '⚠️' });
+      } else {
+        toast.success(`${config.emoji} Logged: ${item.name}`);
+        onLogged();
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to log.';
+      toast.error(msg);
+    }
     finally { setSaving(false); }
   };
 
@@ -664,9 +671,23 @@ function UnifiedGoalCard({ node, config, tracker, bet, userId, onLogged, onObjec
             onClose={() => setLogTracker(null)}
             tracker={logTracker ? { id: tracker?.id || '', type: config.type, def: config as any } : null}
             onSave={async (data) => {
+              if (!data || Object.keys(data).length === 0) {
+                toast.error('No data to log');
+                return;
+              }
               const loc = getLocation();
-              await api.post('/trackers/log', { type: config.type, data: { ...data, ...(loc && { _location: loc }) } });
-              onLogged();
+              try {
+                const res = await api.post('/trackers/log', { type: config.type, data: { ...data, ...(loc && { _location: loc }) } });
+                if (res.data?.limitReached) {
+                  toast('Daily logging limit reached', { icon: '⚠️' });
+                } else {
+                  toast.success('Entry logged!');
+                  onLogged();
+                }
+              } catch (err: any) {
+                const msg = err.response?.data?.message || 'Failed to log entry';
+                toast.error(msg);
+              }
             }}
             saving={saving}
           />

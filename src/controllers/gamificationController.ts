@@ -234,39 +234,59 @@ export const claimQuestReward = catchAsync(async (req: Request, res: Response) =
     throw new BadRequestError('Authentication required');
   }
 
-  // Get quest
-  const { data: quest } = await supabase
+  if (!questId) {
+    throw new BadRequestError('Quest ID is required');
+  }
+
+  // Get quest - remove date filter to allow claiming recent quests
+  const { data: quest, error: questError } = await supabase
     .from('user_daily_quests')
     .select('*, daily_quests(xp_reward, pp_reward)')
     .eq('id', questId)
     .eq('user_id', userId)
-    .eq('date', new Date().toISOString().slice(0, 10))
     .single();
 
-  if (!quest) {
-    throw new NotFoundError('Quest not found');
+  if (questError || !quest) {
+    logger.error('Quest claim error:', questError?.message || 'Quest not found');
+    throw new NotFoundError('Quest not found or already claimed');
   }
 
-  if (!quest.completed || quest.claimed) {
-    throw new BadRequestError('Quest not ready to claim');
+  if (!quest.completed) {
+    throw new BadRequestError('Quest not completed');
+  }
+
+  if (quest.claimed) {
+    throw new BadRequestError('Quest already claimed');
   }
 
   // Mark as claimed
-  await supabase
+  const { error: updateError } = await supabase
     .from('user_daily_quests')
     .update({ claimed: true })
     .eq('id', questId);
 
-  // Award rewards
-  const xpReward = quest.daily_quests.xp_reward;
-  const ppReward = quest.daily_quests.pp_reward;
+  if (updateError) {
+    logger.error('Failed to mark quest as claimed:', updateError.message);
+    throw new BadRequestError('Failed to claim quest');
+  }
 
-  await supabase.rpc('add_xp_to_user', {
-    p_user_id: userId,
-    p_xp_amount: xpReward,
-    p_pp_amount: ppReward,
-    p_source: 'quest_claim',
-  });
+  // Award rewards
+  const xpReward = quest.daily_quests?.xp_reward || 0;
+  const ppReward = quest.daily_quests?.pp_reward || 0;
+
+  if (xpReward > 0 || ppReward > 0) {
+    const { error: rpcError } = await supabase.rpc('add_xp_to_user', {
+      p_user_id: userId,
+      p_xp_amount: xpReward,
+      p_pp_amount: ppReward,
+      p_source: 'quest_claim',
+    });
+
+    if (rpcError) {
+      logger.error('Failed to award XP/PP:', rpcError.message);
+      // Don't throw - quest is already marked as claimed
+    }
+  }
 
   return res.json({
     success: true,

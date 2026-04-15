@@ -394,28 +394,38 @@ const NotesPage: React.FC = () => {
 
   const handleSaveTrackerLog = async (data: any) => {
     if (!currentUserId || !logTrackerData) return;
-    
+
+    if (!data || Object.keys(data).length === 0) {
+      toast.error('No data to log');
+      return;
+    }
+
     setLogSaving(true);
     try {
       const loc = getLocation();
       const logData = data.items ? { items: data.items } : data;
-      await api.post(`/trackers/log`, {
+      const res = await api.post(`/trackers/log`, {
         type: logTrackerData.type,
         data: { ...logData, ...(loc && { _location: loc }) },
         goalNodeId: selectedNode?.id,
       });
 
-      toast.success('Logged! +1⚡');
-      setLogTrackerOpen(false);
-      setLogTrackerData(null);
+      if (res.data?.limitReached) {
+        toast('Daily logging limit reached', { icon: '⚠️' });
+      } else {
+        toast.success('Logged! +1⚡');
+        setLogTrackerOpen(false);
+        setLogTrackerData(null);
 
-      // Refresh to show updated tracker
-      if (selectedNode) {
-        const res = await api.get(`/goals/${currentUserId}/nodes`);
-        setBackendNodes(res.data);
+        // Refresh to show updated tracker
+        if (selectedNode) {
+          const res = await api.get(`/goals/${currentUserId}/nodes`);
+          setBackendNodes(res.data);
+        }
       }
     } catch (err: any) {
-      toast.error('Failed to log. Try again.');
+      const msg = err.response?.data?.message || 'Failed to log. Try again.';
+      toast.error(msg);
       console.error('Tracker error:', err);
     } finally {
       setLogSaving(false);

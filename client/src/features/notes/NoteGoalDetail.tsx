@@ -393,10 +393,24 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
             tracker={{ ...dt.tracker, def: dt.config, goal: dt.tracker.goal }}
             entries={dt.tracker.entries || []}
             onSave={async (data) => {
+              if (!data || Object.keys(data).length === 0) {
+                toast.error('No data to log');
+                return;
+              }
+              if (!dt.config?.id) {
+                toast.error('Tracker configuration error');
+                return;
+              }
               const loc = getLocation();
-              await api.post('/trackers/log', { type: dt.config.id, data: { ...data, ...(loc && { _location: loc }) } });
-              toast.success('Entry logged!');
-              fetchTrackers();
+              try {
+                await api.post('/trackers/log', { type: dt.config.id, data: { ...data, ...(loc && { _location: loc }) } });
+                toast.success('Entry logged!');
+                fetchTrackers();
+              } catch (error: any) {
+                console.error('Failed to log tracker entry:', error);
+                const msg = error.response?.data?.message || 'Failed to log entry';
+                toast.error(msg);
+              }
             }}
             saving={false}
             accentColor={dt.config.color}

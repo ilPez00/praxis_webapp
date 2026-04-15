@@ -65,20 +65,26 @@ export const useGamification = (userId: string): UseGamificationReturn => {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchGamificationData = useCallback(async () => {
-    if (!userId) return;
+  const fetchGamificationData = useCallback(async (signal?: AbortSignal) => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const [profileRes, questsRes, achievementsRes] = await Promise.all([
-        api.get('/gamification/profile', { params: { userId } }),
-        api.get('/gamification/quests'),
-        api.get('/gamification/achievements', { params: { userId } }),
+        api.get('/gamification/profile', { params: { userId }, signal }),
+        api.get('/gamification/quests', { signal }),
+        api.get('/gamification/achievements', { params: { userId }, signal }),
       ]);
 
       setProfile(profileRes.data.profile);
       setQuests(questsRes.data.quests || []);
       setAchievements(achievementsRes.data.achievements || []);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        return;
+      }
       console.error('Failed to fetch gamification data:', error);
     } finally {
       setLoading(false);
@@ -86,7 +92,13 @@ export const useGamification = (userId: string): UseGamificationReturn => {
   }, [userId]);
 
   useEffect(() => {
-    fetchGamificationData();
+    const controller = new AbortController();
+    fetchGamificationData(controller.signal);
+    return () => controller.abort();
+  }, [fetchGamificationData]);
+
+  const refresh = useCallback(async (): Promise<void> => {
+    await fetchGamificationData();
   }, [fetchGamificationData]);
 
   const trackAction = useCallback(async (actionType: string, amount = 1) => {

@@ -389,16 +389,26 @@ const UnifiedGoalWidget: React.FC<UnifiedGoalWidgetProps> = ({
               accentColor={effectiveColor}
               tracker={effectiveTracker ? { ...effectiveTracker, def: effectiveTrackerConfig!, goal: effectiveTracker.goal } : { id: '', type: effectiveType || '', def: effectiveTrackerConfig!, goal: {} }}
               onSave={async (data) => {
-                if (!effectiveType) return;
-                const loc = getLocation();
-                const res = await api.post('/trackers/log', { type: effectiveType, data: { ...data, ...(loc && { _location: loc }) } });
-                if (res.data?.limitReached) {
-                  toast.error('Daily limit reached (3 per goal)');
+                if (!effectiveType || !data || Object.keys(data).length === 0) {
+                  console.warn('Invalid tracker data or type');
+                  toast.error('No data to log');
                   return;
                 }
-                const pp = res.data?.ppAwarded || 1;
-                toast.success(`Logged! +${pp} PP`);
-                fetchTrackers();
+                const loc = getLocation();
+                try {
+                  const res = await api.post('/trackers/log', { type: effectiveType, data: { ...data, ...(loc && { _location: loc }) } });
+                  if (res.data?.limitReached) {
+                    toast(`Daily limit reached (3 per goal)`, { icon: '⚠️' });
+                    return;
+                  }
+                  const pp = res.data?.ppAwarded || 1;
+                  toast.success(`Logged! +${pp} PP`);
+                  fetchTrackers();
+                } catch (error: any) {
+                  console.error('Tracker log failed:', error);
+                  const msg = error.response?.data?.message || 'Failed to log entry';
+                  toast.error(msg);
+                }
               }}
               saving={saving}
             />
