@@ -74,8 +74,13 @@ const DashboardPage: React.FC = () => {
         setInitialCheckedIn(!!checkedIn);
         setInitialBriefs(Array.isArray(briefs) ? briefs : []);
       } catch (err: any) {
-        console.error('Dashboard fetch error:', err);
-        setError(`Dashboard error: ${err?.message || String(err)}`);
+        const isNetworkError = !err.response && err.message === 'Network Error';
+        if (isNetworkError) {
+          setError('Backend is temporarily unavailable. Please try again in a few minutes.');
+        } else {
+          console.error('Dashboard fetch error:', err);
+          setError(`Dashboard error: ${err?.message || String(err)}`);
+        }
       } finally {
         setLoadingContent(false);
       }

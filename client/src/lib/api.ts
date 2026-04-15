@@ -47,6 +47,12 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
+    // Handle network errors (backend unreachable)
+    if (!error.response && error.message === 'Network Error') {
+      console.warn('[API] Network error - backend may be down');
+      // Don't show toast for every failed request, just log it
+    }
+    
     if (error.response?.status === 401) {
       const { data: { session } } = await supabase.auth.refreshSession();
       if (session?.access_token) {
