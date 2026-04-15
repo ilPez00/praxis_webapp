@@ -2143,3 +2143,52 @@ Date: 2026-04-14
 4. Resume QA: Friends, Services, Posts, Team Challenges, Settings, Achievements
 
 - Sign: Claude
+
+---
+
+Session 109: Overnight Asset-Prep Pass (2026-04-14)
+
+Executed overnight on blanket user permission ("proceed implementing anything that came up from the audit"). Focus: make the repo legibly sellable — ADRs, ops doc, bootstrap script, and the first-ever regression tests on the money paths.
+
+**What landed (4 commits on main):**
+
+1. `43390ab` — asset-prep batch
+   - 6 new ADRs under `docs/ADRs/` (db casing, supabase two-key auth, split deploy, points economy, matching-is-rule-based) + index
+   - `scripts/run-migrations.ts` — tracked via `schema_migrations` table, alphabetical, per-file transaction, `--status` flag
+   - npm scripts: `migrate`, `migrate:status`, `license:check`
+   - Archived superseded deploy guides (Fly, Render, gamification) under `docs/archive/notes/` via `git mv` to preserve history
+   - Deleted two stale dev-log duplicates (`claude_steps.md`, `CLAUDE_STEPS.md` — this file is canonical)
+   - `client/package.json`: set `"license": "UNLICENSED"`
+
+2. `6a21c1a` — bootstrap + money-path tests
+   - `scripts/bootstrap.sh`: clone-to-running helper. Checks node ≥ 20, scaffolds `.env` files from examples, flags missing secrets, installs both workspaces, applies migrations if DATABASE_URL set. `--check` mode for verify-only.
+   - `src/__tests__/stripeWebhook.test.ts`: locks PP-purchase idempotency guard. Duplicate session.id must NOT trigger a second `profiles.update`. 3/3 pass.
+   - `src/__tests__/pointsSpend.test.ts`: locks rollback-on-insufficient-balance. Failed `spend_points` RPC → pre-recorded `marketplace_transactions` row deleted + 402. 3/3 pass.
+
+3. `23c7210` — narrow `any` on money paths
+   - `stripeController.ts:128`: `catch (err)` + `err instanceof Error` narrowing instead of `catch (err: any)`
+   - `pointsController.ts:73-74`: JSONB nodes array typed as `GoalNodeRow[]`, callback inferred
+
+4. (prior, but part of the same pass — `3e59a9b` RUNBOOK.md, `0dfa3df` asset-prep plan, and the video-call fix `c54b273` — all landed earlier in the session)
+
+**Files: see commits. 18 files changed overall (excluding earlier RUNBOOK/plan).**
+
+**Verification:**
+- `npx tsc --noEmit`: 0 errors
+- New Jest suites: 6/6 pass (stripeWebhook 3, pointsSpend 3). Pre-existing api/middleware/validation suites were already broken before this pass and are out of scope for this session.
+- `bootstrap.sh --check` exits 0 on the current dev env.
+
+**What I did NOT do (and why):**
+- Did not set up ESLint + `typescript-eslint`: backend has no ESLint installed at all (the `"lint"` script is a stub). Scoping a `no-explicit-any` rule would mean adding deps + a full config — that's a deliberate choice for a human. I did the pragmatic version instead: fixed the 3 `any`s in the 4 highest-risk files by hand.
+- Did not write auth 401 test: `authController` just proxies Supabase; the signal-to-mocking ratio is too low for a meaningful unit test. E2E (Playwright) is the right shape for that.
+- Did not write check-in double-submit test: the `checkinController` has 7+ supabase touches + 2 RPCs + 1 email send. Worth an integration-level test against a real DB, not a unit test.
+- Left the existing broken test suites (api.test.ts, middleware.test.ts, validation.test.ts) alone. They were broken before this pass; debugging them is a separate task.
+
+**Next:**
+1. User: read the 6 ADRs and correct anything wrong — they're now the canonical rationale anchors.
+2. Swap `react-leaflet` (Hippocratic-2.1) for plain `leaflet` or MapLibre GL — see `docs/compliance/licenses.md`. Alternative: add a disclosure in terms.
+3. Fix or delete the 3 broken test suites (api / middleware / validation).
+4. Run `scripts/bootstrap.sh --check` on a fresh clone to prove the path works end-to-end.
+5. Install ESLint + typescript-eslint properly (user's call — pick flat config vs legacy).
+
+- Sign: Claude
