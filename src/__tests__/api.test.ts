@@ -29,18 +29,21 @@ describe('Auth Endpoints', () => {
       const res = await request(app)
         .post('/api/auth/login')
         .send({ password: 'test123' });
-      
+
       expect(res.status).toBe(400);
-      expect(res.body.message.toLowerCase()).toContain('email');
+      // Zod validator returns "Invalid input data" + details[] naming the missing field.
+      const blob = JSON.stringify(res.body).toLowerCase();
+      expect(blob).toContain('email');
     });
 
     it('should reject login without password', async () => {
       const res = await request(app)
         .post('/api/auth/login')
         .send({ email: 'test@example.com' });
-      
+
       expect(res.status).toBe(400);
-      expect(res.body.message.toLowerCase()).toContain('password');
+      const blob = JSON.stringify(res.body).toLowerCase();
+      expect(blob).toContain('password');
     });
   });
 

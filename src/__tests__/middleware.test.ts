@@ -29,9 +29,9 @@ describe('validateBody', () => {
   });
 
   it('should validate and pass correct data', () => {
-    const schema: ZodSchema = {
+    const schema = {
       parse: jest.fn().mockReturnValue({ name: 'test' }),
-    };
+    } as unknown as ZodSchema;
 
     const middleware = validateBody(schema);
     const req = mockRequest({ name: 'test' });
@@ -44,7 +44,7 @@ describe('validateBody', () => {
   });
 
   it('should return 400 on validation error', () => {
-    const schema: ZodSchema = {
+    const schema = {
       parse: jest.fn().mockImplementation(() => {
         throw new ZodError([{
           code: 'invalid_type',
@@ -52,9 +52,9 @@ describe('validateBody', () => {
           received: 'number',
           path: ['name'],
           message: 'Expected string',
-        }]);
+        } as any]);
       }),
-    };
+    } as unknown as ZodSchema;
 
     const middleware = validateBody(schema);
     const req = mockRequest({ name: 123 });
@@ -77,9 +77,9 @@ describe('validateQuery', () => {
   });
 
   it('should validate query parameters', () => {
-    const schema: ZodSchema = {
+    const schema = {
       parse: jest.fn().mockReturnValue({ page: '1' }),
-    };
+    } as unknown as ZodSchema;
 
     const middleware = validateQuery(schema);
     const req = mockRequest({}, { page: '1' });
@@ -97,9 +97,9 @@ describe('validateParams', () => {
   });
 
   it('should validate URL parameters', () => {
-    const schema: ZodSchema = {
+    const schema = {
       parse: jest.fn().mockReturnValue({ id: '123' }),
-    };
+    } as unknown as ZodSchema;
 
     const middleware = validateParams(schema);
     const req = mockRequest({}, {}, { id: '123' });
