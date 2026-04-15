@@ -37,14 +37,14 @@ export const getMessages = catchAsync(async (req: Request, res: Response, next: 
     // (media_type lives on `posts`, not messages — don't re-add it here.)
     supabase
       .from('messages')
-      .select('id, sender_id, receiver_id, room_id, content, media_url, message_type, metadata, timestamp, created_at')
+      .select('id, sender_id, receiver_id, room_id, content, media_url, message_type, metadata, timestamp')
       .eq('sender_id', user1Id)
       .eq('receiver_id', user2Id)
       .order('timestamp', { ascending: true }),
     // Messages from user2 to user1
     supabase
       .from('messages')
-      .select('id, sender_id, receiver_id, room_id, content, media_url, message_type, metadata, timestamp, created_at')
+      .select('id, sender_id, receiver_id, room_id, content, media_url, message_type, metadata, timestamp')
       .eq('sender_id', user2Id)
       .eq('receiver_id', user1Id)
       .order('timestamp', { ascending: true }),
