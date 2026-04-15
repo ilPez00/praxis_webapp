@@ -49,8 +49,11 @@ step "checking env files"
 check_env() {
   local path="$1"; local example="$2"; local -n _required=$3
   if [[ ! -f "$path" ]]; then
+    if [[ $CHECK_ONLY -eq 1 ]]; then
+      red "  $path is missing (would scaffold from $example without --check)"
+      return 1
+    fi
     yellow "  $path is missing. Copying from $example — you MUST fill in secrets before starting."
-    if [[ $CHECK_ONLY -eq 1 ]]; then fail "env file missing (re-run without --check to scaffold)"; fi
     cp "$example" "$path"
   fi
   local missing=()
