@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Box, Typography, TextField, Button, Stack, Chip, Paper,
   CircularProgress, Alert, InputAdornment, IconButton, Divider,
@@ -8,7 +8,6 @@ import MyLocationIcon from '@mui/icons-material/MyLocation';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import MapIcon from '@mui/icons-material/Map';
 import PlaceIcon from '@mui/icons-material/Place';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import api from '../../../lib/api';
@@ -20,28 +19,70 @@ L.Marker.prototype.options.icon = L.icon({
   iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41],
 });
 
-// ── Map click handler ─────────────────────────────────────────────────────────
+// ── Map subcomponent ──────────────────────────────────────────────────────────
+// Imperative leaflet (no react-leaflet dependency; that package is Hippocratic-2.1).
 
-interface MapClickHandlerProps {
+interface PickerMapProps {
+  lat: number;
+  lng: number;
+  markerPos: [number, number] | null;
   onMapClick: (lat: number, lng: number) => void;
 }
 
-const MapClickHandler: React.FC<MapClickHandlerProps> = ({ onMapClick }) => {
-  useMapEvents({
-    click(e) {
-      onMapClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-};
+const PickerMap: React.FC<PickerMapProps> = ({ lat, lng, markerPos, onMapClick }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  // Keep callback in a ref so we can bind 'click' once without stale closures.
+  const onClickRef = useRef(onMapClick);
+  onClickRef.current = onMapClick;
 
-// Auto-pan when coordinates change
-const MapPanner: React.FC<{ lat: number; lng: number }> = ({ lat, lng }) => {
-  const map = useMap();
-  React.useEffect(() => {
-    if (lat && lng) map.flyTo([lat, lng], 12, { duration: 1 });
-  }, [lat, lng, map]);
-  return null;
+  // Init map once
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+    const map = L.map(containerRef.current, {
+      center: [lat, lng],
+      zoom: 12,
+      scrollWheelZoom: true,
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    }).addTo(map);
+    map.on('click', (e: L.LeafletMouseEvent) => onClickRef.current(e.latlng.lat, e.latlng.lng));
+    mapRef.current = map;
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-pan when coordinates change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !lat || !lng) return;
+    map.flyTo([lat, lng], 12, { duration: 1 });
+  }, [lat, lng]);
+
+  // Sync marker
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (markerPos) {
+      if (markerRef.current) {
+        markerRef.current.setLatLng(markerPos);
+      } else {
+        markerRef.current = L.marker(markerPos).addTo(map);
+      }
+    } else if (markerRef.current) {
+      markerRef.current.remove();
+      markerRef.current = null;
+    }
+  }, [markerPos]);
+
+  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 };
 
 // ── Import result type ────────────────────────────────────────────────────────
@@ -278,20 +319,7 @@ const PlacesImportTab: React.FC = () => {
         borderRadius: '16px', overflow: 'hidden', height: 360, mb: 3,
         border: '1px solid rgba(255,255,255,0.07)', bgcolor: '#0A0B14',
       }}>
-        <MapContainer
-          center={[lat, lng]}
-          zoom={12}
-          style={{ width: '100%', height: '100%' }}
-          scrollWheelZoom
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          />
-          <MapClickHandler onMapClick={handleMapClick} />
-          <MapPanner lat={lat} lng={lng} />
-          {markerPos && <Marker position={markerPos} />}
-        </MapContainer>
+        <PickerMap lat={lat} lng={lng} markerPos={markerPos} onMapClick={handleMapClick} />
       </Box>
 
       {/* Action buttons */}

@@ -1,30 +1,19 @@
 # Dependency License Audit
 
-**Generated:** 2026-04-14
+**Generated:** 2026-04-14 (updated 2026-04-15 after react-leaflet removal)
 **Tool:** `npx license-checker --production --summary` (both `/` and `/client`)
 
 ## Summary
 
-| Workspace | Total pkgs | Permissive (MIT/ISC/Apache/BSD/0BSD/Unlicense/BlueOak/MIT-0) | Copyleft                 | Non-OSI             | Unknown                             |
-| --------- | ---------- | ------------------------------------------------------------ | ------------------------ | ------------------- | ----------------------------------- |
-| Backend   | ~224       | 223                                                          | MPL-2.0 × 1 (file-level) | 0                   | 0                                   |
-| Frontend  | ~219       | 215                                                          | 0                        | Hippocratic-2.1 × 2 | UNLICENSED × 1 (own pkg), BSD\* × 1 |
+| Workspace | Total pkgs | Permissive (MIT/ISC/Apache/BSD/0BSD/Unlicense/BlueOak/MIT-0) | Copyleft                 | Non-OSI | Unknown                             |
+| --------- | ---------- | ------------------------------------------------------------ | ------------------------ | ------- | ----------------------------------- |
+| Backend   | ~224       | 223                                                          | MPL-2.0 × 1 (file-level) | 0       | 0                                   |
+| Frontend  | ~217       | 215                                                          | 0                        | 0       | UNLICENSED × 1 (own pkg), BSD\* × 1 |
 
 ✅ **No GPL / AGPL / LGPL anywhere.** SaaS distribution is safe.
+✅ **No Hippocratic-2.1** — `react-leaflet` removed 2026-04-15, all 3 call sites (`LocationMap.tsx`, `NotebookMap.tsx`, `PlacesImportTab.tsx`) rewritten against plain `leaflet` (BSD-2-Clause).
 
 ## Findings that need action
-
-### 1. `react-leaflet` + `@react-leaflet/core` — Hippocratic License 2.1
-
-Non-OSI-approved "ethical source" license. Enterprise buyers and some acquirers refuse it outright because the terms are vague about what counts as "harm" and courts haven't tested it.
-
-**Options:**
-
-- Accept the risk (most consumer-SaaS buyers won't care).
-- Swap to a MIT-licensed map lib: `leaflet` itself is BSD-2-Clause and can be used directly without the React wrapper. MapLibre GL JS is BSD-3.
-- Disclose upfront in the acquisition packet.
-
-**Current usage:** check with `grep -rln "react-leaflet" client/src` before deciding.
 
 ### 2. `tween-functions` — "BSD\*"
 

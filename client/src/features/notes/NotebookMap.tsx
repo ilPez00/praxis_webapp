@@ -1,25 +1,16 @@
-import React, { useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React, { useEffect, useMemo, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Box, Typography, Chip, Stack } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import EditNoteIcon from '@mui/icons-material/EditNote';
-import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
-// Fix for default marker icon issue in React-Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+// Fix for default marker icon issue (bundlers strip relative paths)
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconUrl:       'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl:     'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
-
-interface EntryLocation {
-  lat: number;
-  lng: number;
-  location_name?: string | null;
-}
 
 interface NotebookEntry {
   id: string;
@@ -37,19 +28,17 @@ interface NotebookMapProps {
   entries: NotebookEntry[];
 }
 
-// Custom icons by entry type
-const getIconForType = (entryType: string) => {
-  const iconConfig: Record<string, { color: string; icon: string }> = {
-    note: { color: '#8B5CF6', icon: '📝' },
-    goal_progress: { color: '#10B981', icon: '🎯' },
-    tracker: { color: '#F59E0B', icon: '💪' },
-    achievement: { color: '#F59E0B', icon: '🏆' },
-    checkin: { color: '#3B82F6', icon: '✅' },
-    axiom_brief: { color: '#A78BFA', icon: '🤖' },
-  };
+const ICON_CONFIG: Record<string, { color: string; icon: string }> = {
+  note:          { color: '#8B5CF6', icon: '📝' },
+  goal_progress: { color: '#10B981', icon: '🎯' },
+  tracker:       { color: '#F59E0B', icon: '💪' },
+  achievement:   { color: '#F59E0B', icon: '🏆' },
+  checkin:       { color: '#3B82F6', icon: '✅' },
+  axiom_brief:   { color: '#A78BFA', icon: '🤖' },
+};
 
-  const config = iconConfig[entryType] || { color: '#8B5CF6', icon: '📍' };
-
+const getIconForType = (entryType: string): L.DivIcon => {
+  const config = ICON_CONFIG[entryType] || { color: '#8B5CF6', icon: '📍' };
   return L.divIcon({
     className: 'custom-marker',
     html: `<div style="
@@ -70,41 +59,116 @@ const getIconForType = (entryType: string) => {
   });
 };
 
-// Component to fit map bounds to markers
-function FitBounds({ entries }: { entries: NotebookEntry[] }) {
-  const map = useMap();
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-  useMemo(() => {
-    const validEntries = entries.filter(e => e.location_lat && e.location_lng);
-    if (validEntries.length === 0) return;
+const renderGroupPopup = (groupEntries: NotebookEntry[]): string => {
+  const isMultiple = groupEntries.length > 1;
+  const header = isMultiple
+    ? `<div style="display:inline-block; padding:2px 8px; margin-bottom:6px; border-radius:12px; background:rgba(167,139,250,0.2); color:#A78BFA; font-size:11px; font-weight:700;">${groupEntries.length} entries here</div>`
+    : '';
 
-    const bounds = validEntries.map(e => [e.location_lat!, e.location_lng!] as [number, number]);
-    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-  }, [map, entries]);
+  const items = groupEntries.slice(0, 5).map((e, idx) => {
+    const isProgress = e.entry_type === 'goal_progress';
+    const color = isProgress ? '#10B981' : '#A78BFA';
+    const label = isProgress ? '🎯 Progress' : '📝 Note';
+    const date = new Date(e.occurred_at).toLocaleDateString();
+    const title = escapeHtml((e.title || e.content.slice(0, 50) + '...') || '');
+    const loc = e.location_name ? `<div style="font-size:11px; color:rgba(255,255,255,0.6); margin-top:3px;">📍 ${escapeHtml(e.location_name)}</div>` : '';
+    const mood = e.mood ? `<div style="font-size:11px; margin-top:3px;">Mood: ${escapeHtml(e.mood)}</div>` : '';
+    const sep = idx < Math.min(groupEntries.length, 5) - 1 ? 'margin-bottom:12px;' : '';
+    return `
+      <div style="${sep}">
+        <div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;">
+          <span style="font-size:11px; font-weight:700; color:${color};">${label}</span>
+          <span style="font-size:11px; color:rgba(255,255,255,0.6);">${date}</span>
+        </div>
+        <div style="font-size:13px; font-weight:600; margin-bottom:3px;">${title}</div>
+        ${loc}${mood}
+      </div>`;
+  }).join('');
 
-  return null;
-}
+  const overflow = groupEntries.length > 5
+    ? `<div style="font-size:11px; color:rgba(255,255,255,0.6); margin-top:8px;">+${groupEntries.length - 5} more entries at this location</div>`
+    : '';
+
+  return `<div style="min-width:200px; max-width:300px;">${header}${items}${overflow}</div>`;
+};
 
 const NotebookMap: React.FC<NotebookMapProps> = ({ entries }) => {
-  // Filter entries with location data
-  const entriesWithLocation = useMemo(() => 
-    entries.filter(e => e.location_lat && e.location_lng && e.location_lat !== 0 && e.location_lng !== 0),
-    [entries]
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+
+  const entriesWithLocation = useMemo(
+    () =>
+      entries.filter(
+        e => e.location_lat && e.location_lng && e.location_lat !== 0 && e.location_lng !== 0,
+      ),
+    [entries],
   );
 
-  // Group entries by location for clustering display
+  // Group entries by rounded location (cheap clustering)
   const locationGroups = useMemo(() => {
-    const groups: Map<string, NotebookEntry[]> = new Map();
-    
+    const groups = new Map<string, NotebookEntry[]>();
     for (const entry of entriesWithLocation) {
       const key = `${entry.location_lat?.toFixed(3)},${entry.location_lng?.toFixed(3)}`;
       const existing = groups.get(key) || [];
       existing.push(entry);
       groups.set(key, existing);
     }
-    
     return groups;
   }, [entriesWithLocation]);
+
+  // Initialize map once (after we know there's data — empty state shown below)
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+    if (entriesWithLocation.length === 0) return;
+
+    const map = L.map(containerRef.current, {
+      center: [41.9028, 12.4964], // Rome
+      zoom: 6,
+      scrollWheelZoom: true,
+      zoomControl: false,
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    mapRef.current = map;
+    markersLayerRef.current = L.layerGroup().addTo(map);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markersLayerRef.current = null;
+    };
+  }, [entriesWithLocation.length]);
+
+  // Render markers + fit bounds when data changes
+  useEffect(() => {
+    const map = mapRef.current;
+    const layer = markersLayerRef.current;
+    if (!map || !layer) return;
+
+    layer.clearLayers();
+    const bounds: [number, number][] = [];
+
+    for (const [key, groupEntries] of Array.from(locationGroups.entries())) {
+      const lat = groupEntries[0].location_lat!;
+      const lng = groupEntries[0].location_lng!;
+      L.marker([lat, lng], { icon: getIconForType(groupEntries[0].entry_type) })
+        .bindPopup(renderGroupPopup(groupEntries))
+        .addTo(layer);
+      bounds.push([lat, lng]);
+      void key;
+    }
+
+    if (bounds.length > 0) {
+      map.fitBounds(L.latLngBounds(bounds), { padding: [50, 50], maxZoom: 14 });
+    }
+  }, [locationGroups]);
 
   if (entriesWithLocation.length === 0) {
     return (
@@ -130,8 +194,6 @@ const NotebookMap: React.FC<NotebookMapProps> = ({ entries }) => {
     );
   }
 
-  const defaultCenter: EntryLocation = { lat: 41.9028, lng: 12.4964 }; // Rome
-
   return (
     <Box
       sx={{
@@ -139,99 +201,17 @@ const NotebookMap: React.FC<NotebookMapProps> = ({ entries }) => {
         overflow: 'hidden',
         border: '1px solid rgba(255,255,255,0.1)',
         height: 400,
-        '& .leaflet-container': {
-          background: 'rgba(15, 17, 23, 0.95)',
-        },
+        '& .leaflet-container':        { background: 'rgba(15, 17, 23, 0.95)' },
         '& .leaflet-popup-content-wrapper': {
           background: 'rgba(30, 30, 40, 0.98)',
           color: '#fff',
           borderRadius: '12px',
           border: '1px solid rgba(255,255,255,0.1)',
         },
-        '& .leaflet-popup-tip': {
-          background: 'rgba(30, 30, 40, 0.98)',
-        },
+        '& .leaflet-popup-tip':        { background: 'rgba(30, 30, 40, 0.98)' },
       }}
     >
-      <MapContainer
-        center={[defaultCenter.lat, defaultCenter.lng]}
-        zoom={6}
-        scrollWheelZoom={true}
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={false}
-      >
-        <FitBounds entries={entriesWithLocation} />
-        
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        />
-
-        {Array.from(locationGroups.entries()).map(([key, groupEntries]) => {
-          const entry = groupEntries[0];
-          const lat = entry.location_lat!;
-          const lng = entry.location_lng!;
-          const isMultiple = groupEntries.length > 1;
-
-          return (
-            <Marker
-              key={key}
-              position={[lat, lng]}
-              icon={getIconForType(entry.entry_type)}
-            >
-              <Popup>
-                <Box sx={{ minWidth: 200, maxWidth: 300 }}>
-                  {isMultiple && (
-                    <Chip
-                      label={`${groupEntries.length} entries here`}
-                      size="small"
-                      sx={{ mb: 1, bgcolor: 'rgba(167,139,250,0.2)', color: '#A78BFA' }}
-                    />
-                  )}
-                  
-                  {groupEntries.slice(0, 5).map((e, idx) => (
-                    <Box key={e.id} sx={{ mb: idx < groupEntries.length - 1 ? 1.5 : 0 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            fontWeight: 700,
-                            color: e.entry_type === 'goal_progress' ? '#10B981' : '#A78BFA',
-                          }}
-                        >
-                          {e.entry_type === 'goal_progress' ? '🎯 Progress' : '📝 Note'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(e.occurred_at).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                        {e.title || e.content.slice(0, 50)}...
-                      </Typography>
-                      {e.location_name && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                          📍 {e.location_name}
-                        </Typography>
-                      )}
-                      {e.mood && (
-                        <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-                          Mood: {e.mood}
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
-                  
-                  {groupEntries.length > 5 && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                      +{groupEntries.length - 5} more entries at this location
-                    </Typography>
-                  )}
-                </Box>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
     </Box>
   );
 };
