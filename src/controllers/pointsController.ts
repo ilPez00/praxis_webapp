@@ -70,8 +70,10 @@ export const spendPoints = catchAsync(async (req: Request, res: Response) => {
       .maybeSingle();
 
     if (!treeRow?.nodes) throw new NotFoundError('Goal tree not found');
-    const nodes: any[] = Array.isArray(treeRow.nodes) ? treeRow.nodes : [];
-    const nodeIndex = nodes.findIndex((n: any) => n.id === nodeId);
+    // goal_trees.nodes is JSONB; shape is validated upstream by goalController.
+    type GoalNodeRow = { id: string; status?: string; [k: string]: unknown };
+    const nodes: GoalNodeRow[] = Array.isArray(treeRow.nodes) ? treeRow.nodes : [];
+    const nodeIndex = nodes.findIndex(n => n.id === nodeId);
     if (nodeIndex === -1) throw new NotFoundError('Node not found in goal tree');
     nodes[nodeIndex] = { ...nodes[nodeIndex], status: 'suspended' };
 

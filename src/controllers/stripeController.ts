@@ -125,9 +125,10 @@ export const handleWebhook = async (req: Request, res: Response) => {
   // Verify the webhook signature to ensure the event is from Stripe and has not been tampered with
   try {
     event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
-  } catch (err: any) {
-    logger.error(`Webhook signature verification failed: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error(`Webhook signature verification failed: ${msg}`);
+    return res.status(400).send(`Webhook Error: ${msg}`);
   }
 
   logger.info('Stripe Webhook Event Received:', event.type);
