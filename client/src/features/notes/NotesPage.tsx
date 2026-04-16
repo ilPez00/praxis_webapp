@@ -18,6 +18,7 @@ import ShareButton from '../../components/common/ShareButton';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import AxiomQueryDialog from '../notebook/AxiomQueryDialog';
 import NotebookMap from './NotebookMap';
+import AuthoringModal from './components/AuthoringModal';
 import Slider from '@mui/material/Slider';
 
 import {
@@ -155,6 +156,9 @@ const NotesPage: React.FC = () => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exporting, setExporting] = useState<'plain' | 'axiom' | 'notes' | null>(null);
   const [axiomNarrative, setAxiomNarrative] = useState<string | null>(null);
+
+  // Interactive Authoring
+  const [authoringOpen, setAuthoringOpen] = useState(false);
 
   const currentUserId = user?.id;
 
@@ -1008,6 +1012,29 @@ const NotesPage: React.FC = () => {
                   </Box>
                 )}
               </Box>
+
+              {/* Interactive Authoring - 200 PP */}
+              <Box
+                onClick={() => { setExportDialogOpen(false); setAuthoringOpen(true); }}
+                sx={{
+                  p: 2.5, borderRadius: '16px', cursor: 'pointer',
+                  border: '1px solid rgba(34,197,94,0.3)', bgcolor: 'rgba(34,197,94,0.06)',
+                  '&:hover': { bgcolor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.5)' },
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <EditNoteIcon sx={{ color: '#22C55E' }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Interactive Authoring</Typography>
+                  {user?.is_premium ? (
+                    <Chip label="PRO" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B' }} />
+                  ) : (
+                    <Chip label="200 PP" size="small" sx={{ height: 18, bgcolor: 'rgba(34,197,94,0.2)', color: '#22C55E' }} />
+                  )}
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  Guided rewriting program — Axiom helps you craft your narrative chapter by chapter
+                </Typography>
+              </Box>
             </Stack>
           </DialogContent>
           <DialogActions>
@@ -1019,6 +1046,15 @@ const NotesPage: React.FC = () => {
         <AxiomQueryDialog
           open={axiomDialogOpen}
           onClose={() => setAxiomDialogOpen(false)}
+        />
+
+        {/* Interactive Authoring Modal */}
+        <AuthoringModal
+          open={authoringOpen}
+          onClose={() => setAuthoringOpen(false)}
+          userPoints={userPoints}
+          isPremium={isPremium}
+          userName={user?.name}
         />
 
       </Box>

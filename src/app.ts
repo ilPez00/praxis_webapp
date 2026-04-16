@@ -50,6 +50,7 @@ import axiomRoutes from './routes/axiomRoutes';
 import axiomUnlockRoutes from './routes/axiomUnlockRoutes';
 import notebookRoutes from './routes/notebookRoutes';
 import diaryRoutes from './routes/diaryRoutes';
+import authoringRoutes from './routes/authoringRoutes';
 import sparringRoutes from './routes/sparringRoutes';
 import scheduleRoutes from './routes/scheduleRoutes';
 import narrativeRoutes from './routes/narrativeRoutes';
@@ -74,6 +75,8 @@ const app = express();
 // CORS configuration - restrict to production domains
 const allowedOrigins = [
   'https://praxis-webapp.vercel.app',
+  'https://praxisweb.xyz',
+  'https://www.praxisweb.xyz',
   'https://praxis.app',
   'https://www.praxis.app',
   process.env.CLIENT_URL || 'http://localhost:3000',
@@ -274,6 +277,7 @@ apiRouter.use('/journal', generalLimiter, journalRoutes);
 apiRouter.use('/axiom-unlock', generalLimiter, axiomUnlockRoutes);
 apiRouter.use('/notebook', generalLimiter, notebookRoutes);
 apiRouter.use('/diary', generalLimiter, diaryRoutes);
+apiRouter.use('/authoring', generalLimiter, authoringRoutes);
 apiRouter.use('/schedule', generalLimiter, scheduleRoutes);
 apiRouter.use('/narratives', generalLimiter, narrativeRoutes);
 apiRouter.use('/sparring', generalLimiter, sparringRoutes);
