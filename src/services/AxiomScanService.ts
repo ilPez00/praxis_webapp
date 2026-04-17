@@ -696,10 +696,10 @@ export class AxiomScanService {
           }).join('\n')}`
         : 'No recent notebook entries';
 
-      const gEvents: any[] = googleEvents.status === 'fulfilled' ? (googleEvents.value ?? []) : [];
+      const gEvents: any[] = Array.isArray(googleEvents) ? googleEvents : [];
       const calendarContext = gEvents.length > 0
         ? `GOOGLE CALENDAR EVENTS (FIXED):
-${gEvents.map(e => `- ${e.title} (${e.start.getHours().toString().padStart(2, '0')}:00 - ${e.end.getHours().toString().padStart(2, '0')}:00)`).join('\n')}`
+${gEvents.map(e => `- ${e.title} (${new Date(e.start).getHours().toString().padStart(2, '0')}:00 - ${new Date(e.end).getHours().toString().padStart(2, '0')}:00)`).join('\n')}`
         : '';
 
       const prompt = `You are Axiom, a wise warm and practical life coach inside the Praxis app. Generate a COMPLETE daily protocol for ${userName}.

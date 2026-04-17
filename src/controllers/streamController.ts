@@ -125,7 +125,6 @@ export const updateViewerCount = catchAsync(async (req: Request, res: Response) 
     .from('streams')
     .update({
       viewer_count: count,
-      peak_viewers: supabase.rpc ? count : count, // Will use greatest() in raw SQL if needed
     })
     .eq('id', id)
     .eq('user_id', userId)

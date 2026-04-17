@@ -272,7 +272,7 @@ export class AxiomUnifiedScanService {
       events: eventsRes.data || [],
       places: placesRes.data || [],
       matches: matchesRes.data || [],
-      googleEvents: googleEvents.status === 'fulfilled' ? (googleEvents.value ?? []) : [],
+      googleEvents: Array.isArray(googleEvents) ? googleEvents : [],
     };
   }
 
