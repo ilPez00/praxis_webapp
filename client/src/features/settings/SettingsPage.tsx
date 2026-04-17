@@ -15,6 +15,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import BarChartIcon from '@mui/icons-material/BarChart';
 
 import LanguageIcon from '@mui/icons-material/Language';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
@@ -86,6 +87,23 @@ const SettingsPage: React.FC = () => {
   // Language
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || 'en');
 
+  // Google Calendar
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [isGoogleLinked, setIsGoogleLinked] = useState(false);
+
+  const handleGoogleSync = async () => {
+    setSyncLoading(true);
+    try {
+      const { data } = await api.get('/calendar/google/auth');
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    } catch (err) {
+      toast.error('Failed to initiate Google sync');
+      setSyncLoading(false);
+    }
+  };
+
   // Danger zone
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -96,17 +114,30 @@ const SettingsPage: React.FC = () => {
     if (!user) return;
     // Load user's city and privacy settings from profile
     const loadProfile = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('city, is_public, match_visibility, share_notes_publicly, location_enabled')
-        .eq('id', user.id)
-        .single();
-      if (data) {
-        setGeoCity(data.city || '');
-        setProfilePublic(data.is_public !== false);
-        setMatchVisibility(data.match_visibility || 'all');
-        setShareNotesPublicly(data.share_notes_publicly || false);
-        setLocationEnabled(data.location_enabled || false);
+      const [profileRes, externalRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('city, is_public, match_visibility, share_notes_publicly, location_enabled')
+          .eq('id', user.id)
+          .single(),
+        supabase
+          .from('external_accounts')
+          .select('provider')
+          .eq('user_id', user.id)
+          .eq('provider', 'google')
+          .maybeSingle()
+      ]);
+
+      if (profileRes.data) {
+        setGeoCity(profileRes.data.city || '');
+        setProfilePublic(profileRes.data.is_public !== false);
+        setMatchVisibility(profileRes.data.match_visibility || 'all');
+        setShareNotesPublicly(profileRes.data.share_notes_publicly || false);
+        setLocationEnabled(profileRes.data.location_enabled || false);
+      }
+      
+      if (externalRes.data) {
+        setIsGoogleLinked(true);
       }
     };
     loadProfile();
@@ -363,6 +394,54 @@ const SettingsPage: React.FC = () => {
             </Button>
           )}
         </Box>
+      </Section>
+
+      {/* Google Calendar Sync */}
+      <Section icon={<CalendarTodayIcon sx={{ color: '#F87171' }} />} title="Google Calendar Sync">
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Link your Google Calendar so Axiom can read your events and create new ones from your goals and deadlines.
+        </Typography>
+        {isGoogleLinked ? (
+          <>
+            <Alert severity="success" sx={{ mb: 2, bgcolor: 'rgba(52, 211, 153, 0.1)', color: '#34D399', border: 'none' }}>
+              Google Calendar linked. Axiom can read and create events on your calendar.
+            </Alert>
+            <Button
+              variant="outlined"
+              color="error"
+              fullWidth
+              onClick={async () => {
+                try {
+                  await api.delete('/calendar/google/disconnect');
+                  setIsGoogleLinked(false);
+                  toast.success('Google Calendar disconnected');
+                } catch {
+                  toast.error('Failed to disconnect');
+                }
+              }}
+              sx={{ borderRadius: '10px', py: 1 }}
+            >
+              Disconnect Google Calendar
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={handleGoogleSync}
+            disabled={syncLoading}
+            startIcon={syncLoading ? <CircularProgress size={20} color="inherit" /> : <CalendarTodayIcon />}
+            sx={{
+              bgcolor: '#DB4437',
+              '&:hover': { bgcolor: '#C53929' },
+              borderRadius: '10px',
+              py: 1.5,
+              fontWeight: 700
+            }}
+          >
+            {syncLoading ? 'Connecting...' : 'Link Google Calendar'}
+          </Button>
+        )}
       </Section>
 
       {/* Privacy */}
