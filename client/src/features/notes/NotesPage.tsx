@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
@@ -164,6 +164,15 @@ const NotesPage: React.FC = () => {
   const [authoringOpen, setAuthoringOpen] = useState(false);
 
   const currentUserId = user?.id;
+
+  // Filter map entries by selected calendar day (YYYY-MM-DD match on occurred_at)
+  const mapEntriesFiltered = useMemo(() => {
+    if (!selectedCalendarDate) return notebookEntriesForMap;
+    return notebookEntriesForMap.filter(e => {
+      if (!e.occurred_at) return false;
+      return new Date(e.occurred_at).toISOString().slice(0, 10) === selectedCalendarDate;
+    });
+  }, [notebookEntriesForMap, selectedCalendarDate]);
 
   // ── Diary export handlers ─────────────────────────────────────
   const handleExportPlain = async () => {
@@ -734,14 +743,33 @@ const NotesPage: React.FC = () => {
 
             {/* 1.5: Notebook Map (Location-based entries) */}
             <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" sx={{ fontWeight: 900, mb: 2, color: 'text.primary', opacity: 0.9 }}>
-                📍 Notes Map
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 900, color: 'text.primary', opacity: 0.9 }}>
+                  📍 Notes Map
+                </Typography>
+                {selectedCalendarDate && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setSelectedCalendarDate(null)}
+                    sx={{
+                      borderColor: 'rgba(167,139,250,0.5)',
+                      color: '#A78BFA',
+                      textTransform: 'none',
+                      fontSize: 12,
+                    }}
+                  >
+                    Clear filter · {new Date(selectedCalendarDate).toLocaleDateString()}
+                  </Button>
+                )}
+              </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                See where your notes and progress were logged
+                {selectedCalendarDate
+                  ? `Showing entries from ${new Date(selectedCalendarDate).toLocaleDateString()}`
+                  : 'See where your notes and progress were logged · click a calendar day to filter'}
               </Typography>
               {currentUserId && (
-                <NotebookMap entries={notebookEntriesForMap} />
+                <NotebookMap entries={mapEntriesFiltered} />
               )}
             </Box>
 

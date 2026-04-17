@@ -110,9 +110,9 @@ These are polish-tier items, not new features. Keep file updated as items land.
 - ✅ #5 notebook location — already captures location_lat/lng on entry creation
 - ✅ #8 legal/export — added Data & Privacy section with Terms link + export download
 - ✅ #4 detailed plan gating — Routine now shows "Unlock for 500 PP" for non-premium (AxiomDailyProtocol.tsx)
-- 🔄 #3 Axiom rotation — needs user-based last_rotation tracking + cron
-- ⏳ #6 notebook map — depends on #5, needs map integration
-- ⏳ #7 Google Maps migration — needs API key
+- ✅ #6 notebook map — calendar day click filters map entries (NotesPage + NotebookMap)
+- 🔄 #3 Axiom rotation — frontend forces regen on stale date; cron job still TODO
+- ⏳ #7 Google Maps migration — BLOCKED on GOOGLE_MAPS_API_KEY env var
 
 ## Suggested order
 1. Quick wins: #1 (claimed state), #2 (daily challenge rotation), #9 (notebook Trend button + button relocation).
