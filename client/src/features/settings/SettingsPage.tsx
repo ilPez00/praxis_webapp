@@ -342,7 +342,7 @@ const SettingsPage: React.FC = () => {
       {/* Geolocation */}
       <Section icon={<MyLocationIcon sx={{ color: '#34D399' }} />} title="Geolocation">
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Your location is used to show nearby users and local events. It is never shared without your consent.
+          Your location is used to show nearby users. It is never shared without your consent.
         </Typography>
         
         {/* Location tracking toggle */}

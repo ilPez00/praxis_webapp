@@ -35,7 +35,7 @@ const ReferencePicker: React.FC<ReferencePickerProps> = ({
   onSelect,
   selected,
 }) => {
-  const [tab, setTab] = useState<'people' | 'events' | 'places'>('people');
+  const [tab, setTab] = useState<'people' | 'places'>('people');
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,20 +63,6 @@ const ReferencePicker: React.FC<ReferencePickerProps> = ({
           name: m.name,
           subtitle: m.bio || 'Accountability partner',
           avatar_url: m.avatar_url,
-        }));
-      } else if (tab === 'events') {
-        const { data: events } = await supabase
-          .from('events')
-          .select('id, title, description, event_date, city')
-          .gte('event_date', new Date().toISOString())
-          .order('event_date', { ascending: true })
-          .limit(20);
-        data = (events || []).map((e: any) => ({
-          type: 'event',
-          id: e.id,
-          name: e.title,
-          subtitle: `${new Date(e.event_date).toLocaleDateString()}${e.city ? ' · ' + e.city : ''}`,
-          city: e.city,
         }));
       } else if (tab === 'places') {
         const { data: places } = await supabase
@@ -120,7 +106,7 @@ const ReferencePicker: React.FC<ReferencePickerProps> = ({
       <DialogTitle>
         Link Reference
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          Attach a person, event, or place to your entry
+          Attach a person or place to your entry
         </Typography>
       </DialogTitle>
       <DialogContent>
@@ -140,7 +126,6 @@ const ReferencePicker: React.FC<ReferencePickerProps> = ({
         {/* Tabs */}
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
           <Tab label="People" value="people" />
-          <Tab label="Events" value="events" />
           <Tab label="Places" value="places" />
         </Tabs>
 

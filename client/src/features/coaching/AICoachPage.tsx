@@ -277,7 +277,7 @@ const AICoachPage: React.FC = () => {
       } else {
         // No history — show welcome
         setChat([
-          { role: 'coach', text: "I'm Axiom, your accountability coach. Ask me anything about your goals, routine, people, places, events, or notes." },
+          { role: 'coach', text: "I'm Axiom, your accountability coach. Ask me anything about your goals, routine, people, places, or notes." },
         ]);
       }
     } catch {
@@ -648,7 +648,7 @@ const AICoachPage: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField
               fullWidth multiline maxRows={4}
-              placeholder="Ask Axiom about goals, people, places, events, notes…"
+              placeholder="Ask Axiom about goals, people, places, notes…"
               value={question}
               onChange={e => setQuestion(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(); } }}

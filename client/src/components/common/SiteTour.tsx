@@ -56,14 +56,14 @@ const TOUR_STEPS: TourStep[] = [
   {
     title: 'Discover & Connect',
     description:
-      'Find accountability partners matched by goal compatibility. Browse nearby study spots, co-working spaces, and events. Save anyone or anything to your Diary.',
+      'Find accountability partners matched by goal compatibility. Browse nearby study spots and co-working spaces. Save anyone or anything to your Diary.',
     icon: <ExploreIcon sx={{ fontSize: 40 }} />,
     color: '#EC4899',
   },
   {
     title: 'Your Diary',
     description:
-      'A private collection of everything you save — people, places, events, and personal entries. Export your journey as a plain-text journal anytime.',
+      'A private collection of everything you save — people, places, and personal entries. Export your journey as a plain-text journal anytime.',
     icon: <BookIcon sx={{ fontSize: 40 }} />,
     color: '#6366F1',
   },

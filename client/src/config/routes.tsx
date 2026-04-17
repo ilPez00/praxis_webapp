@@ -35,8 +35,9 @@ const WordsPage = React.lazy(() => import('../features/admin/WordsPage'));
 const LeaderboardPage = React.lazy(() => import('../features/leaderboard/LeaderboardPage'));
 const ServicesPage = React.lazy(() => import('../features/services/ServicesPage'));
 const BettingPage = React.lazy(() => import('../features/betting/BettingPage'));
-const EventsPage = React.lazy(() => import('../features/events/EventsPage'));
-const EventCheckinPage = React.lazy(() => import('../features/events/EventCheckinPage'));
+// TODO: re-enable when events feature is ready
+// const EventsPage = React.lazy(() => import('../features/events/EventsPage'));
+// const EventCheckinPage = React.lazy(() => import('../features/events/EventCheckinPage'));
 const FriendsPage = React.lazy(() => import('../features/friends/FriendsPage'));
 const PostThreadPage = React.lazy(() => import('../features/posts/PostThreadPage'));
 const SettingsPage = React.lazy(() => import('../features/settings/SettingsPage'));
@@ -59,7 +60,7 @@ export const publicRoutes: RouteObject[] = [
   { path: 'cancel', element: <CancelPage /> },
   { path: 'desktop-widget', element: <DesktopWidget /> },
   { path: 'mobile-widget', element: <MobileWidget /> },
-  { path: 'events/checkin', element: <EventCheckinPage /> },
+  // { path: 'events/checkin', element: <EventCheckinPage /> },  // TODO: re-enable
 ];
 
 export const privateRoutes: RouteObject[] = [
@@ -93,7 +94,7 @@ export const privateRoutes: RouteObject[] = [
   { path: 'services', element: <ServicesPage /> },
   { path: 'commitments', element: <BettingPage /> },
   { path: 'words', element: <WordsPage /> },
-  { path: 'events', element: <EventsPage /> },
+  // { path: 'events', element: <EventsPage /> },  // TODO: re-enable
   { path: 'friends', element: <FriendsPage /> },
   { path: 'posts/:postId', element: <PostThreadPage /> },
   { path: 'settings', element: <SettingsPage /> },
