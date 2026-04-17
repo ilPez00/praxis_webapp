@@ -15,6 +15,7 @@ import logger from '../utils/logger';
 import { AICoachingService } from './AICoachingService';
 import { EngagementMetricService } from './EngagementMetricService';
 import { AxiomScheduleService } from './AxiomScheduleService';
+import { GoogleCalendarService } from './GoogleCalendarService';
 import { AxiomProgressEstimationService } from './AxiomProgressEstimationService';
 import { AxiomDailySummaryService } from './AxiomDailySummaryService';
 
@@ -32,12 +33,14 @@ interface UserData {
   events: any[];
   places: any[];
   matches: any[];
+  googleEvents: any[];
 }
 
 export class AxiomUnifiedScanService {
   private aiCoaching: AICoachingService;
   private engagementMetrics: EngagementMetricService;
   private scheduleService: AxiomScheduleService;
+  private googleCalendar: GoogleCalendarService;
   private progressService: AxiomProgressEstimationService;
   private summaryService: AxiomDailySummaryService;
 
@@ -45,6 +48,7 @@ export class AxiomUnifiedScanService {
     this.aiCoaching = new AICoachingService();
     this.engagementMetrics = new EngagementMetricService();
     this.scheduleService = new AxiomScheduleService();
+    this.googleCalendar = new GoogleCalendarService();
     this.progressService = new AxiomProgressEstimationService();
     this.summaryService = new AxiomDailySummaryService();
   }
@@ -123,15 +127,19 @@ export class AxiomUnifiedScanService {
       return;
     }
 
-    // === PHASE 2: Generate daily brief (uses shared data) ===
+    // === PHASE 2: Agentic actions — Axiom decides what to do ===
+    logger.info(`[AxiomUnifiedScan] Agentic decision phase for ${userId}...`);
+    await this.agenticActions(userId, userData);
+
+    // === PHASE 3: Generate daily brief (uses shared data) ===
     logger.info(`[AxiomUnifiedScan] Generating brief for ${userId}...`);
     await this.generateBrief(userId, userData);
 
-    // === PHASE 3: Estimate progress (uses shared data) ===
+    // === PHASE 4: Estimate progress (uses shared data) ===
     logger.info(`[AxiomUnifiedScan] Estimating progress for ${userId}...`);
     await this.estimateProgress(userId, userData);
 
-    // === PHASE 4: Generate daily summary (uses shared data) ===
+    // === PHASE 5: Generate daily summary (uses shared data) ===
     logger.info(`[AxiomUnifiedScan] Generating summary for ${userId}...`);
     await this.generateSummary(userId, userData);
 
@@ -150,6 +158,11 @@ export class AxiomUnifiedScanService {
     sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
     const sixWeeksAgoStr = sixWeeksAgo.toISOString();
 
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
     // Fetch all data in parallel
     const [
       profileRes,
@@ -164,14 +177,14 @@ export class AxiomUnifiedScanService {
       eventsRes,
       placesRes,
       matchesRes,
+      googleEvents,
     ] = await Promise.all([
-      // Profile
+      // ... (previous 12 items)
       supabase
         .from('profiles')
         .select('name, is_premium, praxis_points, is_admin, minimal_ai_mode')
         .eq('id', userId)
         .single(),
-      // Metrics
       (async () => {
         let metrics = await this.engagementMetrics.getCachedMetrics(userId);
         if (!metrics) {
@@ -180,47 +193,40 @@ export class AxiomUnifiedScanService {
         }
         return { data: metrics };
       })(),
-      // Goal tree
       supabase
         .from('goal_trees')
         .select('nodes, root_nodes')
         .eq('user_id', userId)
         .maybeSingle(),
-      // Recent check-ins (7 days)
       supabase
         .from('checkins')
         .select('checked_in_at, streak_day, mood, win_of_the_day')
         .eq('user_id', userId)
         .order('checked_in_at', { ascending: false })
         .limit(7),
-      // Trackers
       supabase
         .from('trackers')
         .select('id, type, goal')
         .eq('user_id', userId),
-      // Notebook entries (6 weeks)
       supabase
         .from('notebook_entries')
-        .select('title, content, mood, occurred_at, goal_id, entry_type, source_table, source_id, domain')
+        .select('title, content, mood, occurred_at, goal_id, entry_type, source_table, source_id, domain, attachments')
         .eq('user_id', userId)
         .gte('occurred_at', sixWeeksAgoStr)
         .order('occurred_at', { ascending: false })
         .limit(100),
-      // Diary entries
       supabase
         .from('diary_entries')
         .select('title, content, entry_type, mood, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(10),
-      // Month check-ins
       supabase
         .from('checkins')
         .select('checked_in_at, streak_day, mood, win_of_the_day')
         .eq('user_id', userId)
         .gte('checked_in_at', oneMonthAgoStr)
         .order('checked_in_at', { ascending: false }),
-      // Month trackers
       supabase
         .from('tracker_entries')
         .select('tracker_id, data, logged_at')
@@ -233,20 +239,19 @@ export class AxiomUnifiedScanService {
         .gte('logged_at', oneMonthAgoStr)
         .order('logged_at', { ascending: false })
         .limit(200),
-      // Events
       supabase
         .from('events')
         .select('id, title, event_date, city, description')
         .gte('event_date', todayStr)
         .limit(10),
-      // Places
       supabase
         .from('places')
         .select('id, name, city, tags, description')
         .limit(10),
-      // Matches
       supabase
         .rpc('match_users_by_goals', { query_user_id: userId, match_limit: 5 }),
+      // Google Calendar events
+      this.googleCalendar.getEvents(userId, startDate, endDate),
     ]);
 
     if (!profileRes.data) return null;
@@ -267,6 +272,7 @@ export class AxiomUnifiedScanService {
       events: eventsRes.data || [],
       places: placesRes.data || [],
       matches: matchesRes.data || [],
+      googleEvents: googleEvents.status === 'fulfilled' ? (googleEvents.value ?? []) : [],
     };
   }
 
@@ -274,10 +280,8 @@ export class AxiomUnifiedScanService {
    * Generate daily brief using pre-fetched data
    */
   private async generateBrief(userId: string, userData: UserData): Promise<void> {
-    // Import and call the static method from AxiomScanService
     const { AxiomScanService } = await import('./AxiomScanService');
     
-    // Pass pre-fetched data to avoid re-fetching
     await AxiomScanService.generateDailyBriefWithUserData(
       userId,
       userData.profile.name || 'Student',
@@ -285,6 +289,217 @@ export class AxiomUnifiedScanService {
       true,
       userData
     );
+  }
+
+  /**
+   * Agentic Actions Phase — Axiom analyzes data and takes autonomous actions
+   * Uses tool-calling + multimodal to process attachments
+   */
+  private async agenticActions(userId: string, userData: UserData): Promise<void> {
+    try {
+      // Import dynamically to avoid circular deps
+      const { routeActions, getToolDeclarations } = await import('./AxiomActionRouter');
+      const { axiomMultimodalService } = await import('./AxiomMultimodalService');
+
+      const { nodes, notebookEntries, checkins, trackers } = userData;
+      const recentEntries = notebookEntries.slice(0, 50);
+
+      // Collect all attachments from recent entries
+      const attachments = axiomMultimodalService.collectAttachmentsFromEntries(recentEntries);
+
+      // Query NotebookLM if configured
+      let notebookLMContext = '';
+      try {
+        const { axiomNotebookLMService } = await import('./AxiomNotebookLMService');
+        const profileRes = await supabase.from('profiles').select('notebooklm_enabled, notebooklm_notebook_ids').eq('id', userId).single();
+        if (profileRes.data?.notebooklm_enabled) {
+          const notebookIds = profileRes.data.notebooklm_notebook_ids || [];
+          const userContext = this.buildNotebookLMContext(userData);
+          const { notebookInsights } = await axiomNotebookLMService.queryAllNotebooks(userId, userContext);
+          if (notebookInsights) {
+            notebookLMContext = notebookInsights;
+            logger.info(`[AxiomUnifiedScan] NotebookLM: got insights from ${notebookIds.length} notebooks`);
+          }
+        }
+      } catch (err: any) {
+        logger.debug(`[AxiomUnifiedScan] NotebookLM skipped: ${err.message}`);
+      }
+
+      // Process attachments for all goals
+      let totalParts = 0;
+      let totalContexts = 0;
+      const attachmentSummaryByGoal: Record<string, string> = {};
+
+      for (const [goalId, goalAttachments] of attachments.entries()) {
+        const { parts, textContexts } = await axiomMultimodalService.processAttachments(goalAttachments);
+        totalParts += parts.length;
+        totalContexts += textContexts.length;
+        if (textContexts.length > 0) {
+          attachmentSummaryByGoal[goalId] = axiomMultimodalService.buildAttachmentSummary(textContexts);
+        }
+      }
+
+      logger.info(`[AxiomUnifiedScan] Processed ${totalParts} attachment parts, ${totalContexts} text contexts`);
+
+      // Build agentic prompt
+      const prompt = this.buildAgenticPrompt(userData, attachmentSummaryByGoal, notebookLMContext);
+
+      // Get tool declarations
+      const tools = getToolDeclarations();
+
+      // Run agentic (with multimodal if attachments exist)
+      let agenticResult: { text: string; toolCalls: any[] };
+
+      if (totalParts > 0) {
+        const { axiomMultimodalService: multimodal } = await import('./AxiomMultimodalService');
+        // Collect all parts from all attachments
+        const allParts: any[] = [];
+        for (const [goalId, goalAttachments] of attachments.entries()) {
+          const { parts } = await multimodal.processAttachments(goalAttachments);
+          allParts.push(...parts);
+        }
+
+        agenticResult = await this.aiCoaching.runAgentic(prompt, tools);
+        // For now, use text-only for tool-calling (attachments go to brief analysis)
+        void allParts; // suppress unused warning
+      } else {
+        agenticResult = await this.aiCoaching.runAgentic(prompt, tools);
+      }
+
+      const { results: actionResults, skipped } = await routeActions(userId, agenticResult.toolCalls, 'midnight_scan');
+
+      const successCount = actionResults.filter(r => r.success).length;
+      logger.info(`[AxiomUnifiedScan] Agentic: ${successCount}/${actionResults.length} actions succeeded, ${skipped} skipped`);
+
+      // Auto-log agentic summary to notebook
+      if (successCount > 0) {
+        const summary = `## Axiom Agentic Actions — ${new Date().toLocaleDateString()}
+
+**Actions taken:** ${successCount}
+${actionResults.filter(r => r.success).map((r, i) => {
+  const action = agenticResult.toolCalls[i];
+  return `- ${action?.tool}: ${r.result ? JSON.stringify(r.result).slice(0, 80) : 'OK'}`;
+}).join('\n')}
+
+*Generated autonomously by Axiom during midnight scan.*`;
+
+        Promise.resolve(
+          supabase.from('notebook_entries').insert({
+            user_id: userId,
+            entry_type: 'note',
+            title: `Axiom Agentic Actions — ${new Date().toLocaleDateString()}`,
+            content: summary,
+            domain: 'Axiom',
+            occurred_at: new Date().toISOString(),
+            metadata: { created_by: 'axiom', scan_type: 'midnight_scan', action_count: successCount },
+            is_private: false,
+          })
+        ).then(() => {}).catch((err: any) => logger.warn('Auto-log agentic summary failed:', err.message));
+      }
+    } catch (err: any) {
+      logger.warn(`[AxiomUnifiedScan] Agentic phase failed for ${userId}: ${err.message}`);
+      // Non-fatal — don't block the rest of the scan
+    }
+  }
+
+  /**
+   * Build context string for NotebookLM queries
+   */
+  private buildNotebookLMContext(userData: UserData): string {
+    const { nodes, checkins, notebookEntries } = userData;
+    const goalsSummary = nodes.slice(0, 5).map((n: any) =>
+      `${n.name} (${n.domain}): ${Math.round((n.progress || 0) * 100)}%`
+    ).join(', ');
+    const recentMood = checkins.slice(0, 3).map(c => c.mood || '').filter(Boolean).join(' ');
+    const recentNotes = notebookEntries.slice(0, 5).map(e => e.title || e.content?.slice(0, 50) || '').join('; ');
+
+    return `Goals: ${goalsSummary || 'none'}. Recent mood: ${recentMood || 'unknown'}. Recent activity: ${recentNotes || 'none'}.`;
+  }
+
+  /**
+   * Build the agentic thinking prompt for Axiom
+   */
+  private buildAgenticPrompt(userData: UserData, attachmentSummaryByGoal: Record<string, string>, notebookLMContext: string = ''): string {
+    const { profile, nodes, checkins, trackers, notebookEntries } = userData;
+    const userName = profile?.name || 'User';
+
+    const goalsSummary = nodes.slice(0, 15).map((n: any) => {
+      const progress = Math.round((n.progress || 0) * 100);
+      const attachments = attachmentSummaryByGoal[n.id] || '';
+      return {
+        id: n.id,
+        name: n.name,
+        domain: n.domain,
+        progress,
+        attachments,
+      };
+    });
+
+    const recentCheckins = checkins.slice(0, 5).map((c: any) =>
+      `${c.checked_in_at?.slice(0, 10)}: ${c.mood || 'N/A'} | ${c.win_of_the_day?.slice(0, 60) || 'no win'}`
+    ).join('\n');
+
+    const trackerSummary = trackers.slice(0, 5).map((t: any) =>
+      `- ${t.type}: ${t.goal || 'general'}`
+    ).join('\n') || '(no trackers)';
+
+    const goalsBlock = goalsSummary.map(g => {
+      const progressBar = '█'.repeat(Math.round(g.progress / 10)) + '░'.repeat(10 - Math.round(g.progress / 10));
+      const attachBlock = g.attachments ? `\n  Attachments:\n  ${g.attachments.split('\n').map((l: string) => '  ' + l).join('\n')}` : '';
+      return `[${g.domain}] ${g.name} — ${progressBar} ${g.progress}%${attachBlock}`;
+    }).join('\n');
+
+    return `You are Axiom. You analyze user data and take autonomous actions to help them achieve their goals.
+
+## USER
+${userName}
+
+## GOALS (${nodes.length} total)
+${goalsBlock || '(no goals)'}
+
+## RECENT CHECK-INS (last 7 days)
+${recentCheckins || '(no check-ins)'}
+
+## TRACKERS
+${trackerSummary}
+${notebookLMContext ? `\n## NOTEBOOKLM INSIGHTS\n${notebookLMContext}` : ''}
+
+---
+
+## THINKING PHASE
+Based on the above data, decide what TOOLS to call. Consider:
+- Create bet: user needs accountability on a goal, has PP available, < 3 active bets
+- Create goal: user mentioned a new goal or needs a sub-goal
+- Update goal progress: clear evidence of progress change
+- Push notification: motivational nudge, especially for stagnant goals or streak at risk
+- Create notebook entry: Axiom finds an insight worth documenting
+- Log tracker: user has been tracking habits
+- Suggest match: user needs an accountability partner
+
+IMPORTANT CONSTRAINTS:
+- Max 5 actions per scan
+- Max 500 PP per bet, max 3 active bets
+- Progress updates capped at ±25% per scan
+- Max 2 notifications per day
+- Trackers capped at 3 logs per day per tracker
+
+## RESPONSE FORMAT
+Think silently about what to do, then output your brief analysis, followed by any tool calls.
+
+If taking actions, use this format for each:
+{"tool": "TOOL_NAME", "params": {...}}
+
+Example:
+Your analysis suggests the user has been stagnant on their fitness goal. You should:
+1. Create a bet to boost accountability
+2. Send a motivational notification
+
+{"tool": "create_bet", "params": {"goalName": "Run 5k", "deadline": "2026-04-25T20:00:00Z", "stakePoints": 100}}
+{"tool": "push_notification", "params": {"title": "Run time!", "body": "You haven't logged a run in 3 days. Time to move!"}}
+
+If no actions needed:
+Your analysis: [brief summary of user's state]
+No actions needed right now.`;
   }
 
   /**

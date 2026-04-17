@@ -2,12 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from '../services/AICoachingService';
 import { catchAsync, UnauthorizedError, BadRequestError } from '../utils/appErrors';
+import { routeActions, getToolDeclarations } from '../services/AxiomActionRouter';
+import { axiomMultimodalService } from '../services/AxiomMultimodalService';
 import logger from '../utils/logger';
 
 const aiCoachingService = new AICoachingService();
 
 interface AxiomAction {
-  type: 'create_entry' | 'update_goal' | 'suggest_match' | 'search_web' | 'respond';
+  type: 'create_entry' | 'update_goal' | 'suggest_match' | 'search_web' | 'respond' | 'create_bet' | 'create_duel' | 'create_team_challenge' | 'log_tracker' | 'create_goal' | 'push_notification';
   params?: Record<string, any>;
   content?: string;
 }
@@ -225,12 +227,12 @@ export const axiomAgent = catchAsync(async (req: Request, res: Response, _next: 
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated');
 
-  const { query, allow_web_search = false } = req.body;
+  const { query, allow_web_search = false, allow_actions = false } = req.body;
   if (!query?.trim()) {
     throw new BadRequestError('query is required');
   }
 
-  logger.info(`[AxiomAgent] Processing query for user ${userId}: "${query.substring(0, 50)}..."`);
+  logger.info(`[AxiomAgent] Processing query for user ${userId}: "${query.substring(0, 50)}..." (actions: ${allow_actions})`);
 
   if (!aiCoachingService.isConfigured) {
     return res.status(503).json({
@@ -246,6 +248,17 @@ export const axiomAgent = catchAsync(async (req: Request, res: Response, _next: 
       searchNotebooks(userId, query),
       allow_web_search ? searchWeb(query) : Promise.resolve([]),
     ]);
+
+    // Process attachments if any entries have them
+    let multimodalParts: any[] = [];
+    if (notebookResults.some((e: any) => Array.isArray(e.attachments) && e.attachments.length > 0)) {
+      const attachments = notebookResults
+        .flatMap((e: any) => Array.isArray(e.attachments) ? e.attachments : [])
+        .slice(0, 10);
+      const { parts } = await axiomMultimodalService.processAttachments(attachments);
+      multimodalParts = parts;
+      logger.info(`[AxiomAgent] Processed ${parts.length} multimodal parts for ${userId}`);
+    }
 
     const prompt = buildAgentPrompt(context, query, notebookResults, webResults);
     const response = await aiCoachingService.generateCoachingResponse(prompt, context, true, 'fast');
@@ -264,12 +277,51 @@ export const axiomAgent = catchAsync(async (req: Request, res: Response, _next: 
       avatarUrl: m.avatar_url,
     }));
 
+    // Execute agentic actions if allowed
+    let actionsResult: any = undefined;
+    if (allow_actions) {
+      try {
+        const agenticPrompt = `Based on the user's question and context, decide what actions to take.
+
+USER: ${context.userName || 'User'}
+QUESTION: "${query}"
+
+CONTEXT:
+${prompt.split('NOTEBOOK SEARCH RESULTS:')[0]}
+
+Available tools: create_bet, create_duel, create_team_challenge, log_tracker, create_goal, update_goal_progress, create_notebook_entry, push_notification, suggest_match
+
+If taking actions, respond with JSON:
+{"actions": [{"tool": "TOOL_NAME", "params": {...}}]}
+
+If no actions needed:
+{"actions": []}`;
+
+        const agenticResult = await aiCoachingService.runAgentic(agenticPrompt, getToolDeclarations());
+        
+        if (agenticResult.toolCalls.length > 0) {
+          const { results, skipped } = await routeActions(userId, agenticResult.toolCalls, 'axiom_agent');
+          actionsResult = {
+            executed: results.length,
+            succeeded: results.filter(r => r.success).length,
+            failed: results.filter(r => !r.success).length,
+            skipped,
+            details: results,
+          };
+          logger.info(`[AxiomAgent] Executed ${actionsResult.succeeded}/${results.length} actions for ${userId}`);
+        }
+      } catch (err: any) {
+        logger.warn(`[AxiomAgent] Action execution failed: ${err.message}`);
+      }
+    }
+
     res.json({
       message: response,
       sources,
       matches: matchRecommendations,
       webResults: webResults.length > 0 ? webResults : undefined,
       notebookResultsCount: notebookResults.length,
+      actions: actionsResult,
     });
   } catch (err: any) {
     logger.error('[AxiomAgent] Failed:', err.message);

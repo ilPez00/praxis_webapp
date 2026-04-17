@@ -21,7 +21,8 @@ const GoalTreePage = React.lazy(() => import('../features/goals/GoalTreePage'));
 const GoalSelectionPage = React.lazy(() => import('../features/goals/GoalSelectionPage'));
 const ChatRoom = React.lazy(() => import('../features/chat/ChatRoom'));
 const UpgradePage = React.lazy(() => import('../features/payments/UpgradePage'));
-const IdentityVerificationPage = React.lazy(() => import('../features/identity/IdentityVerificationPage'));
+// TODO: re-enable when needed
+// const IdentityVerificationPage = React.lazy(() => import('../features/identity/IdentityVerificationPage'));
 const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
 const GroupsPage = React.lazy(() => import('../features/groups/GroupsPage'));
 const GroupRoom = React.lazy(() => import('../features/groups/GroupRoom'));

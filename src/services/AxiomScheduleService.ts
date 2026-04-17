@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from './AICoachingService';
+import { GoogleCalendarService } from './GoogleCalendarService';
 import logger from '../utils/logger';
 
 export interface TimeSlot {
@@ -64,9 +65,11 @@ interface ScheduleContext {
  */
 export class AxiomScheduleService {
   private aiCoaching: AICoachingService;
+  private googleCalendar: GoogleCalendarService;
 
   constructor() {
     this.aiCoaching = new AICoachingService();
+    this.googleCalendar = new GoogleCalendarService();
   }
 
   /**
@@ -75,8 +78,13 @@ export class AxiomScheduleService {
   async generateSchedule(userId: string, context: ScheduleContext): Promise<DailySchedule> {
     logger.info(`[AxiomSchedule] Generating schedule for ${context.userName}`);
 
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
     // Fetch suggested matches, events, and places for context
-    const [matchesRes, eventsRes, placesRes] = await Promise.all([
+    const [matchesRes, eventsRes, placesRes, googleEvents] = await Promise.all([
       supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 10 }),
       supabase.from('events')
         .select('id, title, event_date, city, description')
@@ -86,6 +94,7 @@ export class AxiomScheduleService {
       supabase.from('places')
         .select('id, name, city, tags, description, latitude, longitude')
         .limit(10),
+      this.googleCalendar.getEvents(userId, startDate, endDate),
     ]);
 
     const matches = matchesRes.data || [];
@@ -102,7 +111,7 @@ export class AxiomScheduleService {
     const bestPlaces = this.pickBestPlaces(places, context.city, context.goals.map(g => g.domain));
 
     // Build AI prompt for schedule generation
-    const prompt = this.buildSchedulePrompt(context, bestMatch, bestEvents, bestPlaces);
+    const prompt = this.buildSchedulePrompt(context, bestMatch, bestEvents, bestPlaces, googleEvents);
 
     try {
       const rawResponse = await this.aiCoaching.runWithFallback(prompt);
@@ -111,14 +120,14 @@ export class AxiomScheduleService {
       const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const scheduleData = JSON.parse(jsonMatch[0]);
-        return this.validateAndEnrichSchedule(scheduleData, bestMatch, bestEvents, bestPlaces);
+        return this.validateAndEnrichSchedule(scheduleData, bestMatch, bestEvents, bestPlaces, googleEvents);
       }
       
       throw new Error('Invalid JSON response from AI');
     } catch (error: any) {
       logger.error(`[AxiomSchedule] AI generation failed: ${error.message}`);
       // Fall back to template-based schedule
-      return this.generateTemplateSchedule(context, bestMatch, bestEvents, bestPlaces);
+      return this.generateTemplateSchedule(context, bestMatch, bestEvents, bestPlaces, googleEvents);
     }
   }
 
@@ -129,13 +138,19 @@ export class AxiomScheduleService {
     context: ScheduleContext,
     bestMatch: any,
     bestEvents: any[],
-    bestPlaces: any[]
+    bestPlaces: any[],
+    googleEvents: any[]
   ): string {
     const goalsSlice = context.goals.slice(0, 5).map(g => ({
       name: g.name,
       domain: g.domain,
       progress: Math.round(g.progress * 100) + '%',
     }));
+
+    const calendarContext = googleEvents.length > 0 
+      ? `GOOGLE CALENDAR EVENTS (FIXED):
+${googleEvents.map(e => `- ${e.title} (${e.start.getHours().toString().padStart(2, '0')}:00 - ${e.end.getHours().toString().padStart(2, '0')}:00)`).join('\n')}`
+      : '';
 
     return `You are Axiom, a wise warm and practical life coach. Generate a daily schedule for ${context.userName}.
 
@@ -154,6 +169,8 @@ FULL CONTEXT:
 ${bestMatch ? `- Accountability partner: ${bestMatch.name} (${bestMatch.reason})` : ''}
 ${bestEvents.length > 0 ? `- Events: ${bestEvents.map(e => e.title).join(', ')}` : ''}
 ${bestPlaces.length > 0 ? `- Places: ${bestPlaces.map(p => p.name).join(', ')}` : ''}
+
+${calendarContext}
 
 Generate a schedule from 6:00 AM to 10:00 PM (16 hours, 1 block per hour).
 
@@ -197,26 +214,31 @@ RULES:
    - Reference note themes: "You've been reflecting on '${context.topNoteThemes[0] || 'growth'}'"
    - Acknowledge achievements: "After '${context.recentAchievements[0] || 'recent progress'}'"
 
-4. **Energy Alignment**:
+4. **External Calendar Sync**:
+   - IF Google Calendar events are provided in FIXED section, you MUST include them at their exact times.
+   - For these slots, the task should be the event title.
+   - Priority for these slots should be 'high'.
+
+5. **Energy Alignment**:
    - morning_peak: Deep work 6-10am
    - evening_peak: Creative work 6-10pm
    - balanced: Distribute evenly
 
-5. **Category Distribution**:
+6. **Category Distribution**:
    - 4-6 blocks: deep_work
    - 2-3 blocks: rest (include post-lunch ~14:00)
    - 1-2 blocks: exercise
    - 1-2 blocks: admin
    - 1 block: planning/reflection
 
-6. **Suggestions**:
+7. **Suggestions**:
    - Social blocks: Include ${bestMatch?.name || 'partner'} check-in
    - Exercise blocks: Suggest ${bestPlaces[0]?.name || 'a place'}
    - Schedule events at their times
 
-7. **Priorities**: 3-5 high, 6-8 medium, rest low
+8. **Priorities**: 3-5 high, 6-8 medium, rest low
 
-8. **TONE**: Warm, specific, encouraging. Reference THEIR data in every alignment. No generic advice.`;
+9. **TONE**: Warm, specific, encouraging. Reference THEIR data in every alignment. No generic advice.`;
   }
 
   /**
@@ -226,7 +248,8 @@ RULES:
     scheduleData: any,
     bestMatch: any,
     bestEvents: any[],
-    bestPlaces: any[]
+    bestPlaces: any[],
+    googleEvents: any[]
   ): DailySchedule {
     // Validate we have 16 time slots
     if (!scheduleData.timeSlots || scheduleData.timeSlots.length !== 16) {
@@ -242,7 +265,7 @@ RULES:
         topNoteThemes: [],
         recentAchievements: [],
         socialEngagementScore: 50
-      }, bestMatch, bestEvents, bestPlaces);
+      }, bestMatch, bestEvents, bestPlaces, googleEvents);
     }
 
     // Enrich time slots with suggestions
@@ -293,7 +316,8 @@ RULES:
     context: ScheduleContext,
     bestMatch: any,
     bestEvents: any[],
-    bestPlaces: any[]
+    bestPlaces: any[],
+    googleEvents: any[]
   ): DailySchedule {
     const energyCurve = this.determineEnergyCurve(context);
     
@@ -301,7 +325,7 @@ RULES:
     const timeSlots: TimeSlot[] = [];
     
     for (let hour = 6; hour <= 22; hour++) {
-      const slot = this.generateTemplateSlot(hour, context, energyCurve, bestMatch, bestEvents, bestPlaces);
+      const slot = this.generateTemplateSlot(hour, context, energyCurve, bestMatch, bestEvents, bestPlaces, googleEvents);
       timeSlots.push(slot);
     }
 
@@ -339,8 +363,30 @@ RULES:
     energyCurve: string,
     bestMatch: any,
     bestEvents: any[],
-    bestPlaces: any[]
+    bestPlaces: any[],
+    googleEvents: any[]
   ): TimeSlot {
+    // Check if there's a Google Calendar event for this hour
+    const gEvent = googleEvents.find(e => {
+      const startHour = e.start.getHours();
+      const endHour = e.end.getHours();
+      return hour >= startHour && hour < endHour;
+    });
+
+    if (gEvent) {
+      return {
+        hour,
+        timeLabel: `${hour.toString().padStart(2, '0')}:00 - ${(hour + 1).toString().padStart(2, '0')}:00`,
+        task: gEvent.title,
+        alignment: 'External commitment from Google Calendar.',
+        duration: 'full hour',
+        preparation: '',
+        isFlexible: false,
+        priority: 'high',
+        category: 'admin',
+      };
+    }
+
     // Default slot structure
     const slot: TimeSlot = {
       hour,

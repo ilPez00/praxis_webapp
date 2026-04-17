@@ -542,4 +542,331 @@ When answering, naturally weave in references to their notes, goals, network, pl
       return "Thanks for sharing. What's one small step you could take today toward your most important goal?";
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // PROMPT COMPRESSION — caveman-style token saving
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Compress a text prompt using caveman-style reduction
+   * Drops articles, filler, hedging. Keeps all technical substance.
+   */
+  compressPrompt(text: string): string {
+    if (!text || text.length < 50) return text;
+
+    let compressed = text;
+
+    // Drop common articles
+    compressed = compressed.replace(/\bthe\b/gi, '');
+    compressed = compressed.replace(/\ba\b/gi, '');
+    compressed = compressed.replace(/\ban\b/gi, '');
+
+    // Drop filler words
+    const fillers = ['just ', 'really ', 'basically ', 'actually ', 'simply ', 'literally ', 'totally ', 'very ', 'quite ', 'rather ', 'fairly ', 'pretty '];
+    for (const filler of fillers) {
+      compressed = compressed.replace(new RegExp(filler, 'gi'), '');
+    }
+
+    // Drop hedging phrases
+    const hedging = ['it is possible that ', 'it seems that ', 'it appears that ', 'i believe that ', 'i think that ', 'in order to ', 'in terms of ', 'when it comes to ', 'at the same time '];
+    for (const hedge of hedging) {
+      compressed = compressed.replace(new RegExp(hedge, 'gi'), '');
+    }
+
+    // Shorten common phrases
+    const shorten: [RegExp, string][] = [
+      [/in order to be able to/gi, 'to'],
+      [/due to the fact that/gi, 'because'],
+      [/at this point in time/gi, 'now'],
+      [/in the event that/gi, 'if'],
+      [/with regard to/gi, 'about'],
+      [/for the purpose of/gi, 'to'],
+      [/is able to/gi, 'can'],
+      [/has the ability to/gi, 'can'],
+      [/take into consideration/gi, 'consider'],
+      [/make a decision/gi, 'decide'],
+      [/give consideration to/gi, 'consider'],
+      [/come to the conclusion/gi, 'conclude'],
+      [/it is important to note/gi, 'note'],
+      [/as well as/gi, 'and'],
+      [/in addition to/gi, 'plus'],
+      [/on the other hand/gi, 'but'],
+      [/for example[,\s]/gi, 'e.g. '],
+      [/that is to say[,\s]/gi, 'i.e. '],
+      [/more importantly[,\s]/gi, 'importantly '],
+      [/in particular[,\s]/gi, 'notably '],
+      [/in general[,\s]/gi, 'generally '],
+      [/as a result[,\s]/gi, 'so '],
+      [/for instance[,\s]/gi, 'e.g. '],
+      [/please note[,\s]*/gi, ''],
+      [/kindly note[,\s]*/gi, ''],
+      [/be aware that[,\s]*/gi, ''],
+      [/it should be noted that[,\s]*/gi, ''],
+      [/please provide[,\s]*/gi, 'provide '],
+    ];
+
+    for (const [pattern, replacement] of shorten) {
+      compressed = compressed.replace(pattern, replacement);
+    }
+
+    // Collapse multiple spaces
+    compressed = compressed.replace(/\s{2,}/g, ' ');
+
+    // Remove leading/trailing whitespace
+    compressed = compressed.trim();
+
+    // Restore capitalization where sentence boundaries exist
+    compressed = compressed.charAt(0).toUpperCase() + compressed.slice(1);
+
+    return compressed;
+  }
+
+  // ---------------------------------------------------------------------------
+  // MULTIMODAL — process attachments + text
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Run a multimodal prompt with file attachments
+   * Uses Gemini directly (skips DeepSeek — text-only)
+   * Falls back to text-only if file fetch fails
+   */
+  async runMultimodal(
+    textPrompt: string,
+    attachments: any[],
+    options: {
+      compressed?: boolean;
+      maxTokens?: number;
+    } = {}
+  ): Promise<string> {
+    const { compressed = true, maxTokens = 4000 } = options;
+
+    let finalPrompt = compressed ? this.compressPrompt(textPrompt) : textPrompt;
+
+    if (this.apiKeys.length === 0) {
+      throw new Error('Axiom Offline. No Gemini keys available.');
+    }
+
+    const errors: string[] = [];
+    const startIndex = this.currentKeyIndex;
+    const triedKeys = new Set<number>();
+
+    // Gemini models that support multimodal
+    const multimodalModels = [
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro',
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+    ];
+
+    for (let i = 0; i < this.apiKeys.length; i++) {
+      const keyIdx = (startIndex + i) % this.apiKeys.length;
+      if (triedKeys.has(keyIdx)) continue;
+      triedKeys.add(keyIdx);
+
+      const key = this.apiKeys[keyIdx];
+      const keyPrefix = key?.slice(0, 6) || '????';
+
+      for (const modelName of multimodalModels) {
+        for (const apiVersion of ['v1beta', 'v1'] as const) {
+          try {
+            await new Promise(resolve => setTimeout(resolve, 150));
+
+            // Build parts array: text + all inline data
+            const parts: any[] = [{ text: finalPrompt }];
+
+            for (const attachment of attachments) {
+              if (attachment.inlineData) {
+                parts.push({ inlineData: attachment.inlineData });
+              }
+            }
+
+            const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts }],
+                generationConfig: { maxOutputTokens: maxTokens },
+              }),
+            });
+
+            const rawText = await response.text();
+            let data: any;
+            try { data = JSON.parse(rawText); } catch { errors.push(`[K${keyIdx}|${modelName}] Non-JSON`); continue; }
+
+            if (response.ok) {
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                this.currentKeyIndex = keyIdx;
+                return text.trim();
+              }
+            }
+
+            errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${response.status}`);
+            if (response.status === 429 || response.status === 403 || response.status === 401) break;
+          } catch (error: any) {
+            errors.push(`[K${keyIdx}|FetchEx]`);
+            break;
+          }
+        }
+        if (errors[errors.length - 1]?.includes('429')) break;
+      }
+    }
+
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 5).join(' | ');
+    throw new Error(`Axiom Multimodal failed. Tried ${this.apiKeys.length} keys. Status: ${uniqueErrors}`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // AGENTIC — tool-calling with Gemini
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Run an agentic prompt with tool-calling
+   * Returns: { text: string, toolCalls: ActionCall[] }
+   */
+  async runAgentic(
+    textPrompt: string,
+    tools: any[],
+    options: {
+      compressed?: boolean;
+      maxTokens?: number;
+    } = {}
+  ): Promise<{ text: string; toolCalls: any[] }> {
+    const { compressed = true, maxTokens = 2000 } = options;
+
+    let finalPrompt = compressed ? this.compressPrompt(textPrompt) : textPrompt;
+
+    if (this.apiKeys.length === 0) {
+      throw new Error('Axiom Offline. No Gemini keys available.');
+    }
+
+    const errors: string[] = [];
+    const startIndex = this.currentKeyIndex;
+    const triedKeys = new Set<number>();
+
+    const agenticModels = [
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-2.5-flash',
+    ];
+
+    for (let i = 0; i < this.apiKeys.length; i++) {
+      const keyIdx = (startIndex + i) % this.apiKeys.length;
+      if (triedKeys.has(keyIdx)) continue;
+      triedKeys.add(keyIdx);
+
+      const key = this.apiKeys[keyIdx];
+      const keyPrefix = key?.slice(0, 6) || '????';
+
+      for (const modelName of agenticModels) {
+        for (const apiVersion of ['v1beta', 'v1'] as const) {
+          try {
+            await new Promise(resolve => setTimeout(resolve, 150));
+
+            const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: finalPrompt }] }],
+                tools: [{ functionDeclarations: tools }],
+                generationConfig: {
+                  maxOutputTokens: maxTokens,
+                },
+              }),
+            });
+
+            const rawText = await response.text();
+            let data: any;
+            try { data = JSON.parse(rawText); } catch { errors.push(`[K${keyIdx}|${modelName}] Non-JSON`); continue; }
+
+            if (response.ok) {
+              const candidate = data.candidates?.[0];
+              const parts = candidate?.content?.parts || [];
+
+              let text = '';
+              const toolCalls: any[] = [];
+
+              for (const part of parts) {
+                if (part.text) text += part.text;
+                if (part.functionCall) {
+                  toolCalls.push({
+                    tool: part.functionCall.name,
+                    params: part.functionCall.args,
+                  });
+                }
+              }
+
+              if (text || toolCalls.length > 0) {
+                this.currentKeyIndex = keyIdx;
+                return { text: text.trim(), toolCalls };
+              }
+            }
+
+            errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${response.status}`);
+            if (response.status === 429 || response.status === 403 || response.status === 401) break;
+          } catch (error: any) {
+            errors.push(`[K${keyIdx}|FetchEx]`);
+            break;
+          }
+        }
+        if (errors[errors.length - 1]?.includes('429')) break;
+      }
+    }
+
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 5).join(' | ');
+    throw new Error(`Axiom Agentic failed. Tried ${this.apiKeys.length} keys. Status: ${uniqueErrors}`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // JSON MODE — structured output without tool-calling (simpler fallback)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Run with JSON mode — asks model to return structured JSON
+   * Parses tool calls from JSON response
+   */
+  async runJsonMode(
+    textPrompt: string,
+    options: {
+      compressed?: boolean;
+      maxTokens?: number;
+      schema?: string;
+    } = {}
+  ): Promise<{ text: string; actions: any[] }> {
+    const { compressed = true, maxTokens = 1500, schema } = options;
+
+    let finalPrompt = compressed ? this.compressPrompt(textPrompt) : textPrompt;
+
+    // Append JSON format instruction
+    const formatInstruction = schema
+      ? `\nRespond in valid JSON with this schema: ${schema}\nWrap your response in a markdown code block.`
+      : '\nRespond in JSON format:\n{\n  "brief": "...your analysis...",\n  "actions": [{"tool": "...", "params": {...}}]\n}\nWrap in markdown code block.';
+
+    // Fallback: use runWithFallback and parse JSON
+    try {
+      const response = await this.runWithFallback(finalPrompt + formatInstruction);
+
+      // Try to extract JSON from response
+      let actions: any[] = [];
+      let brief = response;
+
+      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          brief = parsed.brief || parsed.analysis || parsed.message || brief;
+          actions = parsed.actions || parsed.tool_calls || [];
+        } catch {
+          // Not valid JSON, use full response as brief
+        }
+      }
+
+      return { text: brief, actions };
+    } catch (err) {
+      return { text: '', actions: [] };
+    }
+  }
 }

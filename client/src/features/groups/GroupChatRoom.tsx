@@ -44,6 +44,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ForumIcon from '@mui/icons-material/Forum';
 import ChatIcon from '@mui/icons-material/Chat';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
@@ -469,9 +470,34 @@ const GroupChatRoom: React.FC = () => {
                     <IconButton size="small" onClick={() => setReplyTo(null)}><CancelIcon fontSize="small" /></IconButton>
                   </Box>
                 )}
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <IconButton size="small" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile} sx={{ color: 'text.disabled' }}>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = 'image/*,video/*,.pdf,.doc,.docx,.txt';
+                        fileInputRef.current.capture = '';
+                        fileInputRef.current.click();
+                      }
+                    }}
+                    disabled={uploadingFile}
+                    sx={{ color: 'text.disabled' }}
+                  >
                     {uploadingFile ? <CircularProgress size={18} /> : <AttachFileIcon fontSize="small" />}
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = 'image/*';
+                        fileInputRef.current.capture = 'environment';
+                        fileInputRef.current.click();
+                      }
+                    }}
+                    disabled={uploadingFile}
+                    sx={{ color: 'text.disabled' }}
+                  >
+                    <PhotoCameraIcon fontSize="small" />
                   </IconButton>
                   <TextField
                     fullWidth size="small" placeholder="Message collective..." value={newMessage}

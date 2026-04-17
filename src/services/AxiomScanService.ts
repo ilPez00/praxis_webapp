@@ -3,11 +3,13 @@ import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from './AICoachingService';
 import { EngagementMetricService } from './EngagementMetricService';
 import { AxiomScheduleService } from './AxiomScheduleService';
+import { GoogleCalendarService } from './GoogleCalendarService';
 import { AxiomDailySummaryService } from './AxiomDailySummaryService';
 import { AxiomProgressEstimationService } from './AxiomProgressEstimationService';
 import logger from '../utils/logger';
 
 const axiomScheduleService = new AxiomScheduleService();
+const googleCalendarService = new GoogleCalendarService();
 const aiCoachingService = new AICoachingService();
 const engagementMetricService = new EngagementMetricService();
 const dailySummaryService = new AxiomDailySummaryService();
@@ -533,7 +535,12 @@ export class AxiomScanService {
     sixWeeksAgo.setDate(sixWeeksAgo.getDate() - (6 * 7));
     const sixWeeksAgoStr = sixWeeksAgo.toISOString();
 
-    const [goalTreeRes, checkinsRes, trackersRes, matchesRes, eventsRes, placesRes, diaryEntriesRes, notebookEntriesRes, monthCheckinsRes, monthTrackersRes] = await Promise.all([
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    const [goalTreeRes, checkinsRes, trackersRes, matchesRes, eventsRes, placesRes, diaryEntriesRes, notebookEntriesRes, monthCheckinsRes, monthTrackersRes, googleEvents] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
       // Recent check-ins (7 days)
       supabase.from('checkins').select('checked_in_at,streak_day,mood,win_of_the_day').eq('user_id', userId).order('checked_in_at', { ascending: false }).limit(7),
@@ -563,6 +570,8 @@ export class AxiomScanService {
         .gte('logged_at', oneMonthAgoStr)
         .order('logged_at', { ascending: false })
         .limit(200),
+      // NEW: Fetch Google Calendar events
+      googleCalendarService.getEvents(userId, startDate, endDate),
     ]);
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
@@ -687,6 +696,12 @@ export class AxiomScanService {
           }).join('\n')}`
         : 'No recent notebook entries';
 
+      const gEvents: any[] = googleEvents.status === 'fulfilled' ? (googleEvents.value ?? []) : [];
+      const calendarContext = gEvents.length > 0
+        ? `GOOGLE CALENDAR EVENTS (FIXED):
+${gEvents.map(e => `- ${e.title} (${e.start.getHours().toString().padStart(2, '0')}:00 - ${e.end.getHours().toString().padStart(2, '0')}:00)`).join('\n')}`
+        : '';
+
       const prompt = `You are Axiom, a wise warm and practical life coach inside the Praxis app. Generate a COMPLETE daily protocol for ${userName}.
 
 CONTEXT (LAST 30 DAYS OF ACTIVITY):
@@ -699,6 +714,7 @@ CONTEXT (LAST 30 DAYS OF ACTIVITY):
 - Recent check-ins: ${JSON.stringify((checkinsRes.data || []).slice(0, 3).map((c: any) => ({ mood: c.mood, win: c.win_of_the_day, streak: c.streak_day })))}
 - Tracker trends: ${metrics.trackerTrends?.map((t: any) => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
 ${notebookContext}
+${calendarContext ? `\n${calendarContext}` : ''}
 ${recapText ? `- Yesterday's activity: ${recapText}` : '- Yesterday: No activity logged'}
 
 IMPORTANT: This brief is based on the LAST 30 DAYS of user activity, not just yesterday.
@@ -788,7 +804,9 @@ CRITICAL RULES:
 
 3. **Routine — EXACTLY 17 HOURLY SLOTS (06:00 to 22:00)**:
    - One entry per hour: "06:00", "07:00", ..., "22:00"
-   - Reference their actual goals BY NAME in tasks
+   - IF Google Calendar events are provided in FIXED section, you MUST include them at their exact times.
+   - For these slots, the task should be the event title.
+   - Reference their actual goals BY NAME in other tasks
    - Each entry needs: time, task, alignment, category
    - KEEP EACH TASK UNDER 12 WORDS. Be specific but concise. Example: "Deep work: 'Learn Piano' — practice scales 25min"
    - KEEP EACH ALIGNMENT UNDER 10 WORDS. Example: "Morning focus = peak retention for music"

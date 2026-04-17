@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AICoachingService, CoachingContext } from '../services/AICoachingService';
+import { GoogleCalendarService } from '../services/GoogleCalendarService';
 import { AxiomScanService } from '../services/AxiomScanService';
 import { EngagementMetricService } from '../services/EngagementMetricService';
 import { supabase } from '../lib/supabaseClient';
@@ -9,6 +10,7 @@ import { catchAsync, UnauthorizedError, InternalServerError } from '../utils/app
 // Instantiate once at module load
 const aiCoachingService = new AICoachingService();
 const engagementMetricService = new EngagementMetricService();
+const googleCalendarService = new GoogleCalendarService();
 
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('does not exist') || msg?.includes('42P01');
@@ -102,31 +104,31 @@ async function generateAndStoreBrief(userId: string): Promise<void> {
 
 async function buildContext(userId: string): Promise<CoachingContext> {
   const todayStr = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const weekFromNow = new Date();
+  weekFromNow.setDate(now.getDate() + 7);
 
-  const [profileRes, goalTreeRes, feedbackRes, achievementsRes, boardMembershipsRes, dmPartnersRes, notebookRes, placesRes, eventsRes, axiomChatRes] =
+  const [profileRes, goalTreeRes, feedbackRes, achievementsRes, boardMembershipsRes, dmPartnersRes, notebookRes, placesRes, eventsRes, axiomChatRes, googleEvents] =
     await Promise.allSettled([
-      // 1. Profile
+      // ... (previous 10 items)
       supabase
         .from('profiles')
         .select('name, bio, current_streak, praxis_points, language')
         .eq('id', userId)
         .single(),
 
-      // 2. Goal tree
       supabase
         .from('goal_trees')
         .select('nodes')
         .eq('user_id', userId)
         .maybeSingle(),
 
-      // 3. Recent feedback (received by this user) - limit 3
       supabase
         .from('feedback')
         .select('grade, comment')
         .or(`receiverId.eq.${userId},receiver_id.eq.${userId}`)
         .limit(3),
 
-      // 4. Achievements - limit 3
       supabase
         .from('achievements')
         .select('title, created_at')
@@ -134,14 +136,12 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .order('created_at', { ascending: false })
         .limit(3),
 
-      // 5. Joined community boards - limit 3
       supabase
         .from('chat_room_members')
         .select('chat_rooms(name, domain)')
         .eq('user_id', userId)
         .limit(3),
 
-      // 6. DM conversation partner IDs - limit 50 for selection
       supabase
         .from('messages')
         .select('sender_id, receiver_id')
@@ -149,7 +149,6 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .is('room_id', null)
         .limit(50),
 
-      // 7. Recent notebook entries (notes/reflections) - limit 10
       supabase
         .from('notebook_entries')
         .select('title, content, mood, occurred_at, goal_id')
@@ -158,13 +157,11 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .order('occurred_at', { ascending: false })
         .limit(10),
 
-      // 8. Recent places — popular or nearby, limit 5
       supabase
         .from('places')
         .select('id, name, description, city, domain')
         .limit(5),
 
-      // 9. Upcoming events — from today onward, limit 5
       supabase
         .from('events')
         .select('id, title, description, date, city')
@@ -172,7 +169,6 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .order('date', { ascending: true })
         .limit(5),
 
-      // 10. Recent Axiom chat history — last 20 messages with AI
       supabase
         .from('messages')
         .select('content, is_ai, created_at')
@@ -180,6 +176,9 @@ async function buildContext(userId: string): Promise<CoachingContext> {
         .eq('is_ai', true)
         .order('created_at', { ascending: false })
         .limit(20),
+
+      // 11. Google Calendar events
+      googleCalendarService.getEvents(userId, now, weekFromNow),
     ]);
 
   // --- Profile ---
@@ -302,13 +301,24 @@ async function buildContext(userId: string): Promise<CoachingContext> {
 
   // --- Upcoming Events ---
   const rawEvents: any[] = eventsRes.status === 'fulfilled' ? (eventsRes.value.data ?? []) : [];
-  const upcomingEvents = rawEvents.map((e: any) => ({
-    id: e.id,
-    title: e.title,
-    description: e.description ? e.description.slice(0, 100) : undefined,
-    date: e.date ? new Date(e.date).toISOString().slice(0, 10) : 'upcoming',
-    city: e.city,
-  }));
+  const gEvents: any[] = googleEvents.status === 'fulfilled' ? (googleEvents.value ?? []) : [];
+  
+  const upcomingEvents = [
+    ...rawEvents.map((e: any) => ({
+      id: e.id,
+      title: e.title,
+      description: e.description ? e.description.slice(0, 100) : undefined,
+      date: e.date ? new Date(e.date).toISOString().slice(0, 10) : 'upcoming',
+      city: e.city,
+    })),
+    ...gEvents.map((e: any) => ({
+      id: e.id,
+      title: e.title,
+      description: `Google Calendar: ${e.description ? e.description.slice(0, 100) : ''}`,
+      date: e.start.toISOString().slice(0, 10),
+      city: e.location,
+    }))
+  ].slice(0, 10); // limit to 10 total events
 
   // --- Axiom Chat History ---
   const rawAxiomChat: any[] = axiomChatRes.status === 'fulfilled' ? (axiomChatRes.value.data ?? []) : [];

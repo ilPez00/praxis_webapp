@@ -8,6 +8,7 @@ import { AICoachingService } from '../services/AICoachingService';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
 import { authenticateToken } from '../middleware/authenticateToken';
 import * as axiomAgentController from '../controllers/axiomAgentController';
+import logger from '../utils/logger';
 
 const router = Router();
 const unifiedScanService = new AxiomUnifiedScanService();
@@ -135,5 +136,153 @@ router.post('/agent', authenticateToken, async (req: Request, res: Response, nex
     next(err);
   }
 });
+
+// =============================================================================
+// NOTEBOOKLM INTEGRATION
+// =============================================================================
+
+/**
+ * POST /axiom/notebooklm/connect
+ * Connect user's NotebookLM account by storing auth cookies
+ * Body: { cookies: { "SNlM0e": "...", "FdrFJe": "..." } }
+ */
+router.post('/notebooklm/connect', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  const { cookies } = req.body as { cookies?: Record<string, string> };
+  if (!cookies || !cookies['SNlM0e'] || !cookies['FdrFJe']) {
+    return res.status(400).json({
+      error: 'INVALID_COOKIES',
+      message: 'cookies must include SNlM0e and FdrFJe (get these from browser DevTools)',
+    });
+  }
+
+  // Verify cookies work by listing notebooks
+  const { execFile: execFileSync } = await import('child_process');
+  const { promisify } = await import('util');
+  const execFileAsync = promisify(execFileSync);
+  const path = await import('path');
+  const scriptPath = path.join(__dirname, '../services/AxiomNotebookLMPython.py');
+
+  const cookiesJson = JSON.stringify(cookies);
+  try {
+    const { stdout } = await execFileAsync('python3', [scriptPath, 'list', cookiesJson], { timeout: 20000 });
+    const result = JSON.parse(stdout.trim());
+
+    if (result.error && result.error.includes('HTTP 4')) {
+      return res.status(401).json({
+        error: 'AUTH_FAILED',
+        message: 'Invalid cookies. Please get fresh ones from notebooklm.google.com DevTools → Application → Cookies',
+      });
+    }
+
+    // Store tokens
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        notebooklm_tokens: { cookies, stored: new Date().toISOString() },
+        notebooklm_enabled: true,
+      })
+      .eq('id', userId);
+
+    if (updateError) throw updateError;
+
+    const notebooks = Array.isArray(result) ? result : [];
+    res.json({
+      success: true,
+      message: 'NotebookLM connected successfully',
+      notebooksCount: notebooks.length,
+    });
+  } catch (err: any) {
+    logger.error('[NotebookLM] Connect failed:', err.message);
+    res.status(500).json({ error: 'CONNECTION_FAILED', message: err.message });
+  }
+}));
+
+/**
+ * GET /axiom/notebooklm/status
+ * Check NotebookLM connection status
+ */
+router.get('/notebooklm/status', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('notebooklm_enabled, notebooklm_tokens, notebooklm_notebook_ids')
+    .eq('id', userId)
+    .single();
+
+  const isConnected = !!(data?.notebooklm_tokens && data?.notebooklm_enabled);
+  const notebooksCount = Array.isArray(data?.notebooklm_notebook_ids) ? data.notebooklm_notebook_ids.length : 0;
+
+  res.json({
+    isConnected,
+    notebooksCount,
+    notebookIds: data?.notebooklm_notebook_ids || [],
+  });
+}));
+
+/**
+ * POST /axiom/notebooklm/disconnect
+ * Remove NotebookLM connection
+ */
+router.post('/notebooklm/disconnect', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  await supabase
+    .from('profiles')
+    .update({
+      notebooklm_tokens: null,
+      notebooklm_notebook_ids: [],
+      notebooklm_enabled: false,
+    })
+    .eq('id', userId);
+
+  res.json({ success: true, message: 'NotebookLM disconnected' });
+}));
+
+/**
+ * GET /axiom/notebooklm/notebooks
+ * List user's NotebookLM notebooks
+ */
+router.get('/notebooklm/notebooks', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  const { axiomNotebookLMService } = await import('../services/AxiomNotebookLMService');
+  const notebooks = await axiomNotebookLMService.listNotebooks(userId);
+
+  res.json({ notebooks: notebooks.map((nb: any) => ({
+    id: nb.notebookId || nb.id,
+    title: nb.title || nb.name || 'Untitled',
+    description: nb.description || '',
+    createdAt: nb.createdAt || nb.created_at,
+  })) });
+}));
+
+/**
+ * PUT /axiom/notebooklm/notebooks
+ * Select which notebooks to query during midnight scan
+ * Body: { notebookIds: string[] }
+ */
+router.put('/notebooklm/notebooks', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  const { notebookIds } = req.body as { notebookIds?: string[] };
+  if (!Array.isArray(notebookIds)) {
+    return res.status(400).json({ error: 'notebookIds must be an array' });
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ notebooklm_notebook_ids: notebookIds.slice(0, 10) })
+    .eq('id', userId);
+
+  res.json({ success: true, notebookIds });
+}));
 
 export default router;

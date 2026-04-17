@@ -42,6 +42,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import LinkIcon from '@mui/icons-material/Link';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -734,15 +735,37 @@ const ChatRoom: React.FC = () => {
             </Box>
           )}
 
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={0.5} alignItems="center">
             <Tooltip title="Attach file">
               <IconButton
                 size="small"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.accept = 'image/*,video/*,.pdf,.doc,.docx,.txt';
+                    fileInputRef.current.capture = '';
+                    fileInputRef.current.click();
+                  }
+                }}
                 disabled={uploadingFile}
                 sx={{ color: 'text.disabled', '&:hover': { color: 'text.secondary' } }}
               >
                 {uploadingFile ? <CircularProgress size={18} /> : <AttachFileIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Take photo">
+              <IconButton
+                size="small"
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.accept = 'image/*';
+                    fileInputRef.current.capture = 'environment';
+                    fileInputRef.current.click();
+                  }
+                }}
+                disabled={uploadingFile}
+                sx={{ color: 'text.disabled', '&:hover': { color: 'text.secondary' } }}
+              >
+                <PhotoCameraIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Link a goal, post, group or event">

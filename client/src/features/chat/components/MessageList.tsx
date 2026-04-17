@@ -46,7 +46,7 @@ const MessageList: React.FC<MessageListProps> = ({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isPartnerTyping]);
 
   const renderMessage = (msg: Message) => {
     const isMine = (msg.sender_id ?? msg.senderId) === currentUserId;

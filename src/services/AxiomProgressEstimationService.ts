@@ -13,6 +13,7 @@
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { AICoachingService } from './AICoachingService';
+import { axiomMultimodalService } from './AxiomMultimodalService';
 
 interface ProgressEstimate {
   goalId: string;
@@ -160,7 +161,7 @@ export class AxiomProgressEstimationService {
     // Build evidence list
     const evidence: string[] = [];
 
-    if (goalNotebookEntries.length > 0) {
+      if (goalNotebookEntries.length > 0) {
       evidence.push(`${goalNotebookEntries.length} notebook entries related to this goal`);
       goalNotebookEntries.slice(0, 3).forEach((e: any) => {
         if (e.title && e.title !== 'Shared Item') {
@@ -171,6 +172,15 @@ export class AxiomProgressEstimationService {
       // Add extracted progress to evidence
       if (extractedProgress !== null) {
         evidence.push(`Explicit progress mentioned: ${extractedProgress}%`);
+      }
+
+      // Add attachment evidence
+      const attachmentEntries = goalNotebookEntries.filter((e: any) => Array.isArray(e.attachments) && e.attachments.length > 0);
+      if (attachmentEntries.length > 0) {
+        attachmentEntries.forEach((e: any) => {
+          const files = e.attachments.map((a: any) => a.name || a.url).join(', ');
+          evidence.push(`Attachments: ${files}`);
+        });
       }
     }
 
@@ -205,6 +215,11 @@ export class AxiomProgressEstimationService {
       evidence.push('Struggle indicators detected');
     }
 
+    // Collect attachments from related entries
+    const allAttachments = goalNotebookEntries
+      .flatMap((e: any) => Array.isArray(e.attachments) ? e.attachments : [])
+      .slice(0, 5);
+
     // Use AI to estimate progress (or use extracted progress if available)
     let suggestedProgress: number;
     if (extractedProgress !== null) {
@@ -215,7 +230,8 @@ export class AxiomProgressEstimationService {
         node,
         goalNotebookEntries,
         goalTrackers,
-        currentProgress
+        currentProgress,
+        allAttachments
       );
     }
 
@@ -258,44 +274,59 @@ export class AxiomProgressEstimationService {
     node: any,
     notebookEntries: any[],
     trackerEntries: any[],
-    currentProgress: number
+    currentProgress: number,
+    attachments: any[] = []
   ): Promise<number> {
     try {
       const aiCoaching = new AICoachingService();
 
-      const prompt = `You are an AI progress estimator for personal goals. Estimate the current progress percentage (0-100) for this goal based on recent activity.
+      const entriesWithAttachments = notebookEntries.filter((e: any) => Array.isArray(e.attachments) && e.attachments.length > 0);
+      const attachmentNote = entriesWithAttachments.length > 0
+        ? `\n\nNOTE: ${entriesWithAttachments.length} entries have attached files (images, PDFs, text files). Analyze them for progress evidence.`
+        : '';
 
-GOAL:
-- Name: ${node.name}
-- Domain: ${node.domain}
-- Current Progress: ${currentProgress}%
-- Target: ${node.completionMetric || 'Not specified'}
+      const prompt = `Progress estimator for personal goals. Estimate 0-100% based on activity.
 
-RECENT ACTIVITY (Last 7 Days):
+GOAL: ${node.name} (${node.domain}) — currently ${currentProgress}%${node.completionMetric ? ` — target: ${node.completionMetric}` : ''}
 
-Notebook Entries (${notebookEntries.length}):
-${notebookEntries.slice(0, 5).map((e: any) => 
-  `- ${e.occurred_at?.slice(0, 10)}: "${e.title}" - ${e.content?.slice(0, 80) || 'No content'} ${e.mood ? `(Mood: ${e.mood})` : ''}`
-).join('\n') || 'No entries'}
+ACTIVITY (7 days):
 
-Tracker Logs (${trackerEntries.length}):
+Notes (${notebookEntries.length}):
+${notebookEntries.slice(0, 5).map((e: any) => {
+  const attachments = Array.isArray(e.attachments) && e.attachments.length > 0
+    ? ` [${e.attachments.length} attachment(s)]`
+    : '';
+  return `- ${e.occurred_at?.slice(0, 10)}: "${e.title || 'Untitled'}"${attachments} — ${e.content?.slice(0, 80) || 'no text'} ${e.mood ? `(${e.mood})` : ''}`;
+}).join('\n') || 'None'}
+
+Trackers (${trackerEntries.length}):
 ${trackerEntries.slice(0, 5).map((e: any) => 
   `- ${e.logged_at?.slice(0, 10)}: ${JSON.stringify(e.data)}`
-).join('\n') || 'No logs'}
+).join('\n') || 'None'}${attachmentNote}
 
-ESTIMATION GUIDELINES:
-1. If current progress is 100%, keep it at 100% (goal is complete)
-2. If there's completion language ("done", "finished", "achieved"), suggest 95-100%
-3. If there's consistent activity (3+ entries/logs), increase by 5-15%
-4. If there's no activity, keep progress the same or decrease by 5%
-5. If there's struggle language ("stuck", "hard"), increase by only 0-5%
-6. If there's positive mood (😊, 🔥), increase by 5-10%
-7. If there's negative mood (😔), increase by 0-5% or keep same
-8. Consider the domain - fitness goals need consistent tracking, career goals need milestones
+RULES:
+- 100% → keep 100
+- Completion language ("done", "finished", "achieved") → 95-100%
+- Consistent activity (3+) → +5-15%
+- No activity → same or -5%
+- Struggle ("stuck", "hard") → +0-5%
+- Positive mood (😊, 🔥) → +5-10%
+- Negative mood (😔) → +0-5%
 
-Respond with ONLY a number between 0 and 100:`;
+Respond ONLY a number 0-100:`;
 
-      const response = await aiCoaching.runWithFallback(prompt);
+      let response: string;
+      if (attachments.length > 0) {
+        try {
+          const { parts } = await axiomMultimodalService.processAttachments(attachments);
+          response = await aiCoaching.runMultimodal(prompt, parts);
+        } catch (err: any) {
+          logger.warn(`[AxiomProgress] Multimodal failed, falling back to text: ${err.message}`);
+          response = await aiCoaching.runWithFallback(prompt);
+        }
+      } else {
+        response = await aiCoaching.runWithFallback(prompt);
+      }
       const estimatedProgress = parseInt(response.trim(), 10);
       
       // Validate and clamp
