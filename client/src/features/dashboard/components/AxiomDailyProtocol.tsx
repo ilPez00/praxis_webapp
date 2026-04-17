@@ -78,6 +78,7 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
   const [unlocking, setUnlocking] = useState(false);
   const [userPoints, setUserPoints] = useState<number>(0);
   const [isPremium, setIsPremium] = useState(false);
+  const [routineUnlocked, setRoutineUnlocked] = useState(true);
   const [isBetDialogOpen, setIsBetDialogOpen] = useState(false);
 
   const fetchProtocol = async () => {
@@ -103,6 +104,7 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
       if (profile) {
         setUserPoints(profile.praxis_points || 0);
         setIsPremium(profile.is_premium || false);
+        setRoutineUnlocked(profile.is_premium || (profile.praxis_points || 0) >= 500);
       }
     } catch (err) {
       console.error('Failed to fetch Axiom protocol:', err);
@@ -292,6 +294,7 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
           <Grid size={{ xs: 12 }}>
             <Box sx={{ mt: 1 }}>
               <Typography variant="caption" sx={{ color: '#A78BFA', fontWeight: 800, display: 'block', mb: 2 }}>📅 ROUTINE</Typography>
+              {routineUnlocked ? (
               <Box
                 sx={{
                   display: 'flex',
@@ -350,6 +353,32 @@ const AxiomDailyProtocol: React.FC<{ userId: string }> = ({ userId }) => {
                   </Box>
                 )}
               </Box>
+              ) : (
+                <Box sx={{ p: 3, textAlign: 'center', bgcolor: 'rgba(167,139,250,0.04)', borderRadius: 2, border: '1px dashed rgba(167,139,250,0.2)' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    🔒 Detailed plan available for Premium
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={unlocking || userPoints < 500}
+                    onClick={async () => {
+                      if (!confirm(`Unlock today's routine for 500 PP?`)) return;
+                      setUnlocking(true);
+                      try {
+                        await api.post('/axiom-unlock/unlock-daily');
+                        setRoutineUnlocked(true);
+                        setUserPoints(p => Math.max(0, p - 500));
+                        toast.success('Routine unlocked! ✨');
+                      } catch { toast.error('Unlock failed.'); }
+                      finally { setUnlocking(false); }
+                    }}
+                    sx={{ borderRadius: '8px', bgcolor: '#A78BFA' }}
+                  >
+                    {userPoints < 500 ? `Need ${500 - userPoints} more PP` : 'Unlock for 500 PP'}
+                  </Button>
+                </Box>
+              )}
             </Box>
           </Grid>
 

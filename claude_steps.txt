@@ -32,3 +32,16 @@ Key architectural changes:
 - Next: <next task>
 - Sign: <agent>
 ```
+
+# Session: 2026-04-17 — POLISH.txt implementation
+- Fixed daily quest auto-creation on fetch (gamificationController.ts:166-191)
+- Added Trend button to NotesPage (TrendingUpIcon)
+- Wired CameraActionSheet to Navbar hamburger menu
+- Added Data & Privacy section to Settings with export download + policy link
+- Claimed state already grey/dimmed in existing widgets
+- Notebook already captures location_lat/lng on entry creation
+- Added detailed plan PP gating in AxiomDailyProtocol (unlock routine for 500 PP)
+- Files: gamificationController.ts, NotesPage.tsx, Navbar.tsx, SettingsPage.tsx, POLISH.txt, AxiomDailyProtocol.tsx
+- Verification: tsc client passes
+- Next: #3 Axiom rotation (user-based midnight), #6 notebook map
+- Sign: Claude

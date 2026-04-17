@@ -109,8 +109,8 @@ These are polish-tier items, not new features. Keep file updated as items land.
 - ✅ #10 camera control — wired in Navbar hamburger
 - ✅ #5 notebook location — already captures location_lat/lng on entry creation
 - ✅ #8 legal/export — added Data & Privacy section with Terms link + export download
+- ✅ #4 detailed plan gating — Routine now shows "Unlock for 500 PP" for non-premium (AxiomDailyProtocol.tsx)
 - 🔄 #3 Axiom rotation — needs user-based last_rotation tracking + cron
-- 🔄 #4 detailed plan gating — in AxiomDailyProtocol but no gating yet
 - ⏳ #6 notebook map — depends on #5, needs map integration
 - ⏳ #7 Google Maps migration — needs API key
 
