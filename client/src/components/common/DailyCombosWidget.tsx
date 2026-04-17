@@ -89,19 +89,21 @@ const DailyCombosWidget: React.FC = () => {
           {activeCombos.map(combo => (
             <Box key={combo.id} sx={{
               p: 1.5, borderRadius: 2,
+              opacity: combo.claimed ? 0.55 : 1,
               bgcolor: combo.claimed
-                ? 'rgba(34,197,94,0.08)'
+                ? 'rgba(148,163,184,0.06)'
                 : combo.completed
                   ? 'rgba(249,115,22,0.08)'
                   : 'rgba(255,255,255,0.03)',
               border: combo.claimed
-                ? '1px solid rgba(34,197,94,0.2)'
+                ? '1px solid rgba(148,163,184,0.2)'
                 : '1px solid rgba(255,255,255,0.06)',
+              transition: 'opacity 0.3s, background-color 0.3s',
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
                 <Typography variant="body2" sx={{
                   fontWeight: 700,
-                  color: combo.claimed ? '#22C55E' : combo.completed ? '#F97316' : 'text.primary',
+                  color: combo.claimed ? 'text.secondary' : combo.completed ? '#F97316' : 'text.primary',
                 }}>
                   {combo.label}
                   {combo.claimed && ' ✓'}

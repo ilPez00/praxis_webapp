@@ -1,0 +1,124 @@
+# POLISH.txt — Praxis Webapp Tweaks & Fixes
+
+Source: brainstorm session 2026-04-17 (Claude + user live browser walk-through).
+These are polish-tier items, not new features. Keep file updated as items land.
+
+---
+
+## 1. Rewards UI — claimed state
+- Currently claimed rewards stay golden forever.
+- After claim, flip visual to **grey / dimmed + "Claimed" badge**.
+- Preserve hover state so user can re-inspect, but no CTA.
+- Fix any console errors on the reward claim flow (user flagged errors present).
+
+## 2. "Track your progress" daily challenge — not triggering
+- Daily challenge not appearing on dashboard even after full refresh.
+- Root cause: rotation/creation job not firing.
+- Fix: on each authenticated page load, check `last_daily_rotation_at` vs Axiom midnight check. If stale, regenerate.
+- Same job should reset/rotate on midnight per user's timezone.
+
+## 3. Daily brief — force daily rotation
+- Brief must rotate once per day based on **Axiom midnight check** (per active user).
+- Applies to:
+  - **Chat / Coaching tab** (the Axiom daily brief message)
+  - **Homepage** (dashboard brief widget)
+- If user idle past their local midnight and returns, trigger rotation on first active session of new day.
+
+## 4. Detailed plan — gate behind PP / Pro
+- Today the detailed plan renders for everyone.
+- Behavior:
+  - Free user: preview only (teaser).
+  - Pro user: full detailed plan.
+  - Free user with PP: can unlock one-off detailed plan by spending PP (new `detailed_plan` catalogue item).
+- Wire gating through existing `pointsController` + subscription check used in Axiom Boost.
+
+## 5. Notebook — auto-location + metadata
+- Every notebook entry captures on create:
+  - `latitude`, `longitude` (navigator geolocation, permission-gated)
+  - `city` (reverse geocode)
+  - `created_at`, `device`, `app_version`, `timezone`
+- Stored as structured columns on the notebook entry row (not free-form JSON) so map + analytics can index.
+- Respect permission denial: fall back silently, no scolding UI.
+
+## 6. Notebook — map under calendar (future feature, groundwork now)
+- Under the notebook calendar, add a **map panel**.
+- Clicking a day on the calendar:
+  - Filters notebook entries to that day.
+  - Drops pins on the map for each entry's stored location.
+  - Pin click → opens that entry.
+- Depends on item #5 (location metadata must be captured first).
+
+## 7. Map provider — switch OpenStreetMap → Google Maps
+- Current stack: leaflet + OSM tiles.
+- Migrate to Google Maps JS API for:
+  - Notebook map (item #6)
+  - Places feature
+  - Discover / nearby users (if applicable)
+- Requires: GOOGLE_MAPS_API_KEY env var (frontend + backend).
+- Track billing: enable only the APIs actually used (Maps JS, Geocoding, Places).
+
+## 8. Legal / info page + data-export + account-deletion
+- New route `/info` (or `/legal`), accessed from **Settings**.
+- Contents:
+  - Terms of Service
+  - Privacy Policy
+  - Cookie / tracking disclosure
+  - Data handling (what we store, where, retention)
+  - Third-party services (Supabase, Railway, Stripe, Google Maps, Axiom LLM provider, etc.)
+  - GDPR + CCPA rights summary
+  - Contact for data requests
+- Settings actions:
+  - **Delete profile** (destructive, confirmation + 7-day grace window).
+  - **Download my analytics** (JSON or CSV export).
+  - **Download my notebook** (JSON + media URLs, or zip with embedded media).
+- Backend: new `/account/export`, `/account/delete` routes. Both auth-gated, rate-limited.
+
+## 9. Notebook — "Trend" button + relocate "Save to Notebook"
+- Today: "Ask Axiom" button has "Save to Notebook" next to it.
+- Change:
+  - **Remove** "Save to Notebook" from the Ask Axiom row.
+  - **Add** a new **"Trend"** button in that slot — opens the Analytics view for that entry / tracker / metric.
+  - Move "Save to Notebook" elsewhere logical (inside the Axiom response card once an answer returns — "Save this answer").
+- Rationale: the common action next to Axiom should be "understand the trend," not "save."
+
+## 10. Navbar / hamburger — camera control replaces "Go Live"
+- Remove **"Go Live"** from hamburger menu.
+- Replace with a **camera icon** that opens a sheet / dialog:
+  - "Stream live" → go-live flow (current behavior).
+  - "Record video" → local video recorder.
+  - "Take picture" → still capture.
+- Inside the capture surface:
+  - Button to **flip front / back camera**.
+  - Button to **screen share** (becomes the video source).
+- Output routing:
+  - Stream → existing streaming infra.
+  - Recording / picture → notebook attachment (ties into item #5's metadata).
+
+---
+
+## Cross-cutting notes
+- Items 5, 6, 9 all feed the same "notebook intelligence" story — do them in that order so each depends on the previous.
+- Items 3, 4 both touch Axiom daily rotation — share the rotation job; don't build two.
+- Item 7 (Google Maps migration) is a prerequisite for item 6 shipping cleanly, but doesn't have to block item 5.
+- Item 8 is compliance / legal — should land before any paid-growth push.
+
+## Progress (as of 2026-04-17)
+- ✅ #1 claimed state — grey/dimmed visuals in widget code
+- ✅ #2 daily challenge rotation — auto-create on fetch (gamificationController.ts:166-191)
+- ✅ #9 Trend button — added to NotesPage (TrendingUpIcon)
+- ✅ #10 camera control — wired in Navbar hamburger
+- ✅ #5 notebook location — already captures location_lat/lng on entry creation
+- ✅ #8 legal/export — added Data & Privacy section with Terms link + export download
+- 🔄 #3 Axiom rotation — needs user-based last_rotation tracking + cron
+- 🔄 #4 detailed plan gating — in AxiomDailyProtocol but no gating yet
+- ⏳ #6 notebook map — depends on #5, needs map integration
+- ⏳ #7 Google Maps migration — needs API key
+
+## Suggested order
+1. Quick wins: #1 (claimed state), #2 (daily challenge rotation), #9 (notebook Trend button + button relocation).
+2. Axiom rotation job: #3 + #4 together (shared scheduler).
+3. Notebook metadata: #5.
+4. Legal + export: #8.
+5. Map migration: #7.
+6. Notebook map: #6.
+7. Camera control: #10 (can slot in anywhere after #5 since it depends on notebook metadata plumbing).

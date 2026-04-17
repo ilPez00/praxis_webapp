@@ -13,6 +13,8 @@ import LockIcon from '@mui/icons-material/Lock';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import GavelIcon from '@mui/icons-material/Gavel';
+import DownloadIcon from '@mui/icons-material/Download';
 
 import LanguageIcon from '@mui/icons-material/Language';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -503,28 +505,81 @@ const SettingsPage: React.FC = () => {
 
       {/* Analytics */}
       <Section icon={<BarChartIcon sx={{ color: '#F59E0B' }} />} title="Analytics">
-        <FormControlLabel
-          control={
-            <Switch
-              checked={analyticsEnabled}
-              onChange={e => {
-                setAnalyticsEnabled(e.target.checked);
-                localStorage.setItem(ANALYTICS_OPT_KEY, e.target.checked ? 'on' : 'off');
-                toast.success(e.target.checked ? 'Analytics enabled.' : 'Analytics opted out.');
-              }}
-            />
-          }
-          label={
-            <Box>
-              <Typography variant="body2" fontWeight={600}>Usage analytics</Typography>
-              <Typography variant="caption" color="text.secondary">
-                Help us improve Praxis by sharing anonymous usage data
-              </Typography>
+        <Stack spacing={2}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={analyticsEnabled}
+                onChange={e => {
+                  setAnalyticsEnabled(e.target.checked);
+                  localStorage.setItem(ANALYTICS_OPT_KEY, e.target.checked ? 'on' : 'off');
+                  toast.success(e.target.checked ? 'Analytics enabled.' : 'Analytics opted out.');
+                }}
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2" fontWeight={600}>Usage analytics</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Help us improve Praxis by sharing anonymous usage data
+                </Typography>
             </Box>
           }
           sx={{ justifyContent: 'space-between', ml: 0, mr: 0 }}
           labelPlacement="start"
         />
+        </Stack>
+      </Section>
+
+      {/* Data & Privacy */}
+      <Section icon={<GavelIcon sx={{ color: '#6366F1' }} />} title="Data & Privacy">
+        <Stack spacing={2}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Box>
+              <Typography variant="body2" fontWeight={700}>Terms & Privacy</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                View our Terms of Service, Privacy Policy, and data handling practices.
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              startIcon={<GavelIcon />}
+              onClick={() => window.open('https://praxis.mypractice.ai/info', '_blank')}
+              sx={{ borderRadius: '10px' }}
+            >
+              View Policy
+            </Button>
+          </Box>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Box>
+              <Typography variant="body2" fontWeight={700}>Download my data</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                Export all your notebook entries, goals, and analytics as JSON.
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={async () => {
+                toast.success('Preparing export...');
+                try {
+                  const res = await api.post('/diary/export/notes', {}, { responseType: 'blob' });
+                  const url = window.URL.createObjectURL(new Blob([res.data]));
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `praxis-export-${new Date().toISOString().slice(0, 10)}.json`;
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  toast.success('Export downloaded!');
+                } catch { toast.error('Export failed.'); }
+              }}
+              sx={{ borderRadius: '10px' }}
+            >
+              Export
+            </Button>
+          </Box>
+        </Stack>
       </Section>
 
       {/* Language */}

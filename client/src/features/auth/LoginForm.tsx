@@ -31,6 +31,31 @@ const LANGUAGES = [
   { code: 'ru', label: 'Русский', flag: '🇷🇺' },
 ];
 
+const LOGIN_COUNT_KEY = 'praxis_login_count';
+const LAST_LOGIN_TS_KEY = 'praxis_last_login_ts';
+const FLASHCARD_LOGIN_THRESHOLD = 5;
+const FLASHCARD_INACTIVE_DAYS = 14;
+
+const shouldShowMobileFlashcard = (): boolean => {
+  const count = parseInt(localStorage.getItem(LOGIN_COUNT_KEY) || '0', 10);
+  const lastTs = parseInt(localStorage.getItem(LAST_LOGIN_TS_KEY) || '0', 10);
+  if (count < FLASHCARD_LOGIN_THRESHOLD) return true;
+  if (!lastTs) return true;
+  const daysSince = (Date.now() - lastTs) / (1000 * 60 * 60 * 24);
+  return daysSince >= FLASHCARD_INACTIVE_DAYS;
+};
+
+const recordLoginVisit = () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const lastVisitDay = localStorage.getItem('praxis_last_visit_day');
+  if (lastVisitDay !== today) {
+    const count = parseInt(localStorage.getItem(LOGIN_COUNT_KEY) || '0', 10);
+    localStorage.setItem(LOGIN_COUNT_KEY, String(count + 1));
+    localStorage.setItem('praxis_last_visit_day', today);
+  }
+  localStorage.setItem(LAST_LOGIN_TS_KEY, String(Date.now()));
+};
+
 const LoginForm: React.FC = () => {
   const { t, i18n } = useTranslation();
   const [email, setEmail] = useState('');
@@ -40,6 +65,11 @@ const LoginForm: React.FC = () => {
   const [langAnchor, setLangAnchor] = useState<null | HTMLElement>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [weekStats, setWeekStats] = useState({ total: 0, streak: 0 });
+  const [showMobileFlashcard] = useState(shouldShowMobileFlashcard);
+
+  useEffect(() => {
+    recordLoginVisit();
+  }, []);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -311,19 +341,21 @@ const LoginForm: React.FC = () => {
               </MuiLink>
             </Typography>
 
-            <Box sx={{ mt: 6, p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1, textAlign: 'center' }}>
-                {t('login.mobile_issues')}
-              </Typography>
-              <Button
-                fullWidth size="small" variant="text" color="inherit"
-                onClick={nuclearReset}
-                startIcon={<RestartAltIcon sx={{ fontSize: '1rem' }} />}
-                sx={{ fontSize: '0.65rem', opacity: 0.6, '&:hover': { opacity: 1 } }}
-              >
-                {t('login.force_refresh')}
-              </Button>
-            </Box>
+            {showMobileFlashcard && (
+              <Box sx={{ mt: 6, p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1, textAlign: 'center' }}>
+                  {t('login.mobile_issues')}
+                </Typography>
+                <Button
+                  fullWidth size="small" variant="text" color="inherit"
+                  onClick={nuclearReset}
+                  startIcon={<RestartAltIcon sx={{ fontSize: '1rem' }} />}
+                  sx={{ fontSize: '0.65rem', opacity: 0.6, '&:hover': { opacity: 1 } }}
+                >
+                  {t('login.force_refresh')}
+                </Button>
+              </Box>
+            )}
 
             <Box sx={{ mt: 4, opacity: 0.3, textAlign: 'center' }}>
               <Typography sx={{ fontSize: '0.6rem', letterSpacing: '0.1em' }}>

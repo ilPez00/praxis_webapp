@@ -174,9 +174,10 @@ const WeeklyChallengeWidget: React.FC = () => {
                       cursor: isClaimable ? 'pointer' : 'default',
                       transition: 'all 0.2s',
                       ...(tier.claimed ? {
-                        bgcolor: color,
-                        color: '#fff',
-                        border: `2px solid ${color}`,
+                        bgcolor: 'rgba(148,163,184,0.2)',
+                        color: 'rgba(203,213,225,0.7)',
+                        border: '2px solid rgba(148,163,184,0.35)',
+                        opacity: 0.7,
                       } : isClaimable ? {
                         bgcolor: `${color}22`,
                         color,
@@ -191,7 +192,7 @@ const WeeklyChallengeWidget: React.FC = () => {
                     }}
                   >
                     {tier.claimed ? (
-                      <CheckCircleIcon sx={{ fontSize: 14, color: '#fff' }} />
+                      <CheckCircleIcon sx={{ fontSize: 14, color: 'rgba(203,213,225,0.7)' }} />
                     ) : tier.unlocked ? (
                       <AutoAwesomeIcon sx={{ fontSize: 14 }} />
                     ) : (

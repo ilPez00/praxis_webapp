@@ -225,10 +225,16 @@ const SeasonalEventCard: React.FC<SeasonalEventCardProps> = ({ userId, compact =
               sx={{
                 p: 2.5,
                 borderRadius: 3,
-                background: `linear-gradient(135deg, ${event.theme_color}15 0%, ${event.theme_color}05 100%)`,
-                border: `2px solid ${event.theme_color}30`,
+                opacity: rewardClaimed ? 0.6 : 1,
+                background: rewardClaimed
+                  ? 'linear-gradient(135deg, rgba(148,163,184,0.08) 0%, rgba(148,163,184,0.03) 100%)'
+                  : `linear-gradient(135deg, ${event.theme_color}15 0%, ${event.theme_color}05 100%)`,
+                border: rewardClaimed
+                  ? '2px solid rgba(148,163,184,0.25)'
+                  : `2px solid ${event.theme_color}30`,
                 position: 'relative',
                 overflow: 'hidden',
+                transition: 'opacity 0.3s, background 0.3s, border-color 0.3s',
               }}
             >
               {/* Header */}
@@ -275,9 +281,13 @@ const SeasonalEventCard: React.FC<SeasonalEventCardProps> = ({ userId, compact =
                   </Button>
                 ) : rewardClaimed ? (
                   <Chip
-                    label="Completed"
+                    label="Claimed ✓"
                     size="small"
-                    sx={{ bgcolor: '#22C55E20', color: '#22C55E', fontWeight: 700 }}
+                    sx={{
+                      bgcolor: 'rgba(148,163,184,0.2)',
+                      color: 'rgba(203,213,225,0.75)',
+                      fontWeight: 700,
+                    }}
                   />
                 ) : null}
               </Box>

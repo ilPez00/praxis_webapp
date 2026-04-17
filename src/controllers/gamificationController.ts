@@ -154,7 +154,7 @@ export const getLeaderboard = catchAsync(async (req: Request, res: Response) => 
 
 /**
  * GET /gamification/quests
- * Get user's daily quests
+ * Get user's daily quests (creates if none exist — stale rotation fix)
  */
 export const getDailyQuests = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
@@ -163,13 +163,28 @@ export const getDailyQuests = catchAsync(async (req: Request, res: Response) => 
     throw new BadRequestError('Authentication required');
   }
 
-  const { data: quests, error } = await supabase.rpc('get_daily_quests_for_user', {
+  let { data: quests, error } = await supabase.rpc('get_daily_quests_for_user', {
     p_user_id: userId,
   });
 
   if (error) {
     logger.error('Get daily quests error:', error.message);
     throw new BadRequestError('Failed to fetch quests');
+  }
+
+  if (!quests || quests.length === 0) {
+    logger.info(`[Gamification] No quests found for user ${userId}, creating...`);
+    await supabase.rpc('reset_daily_quests');
+    
+    const { data: retryQuests, error: retryError } = await supabase.rpc('get_daily_quests_for_user', {
+      p_user_id: userId,
+    });
+    
+    if (retryError) {
+      logger.error('Retry daily quests error:', retryError.message);
+    } else {
+      quests = retryQuests;
+    }
   }
 
   return res.json({ quests });

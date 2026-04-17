@@ -204,21 +204,29 @@ const DailyQuestsWidget: React.FC = () => {
                 sx={{
                   p: 1.5,
                   borderRadius: 2,
-                  bgcolor: quest.completed
-                    ? 'rgba(34,197,94,0.1)'
-                    : 'rgba(255,255,255,0.03)',
-                  border: quest.completed
-                    ? '1px solid rgba(34,197,94,0.3)'
-                    : '1px solid rgba(255,255,255,0.08)',
+                  opacity: quest.claimed ? 0.55 : 1,
+                  bgcolor: quest.claimed
+                    ? 'rgba(148,163,184,0.06)'
+                    : quest.completed
+                      ? 'rgba(34,197,94,0.1)'
+                      : 'rgba(255,255,255,0.03)',
+                  border: quest.claimed
+                    ? '1px solid rgba(148,163,184,0.2)'
+                    : quest.completed
+                      ? '1px solid rgba(34,197,94,0.3)'
+                      : '1px solid rgba(255,255,255,0.08)',
+                  transition: 'opacity 0.3s, background-color 0.3s',
                 }}
               >
                 {/* Quest Header */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
                   <Box
                     sx={{
-                      color: quest.completed
-                        ? '#22C55E'
-                        : DIFFICULTY_COLORS[quest.difficulty],
+                      color: quest.claimed
+                        ? 'rgba(148,163,184,0.6)'
+                        : quest.completed
+                          ? '#22C55E'
+                          : DIFFICULTY_COLORS[quest.difficulty],
                     }}
                   >
                     {QUEST_ICONS[quest.quest_type] || <EmojiEventsIcon />}
@@ -228,7 +236,11 @@ const DailyQuestsWidget: React.FC = () => {
                       variant="body2"
                       sx={{
                         fontWeight: 600,
-                        color: quest.completed ? '#22C55E' : 'text.primary',
+                        color: quest.claimed
+                          ? 'text.secondary'
+                          : quest.completed
+                            ? '#22C55E'
+                            : 'text.primary',
                       }}
                     >
                       {quest.title}
@@ -313,8 +325,8 @@ const DailyQuestsWidget: React.FC = () => {
                     label="Claimed ✓"
                     size="small"
                     sx={{
-                      bgcolor: 'rgba(34,197,94,0.2)',
-                      color: '#22C55E',
+                      bgcolor: 'rgba(148,163,184,0.15)',
+                      color: 'rgba(203,213,225,0.75)',
                       fontWeight: 600,
                     }}
                   />

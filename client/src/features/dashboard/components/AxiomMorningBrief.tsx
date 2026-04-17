@@ -140,10 +140,18 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
 
         let briefData = briefsRes.data as BriefRecord[];
 
-        if (!briefData || briefData.length === 0) {
+        // Force daily rotation: if we have no briefs OR the latest brief is not for today,
+        // request a fresh one. Backend is idempotent by (user_id, date).
+        const today = new Date().toISOString().slice(0, 10);
+        const latestDate = briefData?.[0]?.date;
+        const needsRotation = !briefData || briefData.length === 0 || latestDate !== today;
+
+        if (needsRotation) {
           try {
             const genRes = await api.post('/ai-coaching/generate-axiom-brief', {});
-            if (genRes.data) briefData = [genRes.data];
+            if (genRes.data) {
+              briefData = [genRes.data, ...(briefData || []).filter(b => b.date !== genRes.data.date)];
+            }
           } catch (genErr) {
             console.warn('Axiom brief generation failed:', genErr);
           }

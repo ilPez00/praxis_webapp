@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
@@ -40,6 +41,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { TRACKER_MAP } from '../trackers/trackerTypes';
 import EditableTrackerForm from '../trackers/EditableTrackerForm';
 
@@ -89,6 +91,7 @@ const NOTES_ACTIONS: ActionItem[] = [
 ];
 
 const NotesPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user, loading: userLoading } = useUser();
   const getLocation = useCurrentLocation();
   const theme = useTheme();
@@ -627,6 +630,28 @@ const NotesPage: React.FC = () => {
                 }}
               >
                 Ask Axiom
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<TrendingUpIcon />}
+                onClick={() => navigate('/analytics')}
+                sx={{
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  px: 1.5,
+                  py: 0.4,
+                  minWidth: 'auto',
+                  border: '1.5px solid #10B981',
+                  color: '#10B981',
+                  fontSize: '0.75rem',
+                  '&:hover': {
+                    border: '1.5px solid #059669',
+                    bgcolor: 'rgba(16, 185, 129, 0.08)',
+                  },
+                }}
+              >
+                Trend
               </Button>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
