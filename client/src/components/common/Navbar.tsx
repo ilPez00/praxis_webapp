@@ -4,7 +4,6 @@ import { useUser } from '../../hooks/useUser';
 import { useGamification } from '../../hooks/useGamification';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
-import LevelBadge from './LevelBadge';
 import {
   AppBar,
   Toolbar,
@@ -491,12 +490,34 @@ const Navbar: React.FC = () => {
                     </Box>
                   </Popover>
 
-                  {/* Profile avatar with level badge — opens dropdown */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <IconButton
-                      onClick={(e) => setProfileMenuAnchor(e.currentTarget)}
-                      sx={{ p: 0.5 }}
-                      aria-label="account menu"
+                  {/* Profile avatar with level counter overlay */}
+                  <IconButton
+                    onClick={(e) => setProfileMenuAnchor(e.currentTarget)}
+                    sx={{ p: 0.5 }}
+                    aria-label="account menu"
+                  >
+                    <Badge
+                      badgeContent={gamificationProfile?.level || null}
+                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          bgcolor: gamificationProfile?.level
+                            ? gamificationProfile.level >= 50 ? '#06B6D4'
+                            : gamificationProfile.level >= 20 ? '#A78BFA'
+                            : gamificationProfile.level >= 10 ? '#FBBF24'
+                            : gamificationProfile.level >= 5 ? '#F59E0B'
+                            : '#94A3B8'
+                            : '#94A3B8',
+                          color: '#fff',
+                          fontWeight: 800,
+                          fontSize: '0.6rem',
+                          minWidth: 18,
+                          height: 18,
+                          borderRadius: '9px',
+                          border: '2px solid #111827',
+                          boxShadow: '0 0 6px rgba(0,0,0,0.4)',
+                        },
+                      }}
                     >
                       <Avatar
                         src={user.avatarUrl || undefined}
@@ -510,11 +531,8 @@ const Navbar: React.FC = () => {
                       >
                         {user.name?.charAt(0).toUpperCase()}
                       </Avatar>
-                    </IconButton>
-                    {gamificationProfile?.level && (
-                      <LevelBadge level={gamificationProfile.level} size="small" animated={false} />
-                    )}
-                  </Box>
+                    </Badge>
+                  </IconButton>
 
                   {/* Profile dropdown menu */}
                   <Menu
@@ -662,9 +680,33 @@ const Navbar: React.FC = () => {
             )}
 
             <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Avatar src={user.avatarUrl || undefined} sx={{ width: 44, height: 44, border: '2px solid rgba(245,158,11,0.4)' }}>
-                {user.name?.charAt(0).toUpperCase()}
-              </Avatar>
+              <Badge
+                badgeContent={gamificationProfile?.level || null}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    bgcolor: gamificationProfile?.level
+                      ? gamificationProfile.level >= 50 ? '#06B6D4'
+                      : gamificationProfile.level >= 20 ? '#A78BFA'
+                      : gamificationProfile.level >= 10 ? '#FBBF24'
+                      : gamificationProfile.level >= 5 ? '#F59E0B'
+                      : '#94A3B8'
+                      : '#94A3B8',
+                    color: '#fff',
+                    fontWeight: 800,
+                    fontSize: '0.65rem',
+                    minWidth: 20,
+                    height: 20,
+                    borderRadius: '10px',
+                    border: '2px solid #111827',
+                    boxShadow: '0 0 6px rgba(0,0,0,0.4)',
+                  },
+                }}
+              >
+                <Avatar src={user.avatarUrl || undefined} sx={{ width: 44, height: 44, border: '2px solid rgba(245,158,11,0.4)' }}>
+                  {user.name?.charAt(0).toUpperCase()}
+                </Avatar>
+              </Badge>
               <Box sx={{ flexGrow: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="body1" sx={{ fontWeight: 700 }}>{user.name}</Typography>
