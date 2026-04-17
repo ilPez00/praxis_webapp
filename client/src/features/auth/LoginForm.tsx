@@ -176,7 +176,7 @@ const LoginForm: React.FC = () => {
           PRAXIS
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 320, lineHeight: 1.7 }}>
-          Your goals. Your connections. Your growth.
+          Track your goals. Stay honest with yourself.
         </Typography>
 
         {/* Activity Graph - shown when logged in */}
@@ -220,7 +220,7 @@ const LoginForm: React.FC = () => {
         )}
 
         <Box sx={{ mt: 6, display: 'flex', flexDirection: 'column', gap: 3, width: '100%', maxWidth: 300 }}>
-          {['AI-powered goal matching', 'Supportive peer network', 'Gentle progress tracking'].map((feat) => (
+          {['Daily check-ins that take 30 seconds', 'Find people working on similar goals', 'See your real progress over time'].map((feat) => (
             <Box key={feat} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main', boxShadow: '0 0 8px #F59E0B', flexShrink: 0 }} />
               <Typography variant="body2" color="text.secondary">{feat}</Typography>

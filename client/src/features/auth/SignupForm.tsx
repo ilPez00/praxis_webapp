@@ -70,10 +70,10 @@ const SignupForm: React.FC = () => {
           PRAXIS
         </Typography>
         <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-          Join the movement
+          Get started
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 300, lineHeight: 1.7 }}>
-          Connect with people who share your exact goals and ambitions.
+          Set your goals, track progress, find accountability partners.
         </Typography>
       </Box>
 
@@ -106,7 +106,7 @@ const SignupForm: React.FC = () => {
 
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>Create account</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-            Start your goal-aligned journey today.
+            Free to use. Takes about a minute.
           </Typography>
 
           {message && <Alert severity={isError ? 'error' : 'success'} sx={{ mb: 3 }}>{message}</Alert>}
