@@ -53,6 +53,8 @@ import diaryRoutes from './routes/diaryRoutes';
 import authoringRoutes from './routes/authoringRoutes';
 import sparringRoutes from './routes/sparringRoutes';
 import scheduleRoutes from './routes/scheduleRoutes';
+import calendarRoutes from './routes/calendarRoutes';
+import streamRoutes from './routes/streamRoutes';
 import narrativeRoutes from './routes/narrativeRoutes';
 import publicWidgetRoutes from './routes/publicWidgetRoutes';
 import adminCLIRoutes from './routes/adminCLIRoutes';
@@ -142,10 +144,13 @@ app.use(helmet({
         'https://*.up.railway.app',
         'https://www.google-analytics.com',
         'https://api.stripe.com',
+        'https://accounts.google.com',
+        'https://www.googleapis.com',
       ],
       frameSrc: [
         "'self'",
         'https://js.stripe.com',
+        'https://accounts.google.com',
       ],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
@@ -279,6 +284,8 @@ apiRouter.use('/notebook', generalLimiter, notebookRoutes);
 apiRouter.use('/diary', generalLimiter, diaryRoutes);
 apiRouter.use('/authoring', generalLimiter, authoringRoutes);
 apiRouter.use('/schedule', generalLimiter, scheduleRoutes);
+apiRouter.use('/calendar', generalLimiter, calendarRoutes);
+apiRouter.use('/streams', generalLimiter, streamRoutes);
 apiRouter.use('/narratives', generalLimiter, narrativeRoutes);
 apiRouter.use('/sparring', generalLimiter, sparringRoutes);
 apiRouter.use('/gamification', generalLimiter, gamificationRoutes);

@@ -13,6 +13,7 @@ import {
   Container, Drawer, List, ListItem, ListItemAvatar, ListItemText,
   Divider, Chip, CircularProgress, Tooltip, Tabs, Tab,
 } from '@mui/material';
+import LiveStreamsWidget from '../streaming/LiveStreamsWidget';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
 import PeopleIcon from '@mui/icons-material/People';
@@ -347,6 +348,7 @@ const GroupRoom: React.FC = () => {
                 <Typography variant="body2" color="text.secondary">{room.description}</Typography>
               </Box>
             )}
+            <LiveStreamsWidget roomId={roomId} />
             <PostFeed context={roomId!} isBoard />
           </Box>
         )}

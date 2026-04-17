@@ -58,6 +58,7 @@ import NoteIcon from '@mui/icons-material/Note';
 import GroupsIcon from '@mui/icons-material/Groups';
 import TimerIcon from '@mui/icons-material/Timer';
 import WarningIcon from '@mui/icons-material/Warning';
+import VideocamIcon from '@mui/icons-material/Videocam';
 
 interface AppNotification {
   id: string;
@@ -559,6 +560,10 @@ const Navbar: React.FC = () => {
                       <NoteIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Notebook</Typography>
                     </MenuItem>
+                    <MenuItem onClick={() => handleNav('/go-live')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <VideocamIcon fontSize="small" sx={{ color: '#EF4444' }} />
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>Go Live</Typography>
+                    </MenuItem>
                     <MenuItem onClick={() => handleNav('/marketplace')} sx={{ gap: 1.5, py: 1.25 }}>
                       <StorefrontOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Marketplace</Typography>
@@ -702,6 +707,7 @@ const Navbar: React.FC = () => {
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Team Challenges', to: '/team-challenges', icon: <GroupsIcon />, primary: true },
                 { label: 'Co-work', to: '/cowork', icon: <TimerIcon />, primary: true },
+                { label: 'Go Live', to: '/go-live', icon: <VideocamIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
                 { label: 'Fails', to: '/fails', icon: <WarningIcon />, primary: false },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },

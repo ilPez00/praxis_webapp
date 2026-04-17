@@ -47,6 +47,8 @@ const FailsPage = React.lazy(() => import('../features/fails/FailsPage'));
 const NotesPage = React.lazy(() => import('../features/notes/NotesPage'));
 const PublicNotebookPage = React.lazy(() => import('../features/notes/PublicNotebookPage'));
 const AchievementCollectionPage = React.lazy(() => import('../features/achievements/AchievementCollectionPage'));
+const GoLivePage = React.lazy(() => import('../features/streaming/GoLivePage'));
+const WatchStreamPage = React.lazy(() => import('../features/streaming/WatchStreamPage'));
 
 // Route definitions used by AppRouter to build the data router
 export const publicRoutes: RouteObject[] = [
@@ -100,6 +102,8 @@ export const privateRoutes: RouteObject[] = [
   { path: 'cowork', element: <CoworkRoomPage /> },
   { path: 'fails', element: <FailsPage /> },
   { path: 'achievements', element: <AchievementCollectionPage /> },
+  { path: 'go-live', element: <GoLivePage /> },
+  { path: 'stream/:id', element: <WatchStreamPage /> },
 ];
 
 export default { publicRoutes, privateRoutes };

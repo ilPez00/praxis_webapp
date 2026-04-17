@@ -16,6 +16,7 @@ import WeeklyChallengeWidget from '../../components/common/WeeklyChallengeWidget
 import DailyCombosWidget from '../../components/common/DailyCombosWidget';
 import AchievementShareModal from '../../components/common/AchievementShareModal';
 import SeasonalEventCard from '../../components/common/SeasonalEventCard';
+import LiveStreamsWidget from '../streaming/LiveStreamsWidget';
 import { useGamificationNotifications } from '../../hooks/useGamificationNotifications';
 import { useCelebrations } from '../../hooks/useCelebrations';
 import { DOMAIN_COLORS } from '../../types/goal';
@@ -370,6 +371,9 @@ const DashboardPage: React.FC = () => {
                   </GlassCard>
                 </ErrorBoundary>
               )}
+
+              {/* Live Streams */}
+              <LiveStreamsWidget />
 
               {/* Top Alignments */}
               <ErrorBoundary label="Top Alignments">
