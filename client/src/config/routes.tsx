@@ -80,7 +80,7 @@ export const privateRoutes: RouteObject[] = [
   { path: 'goals/:id', element: <GoalTreePage /> },
   { path: 'goal-selection', element: <GoalSelectionPage /> },
   { path: 'upgrade', element: <UpgradePage /> },
-  { path: 'verify-identity', element: <IdentityVerificationPage /> },
+  // { path: 'verify-identity', element: <IdentityVerificationPage /> },
   { path: 'analytics', element: <AnalyticsPage /> },
   { path: 'communication', element: <CommunicationPage /> },
   { path: 'groups', element: <GroupsPage /> },
