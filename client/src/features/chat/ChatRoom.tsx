@@ -9,6 +9,7 @@ import { GoalNode } from '../../models/GoalNode';
 import VideoCall from './VideoCall';
 import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
 import ReferencePicker from '../../components/common/ReferencePicker';
+import CameraActionSheet from '../../components/common/CameraActionSheet';
 import { MessageList } from './components';
 import {
   Container,
@@ -96,6 +97,9 @@ const ChatRoom: React.FC = () => {
   // Reference linking
   const [pendingRef, setPendingRef] = useState<Reference | null>(null);
   const [refPickerOpen, setRefPickerOpen] = useState(false);
+
+  // Camera action sheet
+  const [cameraSheetOpen, setCameraSheetOpen] = useState(false);
 
   // Ask Axiom dialog
   const [axiomOpen, setAxiomOpen] = useState(false);
@@ -752,18 +756,12 @@ const ChatRoom: React.FC = () => {
                 {uploadingFile ? <CircularProgress size={18} /> : <AttachFileIcon fontSize="small" />}
               </IconButton>
             </Tooltip>
-            <Tooltip title="Take photo">
+            <Tooltip title="Camera (stream / record / photo)">
               <IconButton
                 size="small"
-                onClick={() => {
-                  if (fileInputRef.current) {
-                    fileInputRef.current.accept = 'image/*';
-                    fileInputRef.current.capture = 'environment';
-                    fileInputRef.current.click();
-                  }
-                }}
+                onClick={() => setCameraSheetOpen(true)}
                 disabled={uploadingFile}
-                sx={{ color: 'text.disabled', '&:hover': { color: 'text.secondary' } }}
+                sx={{ color: 'text.disabled', '&:hover': { color: '#A78BFA' } }}
               >
                 <PhotoCameraIcon fontSize="small" />
               </IconButton>
@@ -982,6 +980,9 @@ const ChatRoom: React.FC = () => {
           isInitiator={isCallInitiator}
         />
       )}
+
+      {/* Camera action sheet */}
+      <CameraActionSheet open={cameraSheetOpen} onClose={() => setCameraSheetOpen(false)} />
 
       {/* Ask Axiom dialog */}
       <Dialog open={axiomOpen} onClose={() => !axiomLoading && setAxiomOpen(false)} maxWidth="sm" fullWidth>

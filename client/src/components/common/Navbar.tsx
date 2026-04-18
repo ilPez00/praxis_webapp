@@ -57,8 +57,6 @@ import NoteIcon from '@mui/icons-material/Note';
 import GroupsIcon from '@mui/icons-material/Groups';
 import TimerIcon from '@mui/icons-material/Timer';
 import WarningIcon from '@mui/icons-material/Warning';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import CameraActionSheet from './CameraActionSheet';
 
 interface AppNotification {
   id: string;
@@ -99,7 +97,6 @@ const Navbar: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
-  const [cameraSheetOpen, setCameraSheetOpen] = useState(false);
   // New matches indicator — true if user hasn't visited /discover in 24h
   const [showMatchesBadge, setShowMatchesBadge] = useState(() => {
     const last = localStorage.getItem('praxis_discover_last_visit');
@@ -580,16 +577,6 @@ const Navbar: React.FC = () => {
                       <NoteIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Notebook</Typography>
                     </MenuItem>
-                    <MenuItem
-                      onClick={() => {
-                        setProfileMenuAnchor(null);
-                        setCameraSheetOpen(true);
-                      }}
-                      sx={{ gap: 1.5, py: 1.25 }}
-                    >
-                      <PhotoCameraIcon fontSize="small" sx={{ color: '#A78BFA' }} />
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>Camera</Typography>
-                    </MenuItem>
                     <MenuItem onClick={() => handleNav('/marketplace')} sx={{ gap: 1.5, py: 1.25 }}>
                       <StorefrontOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Marketplace</Typography>
@@ -757,7 +744,6 @@ const Navbar: React.FC = () => {
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Team Challenges', to: '/team-challenges', icon: <GroupsIcon />, primary: true },
                 { label: 'Co-work', to: '/cowork', icon: <TimerIcon />, primary: true },
-                { label: 'Camera', to: '__camera__', icon: <PhotoCameraIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
                 { label: 'Fails', to: '/fails', icon: <WarningIcon />, primary: false },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
@@ -772,16 +758,7 @@ const Navbar: React.FC = () => {
                     </Box>
                   )}
                   <ListItem disablePadding>
-                    <ListItemButton
-                      onClick={() => {
-                        if (to === '__camera__') {
-                          setDrawerOpen(false);
-                          setCameraSheetOpen(true);
-                          return;
-                        }
-                        handleNav(to);
-                      }}
-                    >
+                    <ListItemButton onClick={() => handleNav(to)}>
                       <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>{icon}</ListItemIcon>
                       <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9375rem' }} />
                     </ListItemButton>
@@ -826,7 +803,6 @@ const Navbar: React.FC = () => {
           </List>
         )}
       </Drawer>
-      <CameraActionSheet open={cameraSheetOpen} onClose={() => setCameraSheetOpen(false)} />
     </>
   );
 };

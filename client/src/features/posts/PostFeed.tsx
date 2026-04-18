@@ -23,6 +23,7 @@ import SendIcon from '@mui/icons-material/Send';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import CloseIcon from '@mui/icons-material/Close';
 import LinkIcon from '@mui/icons-material/Link';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import toast from 'react-hot-toast';
@@ -30,6 +31,7 @@ import { useUser } from '../../hooks/useUser';
 import { supabase } from '../../lib/supabase';
 import ReferenceCard, { Reference } from '../../components/common/ReferenceCard';
 import ReferencePicker from '../../components/common/ReferencePicker';
+import CameraActionSheet from '../../components/common/CameraActionSheet';
 import ShareButton from '../../components/common/ShareButton';
 import ContentRenderer from '../../components/common/ContentRenderer';
 import LevelBadge from '../../components/common/LevelBadge';
@@ -73,6 +75,7 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
   const [submitting, setSubmitting] = useState(false);
   const [postRef, setPostRef] = useState<Reference | null>(null);
   const [refPickerOpen, setRefPickerOpen] = useState(false);
+  const [cameraSheetOpen, setCameraSheetOpen] = useState(false);
 
   // Per-post comment state
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
@@ -319,6 +322,9 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
         />
       )}
 
+      {/* Camera action sheet */}
+      <CameraActionSheet open={cameraSheetOpen} onClose={() => setCameraSheetOpen(false)} />
+
       {/* Compose box — hidden on profile views */}
       {user && !profileUserId && (
         <Card
@@ -414,6 +420,11 @@ const PostFeed: React.FC<Props> = ({ context, isBoard = false, personalized = fa
                     <IconButton size="small" onClick={() => fileInputRef.current?.click()} sx={{ color: 'text.secondary' }}>
                       <AttachFileIcon fontSize="small" />
                     </IconButton>
+                    <Tooltip title="Camera (stream / record / photo)">
+                      <IconButton size="small" onClick={() => setCameraSheetOpen(true)} sx={{ color: 'text.secondary', '&:hover': { color: '#A78BFA' } }}>
+                        <PhotoCameraIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title="Link a goal, service or post">
                       <IconButton size="small" onClick={() => setRefPickerOpen(true)} sx={{ color: postRef ? 'primary.main' : 'text.secondary' }}>
                         <LinkIcon fontSize="small" />
