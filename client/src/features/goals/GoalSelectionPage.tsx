@@ -109,29 +109,32 @@ const GoalSelectionPage: React.FC = () => {
   }, []);
 
   const handleSelectCategory = (domain: Domain, category: string) => {
-    if (!canAddMore) return;
-    if (selectedGoals.some(g => g.domain === domain && g.category === category)) return;
-
-    const newGoal: SelectedGoal = {
-      id: Math.random().toString(36).substring(2, 9),
-      domain,
-      category,
-      customName: category,
-      description: '',
-      completionMetric: '',
-      targetDate: '',
-    };
-
-    setSelectedGoals([...selectedGoals, newGoal]);
-    setExpandedDomain(null);
+    setSelectedGoals(prev => {
+      if (prev.length >= MAX_FREE_GOALS) return prev;
+      if (prev.some(g => g.domain === domain && g.category === category)) return prev;
+      const newId = (crypto as any).randomUUID
+        ? (crypto as any).randomUUID()
+        : `g_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const newGoal: SelectedGoal = {
+        id: newId,
+        domain,
+        category,
+        customName: category,
+        description: '',
+        completionMetric: '',
+        targetDate: '',
+      };
+      return [...prev, newGoal];
+    });
+    // Keep accordion open so user can pick more from same domain
   };
 
   const handleRemoveGoal = (goalId: string) => {
-    setSelectedGoals(selectedGoals.filter(g => g.id !== goalId));
+    setSelectedGoals(prev => prev.filter(g => g.id !== goalId));
   };
 
   const handleUpdateGoal = (goalId: string, field: 'customName' | 'description' | 'completionMetric' | 'targetDate', value: string) => {
-    setSelectedGoals(selectedGoals.map(g =>
+    setSelectedGoals(prev => prev.map(g =>
       g.id === goalId ? { ...g, [field]: value } : g
     ));
   };
