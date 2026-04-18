@@ -169,29 +169,11 @@ app.use(requestTracer);
 // Run security audit on startup
 auditSecurity();
 
-// Health check — used by Railway deployment
-app.get('/health', async (_req, res) => {
+// Liveness — must return instantly, no external I/O (Railway healthcheck path)
+app.get('/health', (_req, res) => {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   const keyType = key.startsWith('sb_') ? 'anon_publishable_WRONG' : key.startsWith('eyJ') ? 'service_role_ok' : 'missing';
-  // Lightweight connectivity check — avoids DB writes, FK errors and log noise
-  let dbPing: string;
-  try {
-    const { error: pingErr } = await supabase.rpc('version').maybeSingle();
-    if (pingErr) {
-      // Fallback: read-only table probe
-      const { error: readErr } = await supabase.from('profiles').select('id').limit(1);
-      dbPing = readErr ? readErr.message : 'ok';
-    } else {
-      dbPing = 'ok';
-    }
-  } catch {
-    dbPing = 'unreachable';
-  }
-  res.json({
-    status: 'ok',
-    supabase_key_type: keyType,
-    db_ping: dbPing,
-  });
+  res.json({ status: 'ok', supabase_key_type: keyType });
 });
 
 // Readiness check — used for Kubernetes/Railway orchestration
