@@ -462,17 +462,18 @@ export class AxiomScanService {
     const todayStr = today.toISOString().slice(0, 10);
     const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
     
-    // Check if user is premium
+    // Check if user is premium or admin
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_premium, praxis_points')
+      .select('is_premium, is_admin, praxis_points')
       .eq('id', userId)
       .single();
-    
+
     const isPremium = profile?.is_premium || false;
+    const isAdmin = profile?.is_admin || false;
     const userPoints = profile?.praxis_points || 0;
-    
-    // Free users: Only Mon(1), Wed(3), Fri(5)
+
+    // Free users: Only Mon(1), Wed(3), Fri(5) — premium + admin bypass
     const freeDays = [1, 3, 5];
     const isFreeDay = freeDays.includes(dayOfWeek);
     
@@ -489,8 +490,8 @@ export class AxiomScanService {
       return;
     }
     
-    // Free user on non-free day: Skip generation (they can pay 500 PP in frontend)
-    if (!isPremium && !isFreeDay) {
+    // Free user (non-admin, non-premium) on non-free day: Skip generation (they can pay 500 PP in frontend)
+    if (!isPremium && !isAdmin && !isFreeDay) {
       logger.info(`[AxiomScan] Free user ${userId} on non-free day (${dayOfWeek}) - skipping auto-generation`);
       
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

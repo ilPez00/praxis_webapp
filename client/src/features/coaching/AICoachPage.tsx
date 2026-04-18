@@ -507,7 +507,39 @@ const AICoachPage: React.FC = () => {
 
       <Stack spacing={3}>
         <ErrorBoundary label="Daily Protocol">
-        {loadingDaily ? <LinearProgress /> : dailyBrief && (
+        {loadingDaily ? <LinearProgress /> : dailyBrief && (dailyBrief as any).isLocked ? (
+          <Box sx={{ p: 4, borderRadius: 3, background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(245,158,11,0.06) 100%)', border: '1px solid rgba(245,158,11,0.3)', textAlign: 'center' }}>
+            <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>🔒 Daily Brief Locked</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 480, mx: 'auto', whiteSpace: 'pre-line' }}>
+              {lastAxiomMessage || `Axiom writes for free members on Mon, Wed, and Fri. Next free brief: ${(dailyBrief as any).nextFreeDay || 'soon'}.`}
+            </Typography>
+            <Stack direction="row" spacing={1.5} justifyContent="center" flexWrap="wrap">
+              <Button
+                variant="contained"
+                startIcon={<AutoAwesomeIcon />}
+                onClick={async () => {
+                  if (userPoints < ((dailyBrief as any).unlockCost || 500)) {
+                    toast.error(`Need ${(dailyBrief as any).unlockCost || 500} PP (you have ${userPoints}).`);
+                    return;
+                  }
+                  try {
+                    await api.post('/points/spend', { item: 'axiom_brief_unlock', cost: (dailyBrief as any).unlockCost || 500 });
+                    await handleRefresh();
+                    toast.success('Unlocked! Brief generating...');
+                  } catch (err: any) {
+                    toast.error(err.response?.data?.message || 'Failed to unlock');
+                  }
+                }}
+                sx={{ borderRadius: '12px', fontWeight: 800, bgcolor: '#F59E0B', color: '#000', '&:hover': { bgcolor: '#D97706' } }}
+              >
+                Unlock for {(dailyBrief as any).unlockCost || 500} PP · balance {userPoints}
+              </Button>
+              <Button variant="outlined" onClick={() => setUpgradeOpen(true)} sx={{ borderRadius: '12px', fontWeight: 700 }}>
+                Upgrade to Pro
+              </Button>
+            </Stack>
+          </Box>
+        ) : dailyBrief && (
           <Box sx={{ p: 3, borderRadius: 3, background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(245,158,11,0.06) 100%)', border: '1px solid rgba(139,92,246,0.2)' }}>
             <SectionHeader icon={<AutoAwesomeIcon />} label="Axiom Daily Protocol" color="#A78BFA" />
             <Grid container spacing={3}>
@@ -750,6 +782,8 @@ const AICoachPage: React.FC = () => {
         </DialogContent>
       </Dialog>
       
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} featureName="Daily Axiom Brief" />
+
       {/* Narratives History Dialog */}
       <Dialog 
         open={narrativesOpen} 
