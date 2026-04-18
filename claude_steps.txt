@@ -45,3 +45,12 @@ Key architectural changes:
 - Verification: tsc client passes
 - Next: #3 Axiom rotation (user-based midnight), #6 notebook map
 - Sign: Claude
+# Session: 2026-04-18 — POLISH.txt wrap-up
+- Login flashcard gate: LoginForm shows onboarding card only first 5 logins OR after 14d inactivity (localStorage: praxis_login_count, praxis_last_login_ts, praxis_last_visit_day)
+- Notebook map calendar-filter: clicking a day on ActivityCalendar filters NotebookMap pins to that date's entries; clear-filter button + caption
+- Confirmed #3 Axiom rotation complete end-to-end — backend cron already live (AxiomScanService.start in src/index.ts:44, 00:00-05:59 randomized)
+- Files: LoginForm.tsx, NotesPage.tsx, POLISH.txt
+- Verification: tsc client passes, commit 66551f1
+- Remaining: #14 OSM → Google Maps (BLOCKED on GOOGLE_MAPS_API_KEY)
+- Next: user supplies Maps key OR deploy & test current build
+- Sign: Claude
