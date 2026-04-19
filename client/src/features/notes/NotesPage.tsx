@@ -39,7 +39,6 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ShareIcon from '@mui/icons-material/Share';
 import DownloadIcon from '@mui/icons-material/Download';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
 import { TRACKER_MAP } from '../trackers/trackerTypes';
 import EditableTrackerForm from '../trackers/EditableTrackerForm';
@@ -156,7 +155,7 @@ const NotesPage: React.FC = () => {
 
   // Diary export
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exporting, setExporting] = useState<'plain' | 'axiom' | 'notes' | null>(null);
+  const [exporting, setExporting] = useState<'pdf' | 'axiom' | null>(null);
   const [axiomNarrative, setAxiomNarrative] = useState<string | null>(null);
 
   // Interactive Authoring
@@ -174,42 +173,31 @@ const NotesPage: React.FC = () => {
   }, [notebookEntriesForMap, selectedCalendarDate]);
 
   // ── Diary export handlers ─────────────────────────────────────
-  const downloadPdfBlob = (blob: Blob, suffix = '') => {
+  const downloadPdfBlob = (blob: Blob) => {
     const pdfBlob = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `praxis-notebook${suffix ? '-' + suffix : ''}-${new Date().toISOString().slice(0, 10)}.pdf`;
+    a.download = `praxis-notebook-${new Date().toISOString().slice(0, 10)}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleExportPlain = async () => {
+  const handleExportPdf = async () => {
     if (!currentUserId) return;
-    setExporting('plain');
+    setExporting('pdf');
     try {
-      const res = await api.get('/diary/export/plain', { responseType: 'blob' });
+      const res = await api.post('/diary/export', {}, { responseType: 'blob' });
       downloadPdfBlob(res.data);
       toast.success('Notebook PDF downloaded!');
-      setExportDialogOpen(false);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to export notebook');
-    } finally {
-      setExporting(null);
-    }
-  };
-
-  const handleExportNotes = async () => {
-    if (!currentUserId) return;
-    setExporting('notes');
-    try {
-      const res = await api.post('/diary/export/notes', {}, { responseType: 'blob' });
-      downloadPdfBlob(res.data, 'full');
-      toast.success('Complete notebook PDF downloaded!');
       if (!user?.is_premium) setPraxisPoints(prev => (prev ?? 0) - 500);
       setExportDialogOpen(false);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to export notes');
+      // axios blob errors need explicit text() to surface the server message
+      const msg = await err?.response?.data?.text?.().catch(() => '') ?? '';
+      let parsed: any = null;
+      try { parsed = msg ? JSON.parse(msg) : null; } catch { /* ignore */ }
+      toast.error(parsed?.message || err.message || 'Failed to export notebook');
     } finally {
       setExporting(null);
     }
@@ -952,45 +940,19 @@ const NotesPage: React.FC = () => {
           </DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {/* Plain Text Export - FREE */}
+              {/* Unified Notebook PDF — one tier, auto-ranges to signup date */}
               <Box
-                onClick={exporting ? undefined : handleExportPlain}
-                sx={{
-                  p: 2.5, borderRadius: '16px', cursor: exporting ? 'default' : 'pointer',
-                  border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'rgba(255,255,255,0.03)',
-                  '&:hover': exporting ? {} : { bgcolor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.2)' },
-                  opacity: exporting && exporting !== 'plain' ? 0.4 : 1,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <DescriptionIcon sx={{ color: '#9CA3AF' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Notebook PDF (last year)</Typography>
-                  <Chip label="FREE" size="small" sx={{ height: 18, bgcolor: 'rgba(148,163,184,0.2)', color: '#94A3B8' }} />
-                </Box>
-                <Typography variant="caption" color="text.secondary">
-                  Curated PDF with goals, tracker tables, metrics dashboard, and life logs (365-day window)
-                </Typography>
-                {exporting === 'plain' && (
-                  <Box sx={{ mt: 1.5 }}>
-                    <CircularProgress size={16} sx={{ mr: 1 }} />
-                    <Typography variant="caption" color="text.secondary">Preparing download...</Typography>
-                  </Box>
-                )}
-              </Box>
-
-              {/* Notes Export - PREMIUM (500 PP or Pro) */}
-              <Box
-                onClick={exporting ? undefined : handleExportNotes}
+                onClick={exporting ? undefined : handleExportPdf}
                 sx={{
                   p: 2.5, borderRadius: '16px', cursor: exporting ? 'default' : 'pointer',
                   border: '1px solid rgba(167,139,250,0.3)', bgcolor: 'rgba(167,139,250,0.06)',
                   '&:hover': exporting ? {} : { bgcolor: 'rgba(167,139,250,0.1)', borderColor: 'rgba(167,139,250,0.5)' },
-                  opacity: exporting && exporting !== 'notes' ? 0.4 : 1,
+                  opacity: exporting && exporting !== 'pdf' ? 0.4 : 1,
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <MenuBookIcon sx={{ color: '#A78BFA' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Complete Notebook PDF (full history)</Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Notebook PDF</Typography>
                   {user?.is_premium ? (
                     <Chip label="PRO" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B' }} />
                   ) : (
@@ -998,18 +960,17 @@ const NotesPage: React.FC = () => {
                   )}
                 </Box>
                 <Typography variant="caption" color="text.secondary">
-                  Full-history curated PDF: cover, metrics dashboard, per-tracker tables (lifts, meals, cardio, etc.), goal hierarchy, and life-log timeline
+                  Curated PDF from signup date to today: cover, metrics dashboard, per-tracker tables, goal hierarchy, and life-log timeline
                 </Typography>
                 <Box sx={{ mt: 1.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   <Chip label="🎯 Goals" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
-                  <Chip label="🤝 Partners" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
                   <Chip label="📊 Trackers" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
                   <Chip label="📓 Diary" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
                 </Box>
-                {exporting === 'notes' && (
+                {exporting === 'pdf' && (
                   <Box sx={{ mt: 1.5 }}>
                     <CircularProgress size={16} sx={{ mr: 1 }} />
-                    <Typography variant="caption" color="text.secondary">Generating comprehensive export...</Typography>
+                    <Typography variant="caption" color="text.secondary">Generating your notebook…</Typography>
                   </Box>
                 )}
               </Box>

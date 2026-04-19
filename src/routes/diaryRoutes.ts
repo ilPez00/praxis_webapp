@@ -394,11 +394,9 @@ router.get('/tags', authenticateToken, catchAsync(async (req: Request, res: Resp
 
 // ---------------------------------------------------------------------------
 // Shared helper — build the full NotebookPdfInput for a user.
-// Used by both /export/plain and /export/notes so the same curated PDF content
-// (goals, structured tracker tables, life logs, metrics) powers every download.
+// Single entry point for the one-tier /export endpoint.
 // ---------------------------------------------------------------------------
-async function buildNotebookPdfInput(userId: string, windowMs: number) {
-  const since = new Date(Date.now() - windowMs);
+async function buildNotebookPdfInput(userId: string, since: Date) {
   const sinceIso = since.toISOString();
 
   const { data: profile } = await supabase
@@ -475,30 +473,16 @@ async function buildNotebookPdfInput(userId: string, windowMs: number) {
 }
 
 /**
- * GET /diary/export/plain
- * Free curated PDF notebook (goals, tracker tables, life logs).
+ * POST /diary/export
+ * Single notebook PDF tier. Auto-ranges from signup date to now. Gated: Pro OR 500 PP.
+ * Frontend calls this; no plain/full distinction.
  */
-router.get('/export/plain', authenticateToken, catchAsync(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
-  if (!userId) throw new UnauthorizedError('Not authenticated');
-
-  // 365-day window keeps file size sane on the free tier.
-  const input = await buildNotebookPdfInput(userId, 365 * 24 * 60 * 60 * 1000);
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="praxis-notebook-${new Date().toISOString().slice(0, 10)}.pdf"`);
-  renderNotebookPdf(input, res);
-}));
-
-/**
- * POST /diary/export/notes
- * Comprehensive curated PDF notebook (full lifetime window; 500 PP for free users).
- */
-router.post('/export/notes', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+router.post('/export', authenticateToken, catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated');
 
   const { data: profile } = await supabase
-    .from('profiles').select('praxis_points, is_premium').eq('id', userId).single();
+    .from('profiles').select('praxis_points, is_premium, created_at').eq('id', userId).single();
 
   const isPro = !!profile?.is_premium;
   const balance = profile?.praxis_points ?? 0;
@@ -507,10 +491,13 @@ router.post('/export/notes', authenticateToken, catchAsync(async (req: Request, 
     throw new BadRequestError(`Not enough PP. You have ${balance}, need 500.`);
   }
 
-  // Comprehensive = multi-year window (effectively full history)
-  const input = await buildNotebookPdfInput(userId, 5 * 365 * 24 * 60 * 60 * 1000);
+  // Auto-range from signup date → now. Falls back to ~5yr if created_at missing.
+  const since = profile?.created_at
+    ? new Date(profile.created_at)
+    : new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000);
+  const input = await buildNotebookPdfInput(userId, since);
 
-  // Deduct PP before streaming (so failures don't double-charge)
+  // Deduct PP before streaming (so mid-stream failures don't double-charge on retry)
   if (!isPro) {
     await supabase.from('profiles').update({ praxis_points: balance - 500 }).eq('id', userId);
   }

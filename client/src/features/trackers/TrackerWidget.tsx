@@ -60,9 +60,10 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
       if (treeData?.nodes) {
         const nodes = treeData.nodes as any[];
         const domains = [...new Set(nodes.map(n => n.domain).filter(Boolean))];
-        const trackerIdsToActivate = new Set<string>();
+        // Tiered reveal: journal + top-2 trackers per domain. Extras live behind "Add Tracker" in profile.
+        const trackerIdsToActivate = new Set<string>(['journal']);
         domains.forEach(d => {
-          const trackerIds = DOMAIN_TRACKER_MAP[d] ?? [];
+          const trackerIds = (DOMAIN_TRACKER_MAP[d] ?? []).slice(0, 2);
           trackerIds.forEach(id => trackerIdsToActivate.add(id));
         });
 
@@ -72,7 +73,11 @@ const TrackerWidget: React.FC<TrackerWidgetProps> = ({ userId }) => {
           .eq('user_id', userId);
 
         const existingTypes = new Set(activeTrackers?.map(t => t.type) ?? []);
-        const toCreate = [...trackerIdsToActivate].filter(id => !existingTypes.has(id));
+        const hasAnyTracker = existingTypes.size > 0;
+        // Only auto-seed on a completely cold tracker slate — don't re-add after user removes something.
+        const toCreate = hasAnyTracker
+          ? []
+          : [...trackerIdsToActivate].filter(id => !existingTypes.has(id));
 
         if (toCreate.length > 0) {
           const inserts = toCreate.map(type => ({ user_id: userId, type }));

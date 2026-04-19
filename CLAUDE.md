@@ -13,16 +13,12 @@ Praxis = daily goal journal + accountability buddy PWA. Goal tree = emotional li
 - Deployment: Vercel (static React) + Railway (Express API)
 - API base: `client/src/lib/api.ts` exports `API_URL`
 
-## Multi-Agent Workflow
+## Coordination Docs
 
-Three CLI agents: **Claude Code**, **Gemini CLI**, **Qwen CLI**.
-
-1. **Check `claude_steps.txt` session start** — canonical dev log/task list.
-2. **Update `claude_steps.txt` session end** — append: session#, date, change summary, files, verification, next steps. Sign `- Sign: Claude`.
-3. **Never contradict other agent work** — `git log --oneline -20` before decisions. Respect unless user reverts.
-4. **Commit often** — clear messages for visibility.
-5. **Update `manual_actions.txt`** for SQL migrations/env changes.
-6. **Coordinate via files** — write needs in `claude_steps.txt` "Next Steps".
+- `docs/DEV_PLAN.md` — features shipped, removed, proposed. Update when shipping or removing.
+- `manual_actions.txt` — SQL migrations + env changes user must run. Update on every schema/env change.
+- `git log --oneline -20` — check before making direction changes. Respect prior agent work unless user reverts.
+- Commit often, clear messages.
 
 ## Code Conventions
 
@@ -59,20 +55,3 @@ cd client && npx tsc --noEmit
 # Build
 cd client && npm run build
 ```
-
-## Session Format (claude_steps.txt)
-
-```
-Session N: <Title>
-- <change>
-- Files: <list>
-- Verification: <status>
-- Next: <next session task>
-- Sign: Claude
-```
-
-## Remember
-
-- Read `claude_steps.txt` FIRST.
-- Commit and update `claude_steps.txt` LAST.
-- Never modify "Never modify this paragraph" block.
