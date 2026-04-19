@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError, BadRequestError, NotFoundError } from '../utils/appErrors';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { AICoachingService } from '../services/AICoachingService';
+import { getStructuredSummary } from '../services/StructuredTrackerReader';
+import { renderNotebookPdf } from '../services/NotebookPdfRenderer';
 import logger from '../utils/logger';
 
 const router = Router();
@@ -390,230 +392,139 @@ router.get('/tags', authenticateToken, catchAsync(async (req: Request, res: Resp
   res.json(uniqueTags);
 }));
 
-/**
- * GET /diary/export/plain
- * Export all diary entries as plain text (free)
- */
-router.get('/export/plain', authenticateToken, catchAsync(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
-  if (!userId) throw new UnauthorizedError('Not authenticated');
+// ---------------------------------------------------------------------------
+// Shared helper — build the full NotebookPdfInput for a user.
+// Used by both /export/plain and /export/notes so the same curated PDF content
+// (goals, structured tracker tables, life logs, metrics) powers every download.
+// ---------------------------------------------------------------------------
+async function buildNotebookPdfInput(userId: string, windowMs: number) {
+  const since = new Date(Date.now() - windowMs);
+  const sinceIso = since.toISOString();
 
   const { data: profile } = await supabase
-    .from('profiles').select('name').eq('id', userId).single();
-  const userName = profile?.name || 'User';
+    .from('profiles').select('name, praxis_points, is_premium').eq('id', userId).single();
 
-  // Fetch all data sources in parallel
   const [journalsRes, nodeJournalsRes, checkinsRes, goalsRes, betsRes, achievementsRes, trackersRes] = await Promise.all([
-    supabase.from('journal_entries').select('note, mood, created_at')
-      .eq('user_id', userId).order('created_at', { ascending: true }),
-    supabase.from('node_journal_entries').select('node_id, note, mood, logged_at')
-      .eq('user_id', userId).order('logged_at', { ascending: true }),
-    supabase.from('checkins').select('mood, win_of_the_day, checked_in_at, streak_day')
-      .eq('user_id', userId).order('checked_in_at', { ascending: true }),
+    supabase.from('journal_entries').select('note, mood, created_at').eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('node_journal_entries').select('node_id, note, mood, logged_at').eq('user_id', userId).order('logged_at', { ascending: true }),
+    supabase.from('checkins').select('mood, win_of_the_day, checked_in_at, streak_day').eq('user_id', userId).order('checked_in_at', { ascending: true }),
     supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
-    supabase.from('bets').select('goal_name, stake_points, status, created_at')
-      .eq('user_id', userId).order('created_at', { ascending: true }),
-    supabase.from('achievements').select('title, domain, created_at')
-      .eq('user_id', userId).order('created_at', { ascending: true }),
-    supabase.from('trackers').select('id, type, goal')
-      .eq('user_id', userId),
+    supabase.from('bets').select('goal_name, stake_points, status, created_at').eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('achievements').select('title, domain, created_at').eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('trackers').select('id, type, goal').eq('user_id', userId),
   ]);
 
   const journals = journalsRes.data || [];
   const nodeJournals = nodeJournalsRes.data || [];
   const checkins = checkinsRes.data || [];
-  const nodes: any[] = goalsRes.data?.nodes || [];
+  const goalNodes: any[] = goalsRes.data?.nodes || [];
   const bets = betsRes.data || [];
   const achievements = achievementsRes.data || [];
   const trackers = trackersRes.data || [];
 
-  // Fetch tracker entries if user has trackers
-  let trackerEntries: any[] = [];
-  if (trackers.length > 0) {
-    const trackerIds = trackers.map((t: any) => t.id);
+  const structured = await getStructuredSummary(userId, sinceIso, 2000).catch(() => null);
+
+  // Legacy JSONB tracker rows ONLY for tracker types without a structured table
+  const structuredTypes = new Set(['lift','meal','cardio','steps','sleep','meditation','study','books','budget','expenses','investments','music','journal','gaming']);
+  const legacyTrackers = trackers.filter((t: any) => !structuredTypes.has(t.type));
+  const legacyTypeById: Record<string, string> = {};
+  for (const t of legacyTrackers) legacyTypeById[t.id] = t.type;
+  let legacyRows: Array<{ type: string; logged_at: string; data: any }> = [];
+  if (legacyTrackers.length > 0) {
     const { data } = await supabase.from('tracker_entries')
       .select('tracker_id, data, logged_at')
-      .in('tracker_id', trackerIds)
+      .in('tracker_id', legacyTrackers.map((t: any) => t.id))
       .order('logged_at', { ascending: true });
-    trackerEntries = data || [];
+    legacyRows = (data || []).map((r: any) => ({ type: legacyTypeById[r.tracker_id] || 'log', logged_at: r.logged_at, data: r.data }));
   }
-  const trackerTypeMap: Record<string, string> = {};
-  for (const t of trackers) trackerTypeMap[t.id] = t.type;
 
-  // Build node name map
+  // Build timeline (journals + node journals + checkins + bets + achievements)
   const nodeNameMap: Record<string, string> = {};
-  for (const n of nodes) nodeNameMap[n.id] = n.name || 'Goal';
+  for (const n of goalNodes) nodeNameMap[n.id] = n.name || 'Goal';
 
-  // Merge all entries into timeline
-  const timeline: Array<{ date: string; text: string }> = [];
-
-  for (const e of journals) {
-    timeline.push({
-      date: e.created_at,
-      text: `${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim(),
-    });
-  }
-  for (const e of nodeJournals) {
-    const goalName = nodeNameMap[e.node_id] || 'a goal';
-    timeline.push({
-      date: e.logged_at,
-      text: `[${goalName}] ${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim(),
-    });
-  }
-  for (const e of checkins) {
-    timeline.push({
-      date: e.checked_in_at,
-      text: `Check-in Day ${e.streak_day}${e.mood ? ' · ' + e.mood : ''}${e.win_of_the_day ? ' — Win: ' + e.win_of_the_day : ''}`,
-    });
-  }
+  const timeline: Array<{ date: string; kind: string; text: string }> = [];
+  for (const e of journals) timeline.push({ date: e.created_at, kind: 'Journal', text: `${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim() });
+  for (const e of nodeJournals) timeline.push({ date: e.logged_at, kind: nodeNameMap[e.node_id] || 'Goal', text: `${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim() });
+  for (const e of checkins) timeline.push({ date: e.checked_in_at, kind: 'Check-in', text: `Day ${e.streak_day}${e.mood ? ' · ' + e.mood : ''}${e.win_of_the_day ? ' — Win: ' + e.win_of_the_day : ''}` });
   for (const e of bets) {
-    const status = e.status === 'won' ? '🏆 Won' : e.status === 'lost' ? '💸 Lost' : '🎰 Placed';
-    timeline.push({
-      date: e.created_at,
-      text: `${status} bet on "${e.goal_name}" (${e.stake_points} PP)`,
-    });
+    const status = e.status === 'won' ? 'Won' : e.status === 'lost' ? 'Lost' : 'Placed';
+    timeline.push({ date: e.created_at, kind: 'Bet', text: `${status} bet on "${e.goal_name}" (${e.stake_points} PP)` });
   }
-  for (const e of achievements) {
-    timeline.push({
-      date: e.created_at,
-      text: `🏆 Achievement: "${e.title}" (${e.domain})`,
-    });
-  }
-  // Tracker entries — format by type
-  for (const e of trackerEntries) {
-    const tType = trackerTypeMap[e.tracker_id] || 'log';
-    const d = e.data || {};
-    let text = `[Tracker: ${tType}] `;
-    if (tType === 'lift') text += `${d.exercise || '?'} ${d.sets}x${d.reps} @ ${d.weight}kg`;
-    else if (tType === 'cardio') text += `${d.activity || '?'} ${d.duration || '?'}min${d.distance ? ' ' + d.distance + 'km' : ''}`;
-    else if (tType === 'meal') text += `${d.food || '?'}${d.calories ? ' ' + d.calories + ' kcal' : ''}${d.protein ? ' P:' + d.protein + 'g' : ''}`;
-    else if (tType === 'steps') text += `${d.steps || 0} steps (goal: ${d.goal || '?'})`;
-    else if (tType === 'sleep') text += `${d.hours || '?'}h sleep${d.quality ? ' (' + d.quality + ')' : ''}`;
-    else if (tType === 'study') text += `${d.subject || '?'} ${d.duration || '?'}min`;
-    else if (tType === 'books') text += `"${d.title || '?'}" ${d.pages || '?'} pages`;
-    else if (tType === 'music') text += `${d.instrument || '?'} ${d.duration || '?'}min`;
-    else if (tType === 'expenses') text += `${d.description || '?'} ${d.amount || '?'} ${d.currency || ''}`;
-    else text += JSON.stringify(d);
-    timeline.push({ date: e.logged_at, text: text.trim() });
-  }
+  for (const e of achievements) timeline.push({ date: e.created_at, kind: 'Achievement', text: `${e.title} (${e.domain})` });
 
-  // Sort chronologically
-  timeline.sort((a, b) => a.date.localeCompare(b.date));
+  return {
+    userName: profile?.name || 'User',
+    since,
+    until: new Date(),
+    isPro: !!profile?.is_premium,
+    balance: profile?.praxis_points ?? 0,
+    goals: goalNodes.map((n: any) => ({
+      id: n.id,
+      name: n.name || 'Goal',
+      domain: n.domain,
+      progress: n.progress,
+      parentId: n.parentId ?? null,
+      customDetails: n.customDetails,
+    })),
+    timeline,
+    structured,
+    legacyTrackerLogs: legacyRows,
+    checkinCount: checkins.length,
+    achievementCount: achievements.length,
+  };
+}
 
-  // Format as plain text diary
-  let output = `${userName}'s Praxis Diary\n`;
-  output += `${'='.repeat(40)}\n`;
-  output += `Exported: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`;
-  output += `Total entries: ${timeline.length}\n\n`;
+/**
+ * GET /diary/export/plain
+ * Free curated PDF notebook (goals, tracker tables, life logs).
+ */
+router.get('/export/plain', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
 
-  let currentDate = '';
-  for (const entry of timeline) {
-    const day = entry.date.slice(0, 10);
-    if (day !== currentDate) {
-      currentDate = day;
-      const d = new Date(day + 'T00:00:00');
-      output += `\n--- ${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} ---\n\n`;
-    }
-    const time = new Date(entry.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    output += `  ${time}  ${entry.text}\n`;
-  }
-
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="praxis-diary-${new Date().toISOString().slice(0, 10)}.txt"`);
-  res.send(output);
+  // 365-day window keeps file size sane on the free tier.
+  const input = await buildNotebookPdfInput(userId, 365 * 24 * 60 * 60 * 1000);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="praxis-notebook-${new Date().toISOString().slice(0, 10)}.pdf"`);
+  renderNotebookPdf(input, res);
 }));
 
 /**
  * POST /diary/export/notes
- * Comprehensive Markdown export of the entire notebook (costs 500 PP for free users)
+ * Comprehensive curated PDF notebook (full lifetime window; 500 PP for free users).
  */
 router.post('/export/notes', authenticateToken, catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated');
 
-  // 1. Fetch user profile for balance and status
   const { data: profile } = await supabase
-    .from('profiles').select('name, praxis_points, is_premium').eq('id', userId).single();
+    .from('profiles').select('praxis_points, is_premium').eq('id', userId).single();
 
   const isPro = !!profile?.is_premium;
   const balance = profile?.praxis_points ?? 0;
-  const userName = profile?.name || 'User';
 
   if (!isPro && balance < 500) {
     throw new BadRequestError(`Not enough PP. You have ${balance}, need 500.`);
   }
 
-  // 2. Fetch ALL data
-  const [journalsRes, nodeJournalsRes, checkinsRes, goalsRes, betsRes, achievementsRes, trackersRes, friendsRes] = await Promise.all([
-    supabase.from('journal_entries').select('note, mood, created_at')
-      .eq('user_id', userId).order('created_at', { ascending: true }),
-    supabase.from('node_journal_entries').select('node_id, note, mood, logged_at')
-      .eq('user_id', userId).order('logged_at', { ascending: true }),
-    supabase.from('checkins').select('mood, win_of_the_day, checked_in_at, streak_day')
-      .eq('user_id', userId).order('checked_in_at', { ascending: true }),
-    supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
-    supabase.from('bets').select('goal_name, stake_points, status, created_at')
-      .eq('user_id', userId).order('created_at', { ascending: true }),
-    supabase.from('achievements').select('title, domain, created_at')
-      .eq('user_id', userId).order('created_at', { ascending: true }),
-    supabase.from('trackers').select('id, type, goal')
-      .eq('user_id', userId),
-    supabase.from('messages').select('sender_id, receiver_id').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`).is('room_id', null).limit(100),
-  ]);
+  // Comprehensive = multi-year window (effectively full history)
+  const input = await buildNotebookPdfInput(userId, 5 * 365 * 24 * 60 * 60 * 1000);
 
-  const trackers = trackersRes.data || [];
-  let trackerEntries: any[] = [];
-  if (trackers.length > 0) {
-    const { data } = await supabase.from('tracker_entries').select('tracker_id, data, logged_at').in('tracker_id', trackers.map(t => t.id)).order('logged_at', { ascending: true });
-    trackerEntries = data || [];
-  }
-
-  // Build Markdown
-  let md = `# Praxis Notebook: ${userName}\n`;
-  md += `Exported: ${new Date().toLocaleDateString()}\n\n`;
-
-  // Goals
-  md += `## 🎯 Goals & Hierarchy\n\n`;
-  const nodes = goalsRes.data?.nodes || [];
-  for (const n of nodes) {
-    const indent = n.parentId ? '  ' : '';
-    md += `${indent}- **${n.name}** (${n.domain}) — ${Math.round((n.progress || 0) * 100)}%\n`;
-    if (n.customDetails) md += `${indent}  *${n.customDetails}*\n`;
-  }
-  md += `\n`;
-
-  // Trackers
-  md += `## 📊 Daily Trackers\n\n`;
-  for (const t of trackers) {
-    md += `### ${t.type.toUpperCase()}: ${t.goal || 'General'}\n`;
-    const entries = trackerEntries.filter(e => e.tracker_id === t.id);
-    for (const e of entries) {
-      md += `- ${new Date(e.logged_at).toLocaleDateString()}: ${JSON.stringify(e.data)}\n`;
-    }
-    md += `\n`;
-  }
-
-  // Diary
-  md += `## 📓 Life Logs\n\n`;
-  const timeline: any[] = [];
-  (journalsRes.data || []).forEach(e => timeline.push({ d: e.created_at, t: `[Journal] ${e.mood ? e.mood + ': ' : ''}${e.note}` }));
-  (checkinsRes.data || []).forEach(e => timeline.push({ d: e.checked_in_at, t: `[Check-in] Day ${e.streak_day}: ${e.win_of_the_day}` }));
-  timeline.sort((a, b) => b.d.localeCompare(a.d));
-  for (const entry of timeline) {
-    md += `### ${new Date(entry.d).toLocaleDateString()}\n${entry.t}\n\n`;
-  }
-
-  // Save to profile
-  await supabase.from('profiles').update({ latest_axiom_report: { type: 'notebook_export', timestamp: new Date().toISOString(), summary: `Goals: ${nodes.length}, Logs: ${timeline.length}` } }).eq('id', userId);
-
-  // Deduct PP if not Pro
+  // Deduct PP before streaming (so failures don't double-charge)
   if (!isPro) {
     await supabase.from('profiles').update({ praxis_points: balance - 500 }).eq('id', userId);
   }
+  await supabase.from('profiles').update({
+    latest_axiom_report: {
+      type: 'notebook_export',
+      timestamp: new Date().toISOString(),
+      summary: `Goals: ${input.goals.length}, Logs: ${input.timeline.length}`,
+    },
+  }).eq('id', userId);
 
-  res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="praxis-notebook-${new Date().toISOString().slice(0, 10)}.md"`);
-  res.send(md);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="praxis-notebook-${new Date().toISOString().slice(0, 10)}.pdf"`);
+  renderNotebookPdf(input, res);
 }));
 
 /**

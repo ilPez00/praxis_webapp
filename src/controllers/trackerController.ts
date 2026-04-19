@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError, BadRequestError } from '../utils/appErrors';
+import { writeStructured, isStructuredType } from '../services/StructuredTrackerWriter';
 
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('42P01') || msg?.includes('does not exist');
@@ -381,13 +382,34 @@ export const logTracker = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
-  // Insert entry
-  const { error: insertErr } = await supabase
+  // Insert entry (returning id for structured dual-write)
+  const { data: inserted, error: insertErr } = await supabase
     .from('tracker_entries')
-    .insert({ tracker_id: tracker.id, user_id: userId, data });
+    .insert({ tracker_id: tracker.id, user_id: userId, data })
+    .select('id, logged_at')
+    .single();
 
-  if (insertErr) {
-    throw new Error(`Failed to insert tracker entry: ${insertErr.message}`);
+  if (insertErr || !inserted) {
+    throw new Error(`Failed to insert tracker entry: ${insertErr?.message ?? 'no row returned'}`);
+  }
+
+  // Dual-write into the structured per-category table so Axiom + notebook
+  // export can read typed rows with computed metrics (volume_kg, calories,
+  // pace_min_per_km, total_eur, …) instead of parsing JSONB blobs.
+  if (isStructuredType(type)) {
+    try {
+      await writeStructured(type, data, {
+        userId,
+        trackerId: tracker.id,
+        trackerEntryId: inserted.id,
+        nodeId: (data as any)?.node_id ?? (data as any)?.nodeId ?? null,
+        loggedAt: inserted.logged_at,
+      });
+    } catch (err: any) {
+      // Non-fatal: JSONB row already persisted.
+      // eslint-disable-next-line no-console
+      console.warn(`[logTracker] structured write failed for ${type}:`, err?.message);
+    }
   }
 
   // Award PP (fire-and-forget)

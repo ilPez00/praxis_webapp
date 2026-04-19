@@ -41,7 +41,6 @@ import DownloadIcon from '@mui/icons-material/Download';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { TRACKER_MAP } from '../trackers/trackerTypes';
 import EditableTrackerForm from '../trackers/EditableTrackerForm';
 
@@ -175,23 +174,26 @@ const NotesPage: React.FC = () => {
   }, [notebookEntriesForMap, selectedCalendarDate]);
 
   // ── Diary export handlers ─────────────────────────────────────
+  const downloadPdfBlob = (blob: Blob, suffix = '') => {
+    const pdfBlob = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `praxis-notebook${suffix ? '-' + suffix : ''}-${new Date().toISOString().slice(0, 10)}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportPlain = async () => {
     if (!currentUserId) return;
     setExporting('plain');
     try {
-      const res = await api.get('/diary/export/plain', { responseType: 'text' });
-      const text = res.data;
-      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `praxis-diary-${new Date().toISOString().slice(0, 10)}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Diary downloaded!');
+      const res = await api.get('/diary/export/plain', { responseType: 'blob' });
+      downloadPdfBlob(res.data);
+      toast.success('Notebook PDF downloaded!');
       setExportDialogOpen(false);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to export diary');
+      toast.error(err.message || 'Failed to export notebook');
     } finally {
       setExporting(null);
     }
@@ -202,14 +204,8 @@ const NotesPage: React.FC = () => {
     setExporting('notes');
     try {
       const res = await api.post('/diary/export/notes', {}, { responseType: 'blob' });
-      const blob = res.data;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `praxis-notes-${new Date().toISOString().slice(0, 10)}.md`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Complete Notes Export downloaded!');
+      downloadPdfBlob(res.data, 'full');
+      toast.success('Complete notebook PDF downloaded!');
       if (!user?.is_premium) setPraxisPoints(prev => (prev ?? 0) - 500);
       setExportDialogOpen(false);
     } catch (err: any) {
@@ -640,28 +636,6 @@ const NotesPage: React.FC = () => {
               >
                 Ask Axiom
               </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<TrendingUpIcon />}
-                onClick={() => navigate('/analytics')}
-                sx={{
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  px: 1.5,
-                  py: 0.4,
-                  minWidth: 'auto',
-                  border: '1.5px solid #10B981',
-                  color: '#10B981',
-                  fontSize: '0.75rem',
-                  '&:hover': {
-                    border: '1.5px solid #059669',
-                    bgcolor: 'rgba(16, 185, 129, 0.08)',
-                  },
-                }}
-              >
-                Trend
-              </Button>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <ShareButton
@@ -990,11 +964,11 @@ const NotesPage: React.FC = () => {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <DescriptionIcon sx={{ color: '#9CA3AF' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Plain Text Notebook</Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Notebook PDF (last year)</Typography>
                   <Chip label="FREE" size="small" sx={{ height: 18, bgcolor: 'rgba(148,163,184,0.2)', color: '#94A3B8' }} />
                 </Box>
                 <Typography variant="caption" color="text.secondary">
-                  Raw chronological export of all entries, check-ins, and achievements
+                  Curated PDF with goals, tracker tables, metrics dashboard, and life logs (365-day window)
                 </Typography>
                 {exporting === 'plain' && (
                   <Box sx={{ mt: 1.5 }}>
@@ -1016,7 +990,7 @@ const NotesPage: React.FC = () => {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <MenuBookIcon sx={{ color: '#A78BFA' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Complete Notebook Export</Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Complete Notebook PDF (full history)</Typography>
                   {user?.is_premium ? (
                     <Chip label="PRO" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B' }} />
                   ) : (
@@ -1024,7 +998,7 @@ const NotesPage: React.FC = () => {
                   )}
                 </Box>
                 <Typography variant="caption" color="text.secondary">
-                  Comprehensive export including goals, accountability partners, trackers, check-ins, achievements, and diary entries (formatted as Markdown)
+                  Full-history curated PDF: cover, metrics dashboard, per-tracker tables (lifts, meals, cardio, etc.), goal hierarchy, and life-log timeline
                 </Typography>
                 <Box sx={{ mt: 1.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   <Chip label="🎯 Goals" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />

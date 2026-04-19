@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { AICoachingService } from './AICoachingService';
 import { axiomMultimodalService } from './AxiomMultimodalService';
+import { getStructuredSummary, summaryToPromptText, StructuredSummary } from './StructuredTrackerReader';
 
 interface ProgressEstimate {
   goalId: string;
@@ -52,7 +53,7 @@ export class AxiomProgressEstimationService {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const sevenDaysAgoStr = sevenDaysAgo.toISOString();
 
-      const [notebookEntries, trackerEntries, checkins] = await Promise.all([
+      const [notebookEntries, trackerEntries, checkins, structuredSummary] = await Promise.all([
         supabase
           .from('notebook_entries')
           .select('*')
@@ -68,6 +69,7 @@ export class AxiomProgressEstimationService {
           .select('checked_in_at, mood, win_of_the_day')
           .eq('user_id', userId)
           .gte('checked_in_at', sevenDaysAgoStr),
+        getStructuredSummary(userId, sevenDaysAgoStr),
       ]);
 
       // Analyze each goal
@@ -78,7 +80,8 @@ export class AxiomProgressEstimationService {
           node,
           notebookEntries.data || [],
           trackerEntries.data || [],
-          checkins.data || []
+          checkins.data || [],
+          structuredSummary
         );
 
         // Only update if significant change suggested (>5% difference)
@@ -127,7 +130,8 @@ export class AxiomProgressEstimationService {
     node: any,
     notebookEntries: any[],
     trackerEntries: any[],
-    checkins: any[]
+    checkins: any[],
+    structuredSummary?: StructuredSummary
   ): Promise<ProgressEstimate> {
     const goalId = node.id;
     const goalName = node.name;
@@ -231,7 +235,8 @@ export class AxiomProgressEstimationService {
         goalNotebookEntries,
         goalTrackers,
         currentProgress,
-        allAttachments
+        allAttachments,
+        structuredSummary
       );
     }
 
@@ -275,7 +280,8 @@ export class AxiomProgressEstimationService {
     notebookEntries: any[],
     trackerEntries: any[],
     currentProgress: number,
-    attachments: any[] = []
+    attachments: any[] = [],
+    structuredSummary?: StructuredSummary
   ): Promise<number> {
     try {
       const aiCoaching = new AICoachingService();
@@ -299,9 +305,12 @@ ${notebookEntries.slice(0, 5).map((e: any) => {
   return `- ${e.occurred_at?.slice(0, 10)}: "${e.title || 'Untitled'}"${attachments} — ${e.content?.slice(0, 80) || 'no text'} ${e.mood ? `(${e.mood})` : ''}`;
 }).join('\n') || 'None'}
 
-Trackers (${trackerEntries.length}):
-${trackerEntries.slice(0, 5).map((e: any) => 
-  `- ${e.logged_at?.slice(0, 10)}: ${JSON.stringify(e.data)}`
+Trackers (aggregates from typed tables, last 7 days):
+${structuredSummary ? summaryToPromptText(structuredSummary) : '(none)'}
+
+Raw tracker entries linked to goal name (${trackerEntries.length}):
+${trackerEntries.slice(0, 3).map((e: any) =>
+  `- ${e.logged_at?.slice(0, 10)}: ${JSON.stringify(e.data).slice(0, 120)}`
 ).join('\n') || 'None'}${attachmentNote}
 
 RULES:

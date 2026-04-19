@@ -54,3 +54,28 @@ Key architectural changes:
 - Remaining: #14 OSM → Google Maps (BLOCKED on GOOGLE_MAPS_API_KEY)
 - Next: user supplies Maps key OR deploy & test current build
 - Sign: Claude
+
+# Session: 2026-04-19 — Structured Tracker Tables (per-category) + Axiom reader
+- Migration migrations/2026-04-19-structured-tracker-tables.sql: drops earlier unified tracker_metrics, creates 13 per-category tables (tracker_lifts, tracker_meals, tracker_cardio, tracker_steps, tracker_sleep, tracker_meditation, tracker_study, tracker_books, tracker_expenses, tracker_investments, tracker_music, tracker_journal, tracker_gaming). Each has GENERATED computed metrics (volume_kg, pace_min_per_km, total_eur), owner+service_role RLS, logged_at/user_id indexes.
+- StructuredTrackerWriter.ts: maps tracker type+payload to typed inserts; handles single + items[] shapes; field aliasing (weight↔weight_kg, protein↔protein_g, duration↔duration_min).
+- StructuredTrackerReader.ts: getStructuredSummary(userId, since, limit) returns aggregates + recent rows per category; summaryToPromptText() produces compact token-efficient LLM text.
+- trackerController.logTracker: captures inserted id from tracker_entries, dual-writes to structured table (non-fatal on error) — JSONB remains primary for back-compat.
+- AxiomProgressEstimationService: replaces raw JSONB tracker dump in LLM prompt with summaryToPromptText; Promise.all now includes structured fetch.
+- notebookAxiomController (Axiom notebook Q&A): adds parallel structuredSummaryPromise; prompt now has "TRACKER AGGREGATES" section with computed volume/calories/macros/distance/pace.
+- diaryRoutes /export/notes: adds mdTable+renderStructuredMarkdown helpers; renders 13 per-category markdown tables with emoji headers (🏋️🥗🏃👟🛌🧘📚📖💸📈🎵📓🎮) + summary header counts. /export/plain prefers structured rows for supported types; JSONB fallback only for unknown tracker types.
+- Files: migrations/2026-04-19-structured-tracker-tables.sql (NEW), src/services/StructuredTrackerWriter.ts (NEW), src/services/StructuredTrackerReader.ts (NEW), src/controllers/trackerController.ts, src/services/AxiomProgressEstimationService.ts, src/controllers/notebookAxiomController.ts, src/routes/diaryRoutes.ts
+- Verification: backend `tsc --noEmit` passes, client `tsc --noEmit` passes.
+- Manual action (USER): run migrations/2026-04-19-structured-tracker-tables.sql in Supabase SQL editor. Existing JSONB data stays intact; going forward, every logTracker call dual-writes structured rows. Backfill of historical tracker_entries rows can be done later with a script that replays data through writeStructured().
+- Next: ship + verify a few logs land in structured tables; write optional backfill script if Gio wants history in structured form.
+- Sign: Claude
+
+# Session: 2026-04-19 — Notebook download = curated PDF + remove Trend button
+- Installed pdfkit + @types/pdfkit.
+- NEW src/services/NotebookPdfRenderer.ts: streaming PDF writer with cover page ("At a glance" metric tiles), goals hierarchy, per-tracker zebra-striped tables (lifts/meals/cardio/steps/sleep/meditation/study/books/expenses/investments/music/journal/gaming), life-log timeline grouped by day, and page footer with pagination. Auto-paginates on overflow; header row repeats on page break.
+- diaryRoutes: /export/plain (GET) now streams a free 365-day PDF; /export/notes (POST) streams full-history PDF (500 PP or Pro). Shared buildNotebookPdfInput() fetches goals, checkins, achievements, bets, journals, node_journals, structuredSummary, and legacy JSONB tracker rows. Old markdown helpers deleted.
+- NotesPage: removed the Trend button (navigated to /analytics) per "remove metrics button from notebook"; removed TrendingUpIcon import; export dialog copy updated ("Notebook PDF (last year)" / "Complete Notebook PDF (full history)"); both download handlers now set responseType: 'blob' and save as .pdf via downloadPdfBlob helper.
+- Smoke test: rendered a fixture to /tmp/smoke.pdf — 5.9 KB, valid %PDF-1.3 header + %%EOF trailer.
+- Files: package.json (pdfkit), src/services/NotebookPdfRenderer.ts (NEW), src/routes/diaryRoutes.ts, client/src/features/notes/NotesPage.tsx
+- Verification: backend `tsc --noEmit` passes, client `tsc --noEmit` passes, PDF smoke test passes.
+- Next: user tests download in UI, then I wire /export/axiom narrative into the PDF flow if he wants that too.
+- Sign: Claude

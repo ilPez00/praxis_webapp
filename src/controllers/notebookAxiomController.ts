@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from '../services/AICoachingService';
 import { catchAsync, UnauthorizedError, BadRequestError } from '../utils/appErrors';
 import logger from '../utils/logger';
+import { getStructuredSummary, summaryToPromptText } from '../services/StructuredTrackerReader';
 
 const aiCoachingService = new AICoachingService();
 
@@ -55,6 +56,7 @@ async function buildNotebookContext(userId: string, question: string): Promise<a
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString();
 
   // Fetch all relevant data in parallel
+  const structuredSummaryPromise = getStructuredSummary(userId, thirtyDaysAgoStr).catch(() => null);
   const [
     profileRes,
     notebookEntriesRes,
@@ -138,6 +140,8 @@ async function buildNotebookContext(userId: string, question: string): Promise<a
       description: n.description,
     }));
 
+  const structuredSummary = await structuredSummaryPromise;
+
   return {
     userName: profile?.name || 'User',
     bio: profile?.bio,
@@ -148,6 +152,7 @@ async function buildNotebookContext(userId: string, question: string): Promise<a
     tags,
     goals: rootGoals,
     trackers,
+    structuredSummary,
     checkins,
     question,
   };
@@ -161,7 +166,7 @@ async function buildNotebookContext(userId: string, question: string): Promise<a
  * Generate a prompt for Axiom to answer questions about user's notebook data.
  */
 function buildNotebookQueryPrompt(context: any): string {
-  const { userName, notebookEntries, tags, goals, trackers, checkins, question } = context;
+  const { userName, notebookEntries, tags, goals, trackers, structuredSummary, checkins, question } = context;
 
   const entriesSummary = notebookEntries.length > 0
     ? notebookEntries.map((e: any, i: number) => 
@@ -180,6 +185,10 @@ function buildNotebookQueryPrompt(context: any): string {
   const trackersSummary = trackers.length > 0
     ? trackers.map((t: any) => `- ${t.type}: ${t.goal?.template_rows?.length || 0} items tracked`).join('\n')
     : '(No trackers)';
+
+  const structuredTrackerSummary = structuredSummary
+    ? summaryToPromptText(structuredSummary)
+    : '(No structured tracker data)';
 
   const checkinsSummary = checkins.length > 0
     ? checkins.slice(0, 7).map((c: any) => 
@@ -203,6 +212,9 @@ ${goalsSummary}
 
 TRACKERS:
 ${trackersSummary}
+
+TRACKER AGGREGATES (last 30 days, computed from typed tables — volume, calories, macros, distance, pace, etc.):
+${structuredTrackerSummary}
 
 RECENT CHECK-INS:
 ${checkinsSummary}

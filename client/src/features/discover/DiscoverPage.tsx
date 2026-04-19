@@ -13,20 +13,18 @@ import {
 } from '@mui/material';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import PlaceIcon from '@mui/icons-material/Place';
-import EventIcon from '@mui/icons-material/Event';
 import AppsIcon from '@mui/icons-material/Apps';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { useUser } from '../../hooks/useUser';
 import LocationMap, { MapMarker } from '../../components/common/LocationMap';
 import GlassCard from '../../components/common/GlassCard';
-import { useMatches, usePlaces, useEvents } from '../../hooks/useFetch';
+import { useMatches, usePlaces } from '../../hooks/useFetch';
 
 // Lazy load the list components for better performance
 const MatchesPage = React.lazy(() => import('../matches/MatchesPage'));
 const PlacesTab = React.lazy(() => import('../places/PlacesTab'));
-const EventsPage = React.lazy(() => import('../events/EventsPage'));
 
-type FilterType = 'all' | 'people' | 'places' | 'events';
+type FilterType = 'all' | 'people' | 'places';
 
 const DiscoverPage: React.FC = () => {
   const { t } = useTranslation();
@@ -40,16 +38,14 @@ const DiscoverPage: React.FC = () => {
   // Fetch data using optimized SWR hooks
   const { data: matches, loading: loadingMatches, mutate: mutateMatches } = useMatches(user?.id);
   const { data: places, loading: loadingPlaces, mutate: mutatePlaces } = usePlaces();
-  const { data: events, loading: loadingEvents, mutate: mutateEvents } = useEvents();
 
-  const isLoading = loadingMatches || loadingPlaces || loadingEvents;
+  const isLoading = loadingMatches || loadingPlaces;
 
   // Sync state with URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
     if (tabParam === 'places') setFilter('places');
-    else if (tabParam === 'events') setFilter('events');
     else if (tabParam === 'people') setFilter('people');
     else setFilter('all');
   }, [location]);
@@ -102,25 +98,14 @@ const DiscoverPage: React.FC = () => {
       type: 'place'
     }));
 
-    // Process Events
-    (events || []).filter((e: any) => e.latitude && e.longitude).forEach((e: any) => newMarkers.push({
-      id: e.id,
-      title: e.title,
-      subtitle: e.event_date,
-      lat: e.latitude,
-      lng: e.longitude,
-      type: 'event'
-    }));
-
     return newMarkers;
-  }, [matches, places, events]);
+  }, [matches, places]);
 
   const filteredMarkers = useMemo(() => {
     return allMarkers.filter(m => {
       if (filter === 'all') return true;
       if (filter === 'people') return m.type === 'user';
       if (filter === 'places') return m.type === 'place';
-      if (filter === 'events') return m.type === 'event';
       return true;
     });
   }, [allMarkers, filter]);
@@ -128,7 +113,6 @@ const DiscoverPage: React.FC = () => {
   const handleRefresh = () => {
     mutateMatches();
     mutatePlaces();
-    mutateEvents();
   };
 
   const handleMarkerClick = (id: string, type?: string) => {
@@ -162,7 +146,6 @@ const DiscoverPage: React.FC = () => {
               { id: 'all', label: t('everything'), icon: <AppsIcon fontSize="small" /> },
               { id: 'people', label: t('people'), icon: <PersonSearchIcon fontSize="small" /> },
               { id: 'places', label: t('places'), icon: <PlaceIcon fontSize="small" /> },
-              { id: 'events', label: t('events'), icon: <EventIcon fontSize="small" /> },
             ].map((btn) => (
               <Chip
                 key={btn.id}
@@ -216,15 +199,10 @@ const DiscoverPage: React.FC = () => {
                 <Typography variant="overline" sx={{ color: '#6366F1', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>Recommended Places</Typography>
                 <PlacesTab currentUserId={user?.id} compact hideMap />
               </Box>
-              <Box>
-                <Typography variant="overline" sx={{ color: '#EC4899', fontWeight: 900, mb: 2, display: 'block', px: 1 }}>Upcoming Events</Typography>
-                <EventsPage compact hideMap />
-              </Box>
             </Stack>
           )}
           {filter === 'people' && <MatchesPage />}
           {filter === 'places' && <PlacesTab currentUserId={user?.id} hideMap />}
-          {filter === 'events' && <EventsPage hideMap />}
         </React.Suspense>
       </Container>
     </Box>
