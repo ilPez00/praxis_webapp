@@ -63,6 +63,7 @@ import accountabilityBuddyRoutes from './routes/accountabilityBuddyRoutes';
 import failsRoutes from './routes/failsRoutes';
 import weeklyChallengeRoutes from './routes/weeklyChallengeRoutes';
 import agentRoutes from './routes/agentRoutes';
+import mcpRoutes from './routes/mcpRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -273,6 +274,9 @@ apiRouter.use('/buddies', generalLimiter, accountabilityBuddyRoutes);
 apiRouter.use('/fails', generalLimiter, failsRoutes);
 apiRouter.use('/weekly-challenge', generalLimiter, weeklyChallengeRoutes);
 apiRouter.use('/agent', generalLimiter, agentRoutes);
+
+// MCP server for AI agents
+app.use('/mcp', mcpRoutes);
 
 app.use('/api', apiRouter);
 

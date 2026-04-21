@@ -10,9 +10,12 @@ router.get('/connect/:slug', authenticateToken, controller.connectAgent);
 
 router.post('/keys/exchange', controller.exchangeCode);
 
+router.post('/keys/direct', authenticateToken, controller.createKeyDirect);
+
 router.use(authenticateToken);
 
 router.get('/keys', controller.listKeys);
+router.get('/keys/:id', controller.getKey);
 router.delete('/keys/:id', controller.revokeKey);
 
 export default router;

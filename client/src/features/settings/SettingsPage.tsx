@@ -19,6 +19,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import LanguageIcon from '@mui/icons-material/Language';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
@@ -74,8 +75,12 @@ function AgentsPanel() {
   const loadAgents = async () => {
     try {
       const res = await api.get('/agent/agents');
+      console.log('[API Access] agents response:', res.data);
       setAgents(res.data.agents || []);
-    } catch { setAgents([]); }
+    } catch (e) { 
+      console.error('[API Access] agents error:', e); 
+      setAgents([]); 
+    }
     setLoading(false);
   };
 
@@ -90,13 +95,31 @@ function AgentsPanel() {
     setConnecting(slug);
     try {
       const res = await api.get('/agent/connect/' + slug);
-      if (res.request?.responseURL) {
-        window.location.href = res.request.responseURL;
+      if (res.data?.connect_url) {
+        window.open(res.data.connect_url, '_blank');
       }
     } catch {
-      toast.error('Failed to connect agent. Please try again.');
-      setConnecting(null);
+      toast.error('Failed to connect. Please try again.');
     }
+    setConnecting(null);
+  };
+
+  const handleGenerateKey = async (agentId: string, agentName: string, slug: string) => {
+    if (!confirm('Generate API key for ' + agentName + '?')) return;
+    setConnecting(slug);
+    try {
+      const res = await api.post('/agent/keys/direct', { agent_id: agentId });
+      if (res.data?.api_key) {
+        await navigator.clipboard.writeText(res.data.api_key);
+        toast.success('API key copied to clipboard! Config: PRAXIS_API_KEY=' + res.data.api_key);
+      } else {
+        toast.error('Failed to generate key');
+      }
+    } catch {
+      toast.error('Failed to generate key');
+    }
+    setConnecting(null);
+    loadKeys();
   };
 
   const handleRevoke = async (keyId: string, agentName: string) => {
@@ -106,6 +129,17 @@ function AgentsPanel() {
       setKeys(keys => keys.filter(k => k.id !== keyId));
       toast.success(agentName + ' disconnected');
     } catch { toast.error('Failed to revoke access'); }
+  };
+
+  const handleCopyKey = async (keyId: string) => {
+    try {
+      const res = await api.get('/agent/keys/' + keyId);
+      const fullKey = res.data?.api_key;
+      if (fullKey) {
+        await navigator.clipboard.writeText(fullKey);
+        toast.success('API key copied to clipboard!');
+      }
+    } catch { toast.error('Failed to copy key'); }
   };
 
   const connectedSlugs = keys.map(k => k.agent?.slug);
@@ -131,9 +165,14 @@ function AgentsPanel() {
                     {' · '}{key.api_key}
                   </Typography>
                 </Box>
-                <Button size="small" color="error" onClick={() => handleRevoke(key.id, key.agent?.name)}>
-                  Revoke
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button size="small" startIcon={<ContentCopyIcon />} onClick={() => handleCopyKey(key.id)}>
+                    Copy Key
+                  </Button>
+                  <Button size="small" color="error" onClick={() => handleRevoke(key.id, key.agent?.name)}>
+                    Revoke
+                  </Button>
+                </Box>
               </Box>
             ))}
           </Stack>
@@ -146,27 +185,38 @@ function AgentsPanel() {
         <Stack spacing={1}>
           {agents.map(agent => {
             const isConnected = connectedSlugs.includes(agent.slug);
+            const isLocal = ['openclaw', 'hermes', 'opencode', 'claude', 'qwen', 'gemini', 'lindy', 'relay', 'agentgpt'].includes(agent.slug);
             return (
               <Box key={agent.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="body2" fontWeight={700}>{agent.name}</Typography>
                   <Typography variant="caption" color="text.secondary">{agent.description}</Typography>
                 </Box>
-                <Button
-                  size="small"
-                  variant={isConnected ? 'outlined' : 'contained'}
-                  disabled={connecting === agent.slug || isConnected}
-                  onClick={() => handleConnect(agent.slug)}
-                  sx={{ ml: 2, minWidth: 100, borderRadius: '8px' }}
-                >
-                  {connecting === agent.slug ? (
-                    <CircularProgress size={14} color="inherit" />
-                  ) : isConnected ? (
-                    'Connected'
-                  ) : (
-                    'Connect'
-                  )}
-                </Button>
+                {isConnected ? (
+                  <Button size="small" variant="outlined" disabled sx={{ ml: 2, minWidth: 100, borderRadius: '8px' }}>
+                    Connected
+                  </Button>
+                ) : isLocal ? (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    disabled={connecting === agent.slug}
+                    onClick={() => handleGenerateKey(agent.id, agent.name, agent.slug)}
+                    sx={{ ml: 2, minWidth: 100, borderRadius: '8px' }}
+                  >
+                    {connecting === agent.slug ? <CircularProgress size={14} color="inherit" /> : 'Generate Key'}
+                  </Button>
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled
+                    title="OAuth not supported - use Generate Key instead"
+                    sx={{ ml: 2, minWidth: 100, borderRadius: '8px', opacity: 0.5 }}
+                  >
+                    Coming Soon
+                  </Button>
+                )}
               </Box>
             );
           })}
@@ -746,9 +796,9 @@ const SettingsPage: React.FC = () => {
       </Section>
 
       {/* API Access */}
-      <Section icon={<SmartToyIcon sx={{ color: '#8B5CF6' }} />} title="API Access">
+      <Section icon={<SmartToyIcon sx={{ color: '#8B5CF6' }} />} title="AI Agents">
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Connect apps like the Praxis MCP server to access your data programmatically.
+          Connect AI assistants like OpenClaw, Hermes, Claude to access your Praxis data and help manage your goals.
         </Typography>
         <AgentsPanel />
       </Section>

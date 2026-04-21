@@ -60,11 +60,15 @@ CREATE POLICY "agent_connect_codes_user_insert" ON public.agent_connect_codes FO
 DROP POLICY IF EXISTS "agent_connect_codes_user_select" ON public.agent_connect_codes;
 CREATE POLICY "agent_connect_codes_user_select" ON public.agent_connect_codes FOR SELECT USING (auth.uid() = user_id);
 
--- Seed predefined agents
+-- Seed predefined agents (AI assistants/agents only)
 INSERT INTO public.agents (slug, name, website, description) VALUES
-  ('openclaw', 'OpenClaw', 'https://openclaw-ai.net', 'Local-first AI agent gateway with 50+ platform integrations'),
-  ('hermes', 'Hermes', 'https://hermes-agent.org', 'Open-source autonomous agent with persistent memory'),
-  ('lindy', 'Lindy', 'https://lindy.ai', 'No-code AI automation platform'),
-  ('relay', 'Relay.app', 'https://relay.app', 'Workflow automation with human checkpoints'),
-  ('agentgpt', 'AgentGPT', 'https://agentgpt.so', 'Browser-based autonomous AI agent')
+  ('openclaw', 'OpenClaw', 'https://openclaw-ai.net', 'Local-first AI agent with 50+ platform integrations'),
+  ('hermes', 'Hermes', 'https://hermes-agent.org', 'Open-source AI agent with persistent memory'),
+  ('lindy', 'Lindy', 'https://lindy.ai', 'No-code AI automation assistant'),
+  ('relay', 'Relay.app', 'https://relay.app', 'Workflow automation with checkpoints'),
+  ('agentgpt', 'AgentGPT', 'https://agentgpt.so', 'Browser-based autonomous AI agent'),
+  ('claude', 'Claude', 'https://claude.ai', 'Anthropic AI assistant with computer use'),
+  ('gemini', 'Gemini', 'https://gemini.google.com', 'Google AI with deep research'),
+  ('qwen', 'Qwen', 'https://qwen.ai', 'Alibaba AI assistant'),
+  ('opencode', 'OpenCode', 'https://opencode.ai', 'Interactive CLI AI coding assistant')
 ON CONFLICT (slug) DO NOTHING;

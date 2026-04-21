@@ -54,8 +54,8 @@ export const connectAgent = catchAsync(async (req: Request, res: Response) => {
     throw new BadRequestError('Failed to create connect code');
   }
 
-  const redirectUri = agent.website + '/connect?code=' + code + '&user_id=' + userId;
-  res.redirect(redirectUri);
+  const connectUrl = agent.website + '/connect?code=' + code + '&user_id=' + userId;
+  res.json({ connect_url: connectUrl, code: code });
 });
 
 export const exchangeCode = catchAsync(async (req: Request, res: Response) => {
@@ -112,6 +112,28 @@ export const exchangeCode = catchAsync(async (req: Request, res: Response) => {
     api_key: apiKey,
     scope: ['read', 'write'],
   });
+});
+
+export const getKey = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+
+  const { id } = req.params;
+
+  const { data, error } = await supabase
+    .from('agent_keys')
+    .select('api_key')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) {
+    throw new NotFoundError('API key not found');
+  }
+
+  res.json({ api_key: data.api_key });
 });
 
 export const listKeys = catchAsync(async (req: Request, res: Response) => {
@@ -195,3 +217,43 @@ export const authenticateApiKey = async function(apiKey: string): Promise<string
 
   return data.user_id;
 };
+
+export const createKeyDirect = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+
+  const { agent_id, name } = req.body;
+  if (!agent_id) {
+    throw new BadRequestError('Agent ID is required');
+  }
+
+  const apiKey = generateApiKey();
+
+  const { error: insertError } = await supabase
+    .from('agent_keys')
+    .insert({
+      user_id: userId,
+      agent_id: agent_id,
+      api_key: apiKey,
+      scope: ['read', 'write'],
+    });
+
+  if (insertError) {
+    throw new BadRequestError('Failed to create API key');
+  }
+
+  const { data: agent } = await supabase
+    .from('agents')
+    .select('name')
+    .eq('id', agent_id)
+    .single();
+
+  res.json({
+    message: 'API key created for ' + (agent?.name || 'agent'),
+    api_key: apiKey,
+    name: name || agent?.name || 'API Key',
+    scope: ['read', 'write'],
+  });
+});

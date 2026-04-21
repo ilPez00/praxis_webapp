@@ -1,0 +1,121 @@
+{
+  "name": "praxis",
+  "version": "1.0.0",
+  "description": "MCP server for Praxis - Connect AI agents to your goal journal",
+  "installation": {
+    "type": "npm",
+    "package": "praxis-mcp-server",
+    "source": "github:anomalyco/praxis-mcp-server",
+    "env": {
+      "PRAXIS_API_URL": {
+        "type": "string",
+        "required": true,
+        "description": "Praxis API URL (e.g., https://web-production-646a4.up.railway.app/api)"
+      },
+      "PRAXIS_API_KEY": {
+        "type": "string",
+        "required": true,
+        "description": "Your Praxis API key (get from Settings → AI Agents)"
+      }
+    }
+  },
+  "tools": {
+    "auth": {
+      "login": "Login to Praxis with email and password",
+      "signup": "Create a new Praxis account"
+    },
+    "users": {
+      "get_profile": "Get your profile",
+      "get_user": "Get another user's public profile",
+      "get_leaderboard": "View the points leaderboard",
+      "update_profile": "Update your profile"
+    },
+    "goals": {
+      "get_goals": "Get your goals",
+      "get_user_goals": "Get someone's goals",
+      "create_goal": "Create a new goal",
+      "delete_goal": "Delete a goal",
+      "get_goal_node": "Get a goal node",
+      "create_goal_node": "Create a child node",
+      "update_progress": "Update progress on a goal node"
+    },
+    "checkins": {
+      "get_today_checkin": "Get today's check-in",
+      "create_checkin": "Submit a daily check-in",
+      "get_checkin_history": "Get check-in history"
+    },
+    "notebook": {
+      "get_notebook": "Get notebook entries",
+      "create_notebook_entry": "Create a notebook entry",
+      "update_notebook_entry": "Update an entry",
+      "delete_notebook_entry": "Delete an entry",
+      "search_notebook": "Search notebook"
+    },
+    "diary": {
+      "get_diary": "Get diary entries for a date",
+      "create_diary_entry": "Create a diary entry"
+    },
+    "messages": {
+      "get_conversations": "Get all conversations",
+      "get_messages": "Get messages from a user",
+      "send_message": "Send a message to a buddy",
+      "mark_messages_read": "Mark messages as read"
+    },
+    "axiom": {
+      "get_daily_brief": "Get your daily AI brief",
+      "regenerate_brief": "Regenerate your AI brief",
+      "chat_with_axiom": "Chat with the Axiom AI"
+    },
+    "gamification": {
+      "get_stats": "Get your profile stats",
+      "get_achievements": "Get unlocked achievements",
+      "get_streak": "Get your current streak",
+      "get_quests": "Get available quests"
+    },
+    "bets": {
+      "get_bets": "Get all bets",
+      "create_bet": "Create a new bet",
+      "resolve_bet": "Resolve a bet"
+    },
+    "duels": {
+      "get_duels": "Get all duels",
+      "create_duel": "Challenge someone to a duel",
+      "accept_duel": "Accept a duel",
+      "resolve_duel": "Resolve a duel"
+    },
+    "calendar": {
+      "get_calendar_events": "Get calendar events",
+      "create_calendar_event": "Create a calendar event",
+      "get_google_status": "Check Google Calendar status"
+    },
+    "trackers": {
+      "get_trackers": "Get all trackers",
+      "create_tracker": "Create a new tracker",
+      "log_progress": "Log progress on a tracker",
+      "get_tracker_calendar": "Get tracker calendar view"
+    },
+    "buddies": {
+      "get_buddies": "Get your buddies",
+      "find_matches": "Find potential buddies",
+      "add_buddy": "Add a buddy",
+      "remove_buddy": "Remove a buddy"
+    },
+    "points": {
+      "get_points": "Get your current points",
+      "get_points_history": "Get points history"
+    },
+    "search": {
+      "search": "Search across goals, notebook, and users"
+    },
+    "analytics": {
+      "get_analytics": "Get usage analytics"
+    },
+    "notifications": {
+      "get_notifications": "Get notifications",
+      "mark_notification_read": "Mark notification as read"
+    },
+    "ai_coaching": {
+      "get_coaching_advice": "Get AI coaching advice for a goal"
+    }
+  }
+}
