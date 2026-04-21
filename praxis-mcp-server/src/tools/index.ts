@@ -55,14 +55,14 @@ export function createTools() {
   );
 
   // ==================== USER TOOLS ====================
-  server.tool(
-    'get_profile',
+server.tool(
+    'get_me',
     'Get the current user profile',
     {},
     async () => {
       try {
         const res = await praxisClient.getMe();
-        return { content: [{ type: 'text', text: JSON.stringify(res.user, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -78,7 +78,7 @@ export function createTools() {
     async ({ userId }) => {
       try {
         const res = await praxisClient.getUser(userId);
-        return { content: [{ type: 'text', text: JSON.stringify(res.user, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -92,7 +92,7 @@ export function createTools() {
     async () => {
       try {
         const res = await praxisClient.getLeaderboard();
-        return { content: [{ type: 'text', text: JSON.stringify(res.leaderboard, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -168,16 +168,16 @@ export function createTools() {
     }
   );
 
-  server.tool(
+server.tool(
     'delete_goal',
     'Delete a goal',
     {
-      goalId: z.string().describe('Goal ID to delete'),
+      goalId: z.string().describe('Goal ID'),
     },
     async ({ goalId }) => {
       try {
-        await praxisClient.deleteGoal(goalId);
-        return { content: [{ type: 'text', text: 'Goal deleted' }] };
+        const res = await praxisClient.deleteGoal(goalId);
+        return { content: [{ type: 'text', text: 'Goal deleted: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -194,7 +194,7 @@ export function createTools() {
     async ({ goalId, nodeId }) => {
       try {
         const res = await praxisClient.getGoalNode(goalId, nodeId);
-        return { content: [{ type: 'text', text: JSON.stringify(res.node, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -247,7 +247,7 @@ server.tool(
     async () => {
       try {
         const res = await praxisClient.getTodayCheckIn();
-        return { content: [{ type: 'text', text: JSON.stringify(res.checkin, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -281,7 +281,7 @@ server.tool(
     async ({ days }) => {
       try {
         const res = await praxisClient.getCheckInHistory(days);
-        return { content: [{ type: 'text', text: JSON.stringify(res.checkins, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -289,16 +289,16 @@ server.tool(
   );
 
   // ==================== NOTEBOOK TOOLS ====================
-  server.tool(
+server.tool(
     'get_notebook',
     'Get notebook entries',
     {
-      limit: z.number().min(1).max(100).default(20).describe('Number of entries'),
+      limit: z.number().default(20).describe('Max entries'),
     },
     async ({ limit }) => {
       try {
         const res = await praxisClient.getNotebookEntries(limit);
-        return { content: [{ type: 'text', text: JSON.stringify(res.entries, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -314,8 +314,8 @@ server.tool(
     },
     async ({ content, nodeId }) => {
       try {
-        const res = await praxisClient.createNotebookEntry({ content, node_id: nodeId });
-        return { content: [{ type: 'text', text: 'Entry created: ' + JSON.stringify(res.entry, null, 2) }] };
+        const res = await praxisClient.createNotebookEntry({ content, goal_id: nodeId });
+        return { content: [{ type: 'text', text: 'Entry created: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -331,8 +331,8 @@ server.tool(
     },
     async ({ entryId, content }) => {
       try {
-        await praxisClient.updateNotebookEntry(entryId, { content });
-        return { content: [{ type: 'text', text: 'Entry updated' }] };
+        const res = await praxisClient.updateNotebookEntry(entryId, { content });
+        return { content: [{ type: 'text', text: 'Entry updated: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -347,8 +347,8 @@ server.tool(
     },
     async ({ entryId }) => {
       try {
-        await praxisClient.deleteNotebookEntry(entryId);
-        return { content: [{ type: 'text', text: 'Entry deleted' }] };
+        const res = await praxisClient.deleteNotebookEntry(entryId);
+        return { content: [{ type: 'text', text: 'Entry deleted: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -364,7 +364,7 @@ server.tool(
     async ({ query }) => {
       try {
         const res = await praxisClient.searchNotebook(query);
-        return { content: [{ type: 'text', text: JSON.stringify(res.entries, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -372,33 +372,33 @@ server.tool(
   );
 
   // ==================== DIARY TOOLS ====================
-  server.tool(
+server.tool(
     'get_diary',
-    'Get diary entries for a date',
+    'Get diary entries',
     {
-      date: z.string().optional().describe('Date (YYYY-MM-DD), defaults to today'),
+      date: z.string().optional().describe('Date (YYYY-MM-DD)'),
     },
     async ({ date }) => {
       try {
         const res = await praxisClient.getDiary(date);
-        return { content: [{ type: 'text', text: JSON.stringify(res.entries, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
     }
   );
 
-  server.tool(
+server.tool(
     'create_diary_entry',
     'Create a diary entry',
     {
       content: z.string().describe('Diary content'),
-      mood: z.number().min(1).max(10).optional().describe('Mood (1-10)'),
+      mood: z.number().optional().describe('Mood (1-10)'),
       tags: z.array(z.string()).optional().describe('Tags'),
     },
-    async (args) => {
+    async ({ content, mood, tags }) => {
       try {
-        const res = await praxisClient.createDiaryEntry(args);
+        const res = await praxisClient.createDiaryEntry({ content, mood, tags });
         return { content: [{ type: 'text', text: 'Diary entry created: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
@@ -414,24 +414,24 @@ server.tool(
     async () => {
       try {
         const res = await praxisClient.getConversations();
-        return { content: [{ type: 'text', text: JSON.stringify(res.conversations, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
     }
   );
 
-  server.tool(
+server.tool(
     'get_messages',
-    'Get messages from a conversation',
+    'Get messages with a user',
     {
       userId: z.string().describe('Other user ID'),
-      limit: z.number().min(1).max(100).default(50).describe('Message limit'),
+      limit: z.number().default(50).describe('Max messages'),
     },
     async ({ userId, limit }) => {
       try {
         const res = await praxisClient.getMessages(userId, limit);
-        return { content: [{ type: 'text', text: JSON.stringify(res.messages, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -448,7 +448,7 @@ server.tool(
     async ({ receiverId, content }) => {
       try {
         const res = await praxisClient.sendMessage(receiverId, content);
-        return { content: [{ type: 'text', text: 'Message sent: ' + JSON.stringify(res.message, null, 2) }] };
+        return { content: [{ type: 'text', text: 'Message sent: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -463,8 +463,8 @@ server.tool(
     },
     async ({ userId }) => {
       try {
-        await praxisClient.markMessagesRead(userId);
-        return { content: [{ type: 'text', text: 'Messages marked as read' }] };
+        const res = await praxisClient.markMessagesRead(userId);
+        return { content: [{ type: 'text', text: 'Messages marked as read: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -479,21 +479,21 @@ server.tool(
     async () => {
       try {
         const res = await praxisClient.getDailyBrief();
-        return { content: [{ type: 'text', text: JSON.stringify(res.brief, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
     }
   );
 
-  server.tool(
+server.tool(
     'regenerate_brief',
-    'Regenerate the daily AI brief',
+    'Regenerate the daily Axiom brief',
     {},
     async () => {
       try {
         const res = await praxisClient.regenerateBrief();
-        return { content: [{ type: 'text', text: 'Brief regenerated: ' + JSON.stringify(res.brief, null, 2) }] };
+        return { content: [{ type: 'text', text: 'Brief regenerated: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -510,7 +510,7 @@ server.tool(
     async ({ message, context }) => {
       try {
         const res = await praxisClient.chatWithAxiom(message, context);
-        return { content: [{ type: 'text', text: JSON.stringify(res.response, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -518,28 +518,28 @@ server.tool(
   );
 
   // ==================== GAMIFICATION TOOLS ====================
-  server.tool(
-    'get_stats',
-    'Get profile statistics',
+server.tool(
+    'get_profile_stats',
+    'Get the current user profile stats',
     {},
     async () => {
       try {
         const res = await praxisClient.getProfileStats();
-        return { content: [{ type: 'text', text: JSON.stringify(res.stats, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
     }
   );
 
-  server.tool(
+server.tool(
     'get_achievements',
-    'Get unlocked achievements',
+    'Get the current user\'s achievements',
     {},
     async () => {
       try {
         const res = await praxisClient.getAchievements();
-        return { content: [{ type: 'text', text: JSON.stringify(res.achievements, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -553,7 +553,7 @@ server.tool(
     async () => {
       try {
         const res = await praxisClient.getStreak();
-        return { content: [{ type: 'text', text: JSON.stringify(res.streak, null, 2) }] };
+        return { content: [{ type: 'text', text: 'Current streak: ' + (res.current_streak || 0) + ' days' }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -567,7 +567,7 @@ server.tool(
     async () => {
       try {
         const res = await praxisClient.getQuests();
-        return { content: [{ type: 'text', text: JSON.stringify(res.quests, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -575,14 +575,32 @@ server.tool(
   );
 
   // ==================== BET TOOLS ====================
-  server.tool(
+server.tool(
     'get_bets',
     'Get all bets',
     {},
     async () => {
       try {
         const res = await praxisClient.getBets();
-        return { content: [{ type: 'text', text: JSON.stringify(res.bets, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'create_bet',
+    'Create a new bet',
+    {
+      title: z.string().describe('Bet title'),
+      amount: z.number().describe('Bet amount (points)'),
+      deadline: z.string().describe('Deadline (YYYY-MM-DD)'),
+    },
+    async ({ title, amount, deadline }) => {
+      try {
+        const res = await praxisClient.createBet({ title, amount, deadline });
+        return { content: [{ type: 'text', text: 'Bet created: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -607,7 +625,7 @@ server.tool(
     }
   );
 
-  server.tool(
+server.tool(
     'resolve_bet',
     'Resolve a bet',
     {
@@ -616,8 +634,8 @@ server.tool(
     },
     async ({ betId, won }) => {
       try {
-        await praxisClient.resolveBet(betId, won);
-        return { content: [{ type: 'text', text: 'Bet resolved' }] };
+        const res = await praxisClient.resolveBet(betId, won);
+        return { content: [{ type: 'text', text: 'Bet resolved: ' + (won ? 'Won' : 'Lost') + ' ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -632,7 +650,7 @@ server.tool(
     async () => {
       try {
         const res = await praxisClient.getDuels();
-        return { content: [{ type: 'text', text: JSON.stringify(res.duels, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -649,7 +667,7 @@ server.tool(
     async ({ opponentId, goalId }) => {
       try {
         const res = await praxisClient.createDuel({ opponent_id: opponentId, goal_id: goalId });
-        return { content: [{ type: 'text', text: 'Duel created: ' + JSON.stringify(res.duel, null, 2) }] };
+        return { content: [{ type: 'text', text: 'Duel created: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -664,8 +682,8 @@ server.tool(
     },
     async ({ duelId }) => {
       try {
-        await praxisClient.acceptDuel(duelId);
-        return { content: [{ type: 'text', text: 'Duel accepted' }] };
+        const res = await praxisClient.acceptDuel(duelId);
+        return { content: [{ type: 'text', text: 'Duel accepted: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -681,8 +699,8 @@ server.tool(
     },
     async ({ duelId, winnerId }) => {
       try {
-        await praxisClient.resolveDuel(duelId, winnerId);
-        return { content: [{ type: 'text', text: 'Duel resolved' }] };
+        const res = await praxisClient.resolveDuel(duelId, winnerId);
+        return { content: [{ type: 'text', text: 'Duel resolved: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -690,7 +708,7 @@ server.tool(
   );
 
   // ==================== CALENDAR TOOLS ====================
-  server.tool(
+server.tool(
     'get_calendar_events',
     'Get calendar events',
     {
@@ -700,7 +718,7 @@ server.tool(
     async ({ start, end }) => {
       try {
         const res = await praxisClient.getCalendarEvents(start, end);
-        return { content: [{ type: 'text', text: JSON.stringify(res.events, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -727,7 +745,26 @@ server.tool(
   );
 
   server.tool(
-    'get_google_status',
+    'create_calendar_event',
+    'Create a calendar event',
+    {
+      title: z.string().describe('Event title'),
+      startTime: z.string().describe('Start time (ISO 8601)'),
+      endTime: z.string().optional().describe('End time (ISO 8601)'),
+      description: z.string().optional().describe('Event description'),
+    },
+    async ({ title, startTime, endTime, description }) => {
+      try {
+        const res = await praxisClient.createCalendarEvent({ title, start_time: startTime, end_time: endTime, description });
+        return { content: [{ type: 'text', text: 'Event created: ' + JSON.stringify(res, null, 2) }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+server.tool(
+    'get_google_calendar_status',
     'Check Google Calendar connection status',
     {},
     async () => {
@@ -741,14 +778,31 @@ server.tool(
   );
 
   // ==================== TRACKER TOOLS ====================
-  server.tool(
+server.tool(
     'get_trackers',
     'Get all trackers',
     {},
     async () => {
       try {
         const res = await praxisClient.getTrackers();
-        return { content: [{ type: 'text', text: JSON.stringify(res.trackers, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'create_tracker',
+    'Create a new tracker',
+    {
+      name: z.string().describe('Tracker name'),
+      nodeId: z.string().optional().describe('Associated goal node ID'),
+    },
+    async ({ name, nodeId }) => {
+      try {
+        const res = await praxisClient.createTracker({ name, goal_id: nodeId });
+        return { content: [{ type: 'text', text: 'Tracker created: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -772,8 +826,8 @@ server.tool(
     }
   );
 
-  server.tool(
-    'log_progress',
+server.tool(
+    'log_tracker_progress',
     'Log progress on a tracker',
     {
       trackerId: z.string().describe('Tracker ID'),
@@ -781,8 +835,25 @@ server.tool(
     },
     async ({ trackerId, value }) => {
       try {
-        await praxisClient.logTrackerProgress(trackerId, value);
-        return { content: [{ type: 'text', text: 'Progress logged' }] };
+        const res = await praxisClient.logTrackerProgress(trackerId, value);
+        return { content: [{ type: 'text', text: 'Progress logged: ' + value + ' ' + JSON.stringify(res, null, 2) }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'get_tracker_calendar',
+    'Get tracker calendar view',
+    {
+      trackerId: z.string().describe('Tracker ID'),
+      month: z.string().describe('Month (YYYY-MM)'),
+    },
+    async ({ trackerId, month }) => {
+      try {
+        const res = await praxisClient.getTrackerCalendar(trackerId, month);
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -807,14 +878,60 @@ server.tool(
   );
 
   // ==================== BUDDY TOOLS ====================
-  server.tool(
+server.tool(
     'get_buddies',
-    'Get all buddies',
+    'Get your buddies',
     {},
     async () => {
       try {
         const res = await praxisClient.getBuddies();
-        return { content: [{ type: 'text', text: JSON.stringify(res.buddies, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'find_buddies',
+    'Find potential buddies',
+    {},
+    async () => {
+      try {
+        const res = await praxisClient.findMatches();
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'add_buddy',
+    'Add a buddy',
+    {
+      buddyId: z.string().describe('Buddy user ID'),
+    },
+    async ({ buddyId }) => {
+      try {
+        const res = await praxisClient.addBuddy(buddyId);
+        return { content: [{ type: 'text', text: 'Buddy added: ' + JSON.stringify(res, null, 2) }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'remove_buddy',
+    'Remove a buddy',
+    {
+      buddyId: z.string().describe('Buddy user ID'),
+    },
+    async ({ buddyId }) => {
+      try {
+        const res = await praxisClient.removeBuddy(buddyId);
+        return { content: [{ type: 'text', text: 'Buddy removed: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -868,13 +985,29 @@ server.tool(
   );
 
   // ==================== POINTS TOOLS ====================
-  server.tool(
+server.tool(
     'get_points',
     'Get current points',
     {},
     async () => {
       try {
         const res = await praxisClient.getPoints();
+        return { content: [{ type: 'text', text: 'Points: ' + JSON.stringify(res, null, 2) }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'get_points_history',
+    'Get points history',
+    {
+      days: z.number().min(1).max(365).default(30).describe('Number of days'),
+    },
+    async ({ days }) => {
+      try {
+        const res = await praxisClient.getPointsHistory(days);
         return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
@@ -908,7 +1041,7 @@ server.tool(
     async ({ query }) => {
       try {
         const res = await praxisClient.search(query);
-        return { content: [{ type: 'text', text: JSON.stringify(res.results, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -925,7 +1058,7 @@ server.tool(
     async ({ period }) => {
       try {
         const res = await praxisClient.getAnalytics(period);
-        return { content: [{ type: 'text', text: JSON.stringify(res.analytics, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -933,16 +1066,32 @@ server.tool(
   );
 
   // ==================== NOTIFICATION TOOLS ====================
-  server.tool(
+server.tool(
     'get_notifications',
     'Get notifications',
     {
-      limit: z.number().min(1).max(50).default(20).describe('Number of notifications'),
+      limit: z.number().default(20).describe('Number of notifications'),
     },
     async ({ limit }) => {
       try {
         const res = await praxisClient.getNotifications(limit);
-        return { content: [{ type: 'text', text: JSON.stringify(res.notifications, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'mark_notification_read',
+    'Mark notification as read',
+    {
+      notificationId: z.string().describe('Notification ID'),
+    },
+    async ({ notificationId }) => {
+      try {
+        const res = await praxisClient.markNotificationRead(notificationId);
+        return { content: [{ type: 'text', text: 'Notification marked as read: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -975,7 +1124,7 @@ server.tool(
     async ({ goalId }) => {
       try {
         const res = await praxisClient.getCoachingAdvice(goalId);
-        return { content: [{ type: 'text', text: JSON.stringify(res.advice, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }

@@ -89,10 +89,7 @@ class PraxisClient {
   // Gamification
   async getProfileStats() { return this.get<{ stats: any }>('/gamification/profile'); }
   async getAchievements() { return this.get<{ achievements: any[] }>('/gamification/achievements'); }
-  async getStreak() { 
-    const data = await this.get<{ current_streak: number }>('/gamification/profile');
-    return { streak: data };
-  }
+  async getStreak() { return this.get<{ current_streak: number }>('/gamification/profile'); }
   async getQuests() { return this.get<{ quests: any[] }>('/gamification/quests'); }
 
   // Bets
