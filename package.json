@@ -23,7 +23,7 @@
     "migrate": "ts-node scripts/run-migrations.ts",
     "migrate:status": "ts-node scripts/run-migrations.ts --status",
     "security:audit": "node scripts/security-audit.js",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "lint:fix": "eslint --fix"
   },
   "keywords": [],
