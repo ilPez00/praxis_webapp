@@ -21,7 +21,24 @@ export interface NotebookPdfInput {
   legacyTrackerLogs: Array<{ type: string; logged_at: string; data: any }>;
   checkinCount: number;
   achievementCount: number;
+  /** Optional: ISO-day → check-in count, used for the streak heatmap */
+  checkinByDay?: Record<string, number>;
 }
+
+const DOMAIN_PALETTE: Record<string, string> = {
+  Fitness:       '#EF4444',
+  Career:        '#3B82F6',
+  Learning:      '#A78BFA',
+  Academics:     '#A78BFA',
+  Relationships: '#EC4899',
+  Finance:       '#10B981',
+  Creative:      '#F59E0B',
+  Health:        '#14B8A6',
+  Spiritual:     '#8B5CF6',
+  Business:      '#6366F1',
+  Personal:      '#A78BFA',
+};
+const domainColor = (d?: string) => (d && DOMAIN_PALETTE[d]) || COLORS.accent;
 
 const COLORS = {
   ink: '#111827',
@@ -132,6 +149,132 @@ function sectionTitle(doc: InstanceType<typeof PDFDocument>, text: string, color
 function kv(doc: InstanceType<typeof PDFDocument>, label: string, value: string): void {
   doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.muted).text(label, { continued: true });
   doc.font('Helvetica').fontSize(10).fillColor(COLORS.ink).text(`  ${value}`);
+}
+
+/**
+ * Horizontal progress bar. Used for goals + domain distribution.
+ */
+function drawProgressBar(
+  doc: InstanceType<typeof PDFDocument>,
+  x: number, y: number, w: number, h: number,
+  pct: number, accent = COLORS.accent, label?: string, rightLabel?: string,
+): void {
+  const clamped = Math.max(0, Math.min(100, pct));
+  doc.roundedRect(x, y, w, h, h / 2).fillOpacity(0.12).fill(accent).fillOpacity(1);
+  if (clamped > 0) {
+    doc.roundedRect(x, y, Math.max(h, (w * clamped) / 100), h, h / 2).fill(accent);
+  }
+  if (label) {
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF')
+      .text(label, x + 8, y + (h - 9) / 2, { width: w - 80, lineBreak: false, ellipsis: true });
+  }
+  if (rightLabel) {
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORS.ink)
+      .text(rightLabel, x + w - 44, y + (h - 9) / 2, { width: 40, align: 'right', lineBreak: false });
+  }
+  doc.fillColor(COLORS.ink);
+}
+
+/**
+ * Simple bar chart. Rows are stacked vertically; tallest value defines scale.
+ * Series is { label, value }. Best for step counts, sleep hours, durations.
+ */
+function drawBarChart(
+  doc: InstanceType<typeof PDFDocument>,
+  title: string,
+  series: Array<{ label: string; value: number }>,
+  accent = COLORS.accent,
+  chartHeight = 110,
+): void {
+  if (series.length === 0) return;
+  if (doc.y + chartHeight + 30 > doc.page.height - doc.page.margins.bottom) doc.addPage();
+
+  const { left, right } = doc.page.margins;
+  const usableW = doc.page.width - left - right;
+  const x0 = left;
+  const y0 = doc.y + 8;
+
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(COLORS.muted).text(title);
+  const startY = doc.y + 4;
+
+  const maxVal = Math.max(1, ...series.map(s => s.value));
+  const gap = 3;
+  const barW = Math.max(6, (usableW - gap * (series.length - 1)) / series.length);
+
+  for (let i = 0; i < series.length; i++) {
+    const v = Math.max(0, series[i].value);
+    const h = (v / maxVal) * chartHeight;
+    const x = x0 + i * (barW + gap);
+    const y = startY + chartHeight - h;
+    doc.rect(x, y, barW, h).fillOpacity(v > 0 ? 0.85 : 0.15).fill(accent).fillOpacity(1);
+    // value on top of bar if enough room
+    if (v > 0 && h > 16 && barW > 18) {
+      doc.font('Helvetica').fontSize(7).fillColor('#FFFFFF')
+        .text(String(Math.round(v)), x, y + 3, { width: barW, align: 'center', lineBreak: false });
+    }
+  }
+  // axis
+  doc.strokeColor(COLORS.line).lineWidth(0.5).moveTo(x0, startY + chartHeight).lineTo(x0 + usableW, startY + chartHeight).stroke();
+
+  // x labels (compressed if too many)
+  doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.muted);
+  const showEvery = series.length > 14 ? Math.ceil(series.length / 14) : 1;
+  for (let i = 0; i < series.length; i++) {
+    if (i % showEvery !== 0) continue;
+    const x = x0 + i * (barW + gap);
+    doc.text(series[i].label, x, startY + chartHeight + 3, { width: barW, align: 'center', lineBreak: false, ellipsis: true });
+  }
+  doc.y = startY + chartHeight + 18;
+  doc.fillColor(COLORS.ink);
+}
+
+/**
+ * Check-in heatmap: GitHub-style calendar. 7 rows (weekdays), N columns (weeks).
+ */
+function drawHeatmap(
+  doc: InstanceType<typeof PDFDocument>,
+  title: string,
+  counts: Record<string, number>,
+  since: Date, until: Date,
+  accent = COLORS.accent,
+): void {
+  const msPerDay = 86400000;
+  const startIso = since.toISOString().slice(0, 10);
+  const start = new Date(startIso);
+  const end = new Date(until.toISOString().slice(0, 10));
+  const days = Math.max(1, Math.floor((end.getTime() - start.getTime()) / msPerDay) + 1);
+  if (days > 400) return; // too long to render usefully
+
+  // align to Monday of the start week
+  const startDow = (start.getDay() + 6) % 7; // 0=Mon
+  const gridStart = new Date(start.getTime() - startDow * msPerDay);
+  const weeks = Math.ceil((days + startDow) / 7);
+
+  const { left, right } = doc.page.margins;
+  const usableW = doc.page.width - left - right;
+  const cell = Math.min(10, Math.floor(usableW / (weeks + 1)) - 1);
+  const gap = 2;
+  const chartH = 7 * (cell + gap) + 20;
+  if (doc.y + chartH > doc.page.height - doc.page.margins.bottom) doc.addPage();
+
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(COLORS.muted).text(title);
+  const y0 = doc.y + 4;
+
+  const maxCount = Math.max(1, ...Object.values(counts));
+  for (let w = 0; w < weeks; w++) {
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(gridStart.getTime() + (w * 7 + d) * msPerDay);
+      if (day < start || day > end) continue;
+      const iso = day.toISOString().slice(0, 10);
+      const c = counts[iso] || 0;
+      const intensity = c === 0 ? 0.08 : 0.25 + 0.75 * (c / maxCount);
+      const x = left + w * (cell + gap);
+      const y = y0 + d * (cell + gap);
+      doc.rect(x, y, cell, cell).fillOpacity(intensity).fill(accent).fillOpacity(1);
+    }
+  }
+  doc.y = y0 + 7 * (cell + gap) + 4;
+  doc.fillColor(COLORS.ink);
 }
 
 function drawMetricTile(
@@ -359,28 +502,103 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
   sectionTitle(doc, 'At a glance', COLORS.accent2);
   drawMetricsGrid(doc, metricTiles);
 
-  // ─── Goals hierarchy ─────────────────────────────────────────────────
-  sectionTitle(doc, 'Goals & Hierarchy', COLORS.accent2);
+  // ─── Check-in streak heatmap ─────────────────────────────────────────
+  if (input.checkinByDay && Object.keys(input.checkinByDay).length > 0) {
+    sectionTitle(doc, 'Consistency', COLORS.accent2);
+    drawHeatmap(doc, 'Check-in streak', input.checkinByDay, input.since, input.until, COLORS.accent);
+  }
+
+  // ─── Goals hierarchy with progress bars ──────────────────────────────
+  sectionTitle(doc, 'Goals & Progress', COLORS.accent2);
   if (input.goals.length === 0) {
     doc.font('Helvetica-Oblique').fontSize(10).fillColor(COLORS.muted).text('No goals set.');
   } else {
     const rootGoals = input.goals.filter(g => !g.parentId);
     const childrenOf = (pid: string) => input.goals.filter(g => g.parentId === pid);
+    const { left, right } = doc.page.margins;
+    const usableW = doc.page.width - left - right;
     const render = (g: any, depth: number): void => {
-      const prefix = '  '.repeat(depth);
+      if (doc.y + 22 > doc.page.height - doc.page.margins.bottom) doc.addPage();
       const pct = Math.round((g.progress || 0) * 100);
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(COLORS.ink)
-        .text(`${prefix}• ${g.name}`, { continued: true });
-      doc.font('Helvetica').fontSize(9).fillColor(COLORS.muted)
-        .text(`  [${g.domain || '—'}] ${pct}%`);
+      const color = domainColor(g.domain);
+      const indent = depth * 14;
+      const barX = left + indent;
+      const barW = usableW - indent;
+      // name + domain tag
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.ink)
+        .text(`${'  '.repeat(depth)}${g.name}`, left + indent, doc.y, { continued: true, width: barW - 60 });
+      doc.font('Helvetica').fontSize(8).fillColor(COLORS.muted).text(`  [${g.domain || '—'}]`);
+      // bar
+      drawProgressBar(doc, barX, doc.y + 2, barW, 12, pct, color, undefined, `${pct}%`);
+      doc.y = doc.y + 18;
       if (g.customDetails) {
-        doc.font('Helvetica-Oblique').fontSize(9).fillColor(COLORS.muted).text(`${prefix}  ${g.customDetails}`);
+        doc.font('Helvetica-Oblique').fontSize(8).fillColor(COLORS.muted)
+          .text(g.customDetails, left + indent + 4, doc.y, { width: barW - 8 });
+        doc.moveDown(0.3);
       }
       for (const c of childrenOf(g.id)) render(c, depth + 1);
     };
     for (const g of rootGoals) render(g, 0);
   }
   doc.moveDown(0.6);
+
+  // ─── Domain distribution bar ─────────────────────────────────────────
+  if (input.goals.length > 0) {
+    const byDomain: Record<string, number> = {};
+    for (const g of input.goals) {
+      const d = g.domain || 'Other';
+      byDomain[d] = (byDomain[d] || 0) + 1;
+    }
+    const total = input.goals.length;
+    const entries = Object.entries(byDomain).sort((a, b) => b[1] - a[1]);
+    sectionTitle(doc, 'Life focus distribution', COLORS.accent2);
+    const { left, right } = doc.page.margins;
+    const usableW = doc.page.width - left - right;
+    for (const [dom, count] of entries) {
+      const pct = Math.round((count / total) * 100);
+      drawProgressBar(doc, left, doc.y, usableW, 14, pct, domainColor(dom), dom, `${count} (${pct}%)`);
+      doc.y += 18;
+    }
+    doc.moveDown(0.4);
+  }
+
+  // ─── Tracker sparkline charts ────────────────────────────────────────
+  const s2 = input.structured;
+  if (s2) {
+    const r = s2.recent || {};
+    const dailyReduce = (rows: any[] | undefined, valueFn: (x: any) => number) => {
+      if (!rows?.length) return [] as Array<{ label: string; value: number }>;
+      const byDay: Record<string, number> = {};
+      for (const x of rows) {
+        const day = dateOnly(x.logged_at);
+        if (!day) continue;
+        byDay[day] = (byDay[day] || 0) + valueFn(x);
+      }
+      return Object.entries(byDay)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(-30)
+        .map(([day, value]) => ({ label: day.slice(5), value }));
+    };
+    const charts: Array<{ title: string; series: any[]; accent: string }> = [];
+    const stepsSeries = dailyReduce(r.steps, x => Number(x.steps) || 0);
+    if (stepsSeries.length) charts.push({ title: 'Steps / day', series: stepsSeries, accent: '#10B981' });
+    const sleepSeries = dailyReduce(r.sleep, x => Number(x.duration_h) || 0);
+    if (sleepSeries.length) charts.push({ title: 'Sleep hours / night', series: sleepSeries, accent: '#6366F1' });
+    const cardioSeries = dailyReduce(r.cardio, x => Number(x.duration_min) || 0);
+    if (cardioSeries.length) charts.push({ title: 'Cardio minutes / day', series: cardioSeries, accent: '#EF4444' });
+    const medSeries = dailyReduce(r.meditation, x => Number(x.duration_min) || 0);
+    if (medSeries.length) charts.push({ title: 'Meditation minutes / day', series: medSeries, accent: '#A78BFA' });
+    const studySeries = dailyReduce(r.study, x => Number(x.duration_min) || 0);
+    if (studySeries.length) charts.push({ title: 'Study minutes / day', series: studySeries, accent: '#F59E0B' });
+    const liftSeries = dailyReduce(r.lifts, x => Number(x.volume_kg) || 0);
+    if (liftSeries.length) charts.push({ title: 'Lift volume kg / day', series: liftSeries, accent: '#DC2626' });
+
+    if (charts.length > 0) {
+      doc.addPage();
+      sectionTitle(doc, 'Trends', COLORS.accent2);
+      for (const c of charts) drawBarChart(doc, c.title, c.series, c.accent);
+    }
+  }
 
   // ─── Structured tracker tables ───────────────────────────────────────
   if (input.structured) {

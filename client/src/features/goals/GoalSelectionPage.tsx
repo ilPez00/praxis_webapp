@@ -79,8 +79,12 @@ const GoalSelectionPage: React.FC = () => {
   }, [user, userLoading, navigate]);
 
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      // Lock-free session read — avoids gotrue-js lock contention with useUser/StrictMode
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+      const authUser = session?.user;
       const uid = authUser?.id || '1';
       setCurrentUserId(uid);
 
@@ -106,6 +110,7 @@ const GoalSelectionPage: React.FC = () => {
       }
     };
     init();
+    return () => { cancelled = true; };
   }, []);
 
   const handleSelectCategory = (domain: Domain, category: string) => {

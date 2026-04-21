@@ -54,8 +54,6 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ForumIcon from '@mui/icons-material/Forum';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import NoteIcon from '@mui/icons-material/Note';
-import GroupsIcon from '@mui/icons-material/Groups';
-import TimerIcon from '@mui/icons-material/Timer';
 import WarningIcon from '@mui/icons-material/Warning';
 
 interface AppNotification {
@@ -314,13 +312,57 @@ const Navbar: React.FC = () => {
 
           {/* ── Right side ── */}
           {isMobile ? (
-            <IconButton
-              onClick={() => setDrawerOpen(true)}
-              sx={{ color: 'text.primary' }}
-              aria-label="open menu"
-            >
-              <MenuIcon />
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              {user && (user.praxis_points ?? 0) > 0 && (
+                <Chip
+                  label={`${(user.praxis_points ?? 0).toLocaleString()} PP`}
+                  size="small"
+                  onClick={() => navigate('/commitments')}
+                  sx={{
+                    bgcolor: 'rgba(167,139,250,0.1)',
+                    border: '1px solid rgba(167,139,250,0.25)',
+                    color: '#A78BFA',
+                    fontWeight: 700,
+                    fontSize: '0.68rem',
+                    height: 22,
+                    cursor: 'pointer',
+                  }}
+                />
+              )}
+              {user && (user.current_streak ?? 0) > 0 && (
+                <Chip
+                  icon={<LocalFireDepartmentIcon sx={{ color: '#F59E0B !important', fontSize: '12px !important' }} />}
+                  label={`${user.current_streak}d`}
+                  size="small"
+                  sx={{
+                    bgcolor: 'rgba(245,158,11,0.1)',
+                    border: '1px solid rgba(245,158,11,0.25)',
+                    color: '#F59E0B',
+                    fontWeight: 700,
+                    fontSize: '0.68rem',
+                    height: 22,
+                  }}
+                />
+              )}
+              {user && (
+                <IconButton
+                  onClick={handleOpenNotifs}
+                  sx={{ color: unreadCount > 0 ? 'primary.main' : 'text.secondary', p: 0.5 }}
+                  aria-label="notifications"
+                >
+                  <Badge badgeContent={unreadCount || undefined} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.55rem', minWidth: 14, height: 14 } }}>
+                    {unreadCount > 0 ? <NotificationsIcon fontSize="small" /> : <NotificationsNoneIcon fontSize="small" />}
+                  </Badge>
+                </IconButton>
+              )}
+              <IconButton
+                onClick={() => setDrawerOpen(true)}
+                sx={{ color: 'text.primary' }}
+                aria-label="open menu"
+              >
+                <MenuIcon />
+              </IconButton>
+            </Box>
           ) : (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {user ? (
@@ -742,8 +784,6 @@ const Navbar: React.FC = () => {
                 { label: 'Notebook', to: '/notes', icon: <NoteIcon />, primary: true },
                 { label: 'Discover', to: '/discover', icon: <ExploreIcon />, primary: true },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
-                { label: 'Team Challenges', to: '/team-challenges', icon: <GroupsIcon />, primary: true },
-                { label: 'Co-work', to: '/cowork', icon: <TimerIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
                 { label: 'Fails', to: '/fails', icon: <WarningIcon />, primary: false },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },

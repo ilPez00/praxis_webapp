@@ -564,12 +564,17 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
     .maybeSingle();
 
   if (treeErr) {
+    logger.warn(`createGoalNode: goal_trees load failed for ${userId}: ${treeErr.message} (code=${(treeErr as any).code})`);
     // Retry without root_nodes in case column doesn't exist
     const fallback = await supabase
       .from('goal_trees')
       .select('nodes')
       .eq('user_id', userId)
       .maybeSingle();
+    if (fallback.error) {
+      logger.error(`createGoalNode: fallback load also failed for ${userId}: ${fallback.error.message}`);
+      throw new InternalServerError(`Failed to load goal tree: ${fallback.error.message}`);
+    }
     tree = fallback.data ? { ...fallback.data, root_nodes: null } as any : null;
   }
 
@@ -624,12 +629,16 @@ export const createGoalNode = catchAsync(async (req: Request, res: Response, _ne
     })
     .eq('user_id', userId);
   if (saveErr) {
+    logger.warn(`createGoalNode: primary save failed for ${userId}: ${saveErr.message} (code=${(saveErr as any).code}); retrying without root_nodes`);
     // Retry without root_nodes in case column doesn't exist in production
     const { error: fallbackErr } = await supabase
       .from('goal_trees')
       .update({ nodes: updatedNodes })
       .eq('user_id', userId);
-    if (fallbackErr) throw new InternalServerError(`Failed to save new node: ${fallbackErr.message}`);
+    if (fallbackErr) {
+      logger.error(`createGoalNode: fallback save failed for ${userId}: ${fallbackErr.message} (code=${(fallbackErr as any).code}, details=${(fallbackErr as any).details})`);
+      throw new InternalServerError(`Failed to save new node: ${fallbackErr.message}`);
+    }
   }
 
   // 5. Increment edit count + deduct PP (best-effort)

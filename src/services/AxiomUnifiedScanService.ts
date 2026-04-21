@@ -439,14 +439,22 @@ ${actionResults.filter(r => r.success).map((r, i) => {
       `${c.checked_in_at?.slice(0, 10)}: ${c.mood || 'N/A'} | ${c.win_of_the_day?.slice(0, 60) || 'no win'}`
     ).join('\n');
 
-    const trackerSummary = trackers.slice(0, 5).map((t: any) =>
-      `- ${t.type}: ${t.goal || 'general'}`
+    const trackerSummary = trackers.slice(0, 10).map((t: any) =>
+      `- id=${t.id} type=${t.type} goal=${t.goal || t.goal_node_id || 'general'} unit=${t.unit || ''}`
     ).join('\n') || '(no trackers)';
+
+    const recentNotesBlock = notebookEntries.slice(0, 15).map((e: any) => {
+      const when = (e.occurred_at || e.created_at || '').slice(0, 10);
+      const goal = e.goal_id ? ` goal=${e.goal_id}` : '';
+      const dom = e.domain ? ` [${e.domain}]` : '';
+      const body = (e.content || '').slice(0, 300).replace(/\n+/g, ' ');
+      return `- ${when}${dom}${goal} id=${e.id}: ${body}`;
+    }).join('\n') || '(no recent notes)';
 
     const goalsBlock = goalsSummary.map(g => {
       const progressBar = '█'.repeat(Math.round(g.progress / 10)) + '░'.repeat(10 - Math.round(g.progress / 10));
       const attachBlock = g.attachments ? `\n  Attachments:\n  ${g.attachments.split('\n').map((l: string) => '  ' + l).join('\n')}` : '';
-      return `[${g.domain}] ${g.name} — ${progressBar} ${g.progress}%${attachBlock}`;
+      return `id=${g.id} [${g.domain}] ${g.name} — ${progressBar} ${g.progress}%${attachBlock}`;
     }).join('\n');
 
     return `You are Axiom. You analyze user data and take autonomous actions to help them achieve their goals.
@@ -460,8 +468,11 @@ ${goalsBlock || '(no goals)'}
 ## RECENT CHECK-INS (last 7 days)
 ${recentCheckins || '(no check-ins)'}
 
-## TRACKERS
+## TRACKERS (existing)
 ${trackerSummary}
+
+## RECENT FREE NOTES (last 15)
+${recentNotesBlock}
 ${notebookLMContext ? `\n## NOTEBOOKLM INSIGHTS\n${notebookLMContext}` : ''}
 
 ---
@@ -473,7 +484,7 @@ Based on the above data, decide what TOOLS to call. Consider:
 - Update goal progress: clear evidence of progress change
 - Push notification: motivational nudge, especially for stagnant goals or streak at risk
 - Create notebook entry: Axiom finds an insight worth documenting
-- Log tracker: user has been tracking habits
+- **Log tracker (IMPORTANT):** For EACH recent free note, check whether its content is inherent to an existing goal or existing tracker type (e.g. note "ran 5k at sunrise" → running tracker; "ate 180g protein" → nutrition tracker; "studied 2h spanish" → study tracker). If yes, call \`log_tracker\` with the matching tracker \`type\` and structured \`data\` extracted from the note text (numeric value, unit, reps, duration, mood, etc.). Match to existing trackers above when possible; only invent a new type if none fit and the note clearly warrants one. Skip notes that are pure reflection with no measurable signal.
 - Suggest match: user needs an accountability partner
 
 IMPORTANT CONSTRAINTS:

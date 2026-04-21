@@ -53,6 +53,7 @@ gemini_prompt.txt
 /claude_steps.txt
 console-export-*.txt
 .playwright-mcp/
+.mcp.json
 .claude/
 client/.claude/
 events.txt

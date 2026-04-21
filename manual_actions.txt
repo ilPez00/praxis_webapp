@@ -1,0 +1,39 @@
+Praxis — Manual Actions Required
+=================================
+
+Run these in order against the production Supabase DB.
+
+--------------------------------------------------------------------
+2026-04-20 — PDF export tiers (free raw + 300 PP axiom + 500 PP self-authoring)
+--------------------------------------------------------------------
+
+1. Add `last_raw_export_at` column on profiles to enforce the daily free raw PDF rate limit.
+
+    ALTER TABLE profiles
+      ADD COLUMN IF NOT EXISTS last_raw_export_at timestamptz;
+
+    -- Optional: backfill so existing users aren't instantly rate-limited.
+    -- (default NULL means first export is always allowed)
+
+No env changes required.
+
+--------------------------------------------------------------------
+2026-04-21 — Onboarding 500 diagnostics + Team Challenges/Co-work removal
+--------------------------------------------------------------------
+
+1. Team Challenges + Co-work features removed from Navbar + routes + backend.
+   No DB cleanup needed (tables can stay idle); optional:
+
+    -- Optional: drop unused tables (irreversible, skip if unsure)
+    -- DROP TABLE IF EXISTS team_challenges CASCADE;
+    -- DROP TABLE IF EXISTS cowork_rooms CASCADE;
+
+2. Onboarding "internal server error after first topic" — added detailed
+   error logs on /goals/:userId/node. On next repro, check Railway logs
+   for lines beginning with `createGoalNode:` — these now include supabase
+   error code + details so we can pinpoint the cause.
+
+3. If the gotrue-js lock warning recurs, audit remaining call sites of
+   `supabase.auth.getUser()` in client/src/features/** and replace with
+   `supabase.auth.getSession()` — the former holds a Web Lock, the latter
+   is a local read.

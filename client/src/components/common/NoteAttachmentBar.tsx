@@ -8,6 +8,7 @@ import LinkIcon from '@mui/icons-material/Link';
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { supabase } from '../../lib/supabase';
 
 export interface Attachment {
@@ -32,6 +33,7 @@ const NoteAttachmentBar: React.FC<NoteAttachmentBarProps> = ({
   attachments, onChange, userId, accentColor = '#A78BFA', compact = false,
 }) => {
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -65,6 +67,7 @@ const NoteAttachmentBar: React.FC<NoteAttachmentBarProps> = ({
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
+      if (cameraRef.current) cameraRef.current.value = '';
     }
   };
 
@@ -104,6 +107,16 @@ const NoteAttachmentBar: React.FC<NoteAttachmentBarProps> = ({
             {uploading ? <CircularProgress size={16} /> : <AttachFileIcon sx={{ fontSize: compact ? 16 : 18 }} />}
           </IconButton>
         </Tooltip>
+        <Tooltip title="Take photo" placement="top">
+          <IconButton
+            size="small"
+            onClick={() => cameraRef.current?.click()}
+            disabled={uploading}
+            sx={{ color: 'rgba(255,255,255,0.35)', '&:hover': { color: accentColor } }}
+          >
+            <PhotoCameraIcon sx={{ fontSize: compact ? 16 : 18 }} />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Add link" placement="top">
           <IconButton
             size="small"
@@ -118,6 +131,14 @@ const NoteAttachmentBar: React.FC<NoteAttachmentBarProps> = ({
           type="file"
           hidden
           accept={ALLOWED_TYPES.join(',')}
+          onChange={handleFileSelect}
+        />
+        <input
+          ref={cameraRef}
+          type="file"
+          hidden
+          accept="image/*"
+          capture="environment"
           onChange={handleFileSelect}
         />
       </Box>

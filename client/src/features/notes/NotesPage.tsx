@@ -19,7 +19,6 @@ import ShareButton from '../../components/common/ShareButton';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import AxiomQueryDialog from '../notebook/AxiomQueryDialog';
 import NotebookMap from './NotebookMap';
-import AuthoringModal from './components/AuthoringModal';
 import Slider from '@mui/material/Slider';
 
 import {
@@ -155,11 +154,7 @@ const NotesPage: React.FC = () => {
 
   // Diary export
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exporting, setExporting] = useState<'pdf' | 'axiom' | null>(null);
-  const [axiomNarrative, setAxiomNarrative] = useState<string | null>(null);
-
-  // Interactive Authoring
-  const [authoringOpen, setAuthoringOpen] = useState(false);
+  const [exporting, setExporting] = useState<'pdf' | 'axiom' | 'self' | null>(null);
 
   const currentUserId = user?.id;
 
@@ -173,14 +168,23 @@ const NotesPage: React.FC = () => {
   }, [notebookEntriesForMap, selectedCalendarDate]);
 
   // ── Diary export handlers ─────────────────────────────────────
-  const downloadPdfBlob = (blob: Blob) => {
+  const downloadPdfBlob = (blob: Blob, filename: string) => {
     const pdfBlob = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `praxis-notebook-${new Date().toISOString().slice(0, 10)}.pdf`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Axios returns the server's JSON error as a Blob when responseType='blob' —
+  // decode it so the user sees the real message (rate-limit, low PP, etc.)
+  const surfaceBlobError = async (err: any, fallback: string) => {
+    const raw = await err?.response?.data?.text?.().catch(() => '') ?? '';
+    let parsed: any = null;
+    try { parsed = raw ? JSON.parse(raw) : null; } catch { /* ignore */ }
+    return parsed?.message || err.message || fallback;
   };
 
   const handleExportPdf = async () => {
@@ -188,16 +192,11 @@ const NotesPage: React.FC = () => {
     setExporting('pdf');
     try {
       const res = await api.post('/diary/export', {}, { responseType: 'blob' });
-      downloadPdfBlob(res.data);
+      downloadPdfBlob(res.data, `praxis-notebook-${new Date().toISOString().slice(0, 10)}.pdf`);
       toast.success('Notebook PDF downloaded!');
-      if (!user?.is_premium) setPraxisPoints(prev => (prev ?? 0) - 500);
       setExportDialogOpen(false);
     } catch (err: any) {
-      // axios blob errors need explicit text() to surface the server message
-      const msg = await err?.response?.data?.text?.().catch(() => '') ?? '';
-      let parsed: any = null;
-      try { parsed = msg ? JSON.parse(msg) : null; } catch { /* ignore */ }
-      toast.error(parsed?.message || err.message || 'Failed to export notebook');
+      toast.error(await surfaceBlobError(err, 'Failed to export notebook'));
     } finally {
       setExporting(null);
     }
@@ -206,39 +205,33 @@ const NotesPage: React.FC = () => {
   const handleExportAxiom = async () => {
     if (!currentUserId) return;
     setExporting('axiom');
-    setAxiomNarrative(null);
     try {
-      const res = await api.post('/diary/export/axiom');
-      setAxiomNarrative(res.data.narrative);
-      setPraxisPoints(prev => (prev ?? 0) - 500);
-      toast.success(`Axiom diary created! (${res.data.entryCount} entries)`);
-
-      // Trigger automatic download
-      const blob = new Blob([res.data.narrative], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `praxis-axiom-diary-${new Date().toISOString().slice(0, 10)}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const res = await api.post('/diary/export/axiom', {}, { responseType: 'blob' });
+      downloadPdfBlob(res.data, `praxis-axiom-${new Date().toISOString().slice(0, 10)}.pdf`);
+      setPraxisPoints(prev => (prev ?? 0) - 300);
+      toast.success('Axiom narrative ready!');
       setExportDialogOpen(false);
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to generate';
-      toast.error(msg);
+      toast.error(await surfaceBlobError(err, 'Failed to generate narrative'));
     } finally {
       setExporting(null);
     }
   };
 
-  const downloadAxiomNarrative = () => {
-    if (!axiomNarrative) return;
-    const blob = new Blob([axiomNarrative], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `praxis-axiom-diary-${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExportSelfAuthoring = async () => {
+    if (!currentUserId) return;
+    setExporting('self');
+    try {
+      const res = await api.post('/diary/export/self-authoring', {}, { responseType: 'blob' });
+      downloadPdfBlob(res.data, `praxis-self-authoring-${new Date().toISOString().slice(0, 10)}.pdf`);
+      setPraxisPoints(prev => (prev ?? 0) - 500);
+      toast.success('Self-Authoring workbook ready!');
+      setExportDialogOpen(false);
+    } catch (err: any) {
+      toast.error(await surfaceBlobError(err, 'Failed to generate self-authoring workbook'));
+    } finally {
+      setExporting(null);
+    }
   };
 
   // ── Data fetching ──────────────────────────────────────────────
@@ -940,7 +933,7 @@ const NotesPage: React.FC = () => {
           </DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {/* Unified Notebook PDF — one tier, auto-ranges to signup date */}
+              {/* Tier 1 — FREE raw notebook PDF, rate-limited to 1/day */}
               <Box
                 onClick={exporting ? undefined : handleExportPdf}
                 sx={{
@@ -952,20 +945,18 @@ const NotesPage: React.FC = () => {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <MenuBookIcon sx={{ color: '#A78BFA' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Notebook PDF</Typography>
-                  {user?.is_premium ? (
-                    <Chip label="PRO" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B' }} />
-                  ) : (
-                    <Chip label="500 PP" size="small" sx={{ height: 18, bgcolor: 'rgba(167,139,250,0.2)', color: '#A78BFA' }} />
-                  )}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Raw Notebook PDF</Typography>
+                  <Chip label="FREE" size="small" sx={{ height: 18, bgcolor: 'rgba(34,197,94,0.2)', color: '#22C55E', fontWeight: 700 }} />
+                  <Chip label="1 / day" size="small" sx={{ height: 18, bgcolor: 'rgba(255,255,255,0.06)', color: 'text.secondary' }} />
                 </Box>
                 <Typography variant="caption" color="text.secondary">
-                  Curated PDF from signup date to today: cover, metrics dashboard, per-tracker tables, goal hierarchy, and life-log timeline
+                  Everything, unfiltered: metrics dashboard, check-in heatmap, per-tracker tables with trend charts, goal hierarchy with colored progress bars, and the full life-log timeline.
                 </Typography>
                 <Box sx={{ mt: 1.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  <Chip label="📊 Charts" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
+                  <Chip label="🔥 Heatmap" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
                   <Chip label="🎯 Goals" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
-                  <Chip label="📊 Trackers" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
-                  <Chip label="📓 Diary" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
+                  <Chip label="📓 Timeline" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
                 </Box>
                 {exporting === 'pdf' && (
                   <Box sx={{ mt: 1.5 }}>
@@ -975,7 +966,7 @@ const NotesPage: React.FC = () => {
                 )}
               </Box>
 
-              {/* Axiom Narrative - 500 PP */}
+              {/* Tier 2 — Axiom AI memoir, 300 PP */}
               <Box
                 onClick={exporting ? undefined : handleExportAxiom}
                 sx={{
@@ -987,41 +978,49 @@ const NotesPage: React.FC = () => {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <AutoAwesomeIcon sx={{ color: '#F59E0B' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Axiom AI Narrative</Typography>
-                  <Chip label="500 PP" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B' }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Axiom Narrative</Typography>
+                  <Chip label="300 PP" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B', fontWeight: 700 }} />
                 </Box>
                 <Typography variant="caption" color="text.secondary">
-                  AI-generated coaching narrative analyzing your patterns, progress, and recommendations
+                  Axiom rewrites your journal as a short memoir — 3-5 chapters of first-person prose, pull-quotes from your own entries, and a closing letter back to you. Delivered as a styled PDF.
                 </Typography>
                 {exporting === 'axiom' && (
                   <Box sx={{ mt: 1.5 }}>
                     <CircularProgress size={16} sx={{ mr: 1 }} />
-                    <Typography variant="caption" color="text.secondary">Generating AI narrative...</Typography>
+                    <Typography variant="caption" color="text.secondary">Axiom is writing your memoir…</Typography>
                   </Box>
                 )}
               </Box>
 
-              {/* Interactive Authoring - 200 PP */}
+              {/* Tier 3 — Self-Authoring workbook, 500 PP */}
               <Box
-                onClick={() => { setExportDialogOpen(false); setAuthoringOpen(true); }}
+                onClick={exporting ? undefined : handleExportSelfAuthoring}
                 sx={{
-                  p: 2.5, borderRadius: '16px', cursor: 'pointer',
+                  p: 2.5, borderRadius: '16px', cursor: exporting ? 'default' : 'pointer',
                   border: '1px solid rgba(34,197,94,0.3)', bgcolor: 'rgba(34,197,94,0.06)',
-                  '&:hover': { bgcolor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.5)' },
+                  '&:hover': exporting ? {} : { bgcolor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.5)' },
+                  opacity: exporting && exporting !== 'self' ? 0.4 : 1,
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <EditNoteIcon sx={{ color: '#22C55E' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Interactive Authoring</Typography>
-                  {user?.is_premium ? (
-                    <Chip label="PRO" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B' }} />
-                  ) : (
-                    <Chip label="200 PP" size="small" sx={{ height: 18, bgcolor: 'rgba(34,197,94,0.2)', color: '#22C55E' }} />
-                  )}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Self-Authoring Workbook</Typography>
+                  <Chip label="500 PP" size="small" sx={{ height: 18, bgcolor: 'rgba(34,197,94,0.2)', color: '#22C55E', fontWeight: 700 }} />
                 </Box>
                 <Typography variant="caption" color="text.secondary">
-                  Guided rewriting program — Axiom helps you craft your narrative chapter by chapter
+                  A structured three-part workbook inspired by the Self-Authoring tradition: Past (six life epochs), Present (5-7 faults + 5-7 virtues), Future (the life worth having, the life to avoid, and a concrete path). Filled in with your actual data as evidence.
                 </Typography>
+                <Box sx={{ mt: 1.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  <Chip label="Past" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
+                  <Chip label="Present" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
+                  <Chip label="Future" size="small" sx={{ height: 18, fontSize: '0.55rem' }} />
+                </Box>
+                {exporting === 'self' && (
+                  <Box sx={{ mt: 1.5 }}>
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    <Typography variant="caption" color="text.secondary">Building your workbook…</Typography>
+                  </Box>
+                )}
               </Box>
             </Stack>
           </DialogContent>
@@ -1034,15 +1033,6 @@ const NotesPage: React.FC = () => {
         <AxiomQueryDialog
           open={axiomDialogOpen}
           onClose={() => setAxiomDialogOpen(false)}
-        />
-
-        {/* Interactive Authoring Modal */}
-        <AuthoringModal
-          open={authoringOpen}
-          onClose={() => setAuthoringOpen(false)}
-          userPoints={userPoints}
-          isPremium={isPremium}
-          userName={user?.name}
         />
 
       </Box>

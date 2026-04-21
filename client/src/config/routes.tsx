@@ -43,8 +43,6 @@ const FriendsPage = React.lazy(() => import('../features/friends/FriendsPage'));
 const PostThreadPage = React.lazy(() => import('../features/posts/PostThreadPage'));
 const SettingsPage = React.lazy(() => import('../features/settings/SettingsPage'));
 const ChallengesPage = React.lazy(() => import('../features/challenges/ChallengesPage'));
-const TeamChallengesPage = React.lazy(() => import('../features/challenges/TeamChallengesPage'));
-const CoworkRoomPage = React.lazy(() => import('../features/cowork/CoworkRoomPage'));
 const FailsPage = React.lazy(() => import('../features/fails/FailsPage'));
 const NotesPage = React.lazy(() => import('../features/notes/NotesPage'));
 const PublicNotebookPage = React.lazy(() => import('../features/notes/PublicNotebookPage'));
@@ -101,8 +99,6 @@ export const privateRoutes: RouteObject[] = [
   { path: 'posts/:postId', element: <PostThreadPage /> },
   { path: 'settings', element: <SettingsPage /> },
   { path: 'challenges', element: <ChallengesPage /> },
-  { path: 'team-challenges', element: <TeamChallengesPage /> },
-  { path: 'cowork', element: <CoworkRoomPage /> },
   { path: 'fails', element: <FailsPage /> },
   { path: 'achievements', element: <AchievementCollectionPage /> },
   { path: 'go-live', element: <GoLivePage /> },

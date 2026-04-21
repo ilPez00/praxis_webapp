@@ -5,6 +5,7 @@ import { authenticateToken } from '../middleware/authenticateToken';
 import { AICoachingService } from '../services/AICoachingService';
 import { getStructuredSummary } from '../services/StructuredTrackerReader';
 import { renderNotebookPdf } from '../services/NotebookPdfRenderer';
+import { renderNarrativePdf } from '../services/NarrativePdfRenderer';
 import logger from '../utils/logger';
 
 const router = Router();
@@ -450,6 +451,12 @@ async function buildNotebookPdfInput(userId: string, since: Date) {
   }
   for (const e of achievements) timeline.push({ date: e.created_at, kind: 'Achievement', text: `${e.title} (${e.domain})` });
 
+  const checkinByDay: Record<string, number> = {};
+  for (const c of checkins) {
+    const day = (c.checked_in_at || '').slice(0, 10);
+    if (day) checkinByDay[day] = (checkinByDay[day] || 0) + 1;
+  }
+
   return {
     userName: profile?.name || 'User',
     since,
@@ -469,44 +476,64 @@ async function buildNotebookPdfInput(userId: string, since: Date) {
     legacyTrackerLogs: legacyRows,
     checkinCount: checkins.length,
     achievementCount: achievements.length,
+    checkinByDay,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Timeline + evidence helpers shared by narrative tiers
+// ---------------------------------------------------------------------------
+async function fetchNarrativeData(userId: string) {
+  const [journalsRes, nodeJournalsRes, checkinsRes, goalsRes, betsRes, achievementsRes, profileRes] = await Promise.all([
+    supabase.from('journal_entries').select('note, mood, created_at').eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('node_journal_entries').select('node_id, note, mood, logged_at').eq('user_id', userId).order('logged_at', { ascending: true }),
+    supabase.from('checkins').select('mood, win_of_the_day, checked_in_at, streak_day').eq('user_id', userId).order('checked_in_at', { ascending: true }),
+    supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
+    supabase.from('bets').select('goal_name, stake_points, status, created_at').eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('achievements').select('title, domain, created_at').eq('user_id', userId).order('created_at', { ascending: true }),
+    supabase.from('profiles').select('name, praxis_points, created_at').eq('id', userId).single(),
+  ]);
+  return {
+    journals: journalsRes.data || [],
+    nodeJournals: nodeJournalsRes.data || [],
+    checkins: checkinsRes.data || [],
+    nodes: (goalsRes.data?.nodes as any[]) || [],
+    bets: betsRes.data || [],
+    achievements: achievementsRes.data || [],
+    profile: profileRes.data,
   };
 }
 
 /**
  * POST /diary/export
- * Single notebook PDF tier. Auto-ranges from signup date to now. Gated: Pro OR 500 PP.
- * Frontend calls this; no plain/full distinction.
+ * FREE raw notebook PDF, rate-limited to one per 24h.
+ * Includes charts, heatmap, tracker tables, goal hierarchy, life-log timeline.
  */
 router.post('/export', authenticateToken, catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated');
 
   const { data: profile } = await supabase
-    .from('profiles').select('praxis_points, is_premium, created_at').eq('id', userId).single();
+    .from('profiles').select('created_at, last_raw_export_at').eq('id', userId).single();
 
-  const isPro = !!profile?.is_premium;
-  const balance = profile?.praxis_points ?? 0;
-
-  if (!isPro && balance < 500) {
-    throw new BadRequestError(`Not enough PP. You have ${balance}, need 500.`);
+  // Daily rate limit: 1 raw PDF per 24h.
+  const lastExportMs = profile?.last_raw_export_at ? new Date(profile.last_raw_export_at).getTime() : 0;
+  const DAY = 24 * 60 * 60 * 1000;
+  if (lastExportMs && Date.now() - lastExportMs < DAY) {
+    const nextAt = new Date(lastExportMs + DAY);
+    throw new BadRequestError(
+      `Daily limit reached. Next free export available at ${nextAt.toLocaleString()}. ` +
+      `(Use the Axiom Narrative or Self-Authoring tiers for more frequent exports.)`,
+    );
   }
 
-  // Auto-range from signup date → now. Falls back to ~5yr if created_at missing.
   const since = profile?.created_at
     ? new Date(profile.created_at)
-    : new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000);
+    : new Date(Date.now() - 5 * 365 * DAY);
   const input = await buildNotebookPdfInput(userId, since);
 
-  // Deduct PP before streaming (so mid-stream failures don't double-charge on retry)
-  if (!isPro) {
-    await supabase.from('profiles').update({ praxis_points: balance - 500 }).eq('id', userId);
-  }
   await supabase.from('profiles').update({
-    latest_axiom_report: {
-      type: 'notebook_export',
-      timestamp: new Date().toISOString(),
-      summary: `Goals: ${input.goals.length}, Logs: ${input.timeline.length}`,
-    },
+    last_raw_export_at: new Date().toISOString(),
   }).eq('id', userId);
 
   res.setHeader('Content-Type', 'application/pdf');
@@ -516,147 +543,306 @@ router.post('/export', authenticateToken, catchAsync(async (req: Request, res: R
 
 /**
  * POST /diary/export/axiom
- * Generate Axiom-refined diary narrative (costs 500 PP)
+ * 300 PP. Axiom writes a memoir in markdown, rendered as a styled PDF.
  */
 router.post('/export/axiom', authenticateToken, catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated');
 
-  // Check PP balance
-  const { data: profile } = await supabase
-    .from('profiles').select('name, praxis_points').eq('id', userId).single();
+  const data = await fetchNarrativeData(userId);
+  const balance = data.profile?.praxis_points ?? 0;
+  if (balance < 300) throw new BadRequestError(`Not enough PP. You have ${balance}, need 300.`);
 
-  const balance = profile?.praxis_points ?? 0;
-  if (balance < 500) {
-    throw new BadRequestError(`Not enough PP. You have ${balance}, need 500.`);
-  }
-
-  const userName = profile?.name || 'User';
-
-  // Deduct 500 PP
-  const { error: ppErr } = await supabase
-    .from('profiles')
-    .update({ praxis_points: balance - 500 })
-    .eq('id', userId);
-  if (ppErr) throw ppErr;
-
-  logger.info(`[DiaryExport] Deducted 500 PP from ${userName} for Axiom diary`);
-
-  // Fetch all data (same as plain export)
-  const [journalsRes, nodeJournalsRes, checkinsRes, goalsRes, betsRes, achievementsRes] = await Promise.all([
-    supabase.from('journal_entries').select('note, mood, created_at')
-      .eq('user_id', userId).order('created_at', { ascending: true }),
-    supabase.from('node_journal_entries').select('node_id, note, mood, logged_at')
-      .eq('user_id', userId).order('logged_at', { ascending: true }),
-    supabase.from('checkins').select('mood, win_of_the_day, checked_in_at, streak_day')
-      .eq('user_id', userId).order('checked_in_at', { ascending: true }),
-    supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
-    supabase.from('bets').select('goal_name, stake_points, status, created_at')
-      .eq('user_id', userId).order('created_at', { ascending: true }),
-    supabase.from('achievements').select('title, domain, created_at')
-      .eq('user_id', userId).order('created_at', { ascending: true }),
-  ]);
-
-  const journals = journalsRes.data || [];
-  const nodeJournals = nodeJournalsRes.data || [];
-  const checkins = checkinsRes.data || [];
-  const nodes: any[] = goalsRes.data?.nodes || [];
-  const bets = betsRes.data || [];
-  const achievements = achievementsRes.data || [];
-
-  const nodeNameMap: Record<string, string> = {};
-  for (const n of nodes) nodeNameMap[n.id] = n.name || 'Goal';
-
-  // Build raw timeline text for the LLM
-  const timeline: Array<{ date: string; text: string }> = [];
-  for (const e of journals) {
-    timeline.push({ date: e.created_at, text: `${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim() });
-  }
-  for (const e of nodeJournals) {
-    const goalName = nodeNameMap[e.node_id] || 'a goal';
-    timeline.push({ date: e.logged_at, text: `[Goal: ${goalName}] ${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim() });
-  }
-  for (const e of checkins) {
-    timeline.push({ date: e.checked_in_at, text: `Check-in Day ${e.streak_day}${e.mood ? ' · ' + e.mood : ''}${e.win_of_the_day ? ' — Win: ' + e.win_of_the_day : ''}` });
-  }
-  for (const e of bets) {
-    const status = e.status === 'won' ? 'Won' : e.status === 'lost' ? 'Lost' : 'Placed';
-    timeline.push({ date: e.created_at, text: `${status} bet on "${e.goal_name}" (${e.stake_points} PP)` });
-  }
-  for (const e of achievements) {
-    timeline.push({ date: e.created_at, text: `Achievement unlocked: "${e.title}" (${e.domain})` });
-  }
-  timeline.sort((a, b) => a.date.localeCompare(b.date));
-
-  // Group by date for the prompt
-  const rawDiary = timeline.map(e => {
-    const d = new Date(e.date);
-    return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — ${e.text}`;
-  }).join('\n');
-
-  // Goal summary for context
-  const goalSummary = nodes
-    .filter((n: any) => !n.parentId)
-    .map((n: any) => `"${n.name}" (${n.domain}, ${Math.round((n.progress || 0) * 100)}%)`)
-    .join(', ');
-
-  // Truncate if too long (LLM context limits)
-  const maxChars = 15000;
-  const truncatedDiary = rawDiary.length > maxChars
-    ? rawDiary.slice(0, maxChars) + '\n\n[... diary continues ...]'
-    : rawDiary;
-
-  const prompt = `You are Axiom, a warm and wise life coach. Transform these raw diary entries into a beautifully written personal narrative — a real diary that reads like a memoir.
-
-AUTHOR: ${userName}
-GOALS: ${goalSummary || 'Various personal goals'}
-
-RAW DIARY ENTRIES:
-${truncatedDiary}
-
-INSTRUCTIONS:
-1. Write this as a coherent, chronological personal diary/memoir
-2. Group entries into chapters by week or theme (whichever flows better)
-3. Keep the person's authentic voice — don't sanitize or genericize their words
-4. Weave check-ins, journal notes, bets, and achievements into the narrative
-5. Highlight turning points, breakthroughs, and moments of struggle
-6. Add chapter titles that capture the emotional arc
-7. Include their actual moods and reflections — these are precious
-8. End with a reflection on their growth arc and what's emerging
-9. Write in first person from ${userName}'s perspective
-10. Be specific — use their actual goal names, dates, and data
-11. Make it feel like a real published diary, not a report
-
-OUTPUT FORMAT:
-- Title page with name and date range
-- Chapters with evocative titles
-- Clean prose, no bullet points or formatting artifacts
-- 2000-4000 words depending on how much material there is
-
-Write the complete diary now.`;
+  const userName = data.profile?.name || 'User';
+  await supabase.from('profiles').update({ praxis_points: balance - 300 }).eq('id', userId);
+  logger.info(`[DiaryExport] Deducted 300 PP from ${userName} for Axiom narrative`);
 
   try {
+    const { journals, nodeJournals, checkins, nodes, bets, achievements } = data;
+    const nodeNameMap: Record<string, string> = {};
+    for (const n of nodes) nodeNameMap[n.id] = n.name || 'Goal';
+
+    const timeline: Array<{ date: string; text: string }> = [];
+    for (const e of journals) timeline.push({ date: e.created_at, text: `${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim() });
+    for (const e of nodeJournals) {
+      timeline.push({ date: e.logged_at, text: `[Goal: ${nodeNameMap[e.node_id] || 'a goal'}] ${e.mood ? e.mood + ' ' : ''}${e.note || ''}`.trim() });
+    }
+    for (const e of checkins) {
+      timeline.push({ date: e.checked_in_at, text: `Check-in Day ${e.streak_day}${e.mood ? ' · ' + e.mood : ''}${e.win_of_the_day ? ' — Win: ' + e.win_of_the_day : ''}` });
+    }
+    for (const e of bets) {
+      const status = e.status === 'won' ? 'Won' : e.status === 'lost' ? 'Lost' : 'Placed';
+      timeline.push({ date: e.created_at, text: `${status} bet on "${e.goal_name}" (${e.stake_points} PP)` });
+    }
+    for (const e of achievements) {
+      timeline.push({ date: e.created_at, text: `Achievement unlocked: "${e.title}" (${e.domain})` });
+    }
+    timeline.sort((a, b) => a.date.localeCompare(b.date));
+
+    const rawDiary = timeline.map(e => {
+      const d = new Date(e.date);
+      return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — ${e.text}`;
+    }).join('\n');
+
+    const goalSummary = nodes
+      .filter((n: any) => !n.parentId)
+      .map((n: any) => `"${n.name}" (${n.domain}, ${Math.round((n.progress || 0) * 100)}%)`)
+      .join(', ');
+
+    const maxChars = 18000;
+    const truncated = rawDiary.length > maxChars
+      ? rawDiary.slice(0, maxChars) + '\n\n[... continues ...]'
+      : rawDiary;
+
+    const sinceIso = timeline[0]?.date.slice(0, 10);
+    const untilIso = timeline[timeline.length - 1]?.date.slice(0, 10);
+
+    const prompt = `You are Axiom, a wise and emotionally literate memoirist. Transform the raw diary data below into a short personal memoir — prose, not a report.
+
+AUTHOR: ${userName}
+TOP GOALS: ${goalSummary || 'Various personal goals'}
+DATE RANGE: ${sinceIso || '—'} to ${untilIso || '—'}
+
+RAW DIARY DATA:
+${truncated}
+
+WRITE A MEMOIR IN MARKDOWN. Use this exact skeleton:
+
+# Chapter One: [Evocative title for the opening arc]
+
+[3-6 paragraphs of rich first-person prose narrating the earliest entries. Weave moods, wins, struggles naturally. Occasionally include a pull-quote:]
+
+> [One line from the author that captures a core insight or turning moment.]
+
+[Continue prose.]
+
+## [Optional subsection heading if the mood shifts inside the chapter]
+
+[More prose.]
+
+# Chapter Two: [Title tracking the middle arc]
+
+[Same pattern — prose, rare pull-quotes, maybe one section break.]
+
+# Chapter Three: [Title capturing the present and what's emerging]
+
+[Bring the reader to today. Name the growth arc and what is still unresolved.]
+
+---
+
+# Coda: What the Pages Say
+
+[2-3 paragraphs from Axiom to ${userName}, written in SECOND person. Point to the pattern the author might not see. Reflective, affectionate, not prescriptive.]
+
+RULES:
+- Markdown only: \`#\` for chapters, \`##\` for subsections, \`>\` for pull-quotes, \`**bold**\` for emphasis, \`*italic*\` for voice/mood.
+- 3-5 chapters. Each 400-800 words. Pull-quotes rare: 1-3 per chapter.
+- First person from ${userName} for chapters. Second person from Axiom for the Coda.
+- Use real goal names, real dates, actual moods. Specific beats generic.
+- No bullet lists in chapters. This is prose.
+- Do NOT write a cover title or byline — the PDF wrapper adds those. Start directly with \`# Chapter One: ...\`.
+
+WRITE THE FULL MEMOIR NOW.`;
+
     const aiCoaching = new AICoachingService();
     const narrative = await aiCoaching.runWithFallback(prompt);
-
     logger.info(`[DiaryExport] Axiom narrative generated for ${userName} (${narrative.length} chars)`);
 
-    // Save to user profile
     await supabase.from('profiles').update({ latest_ai_narrative: narrative }).eq('id', userId);
 
-    res.json({
-      narrative,
-      entryCount: timeline.length,
-      dateRange: timeline.length > 0
-        ? { from: timeline[0].date.slice(0, 10), to: timeline[timeline.length - 1].date.slice(0, 10) }
-        : null,
-      ppSpent: 500,
-    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="praxis-axiom-${new Date().toISOString().slice(0, 10)}.pdf"`);
+    renderNarrativePdf({
+      title: 'The Book of You',
+      subtitle: 'An Axiom-written memoir of your becoming',
+      author: userName,
+      tierLabel: 'Axiom Narrative',
+      accentColor: '#F59E0B',
+      dateRangeText: sinceIso && untilIso ? `${sinceIso} to ${untilIso}` : undefined,
+      body: narrative,
+    }, res);
   } catch (err: any) {
-    // Refund PP on failure
     await supabase.from('profiles').update({ praxis_points: balance }).eq('id', userId);
-    logger.error(`[DiaryExport] Axiom generation failed, refunded 500 PP: ${err.message}`);
-    throw new Error('Failed to generate diary narrative. Your 500 PP have been refunded.');
+    logger.error(`[DiaryExport] Axiom generation failed, refunded 300 PP: ${err.message}`);
+    throw new Error('Failed to generate diary narrative. Your 300 PP have been refunded.');
+  }
+}));
+
+/**
+ * POST /diary/export/self-authoring
+ * 500 PP. Structured three-part workbook (past / present / future) inspired by
+ * the Self-Authoring Program but built on the user's actual Praxis data.
+ */
+router.post('/export/self-authoring', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  const data = await fetchNarrativeData(userId);
+  const balance = data.profile?.praxis_points ?? 0;
+  if (balance < 500) throw new BadRequestError(`Not enough PP. You have ${balance}, need 500.`);
+
+  const userName = data.profile?.name || 'User';
+  await supabase.from('profiles').update({ praxis_points: balance - 500 }).eq('id', userId);
+  logger.info(`[DiaryExport] Deducted 500 PP from ${userName} for self-authoring`);
+
+  try {
+    const { journals, nodeJournals, checkins, nodes, achievements } = data;
+    const sinceIso = data.profile?.created_at
+      ? new Date(data.profile.created_at).toISOString()
+      : new Date(Date.now() - 5 * 365 * 86400000).toISOString();
+    const structured = await getStructuredSummary(userId, sinceIso, 2000).catch(() => null);
+
+    const nodeNameMap: Record<string, string> = {};
+    for (const n of nodes) nodeNameMap[n.id] = n.name || 'Goal';
+
+    // Build evidence bundle — recent journal/check-in/achievement, trimmed for LLM window.
+    const evidence: string[] = [];
+    for (const e of journals.slice(-80)) {
+      evidence.push(`${(e.created_at || '').slice(0, 10)} [journal${e.mood ? '/' + e.mood : ''}]: ${(e.note || '').slice(0, 220)}`);
+    }
+    for (const e of nodeJournals.slice(-80)) {
+      evidence.push(`${(e.logged_at || '').slice(0, 10)} [goal:${nodeNameMap[e.node_id] || '?'}]: ${(e.note || '').slice(0, 220)}`);
+    }
+    for (const e of checkins.slice(-40)) {
+      evidence.push(`${(e.checked_in_at || '').slice(0, 10)} [checkin]: mood=${e.mood || '—'} win=${e.win_of_the_day || '—'}`);
+    }
+    for (const e of achievements) {
+      evidence.push(`${(e.created_at || '').slice(0, 10)} [unlocked:${e.domain}]: ${e.title}`);
+    }
+    const evidenceBlock = evidence.slice(-260).join('\n');
+
+    const goalTreeText = nodes.map((n: any) => {
+      const pct = Math.round((n.progress || 0) * 100);
+      return `${n.parentId ? '  ' : ''}- "${n.name}" (${n.domain || '—'}, ${pct}%)${n.customDetails ? ' — ' + String(n.customDetails).slice(0, 160) : ''}`;
+    }).join('\n');
+
+    const structuredSummary = structured ? [
+      structured.lifts && `Strength: ${structured.lifts.total_volume_kg} kg across ${structured.lifts.row_count} sets`,
+      structured.cardio && `Cardio: ${structured.cardio.total_duration_min} min`,
+      structured.sleep && `Sleep: avg ${structured.sleep.avg_duration_h}h/night over ${structured.sleep.night_count} nights`,
+      structured.study && `Study: ${structured.study.total_duration_min} min`,
+      structured.meditation && `Meditation: ${structured.meditation.total_duration_min} min`,
+      structured.books && `Reading: ${structured.books.total_pages_read} pages`,
+      structured.steps && `Steps: ${structured.steps.total_steps.toLocaleString()} total`,
+    ].filter(Boolean).join(' · ') : '';
+
+    const prompt = `You are Axiom, a depth-psychology-informed guide running a structured SELF-AUTHORING workbook, inspired by (but distinct from) the Past/Present/Future Authoring tradition. Your task is to write a PERSONAL WORKBOOK — filled in, not a template — for ${userName}, using their Praxis data as evidence.
+
+AUTHOR: ${userName}
+
+GOAL TREE:
+${goalTreeText || '(no goals yet — invite ${userName} to seed them)'}
+
+TRACKER ROLLUP: ${structuredSummary || '(no structured tracker data yet)'}
+
+RECENT JOURNAL + CHECK-IN + ACHIEVEMENT EVIDENCE:
+${evidenceBlock || '(no entries yet)'}
+
+WRITE THE WORKBOOK IN MARKDOWN. Follow this EXACT three-part structure. Do NOT invent biographical details you cannot support from the evidence. When you lack data (especially early epochs), say so and invite ${userName} to fill them in.
+
+# Part One: Past Authoring
+
+A brief preamble (1 paragraph) on why facing the past precedes present and future. Then six epochs:
+
+## Epoch I — Ages 0 to 5 (Formation)
+[What is not in the evidence. Ask three precise questions for ${userName} to answer — about earliest memory, caretakers, first fear, first comfort. Do not fabricate.]
+
+## Epoch II — Ages 5 to 12 (School and Self-Image)
+[Same — targeted questions, no fabrication.]
+
+## Epoch III — Ages 12 to 18 (Identity and Rupture)
+[Same.]
+
+## Epoch IV — Ages 18 to 25 (Leaving the Familiar)
+[Same.]
+
+## Epoch V — The Last Five Years
+[Use the evidence. Name actual goals begun or abandoned, recurring moods, recurring wins. One rich paragraph.]
+
+## Epoch VI — The Last Twelve Months
+[Most specific. Pull real dates, real wins, real struggles from the evidence block. Two paragraphs. This is the bridge to Part Two.]
+
+---
+
+# Part Two: Present Authoring
+
+One sentence of preamble: a clear-eyed audit, no flattery, no cruelty.
+
+## Faults
+
+Identify 5-7 faults from the evidence — patterns that cost ${userName} something real. Do not use clichés. For each fault:
+
+- **[Name it in bold.]**
+  One paragraph on *how it shows up*, including one concrete example drawn from the evidence.
+  *What it protects:* one line — because faults usually protect something fragile.
+
+## Virtues
+
+Same structure, 5-7 virtues — patterns that have earned ${userName} something real.
+
+- **[Name it in bold.]**
+  One paragraph on *how it shows up*, with a concrete example from the evidence.
+  *Shadow side:* one line — every strength casts one.
+
+---
+
+# Part Three: Future Authoring
+
+One sentence of preamble: three years out, vivid, not vague.
+
+## The Life Worth Having
+
+4-6 paragraphs in present tense describing the three-year future ${userName} wants. Use their goals above as the skeleton — name them. Describe: where they live and among whom, what they do most days, what body/mind/relationships feel like, what they have stopped doing.
+
+> [Single pull-quote line that names the yearning beneath the vision.]
+
+## The Life to Avoid
+
+3-4 paragraphs of unflinching counterfactual — the life that emerges if the faults go unchecked and the goals get abandoned. Honest extrapolation of current trajectory, not catastrophizing. Reference actual fault names from Part Two.
+
+> [Sharp one-line pull-quote that makes the cost visible.]
+
+## The Path
+
+A numbered list of 7-10 concrete, testable commitments. Each line pairs a habit/practice with the fault it counters or the virtue it extends. Reference the user's actual goal names when applicable.
+
+1. **[Habit]** — counters *[fault]* / extends *[virtue]*. One sentence on how.
+2. ...
+
+---
+
+# Closing Letter
+
+2-3 paragraph direct address from Axiom to ${userName}, in SECOND person. Warm but not saccharine. Name one specific thing in the evidence that moved you. End with a single sentence that, if ${userName} re-reads it five years from now, they will remember.
+
+RULES:
+- Markdown only: \`#\`, \`##\`, \`>\`, \`**bold**\`, \`*italic*\`, numbered lists where called for.
+- Do NOT write a cover title or byline — the PDF wrapper adds those. Start directly with \`# Part One: Past Authoring\`.
+- Length target: 3500-5500 words. Dense, not padded. Specific over generic. Evidence over assertion.
+- Never fabricate childhood details. If you lack data, ASK.
+
+WRITE THE FULL WORKBOOK NOW.`;
+
+    const aiCoaching = new AICoachingService();
+    const narrative = await aiCoaching.runWithFallback(prompt);
+    logger.info(`[DiaryExport] Self-authoring generated for ${userName} (${narrative.length} chars)`);
+
+    await supabase.from('profiles').update({ latest_ai_narrative: narrative }).eq('id', userId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="praxis-self-authoring-${new Date().toISOString().slice(0, 10)}.pdf"`);
+    renderNarrativePdf({
+      title: 'Self-Authoring',
+      subtitle: 'A structured workbook of past, present, and future',
+      author: userName,
+      tierLabel: 'Self-Authoring Workbook',
+      accentColor: '#22C55E',
+      body: narrative,
+    }, res);
+  } catch (err: any) {
+    await supabase.from('profiles').update({ praxis_points: balance }).eq('id', userId);
+    logger.error(`[DiaryExport] Self-authoring generation failed, refunded 500 PP: ${err.message}`);
+    throw new Error('Failed to generate self-authoring workbook. Your 500 PP have been refunded.');
   }
 }));
 

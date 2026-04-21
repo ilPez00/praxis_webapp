@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import {
   Box, Typography, Chip, LinearProgress, TextField,
   Button, IconButton, Tooltip, Stack, Divider,
 } from '@mui/material';
+import TuneIcon from '@mui/icons-material/Tune';
 import CircularProgress from '@mui/material/CircularProgress';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
@@ -20,6 +21,8 @@ import { DOMAIN_TRACKER_MAP, TRACKER_TYPES } from '../trackers/trackerTypes';
 import api from '../../lib/api';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import EditableTrackerForm from '../trackers/EditableTrackerForm';
+import TrackerPreferencesDialog from '../trackers/TrackerPreferencesDialog';
+import { getSelectedTrackers } from '../trackers/trackerPreferences';
 import { findWidget } from '../dashboard/components/GoalWidgets';
 import type { WidgetGoalNode } from '../dashboard/components/GoalWidgets';
 
@@ -233,6 +236,8 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
   const getLocation = useCurrentLocation();
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [prefsVersion, setPrefsVersion] = useState(0);
 
   const domain = getNodeDomain(node.id, allNodes);
   const backendNode = allNodes.find(n => n.id === node.id);
@@ -304,7 +309,12 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
   };
 
   const domainTrackerIds = (DOMAIN_TRACKER_MAP as Record<string, string[]>)[domain] || [];
-  const domainTrackers = domainTrackerIds
+  const selectedTrackerIds = useMemo(
+    () => getSelectedTrackers(domain, domainTrackerIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [domain, domainTrackerIds.join(','), prefsVersion],
+  );
+  const domainTrackers = selectedTrackerIds
     .map(id => {
       const tt = TRACKER_TYPES.find(t => t.id === id);
       if (!tt) return null;
@@ -372,7 +382,29 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
         )}
       </GlassCard>
 
-      {/* Inline editable tracker forms for all domain trackers */}
+      {/* Trackers header with picker */}
+      {domainTrackerIds.length > 0 && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25, px: 0.5 }}>
+          <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Trackers · {domainTrackers.length}/{domainTrackerIds.length}
+          </Typography>
+          <Button
+            size="small"
+            startIcon={<TuneIcon sx={{ fontSize: 14 }} />}
+            onClick={() => setPickerOpen(true)}
+            sx={{
+              ml: 'auto', fontSize: '0.62rem', fontWeight: 700, py: 0.25, px: 1,
+              minHeight: 0, borderRadius: '8px', textTransform: 'none',
+              color: accentColor, bgcolor: `${accentColor}10`,
+              '&:hover': { bgcolor: `${accentColor}20` },
+            }}
+          >
+            More trackers
+          </Button>
+        </Box>
+      )}
+
+      {/* Inline editable tracker forms for selected domain trackers */}
       {domainTrackers.map(dt => (
         <GlassCard key={dt.config.id} sx={{
           p: 2, borderRadius: '18px', mb: 2,
@@ -481,6 +513,14 @@ const NoteGoalDetail: React.FC<NoteGoalDetailProps> = ({
       <GlassCard sx={{ mt: 2, p: 2 }}>
         <GoalActivityGraph goalId={node.id} goalName={node.title} domain={domain} userId={userId} />
       </GlassCard>
+
+      <TrackerPreferencesDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        domain={domain}
+        available={domainTrackerIds}
+        onSaved={() => setPrefsVersion(v => v + 1)}
+      />
     </Box>
   );
 };

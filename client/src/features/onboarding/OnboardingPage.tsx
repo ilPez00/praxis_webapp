@@ -89,7 +89,10 @@ const OnboardingPage: React.FC = () => {
   const handleComplete = async () => {
     const promise = async () => {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
+        // Use getSession() (local, lock-free) instead of getUser() to avoid
+        // gotrue-js lock contention with other components (StrictMode double-mount, etc.)
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user) throw new Error('No authenticated user found');
 
         let avatarUrl: string | null = null;
