@@ -18,6 +18,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 
 import LanguageIcon from '@mui/icons-material/Language';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
@@ -39,6 +40,141 @@ const SUPPORTED_LANGUAGES = [
   { code: 'ja', label: '日本語' },
   { code: 'zh', label: '中文' },
 ];
+
+type Agent = {
+  id: string;
+  slug: string;
+  name: string;
+  website: string | null;
+  icon_url: string | null;
+  description: string | null;
+};
+
+type AgentKey = {
+  id: string;
+  api_key: string;
+  scope: string[];
+  created_at: string;
+  last_used_at: string | null;
+  expires_at: string;
+  agent: Agent;
+};
+
+function AgentsPanel() {
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [keys, setKeys] = useState<AgentKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadAgents();
+    loadKeys();
+  }, []);
+
+  const loadAgents = async () => {
+    try {
+      const res = await api.get('/agent/agents');
+      setAgents(res.data.agents || []);
+    } catch { setAgents([]); }
+    setLoading(false);
+  };
+
+  const loadKeys = async () => {
+    try {
+      const res = await api.get('/agent/keys');
+      setKeys(res.data.keys || []);
+    } catch { setKeys([]); }
+  };
+
+  const handleConnect = async (slug: string) => {
+    setConnecting(slug);
+    try {
+      const res = await api.get('/agent/connect/' + slug);
+      if (res.request?.responseURL) {
+        window.location.href = res.request.responseURL;
+      }
+    } catch {
+      toast.error('Failed to connect agent. Please try again.');
+      setConnecting(null);
+    }
+  };
+
+  const handleRevoke = async (keyId: string, agentName: string) => {
+    if (!confirm('Revoke access for ' + agentName + '?')) return;
+    try {
+      await api.delete('/agent/keys/' + keyId);
+      setKeys(keys => keys.filter(k => k.id !== keyId));
+      toast.success(agentName + ' disconnected');
+    } catch { toast.error('Failed to revoke access'); }
+  };
+
+  const connectedSlugs = keys.map(k => k.agent?.slug);
+
+  if (loading) {
+    return <CircularProgress size={20} />;
+  }
+
+  return (
+    <Stack spacing={2}>
+      {keys.length > 0 && (
+        <Box>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1 }}>
+            Connected Agents
+          </Typography>
+          <Stack spacing={1}>
+            {keys.map(key => (
+              <Box key={key.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: 'rgba(139,92,246,0.1)', borderRadius: '10px' }}>
+                <Box>
+                  <Typography variant="body2" fontWeight={700}>{key.agent?.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {key.last_used_at ? 'Last used: ' + new Date(key.last_used_at).toLocaleDateString() : 'Never used'}
+                    {' · '}{key.api_key}
+                  </Typography>
+                </Box>
+                <Button size="small" color="error" onClick={() => handleRevoke(key.id, key.agent?.name)}>
+                  Revoke
+                </Button>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+      )}
+      <Box>
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1 }}>
+          Available Agents
+        </Typography>
+        <Stack spacing={1}>
+          {agents.map(agent => {
+            const isConnected = connectedSlugs.includes(agent.slug);
+            return (
+              <Box key={agent.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" fontWeight={700}>{agent.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">{agent.description}</Typography>
+                </Box>
+                <Button
+                  size="small"
+                  variant={isConnected ? 'outlined' : 'contained'}
+                  disabled={connecting === agent.slug || isConnected}
+                  onClick={() => handleConnect(agent.slug)}
+                  sx={{ ml: 2, minWidth: 100, borderRadius: '8px' }}
+                >
+                  {connecting === agent.slug ? (
+                    <CircularProgress size={14} color="inherit" />
+                  ) : isConnected ? (
+                    'Connected'
+                  ) : (
+                    'Connect'
+                  )}
+                </Button>
+              </Box>
+            );
+          })}
+        </Stack>
+      </Box>
+    </Stack>
+  );
+}
 
 function loadNotifPrefs() {
   try { return JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY) || '{}'); } catch { return {}; }
@@ -607,6 +743,14 @@ const SettingsPage: React.FC = () => {
             UI language preference — stored locally. Full i18n coming soon.
           </Typography>
         </Box>
+      </Section>
+
+      {/* API Access */}
+      <Section icon={<SmartToyIcon sx={{ color: '#8B5CF6' }} />} title="API Access">
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Connect apps like the Praxis MCP server to access your data programmatically.
+        </Typography>
+        <AgentsPanel />
       </Section>
 
       {/* Danger Zone */}

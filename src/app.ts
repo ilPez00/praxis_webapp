@@ -62,6 +62,7 @@ import seasonalEventRoutes from './routes/seasonalEventRoutes';
 import accountabilityBuddyRoutes from './routes/accountabilityBuddyRoutes';
 import failsRoutes from './routes/failsRoutes';
 import weeklyChallengeRoutes from './routes/weeklyChallengeRoutes';
+import agentRoutes from './routes/agentRoutes';
 
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -105,7 +106,7 @@ app.use(cors({
 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Secret'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Secret', 'X-API-Key'],
   exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
 }));
 
@@ -271,6 +272,7 @@ apiRouter.use('/seasonal-events', generalLimiter, seasonalEventRoutes);
 apiRouter.use('/buddies', generalLimiter, accountabilityBuddyRoutes);
 apiRouter.use('/fails', generalLimiter, failsRoutes);
 apiRouter.use('/weekly-challenge', generalLimiter, weeklyChallengeRoutes);
+apiRouter.use('/agent', generalLimiter, agentRoutes);
 
 app.use('/api', apiRouter);
 

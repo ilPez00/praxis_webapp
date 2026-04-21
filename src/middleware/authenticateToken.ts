@@ -1,14 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { UnauthorizedError } from '../utils/appErrors';
+import { authenticateApiKey } from '../controllers/agentController';
 
-/**
- * @description Express middleware that authenticates requests via a Supabase JWT.
- * Extracts the Bearer token from the Authorization header, verifies it using the
- * Supabase service-role client, and attaches the user ID to req.user.
- * Returns 401 UnauthorizedError if the token is missing or invalid.
- */
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
+  const apiKey = req.headers['x-api-key'] as string | undefined;
+
+  if (apiKey) {
+    const userId = await authenticateApiKey(apiKey);
+    if (userId) {
+      req.user = { id: userId };
+      return next();
+    }
+  }
+
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 

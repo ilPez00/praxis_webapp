@@ -1,7 +1,72 @@
 Praxis — Manual Actions Required
-=================================
+ =================================
 
-Run these in order against the production Supabase DB.
+ Run these in order against the production Supabase DB.
+
+ --------------------------------------------------------------------
+ 2026-04-21 — MCP Server (Model Context Protocol)
+ --------------------------------------------------------------------
+
+ The MCP server is a separate package at praxis-mcp-server/.
+ It can run standalone or be deployed on Railway.
+
+ QUICK START:
+
+ # Local
+ cd praxis-mcp-server
+ npm install
+ npm run build
+ PRAXIS_API_KEY=pk_live_xxx npm start
+
+ # On Railway
+ - Create new Railway service from praxis-mcp-server/
+ - Set env: PRAXIS_API_KEY, PRAXIS_API_URL=https://web-production-646a4.up.railway.app/api
+ - Uses free tier
+
+ # Claude Desktop config (~/.cursor/mcp.json for Cursor, ~/Library/Application Support/Claude/mcp.json for Claude):
+ {
+   "mcpServers": {
+     "praxis": {
+       "command": "npx",
+       "args": ["praxis-mcp-server"],
+       "env": {
+         "PRAXIS_API_KEY": "pk_live_xxx",
+         "PRAXIS_API_URL": "https://web-production-646a4.up.railway.app/api"
+       }
+     }
+   }
+ }
+
+ Or run as HTTP server:
+ {
+   "mcpServers": {
+     "praxis": {
+       "url": "https://your-mcp-server.railway.app/mcp"
+     }
+   }
+ }
+
+ --------------------------------------------------------------------
+ 2026-04-21 — AI Agent integration (OpenClaw, Hermes, Lindy, etc.)
+ --------------------------------------------------------------------
+
+ 1. Run the new migration:
+
+    psql -h db.xxx.supabase.co -U postgres -d postgres -f migrations/2026-04-21-ai-agents.sql
+
+ 2. This creates:
+    - public.agents (predefined agent whitelist)
+    - public.agent_keys (user-authorized API keys)
+    - public.agent_connect_codes (temp OAuth codes)
+
+ 3. No env changes required.
+
+ Usage:
+    - Users visit /settings → "Connect AI Agent" → click agent to authorize
+    - Agent redirects with code → calls /api/agent/keys/exchange → gets api_key
+    - Agent uses X-API-Key header in requests
+
+ Users can revoke access anytime via /api/agent/keys.
 
 --------------------------------------------------------------------
 2026-04-20 — PDF export tiers (free raw + 300 PP axiom + 500 PP self-authoring)
