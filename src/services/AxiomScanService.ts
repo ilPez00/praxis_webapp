@@ -456,12 +456,13 @@ export class AxiomScanService {
     userName: string,
     userCity: string,
     useLLM: boolean = true,
-    userData?: any
+    userData?: any,
+    force: boolean = false,
   ) {
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
     const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
-    
+
     // Check if user is premium or admin
     const { data: profile } = await supabase
       .from('profiles')
@@ -476,18 +477,20 @@ export class AxiomScanService {
     // Free users: Only Mon(1), Wed(3), Fri(5) — premium + admin bypass
     const freeDays = [1, 3, 5];
     const isFreeDay = freeDays.includes(dayOfWeek);
-    
-    // Check if brief already exists for today
-    const { data: existingBrief } = await supabase
-      .from('axiom_daily_briefs')
-      .select('brief')
-      .eq('user_id', userId)
-      .eq('date', todayStr)
-      .maybeSingle();
-    
-    if (existingBrief) {
-      logger.info(`[AxiomScan] Brief already exists for ${userId} on ${todayStr}`);
-      return;
+
+    // Check if brief already exists for today (skip on force regenerate)
+    if (!force) {
+      const { data: existingBrief } = await supabase
+        .from('axiom_daily_briefs')
+        .select('brief')
+        .eq('user_id', userId)
+        .eq('date', todayStr)
+        .maybeSingle();
+
+      if (existingBrief) {
+        logger.info(`[AxiomScan] Brief already exists for ${userId} on ${todayStr}`);
+        return;
+      }
     }
     
     // Free user (non-admin, non-premium) on non-free day: Skip generation (they can pay 500 PP in frontend)
@@ -506,14 +509,17 @@ export class AxiomScanService {
         nextFreeDay,
         source: 'locked' as const,
       };
-      
-      await supabase.from('axiom_daily_briefs').upsert({
+
+      const lockedUpsert = await supabase.from('axiom_daily_briefs').upsert({
         user_id: userId,
         date: todayStr,
         brief: placeholderBrief,
         generated_at: new Date().toISOString(),
-      });
-      
+      }, { onConflict: 'user_id,date' });
+      if (lockedUpsert.error) {
+        logger.error(`[AxiomScan] Locked-brief upsert failed for ${userId}: ${lockedUpsert.error.message} (code=${lockedUpsert.error.code})`);
+      }
+
       return;
     }
 
@@ -984,12 +990,17 @@ CRITICAL RULES:
       llm_error: llmError,
     };
 
-    await supabase.from('axiom_daily_briefs').upsert({
+    const briefUpsert = await supabase.from('axiom_daily_briefs').upsert({
       user_id: userId,
       date: todayStr,
       brief: recommendations,
       generated_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'user_id,date' });
+    if (briefUpsert.error) {
+      logger.error(`[AxiomScan] Brief upsert failed for ${userId} (${todayStr}): ${briefUpsert.error.message} (code=${briefUpsert.error.code})`);
+    } else {
+      logger.info(`[AxiomScan] Brief upserted for ${userId} (${todayStr}, source=${source})`);
+    }
 
     // Send push notification for new daily brief
     try {

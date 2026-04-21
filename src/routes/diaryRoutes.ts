@@ -7,6 +7,33 @@ import { getStructuredSummary } from '../services/StructuredTrackerReader';
 import { renderNotebookPdf } from '../services/NotebookPdfRenderer';
 import { renderNarrativePdf } from '../services/NarrativePdfRenderer';
 import logger from '../utils/logger';
+import QRCode from 'qrcode';
+
+// Build a PNG QR buffer for the user's Praxis id. Failure is non-fatal — the
+// cover will simply render without the code.
+async function buildUserQr(userId: string): Promise<Buffer | undefined> {
+  try {
+    return await QRCode.toBuffer(`praxis:user:${userId}`, {
+      type: 'png',
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      scale: 6,
+      color: { dark: '#111827', light: '#FFFFFFFF' },
+    });
+  } catch (e: any) {
+    logger.warn(`[DiaryExport] QR generation failed for ${userId}: ${e?.message}`);
+    return undefined;
+  }
+}
+
+// Derive a "place" string from an IANA timezone (e.g. "Europe/Rome" → "Rome").
+// Falls back to the raw tz when the format is unexpected.
+function placeFromTz(tz?: string): string {
+  if (!tz) return 'UTC';
+  const parts = tz.split('/');
+  const city = parts[parts.length - 1] || tz;
+  return city.replace(/_/g, ' ');
+}
 
 const router = Router();
 
@@ -397,7 +424,7 @@ router.get('/tags', authenticateToken, catchAsync(async (req: Request, res: Resp
 // Shared helper — build the full NotebookPdfInput for a user.
 // Single entry point for the one-tier /export endpoint.
 // ---------------------------------------------------------------------------
-async function buildNotebookPdfInput(userId: string, since: Date) {
+async function buildNotebookPdfInput(userId: string, since: Date, meta: { timezone: string; locale: string; place: string; qrBuffer?: Buffer }) {
   const sinceIso = since.toISOString();
 
   const { data: profile } = await supabase
@@ -459,6 +486,7 @@ async function buildNotebookPdfInput(userId: string, since: Date) {
 
   return {
     userName: profile?.name || 'User',
+    userId,
     since,
     until: new Date(),
     isPro: !!profile?.is_premium,
@@ -477,6 +505,11 @@ async function buildNotebookPdfInput(userId: string, since: Date) {
     checkinCount: checkins.length,
     achievementCount: achievements.length,
     checkinByDay,
+    generatedAt: new Date(),
+    timezone: meta.timezone,
+    locale: meta.locale,
+    place: meta.place,
+    qrBuffer: meta.qrBuffer,
   };
 }
 
@@ -530,7 +563,14 @@ router.post('/export', authenticateToken, catchAsync(async (req: Request, res: R
   const since = profile?.created_at
     ? new Date(profile.created_at)
     : new Date(Date.now() - 5 * 365 * DAY);
-  const input = await buildNotebookPdfInput(userId, since);
+
+  const body = (req.body || {}) as { tz?: string; locale?: string; place?: string };
+  const timezone = body.tz || 'UTC';
+  const locale = body.locale || 'en-US';
+  const place = body.place || placeFromTz(timezone);
+  const qrBuffer = await buildUserQr(userId);
+
+  const input = await buildNotebookPdfInput(userId, since, { timezone, locale, place, qrBuffer });
 
   await supabase.from('profiles').update({
     last_raw_export_at: new Date().toISOString(),
@@ -650,6 +690,12 @@ WRITE THE FULL MEMOIR NOW.`;
 
     await supabase.from('profiles').update({ latest_ai_narrative: narrative }).eq('id', userId);
 
+    const axiomBody = (req.body || {}) as { tz?: string; locale?: string; place?: string };
+    const axiomTz = axiomBody.tz || 'UTC';
+    const axiomLocale = axiomBody.locale || 'en-US';
+    const axiomPlace = axiomBody.place || placeFromTz(axiomTz);
+    const axiomQr = await buildUserQr(userId);
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="praxis-axiom-${new Date().toISOString().slice(0, 10)}.pdf"`);
     renderNarrativePdf({
@@ -660,6 +706,11 @@ WRITE THE FULL MEMOIR NOW.`;
       accentColor: '#F59E0B',
       dateRangeText: sinceIso && untilIso ? `${sinceIso} to ${untilIso}` : undefined,
       body: narrative,
+      generatedAt: new Date(),
+      timezone: axiomTz,
+      locale: axiomLocale,
+      place: axiomPlace,
+      qrBuffer: axiomQr,
     }, res);
   } catch (err: any) {
     await supabase.from('profiles').update({ praxis_points: balance }).eq('id', userId);
@@ -829,6 +880,12 @@ WRITE THE FULL WORKBOOK NOW.`;
 
     await supabase.from('profiles').update({ latest_ai_narrative: narrative }).eq('id', userId);
 
+    const saBody = (req.body || {}) as { tz?: string; locale?: string; place?: string };
+    const saTz = saBody.tz || 'UTC';
+    const saLocale = saBody.locale || 'en-US';
+    const saPlace = saBody.place || placeFromTz(saTz);
+    const saQr = await buildUserQr(userId);
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="praxis-self-authoring-${new Date().toISOString().slice(0, 10)}.pdf"`);
     renderNarrativePdf({
@@ -838,6 +895,11 @@ WRITE THE FULL WORKBOOK NOW.`;
       tierLabel: 'Self-Authoring Workbook',
       accentColor: '#22C55E',
       body: narrative,
+      generatedAt: new Date(),
+      timezone: saTz,
+      locale: saLocale,
+      place: saPlace,
+      qrBuffer: saQr,
     }, res);
   } catch (err: any) {
     await supabase.from('profiles').update({ praxis_points: balance }).eq('id', userId);

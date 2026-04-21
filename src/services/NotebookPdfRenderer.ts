@@ -1,8 +1,8 @@
 /**
  * NotebookPdfRenderer
  * Streams a curated PDF notebook export using pdfkit:
- * cover page, metrics summary, per-category tracker tables,
- * goals hierarchy, and life-log timeline.
+ * branded cover (date/time/place + user-id QR), metrics, per-category tracker
+ * tables, goals hierarchy, and life-log timeline.
  */
 
 import PDFDocument from 'pdfkit';
@@ -11,6 +11,7 @@ import type { StructuredSummary } from './StructuredTrackerReader';
 
 export interface NotebookPdfInput {
   userName: string;
+  userId: string;
   since: Date;
   until: Date;
   isPro: boolean;
@@ -21,42 +22,134 @@ export interface NotebookPdfInput {
   legacyTrackerLogs: Array<{ type: string; logged_at: string; data: any }>;
   checkinCount: number;
   achievementCount: number;
-  /** Optional: ISO-day → check-in count, used for the streak heatmap */
   checkinByDay?: Record<string, number>;
+  /** Generation metadata for the cover intestation. */
+  generatedAt: Date;
+  /** IANA timezone (e.g. "Europe/Rome"). Used for local-time formatting. */
+  timezone: string;
+  /** Human-readable place label (usually the city/region from the IANA tz). */
+  place: string;
+  /** Browser locale used for date/number formatting on the cover. */
+  locale: string;
+  /** PNG buffer of a QR code encoding the user id. Rendered on the cover. */
+  qrBuffer?: Buffer;
 }
+
+// ── Praxis palette ────────────────────────────────────────────────────────
+// Mirrors the app's theme (gold primary, violet secondary) tuned for print.
+const COLORS: Record<string, string> = {
+  ink:       '#111827',
+  mutedInk:  '#374151',
+  muted:     '#6B7280',
+  gold:      '#F59E0B',
+  goldDark:  '#D97706',
+  goldLight: '#FCD34D',
+  violet:    '#8B5CF6',
+  violetDark:'#6D28D9',
+  violetLt:  '#A78BFA',
+  line:      '#E5E7EB',
+  lineSoft:  '#F3F4F6',
+  zebra:     '#FAFAF9',
+  paper:     '#FFFFFF',
+};
+
+// Primary = gold, Secondary = violet. Aliases so older drawing helpers stay readable.
+const ACCENT = COLORS.gold;
+const ACCENT2 = COLORS.violet;
 
 const DOMAIN_PALETTE: Record<string, string> = {
   Fitness:       '#EF4444',
   Career:        '#3B82F6',
-  Learning:      '#A78BFA',
-  Academics:     '#A78BFA',
+  Learning:      COLORS.violetLt,
+  Academics:     COLORS.violetLt,
   Relationships: '#EC4899',
   Finance:       '#10B981',
-  Creative:      '#F59E0B',
+  Creative:      COLORS.gold,
   Health:        '#14B8A6',
-  Spiritual:     '#8B5CF6',
+  Spiritual:     COLORS.violet,
   Business:      '#6366F1',
-  Personal:      '#A78BFA',
+  Personal:      COLORS.violetLt,
 };
-const domainColor = (d?: string) => (d && DOMAIN_PALETTE[d]) || COLORS.accent;
-
-const COLORS = {
-  ink: '#111827',
-  muted: '#6B7280',
-  accent: '#A78BFA',
-  accent2: '#8B5CF6',
-  gold: '#F59E0B',
-  line: '#E5E7EB',
-  lineSoft: '#F3F4F6',
-  zebra: '#F9FAFB',
-};
+const domainColor = (d?: string) => (d && DOMAIN_PALETTE[d]) || ACCENT;
 
 const fmtDate = (iso: string | Date): string => {
   const d = typeof iso === 'string' ? new Date(iso) : iso;
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
 };
-
 const dateOnly = (iso: any): string => (typeof iso === 'string' ? iso.slice(0, 10) : '');
+
+// Format any scalar for prose rendering (legacy tracker lines).
+const scalarText = (v: any): string => {
+  if (v === null || v === undefined || v === '') return '';
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(2);
+  if (typeof v === 'boolean') return v ? 'yes' : 'no';
+  if (typeof v === 'string') {
+    // stripe obvious ISO timestamps down to date for compactness
+    if (/^\d{4}-\d{2}-\d{2}T/.test(v)) return v.slice(0, 10);
+    return v;
+  }
+  return String(v);
+};
+
+// Pretty-print a legacy tracker payload as a single prose line.
+// Falls back to `key: value` pairs when no canonical order is known.
+const PREFERRED_KEYS = ['activity', 'role', 'company', 'person', 'status', 'date', 'title', 'author', 'subject', 'topic', 'amount', 'currency', 'notes', 'connections_made', 'events_attended'];
+function formatLegacyPayload(data: any): string {
+  if (data == null) return '';
+  if (typeof data !== 'object') return scalarText(data);
+
+  // shape: { items: [{ name, value, unit? }, ...] } → comma list
+  if (Array.isArray(data.items)) {
+    return data.items
+      .map((it: any) => {
+        if (typeof it !== 'object' || it === null) return scalarText(it);
+        const name = it.name || it.label || it.title || '';
+        const value = it.value != null ? scalarText(it.value) : '';
+        const unit = it.unit ? String(it.unit) : '';
+        if (name && value) return `${name}: ${value}${unit}`;
+        return name || value || '';
+      })
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  const seen = new Set<string>();
+  const parts: string[] = [];
+
+  // Headline fragment: role/activity/title + optional "with person" + optional "@ company"
+  const headlineBits: string[] = [];
+  for (const k of ['role', 'activity', 'title', 'subject', 'food', 'exercise', 'game', 'piece']) {
+    if (data[k] != null && data[k] !== '') { headlineBits.push(scalarText(data[k])); seen.add(k); break; }
+  }
+  if (data.person && !seen.has('person')) { headlineBits.push(`with ${scalarText(data.person)}`); seen.add('person'); }
+  if (data.company && !seen.has('company')) { headlineBits.push(`@ ${scalarText(data.company)}`); seen.add('company'); }
+  if (headlineBits.length) parts.push(headlineBits.join(' '));
+
+  // Status flag in square brackets
+  if (data.status != null && data.status !== '') { parts.push(`[${scalarText(data.status)}]`); seen.add('status'); }
+
+  // Numeric rollups
+  for (const k of ['connections_made', 'events_attended', 'pages_read', 'duration', 'distance', 'calories', 'steps', 'amount', 'quantity']) {
+    if (data[k] != null && data[k] !== '' && !seen.has(k)) {
+      parts.push(`${k.replace(/_/g, ' ')}: ${scalarText(data[k])}`);
+      seen.add(k);
+    }
+  }
+
+  // Free-text notes trail
+  if (data.notes && !seen.has('notes')) { parts.push(`— ${scalarText(data.notes)}`); seen.add('notes'); }
+
+  // Leftover scalar fields
+  const leftover = Object.keys(data).filter(k => !seen.has(k) && k !== 'items');
+  for (const k of leftover) {
+    const v = data[k];
+    if (v === null || v === undefined || v === '') continue;
+    if (typeof v === 'object') continue; // skip nested objects/arrays in fallback
+    parts.push(`${k}: ${scalarText(v)}`);
+  }
+
+  return parts.filter(Boolean).join(' · ');
+}
 
 /**
  * Draw a table with a header row and zebra-striped body. Wraps cells and auto-paginates.
@@ -72,7 +165,6 @@ function drawTable(
   const { left, right } = doc.page.margins;
   const startX = left;
   const usableW = doc.page.width - left - right;
-  // normalize colWidths to sum to usableW
   const sumW = colWidths.reduce((a, b) => a + b, 0) || 1;
   const widths = colWidths.map(w => (w / sumW) * usableW);
 
@@ -89,7 +181,7 @@ function drawTable(
 
   const drawHeader = () => {
     const y = doc.y;
-    doc.rect(startX, y, usableW, headerHeight).fill(COLORS.accent);
+    doc.rect(startX, y, usableW, headerHeight).fill(ACCENT);
     doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(9);
     let x = startX;
     for (let i = 0; i < headers.length; i++) {
@@ -110,7 +202,6 @@ function drawTable(
   let zebra = false;
   for (const row of rows) {
     const h = measureRow(row);
-    // new page if overflow
     if (doc.y + h > doc.page.height - doc.page.margins.bottom) {
       doc.addPage();
       drawHeader();
@@ -127,7 +218,6 @@ function drawTable(
       });
       x += widths[i];
     }
-    // row separator
     doc.strokeColor(COLORS.line).lineWidth(0.3).moveTo(startX, y + h).lineTo(startX + usableW, y + h).stroke();
     doc.y = y + h;
     zebra = !zebra;
@@ -139,25 +229,17 @@ function sectionTitle(doc: InstanceType<typeof PDFDocument>, text: string, color
   if (doc.y > doc.page.height - doc.page.margins.bottom - 80) doc.addPage();
   doc.moveDown(0.6);
   doc.font('Helvetica-Bold').fontSize(16).fillColor(color).text(text);
-  doc.strokeColor(COLORS.accent2).lineWidth(1.2)
+  doc.strokeColor(ACCENT2).lineWidth(1.2)
     .moveTo(doc.page.margins.left, doc.y + 2)
     .lineTo(doc.page.margins.left + 64, doc.y + 2).stroke();
   doc.moveDown(0.8);
   doc.fillColor(COLORS.ink).font('Helvetica').fontSize(10);
 }
 
-function kv(doc: InstanceType<typeof PDFDocument>, label: string, value: string): void {
-  doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.muted).text(label, { continued: true });
-  doc.font('Helvetica').fontSize(10).fillColor(COLORS.ink).text(`  ${value}`);
-}
-
-/**
- * Horizontal progress bar. Used for goals + domain distribution.
- */
 function drawProgressBar(
   doc: InstanceType<typeof PDFDocument>,
   x: number, y: number, w: number, h: number,
-  pct: number, accent = COLORS.accent, label?: string, rightLabel?: string,
+  pct: number, accent = ACCENT, label?: string, rightLabel?: string,
 ): void {
   const clamped = Math.max(0, Math.min(100, pct));
   doc.roundedRect(x, y, w, h, h / 2).fillOpacity(0.12).fill(accent).fillOpacity(1);
@@ -175,15 +257,11 @@ function drawProgressBar(
   doc.fillColor(COLORS.ink);
 }
 
-/**
- * Simple bar chart. Rows are stacked vertically; tallest value defines scale.
- * Series is { label, value }. Best for step counts, sleep hours, durations.
- */
 function drawBarChart(
   doc: InstanceType<typeof PDFDocument>,
   title: string,
   series: Array<{ label: string; value: number }>,
-  accent = COLORS.accent,
+  accent = ACCENT,
   chartHeight = 110,
 ): void {
   if (series.length === 0) return;
@@ -192,7 +270,6 @@ function drawBarChart(
   const { left, right } = doc.page.margins;
   const usableW = doc.page.width - left - right;
   const x0 = left;
-  const y0 = doc.y + 8;
 
   doc.font('Helvetica-Bold').fontSize(10).fillColor(COLORS.muted).text(title);
   const startY = doc.y + 4;
@@ -207,16 +284,13 @@ function drawBarChart(
     const x = x0 + i * (barW + gap);
     const y = startY + chartHeight - h;
     doc.rect(x, y, barW, h).fillOpacity(v > 0 ? 0.85 : 0.15).fill(accent).fillOpacity(1);
-    // value on top of bar if enough room
     if (v > 0 && h > 16 && barW > 18) {
       doc.font('Helvetica').fontSize(7).fillColor('#FFFFFF')
         .text(String(Math.round(v)), x, y + 3, { width: barW, align: 'center', lineBreak: false });
     }
   }
-  // axis
   doc.strokeColor(COLORS.line).lineWidth(0.5).moveTo(x0, startY + chartHeight).lineTo(x0 + usableW, startY + chartHeight).stroke();
 
-  // x labels (compressed if too many)
   doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.muted);
   const showEvery = series.length > 14 ? Math.ceil(series.length / 14) : 1;
   for (let i = 0; i < series.length; i++) {
@@ -228,25 +302,21 @@ function drawBarChart(
   doc.fillColor(COLORS.ink);
 }
 
-/**
- * Check-in heatmap: GitHub-style calendar. 7 rows (weekdays), N columns (weeks).
- */
 function drawHeatmap(
   doc: InstanceType<typeof PDFDocument>,
   title: string,
   counts: Record<string, number>,
   since: Date, until: Date,
-  accent = COLORS.accent,
+  accent = ACCENT,
 ): void {
   const msPerDay = 86400000;
   const startIso = since.toISOString().slice(0, 10);
   const start = new Date(startIso);
   const end = new Date(until.toISOString().slice(0, 10));
   const days = Math.max(1, Math.floor((end.getTime() - start.getTime()) / msPerDay) + 1);
-  if (days > 400) return; // too long to render usefully
+  if (days > 400) return;
 
-  // align to Monday of the start week
-  const startDow = (start.getDay() + 6) % 7; // 0=Mon
+  const startDow = (start.getDay() + 6) % 7;
   const gridStart = new Date(start.getTime() - startDow * msPerDay);
   const weeks = Math.ceil((days + startDow) / 7);
 
@@ -280,7 +350,7 @@ function drawHeatmap(
 function drawMetricTile(
   doc: InstanceType<typeof PDFDocument>,
   x: number, y: number, w: number, h: number,
-  label: string, value: string, accent = COLORS.accent,
+  label: string, value: string, accent = ACCENT,
 ): void {
   doc.roundedRect(x, y, w, h, 6).fillOpacity(0.08).fill(accent).fillOpacity(1);
   doc.roundedRect(x, y, w, h, 6).strokeColor(accent).lineWidth(0.8).stroke();
@@ -301,7 +371,7 @@ function drawMetricsGrid(
   const tileW = (usableW - gap * (cols - 1)) / cols;
   const tileH = 44;
   let row = 0, col = 0;
-  let yStart = doc.y;
+  const yStart = doc.y;
   for (const t of tiles) {
     const x = left + col * (tileW + gap);
     const y = yStart + row * (tileH + gap);
@@ -458,6 +528,109 @@ function renderStructuredSection(doc: InstanceType<typeof PDFDocument>, s: Struc
   }
 }
 
+// Render legacy tracker rows as grouped natural-language entries.
+// Each row becomes `Mon Day · <prose>` instead of a raw JSON table cell.
+function renderLegacyLogs(
+  doc: InstanceType<typeof PDFDocument>,
+  legacy: Array<{ type: string; logged_at: string; data: any }>,
+): void {
+  if (legacy.length === 0) return;
+  sectionTitle(doc, 'Other Tracker Notes', COLORS.violet);
+
+  const byType: Record<string, typeof legacy> = {};
+  for (const e of legacy) (byType[e.type] ||= []).push(e);
+
+  const { left, right } = doc.page.margins;
+  const usableW = doc.page.width - left - right;
+
+  for (const [type, rows] of Object.entries(byType)) {
+    const prettyType = type.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    if (doc.y + 40 > doc.page.height - doc.page.margins.bottom) doc.addPage();
+    doc.moveDown(0.4);
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORS.goldDark).text(prettyType);
+    doc.strokeColor(COLORS.line).lineWidth(0.4)
+      .moveTo(left, doc.y + 1).lineTo(left + usableW, doc.y + 1).stroke();
+    doc.moveDown(0.25);
+
+    for (const row of [...rows].sort((a, b) => a.logged_at.localeCompare(b.logged_at))) {
+      const prose = formatLegacyPayload(row.data) || '—';
+      const dateLabel = fmtDate(row.logged_at);
+      if (doc.y + 24 > doc.page.height - doc.page.margins.bottom) doc.addPage();
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.muted)
+        .text(dateLabel, left, doc.y, { width: 70, continued: true });
+      doc.font('Helvetica').fontSize(10).fillColor(COLORS.ink)
+        .text(`  ${prose}`, { width: usableW - 70 });
+      doc.moveDown(0.15);
+    }
+    doc.moveDown(0.4);
+  }
+}
+
+// Branded cover page: gold band + meta block + QR code of the user id.
+function drawCover(doc: InstanceType<typeof PDFDocument>, input: NotebookPdfInput): void {
+  const { width } = doc.page;
+  const { left } = doc.page.margins;
+
+  // Top band: violet→gold gradient for brand recognition.
+  const bandH = 96;
+  const grad = doc.linearGradient(0, 0, width, 0);
+  grad.stop(0, COLORS.violet).stop(1, COLORS.gold);
+  doc.rect(0, 0, width, bandH).fill(grad);
+
+  doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(11)
+    .text('PRAXIS', left, 28, { characterSpacing: 6, lineBreak: false });
+  doc.font('Helvetica').fontSize(9).fillColor('#FFFFFF')
+    .text('NOTEBOOK · RAW EXPORT', left, 48, { characterSpacing: 3, lineBreak: false });
+
+  // QR top-right over the band.
+  const qrSize = 78;
+  if (input.qrBuffer) {
+    try {
+      doc.image(input.qrBuffer, width - left - qrSize, 10, { width: qrSize, height: qrSize });
+    } catch {
+      // If the QR buffer is invalid, silently skip — the rest of the cover still renders.
+    }
+  }
+
+  // Author + date-range below the band.
+  const afterBandY = bandH + 36;
+  doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(32)
+    .text(input.userName, left, afterBandY);
+  doc.font('Helvetica').fontSize(12).fillColor(COLORS.muted)
+    .text(`${fmtDate(input.since)} — ${fmtDate(input.until)}`);
+  doc.moveDown(0.5);
+  doc.fillColor(COLORS.ink).font('Helvetica').fontSize(10)
+    .text(input.isPro ? 'Pro Member' : `Balance: ${input.balance} PP`);
+
+  // Intestation: date, time, place.
+  const locale = input.locale || 'en-US';
+  const tz = input.timezone || 'UTC';
+  const dateStr = input.generatedAt.toLocaleDateString(locale, {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: tz,
+  });
+  const timeStr = input.generatedAt.toLocaleTimeString(locale, {
+    hour: '2-digit', minute: '2-digit', timeZoneName: 'short', timeZone: tz,
+  });
+
+  doc.moveDown(1.4);
+  const metaY = doc.y;
+  const metaLabel = (label: string, value: string) => {
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORS.muted)
+      .text(label.toUpperCase(), { characterSpacing: 1.2 });
+    doc.font('Helvetica').fontSize(11).fillColor(COLORS.ink).text(value);
+    doc.moveDown(0.3);
+  };
+  metaLabel('Date', dateStr);
+  metaLabel('Time', timeStr);
+  metaLabel('Place', input.place || tz);
+  // Low-contrast hint under the QR in case the reader wonders.
+  doc.font('Helvetica-Oblique').fontSize(8).fillColor(COLORS.muted)
+    .text('QR code encodes the author\'s Praxis user id', { align: 'left' });
+
+  doc.y = Math.max(doc.y, metaY + qrSize + 10);
+  doc.moveDown(1.2);
+}
+
 export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void {
   const doc = new PDFDocument({
     size: 'A4',
@@ -466,26 +639,19 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
       Title: `Praxis Notebook — ${input.userName}`,
       Author: input.userName,
       Creator: 'Praxis',
+      Keywords: `praxis,notebook,${input.userId}`,
     },
   });
   doc.pipe(res);
 
   // ─── Cover ───────────────────────────────────────────────────────────
-  doc.fillColor(COLORS.accent2).font('Helvetica-Bold').fontSize(10).text('PRAXIS NOTEBOOK', { align: 'left' });
-  doc.moveDown(3);
-  doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(34).text(input.userName);
-  doc.font('Helvetica').fontSize(12).fillColor(COLORS.muted)
-    .text(`${fmtDate(input.since)} — ${fmtDate(input.until)}`);
-  doc.moveDown(0.8);
-  doc.fillColor(COLORS.ink).font('Helvetica').fontSize(10)
-    .text(input.isPro ? 'Pro Member' : `Balance: ${input.balance} PP`);
-  doc.moveDown(2);
+  drawCover(doc, input);
 
   const metricTiles: Array<{ label: string; value: string; accent?: string }> = [
-    { label: 'Goals', value: String(input.goals.length), accent: COLORS.accent },
-    { label: 'Check-ins', value: String(input.checkinCount), accent: COLORS.accent },
-    { label: 'Achievements', value: String(input.achievementCount), accent: COLORS.gold },
-    { label: 'Life logs', value: String(input.timeline.length), accent: COLORS.accent2 },
+    { label: 'Goals', value: String(input.goals.length), accent: ACCENT },
+    { label: 'Check-ins', value: String(input.checkinCount), accent: ACCENT },
+    { label: 'Achievements', value: String(input.achievementCount), accent: COLORS.goldLight },
+    { label: 'Life logs', value: String(input.timeline.length), accent: ACCENT2 },
   ];
   const s = input.structured;
   if (s?.lifts) metricTiles.push({ label: 'Lift volume', value: `${s.lifts.total_volume_kg} kg` });
@@ -499,23 +665,23 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
   if (s?.expenses) metricTiles.push({ label: 'Net spend', value: `€${s.expenses.total_expense_eur - s.expenses.total_income_eur}` });
   if (s?.investments) metricTiles.push({ label: 'Invested', value: `€${s.investments.total_invested_eur}` });
 
-  sectionTitle(doc, 'At a glance', COLORS.accent2);
+  sectionTitle(doc, 'At a glance', ACCENT2);
   drawMetricsGrid(doc, metricTiles);
 
-  // ─── Check-in streak heatmap ─────────────────────────────────────────
   if (input.checkinByDay && Object.keys(input.checkinByDay).length > 0) {
-    sectionTitle(doc, 'Consistency', COLORS.accent2);
-    drawHeatmap(doc, 'Check-in streak', input.checkinByDay, input.since, input.until, COLORS.accent);
+    sectionTitle(doc, 'Consistency', ACCENT2);
+    drawHeatmap(doc, 'Check-in streak', input.checkinByDay, input.since, input.until, ACCENT);
   }
 
   // ─── Goals hierarchy with progress bars ──────────────────────────────
-  sectionTitle(doc, 'Goals & Progress', COLORS.accent2);
+  sectionTitle(doc, 'Goals & Progress', ACCENT2);
   if (input.goals.length === 0) {
     doc.font('Helvetica-Oblique').fontSize(10).fillColor(COLORS.muted).text('No goals set.');
   } else {
     const rootGoals = input.goals.filter(g => !g.parentId);
     const childrenOf = (pid: string) => input.goals.filter(g => g.parentId === pid);
-    const { left, right } = doc.page.margins;
+    const { left } = doc.page.margins;
+    const { right } = doc.page.margins;
     const usableW = doc.page.width - left - right;
     const render = (g: any, depth: number): void => {
       if (doc.y + 22 > doc.page.height - doc.page.margins.bottom) doc.addPage();
@@ -524,11 +690,9 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
       const indent = depth * 14;
       const barX = left + indent;
       const barW = usableW - indent;
-      // name + domain tag
       doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.ink)
         .text(`${'  '.repeat(depth)}${g.name}`, left + indent, doc.y, { continued: true, width: barW - 60 });
       doc.font('Helvetica').fontSize(8).fillColor(COLORS.muted).text(`  [${g.domain || '—'}]`);
-      // bar
       drawProgressBar(doc, barX, doc.y + 2, barW, 12, pct, color, undefined, `${pct}%`);
       doc.y = doc.y + 18;
       if (g.customDetails) {
@@ -542,7 +706,6 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
   }
   doc.moveDown(0.6);
 
-  // ─── Domain distribution bar ─────────────────────────────────────────
   if (input.goals.length > 0) {
     const byDomain: Record<string, number> = {};
     for (const g of input.goals) {
@@ -551,7 +714,7 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
     }
     const total = input.goals.length;
     const entries = Object.entries(byDomain).sort((a, b) => b[1] - a[1]);
-    sectionTitle(doc, 'Life focus distribution', COLORS.accent2);
+    sectionTitle(doc, 'Life focus distribution', ACCENT2);
     const { left, right } = doc.page.margins;
     const usableW = doc.page.width - left - right;
     for (const [dom, count] of entries) {
@@ -562,7 +725,6 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
     doc.moveDown(0.4);
   }
 
-  // ─── Tracker sparkline charts ────────────────────────────────────────
   const s2 = input.structured;
   if (s2) {
     const r = s2.recent || {};
@@ -583,51 +745,37 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
     const stepsSeries = dailyReduce(r.steps, x => Number(x.steps) || 0);
     if (stepsSeries.length) charts.push({ title: 'Steps / day', series: stepsSeries, accent: '#10B981' });
     const sleepSeries = dailyReduce(r.sleep, x => Number(x.duration_h) || 0);
-    if (sleepSeries.length) charts.push({ title: 'Sleep hours / night', series: sleepSeries, accent: '#6366F1' });
+    if (sleepSeries.length) charts.push({ title: 'Sleep hours / night', series: sleepSeries, accent: COLORS.violet });
     const cardioSeries = dailyReduce(r.cardio, x => Number(x.duration_min) || 0);
     if (cardioSeries.length) charts.push({ title: 'Cardio minutes / day', series: cardioSeries, accent: '#EF4444' });
     const medSeries = dailyReduce(r.meditation, x => Number(x.duration_min) || 0);
-    if (medSeries.length) charts.push({ title: 'Meditation minutes / day', series: medSeries, accent: '#A78BFA' });
+    if (medSeries.length) charts.push({ title: 'Meditation minutes / day', series: medSeries, accent: COLORS.violetLt });
     const studySeries = dailyReduce(r.study, x => Number(x.duration_min) || 0);
-    if (studySeries.length) charts.push({ title: 'Study minutes / day', series: studySeries, accent: '#F59E0B' });
+    if (studySeries.length) charts.push({ title: 'Study minutes / day', series: studySeries, accent: ACCENT });
     const liftSeries = dailyReduce(r.lifts, x => Number(x.volume_kg) || 0);
     if (liftSeries.length) charts.push({ title: 'Lift volume kg / day', series: liftSeries, accent: '#DC2626' });
 
     if (charts.length > 0) {
       doc.addPage();
-      sectionTitle(doc, 'Trends', COLORS.accent2);
+      sectionTitle(doc, 'Trends', ACCENT2);
       for (const c of charts) drawBarChart(doc, c.title, c.series, c.accent);
     }
   }
 
-  // ─── Structured tracker tables ───────────────────────────────────────
   if (input.structured) {
     doc.addPage();
-    sectionTitle(doc, 'Tracker Data', COLORS.accent2);
+    sectionTitle(doc, 'Tracker Data', ACCENT2);
     renderStructuredSection(doc, input.structured);
   }
 
-  // ─── Legacy tracker rows (types without a structured table) ──────────
+  // ─── Legacy tracker rows rendered as prose, one line per entry. ──────
   if (input.legacyTrackerLogs.length > 0) {
-    sectionTitle(doc, 'Other Tracker Logs', COLORS.accent2);
-    const byType: Record<string, typeof input.legacyTrackerLogs> = {};
-    for (const e of input.legacyTrackerLogs) (byType[e.type] ||= []).push(e);
-    for (const [type, rows] of Object.entries(byType)) {
-      doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORS.ink).text(type.toUpperCase());
-      doc.moveDown(0.2);
-      drawTable(
-        doc,
-        ['Date', 'Payload'],
-        rows.map(r => [dateOnly(r.logged_at), JSON.stringify(r.data)]),
-        [2, 8],
-      );
-    }
+    renderLegacyLogs(doc, input.legacyTrackerLogs);
   }
 
-  // ─── Life-log timeline ───────────────────────────────────────────────
   if (input.timeline.length > 0) {
     doc.addPage();
-    sectionTitle(doc, 'Life Logs', COLORS.accent2);
+    sectionTitle(doc, 'Life Logs', ACCENT2);
     const sorted = [...input.timeline].sort((a, b) => b.date.localeCompare(a.date));
     let currentDay = '';
     for (const e of sorted) {
@@ -635,7 +783,7 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
       if (day !== currentDay) {
         currentDay = day;
         doc.moveDown(0.3);
-        doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORS.accent2)
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(ACCENT2)
           .text(fmtDate(day));
         doc.strokeColor(COLORS.line).lineWidth(0.3)
           .moveTo(doc.page.margins.left, doc.y + 1)
@@ -644,7 +792,7 @@ export function renderNotebookPdf(input: NotebookPdfInput, res: Response): void 
       }
       const time = new Date(e.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.muted).text(`${time}  `, { continued: true });
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.accent).text(`[${e.kind}] `, { continued: true });
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(ACCENT).text(`[${e.kind}] `, { continued: true });
       doc.font('Helvetica').fontSize(10).fillColor(COLORS.ink).text(e.text);
     }
   }

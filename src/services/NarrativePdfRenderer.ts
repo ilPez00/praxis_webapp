@@ -7,14 +7,15 @@
 import PDFDocument from 'pdfkit';
 import type { Response } from 'express';
 
-const COLORS = {
-  ink: '#111827',
-  muted: '#6B7280',
-  accent: '#A78BFA',
-  accent2: '#8B5CF6',
-  gold: '#F59E0B',
-  line: '#E5E7EB',
-  quoteBar: '#8B5CF6',
+// Praxis palette: gold primary, violet secondary, warm ink.
+const COLORS: Record<string, string> = {
+  ink:       '#111827',
+  muted:     '#6B7280',
+  gold:      '#F59E0B',
+  goldDark:  '#D97706',
+  violet:    '#8B5CF6',
+  violetDark:'#6D28D9',
+  line:      '#E5E7EB',
 };
 
 export interface NarrativePdfInput {
@@ -25,6 +26,13 @@ export interface NarrativePdfInput {
   accentColor?: string;
   dateRangeText?: string;
   body: string;
+  /** Generation metadata rendered on the cover. */
+  generatedAt?: Date;
+  timezone?: string;
+  place?: string;
+  locale?: string;
+  /** PNG buffer for user-id QR code. */
+  qrBuffer?: Buffer;
 }
 
 function drawInlineParagraph(
@@ -132,12 +140,12 @@ function drawListItem(
 ): void {
   const { left } = doc.page.margins;
   const y = doc.y;
-  doc.font('Times-Bold').fontSize(11).fillColor(accent).text('\u2022', left + 4, y + 2, { lineBreak: false });
+  doc.font('Times-Bold').fontSize(11).fillColor(accent).text('•', left + 4, y + 2, { lineBreak: false });
   drawInlineParagraph(doc, text, { fontSize: 11, indent: 16, align: 'left' });
 }
 
 export function renderNarrativePdf(input: NarrativePdfInput, res: Response): void {
-  const accent = input.accentColor || COLORS.accent;
+  const accent = input.accentColor || COLORS.gold;
   const doc = new PDFDocument({
     size: 'A4',
     margin: 60,
@@ -151,11 +159,27 @@ export function renderNarrativePdf(input: NarrativePdfInput, res: Response): voi
   doc.pipe(res);
 
   const { width, height } = doc.page;
-  doc.rect(0, 0, width, 220).fill(accent);
+
+  // Cover band: violet→accent gradient to keep brand continuity with raw notebook.
+  const bandH = 220;
+  const grad = doc.linearGradient(0, 0, width, 0);
+  grad.stop(0, COLORS.violet).stop(1, accent);
+  doc.rect(0, 0, width, bandH).fill(grad);
+
   doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10)
     .text('PRAXIS', 60, 60, { characterSpacing: 4 });
   doc.font('Helvetica').fontSize(10).fillColor('#FFFFFF')
     .text(input.tierLabel.toUpperCase(), 60, 80, { characterSpacing: 2 });
+
+  // QR code top-right (encodes author's user id).
+  const qrSize = 84;
+  if (input.qrBuffer) {
+    try {
+      doc.image(input.qrBuffer, width - 60 - qrSize, 60, { width: qrSize, height: qrSize });
+    } catch {
+      // QR embedding is best-effort — skip silently if buffer is invalid.
+    }
+  }
 
   doc.fillColor(COLORS.ink).font('Times-Bold').fontSize(40)
     .text(input.title, 60, 260, { width: width - 120 });
@@ -163,15 +187,32 @@ export function renderNarrativePdf(input: NarrativePdfInput, res: Response): voi
     doc.font('Times-Italic').fontSize(16).fillColor(COLORS.muted)
       .text(input.subtitle, 60, doc.y + 10, { width: width - 120 });
   }
-  doc.moveDown(2);
+
+  // Intestation: date / time / place, plus author line and range.
+  const locale = input.locale || 'en-US';
+  const tz = input.timezone || 'UTC';
+  const generatedAt = input.generatedAt || new Date();
+  const dateStr = generatedAt.toLocaleDateString(locale, {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: tz,
+  });
+  const timeStr = generatedAt.toLocaleTimeString(locale, {
+    hour: '2-digit', minute: '2-digit', timeZoneName: 'short', timeZone: tz,
+  });
+
   doc.font('Helvetica').fontSize(11).fillColor(COLORS.muted)
-    .text(`Authored by ${input.author}`, 60, height - 160);
+    .text(`Authored by ${input.author}`, 60, height - 200);
   if (input.dateRangeText) {
     doc.font('Helvetica').fontSize(10).fillColor(COLORS.muted)
-      .text(input.dateRangeText, 60, height - 140);
+      .text(input.dateRangeText, 60, doc.y + 4);
   }
-  doc.font('Helvetica').fontSize(8).fillColor(COLORS.muted)
-    .text(`Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, 60, height - 120);
+  doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORS.muted)
+    .text('GENERATED', 60, height - 150, { characterSpacing: 1.2 });
+  doc.font('Helvetica').fontSize(10).fillColor(COLORS.ink)
+    .text(`${dateStr} · ${timeStr}`);
+  doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORS.muted)
+    .text('PLACE', 60, doc.y + 8, { characterSpacing: 1.2 });
+  doc.font('Helvetica').fontSize(10).fillColor(COLORS.ink)
+    .text(input.place || tz);
 
   const lines = input.body.replace(/\r\n/g, '\n').split('\n');
   for (let i = 0; i < lines.length; i++) {
@@ -202,7 +243,7 @@ export function renderNarrativePdf(input: NarrativePdfInput, res: Response): voi
     doc.switchToPage(i);
     const bottom = doc.page.height - doc.page.margins.bottom + 24;
     doc.font('Helvetica').fontSize(8).fillColor(COLORS.muted)
-      .text(`${input.tierLabel} \u00b7 ${input.author}`, doc.page.margins.left, bottom, { lineBreak: false });
+      .text(`${input.tierLabel} · ${input.author}`, doc.page.margins.left, bottom, { lineBreak: false });
     if (i > range.start) {
       doc.text(`${i - range.start + 1}`,
         doc.page.width - doc.page.margins.right - 40, bottom, { width: 40, align: 'right', lineBreak: false });

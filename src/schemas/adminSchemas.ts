@@ -8,9 +8,16 @@ import { z } from 'zod';
 /**
  * Grant points validation
  */
+// Controller accepts either `delta` (signed) or `points` (absolute) — mirror
+// that here. Previous schema required `{amount, reason}` which the Users tab
+// never sent, so every admin PP adjustment was rejected before reaching the
+// handler.
 export const grantPointsBodySchema = z.object({
-  amount: z.number().int().positive('Amount must be positive'),
-  reason: z.string().max(200, 'Reason must be less than 200 characters'),
+  delta: z.number().int().optional(),
+  points: z.number().int().nonnegative().optional(),
+  reason: z.string().max(200).optional(),
+}).refine(b => b.delta !== undefined || b.points !== undefined, {
+  message: 'Provide either delta or points.',
 });
 
 /**

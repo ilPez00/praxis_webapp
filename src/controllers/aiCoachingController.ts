@@ -658,19 +658,38 @@ export const generateAxiomBrief = catchAsync(async (req: Request, res: Response,
   // Force refresh also bypasses any remaining gates
   const useLLM = true;
 
-  await AxiomScanService.generateDailyBrief(
-    userId,
-    profile?.name ?? 'User',
-    profile?.city ?? 'Unknown',
-    useLLM,
-  );
+  try {
+    await AxiomScanService.generateDailyBrief(
+      userId,
+      profile?.name ?? 'User',
+      profile?.city ?? 'Unknown',
+      useLLM,
+      undefined,
+      force,
+    );
+  } catch (err: any) {
+    logger.error(`[AxiomBrief] Generation threw for ${userId}: ${err?.message}`);
+  }
 
-  const { data: fresh } = await supabase
+  // Read today's row; if missing (upsert silently failed, RLS, schema drift),
+  // fall back to the latest brief for this user so the UI never shows empty.
+  let { data: fresh } = await supabase
     .from('axiom_daily_briefs')
     .select('date, brief, generated_at')
     .eq('user_id', userId)
     .eq('date', today)
     .maybeSingle();
+
+  if (!fresh) {
+    const { data: latest } = await supabase
+      .from('axiom_daily_briefs')
+      .select('date, brief, generated_at')
+      .eq('user_id', userId)
+      .order('generated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    fresh = latest;
+  }
 
   res.json(fresh ?? null);
 });

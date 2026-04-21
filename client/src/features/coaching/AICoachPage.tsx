@@ -133,57 +133,29 @@ const AICoachPage: React.FC = () => {
     if (!user?.id) return;
     setLoadingDaily(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-
-      // Fetch latest axiom daily brief
-      const { data: briefData, error: supabaseError } = await supabase
-        .from('axiom_daily_briefs')
-        .select('date, brief, generated_at')
-        .eq('user_id', user.id)
-        .order('generated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (supabaseError) {
-        console.error('Failed to fetch axiom brief from Supabase:', supabaseError);
+      // Single source of truth: backend endpoint is idempotent — returns
+      // today's cached brief or generates a fresh one. Going through the
+      // server sidesteps RLS variance on the client-side supabase reader.
+      try {
+        const genRes = await api.post('/ai-coaching/generate-axiom-brief', {});
+        if (genRes.data?.brief) {
+          setDailyBrief(genRes.data.brief);
+          if (genRes.data.brief.message) setLastAxiomMessage(genRes.data.brief.message);
+          return;
+        }
+      } catch (genErr: any) {
+        console.warn('Axiom brief generation failed:', genErr?.response?.status, genErr?.message);
       }
 
-      // Force daily rotation: if the latest brief is missing or not for today,
-      // request a fresh one. Backend generateAxiomBrief is idempotent by date.
-      const staleOrMissing = !briefData || briefData.date !== today;
-      if (staleOrMissing) {
-        try {
-          const genRes = await api.post('/ai-coaching/generate-axiom-brief', {});
-          if (genRes.data?.brief) {
-            setDailyBrief(genRes.data.brief);
-            if (genRes.data.brief.message) setLastAxiomMessage(genRes.data.brief.message);
-            return;
-          }
-        } catch (genErr) {
-          console.warn('Axiom brief generation failed:', genErr);
+      // Fallback to legacy latest-brief endpoint
+      try {
+        const apiRes = await api.get('/ai-coaching/daily-brief');
+        if (apiRes.data?.brief) {
+          setDailyBrief(apiRes.data.brief);
+          if (apiRes.data.brief.message) setLastAxiomMessage(apiRes.data.brief.message);
         }
-      }
-
-      if (briefData?.brief) {
-        setDailyBrief(briefData.brief);
-        if (briefData.brief.message) {
-          setLastAxiomMessage(briefData.brief.message);
-        }
-      }
-
-      // Fallback legacy endpoint only if still no data
-      if (!briefData?.brief) {
-        try {
-          const apiRes = await api.get('/ai-coaching/daily-brief');
-          if (apiRes.data?.brief) {
-            setDailyBrief(apiRes.data.brief);
-            if (apiRes.data.brief.message && !lastAxiomMessage) {
-              setLastAxiomMessage(apiRes.data.brief.message);
-            }
-          }
-        } catch (apiErr: any) {
-          console.warn('API daily brief endpoint returned non-OK status:', apiErr.response?.status);
-        }
+      } catch (apiErr: any) {
+        console.warn('API daily brief endpoint returned non-OK status:', apiErr.response?.status);
       }
     } catch (err: any) {
       console.error('Failed to load daily brief:', err);
@@ -191,7 +163,7 @@ const AICoachPage: React.FC = () => {
     } finally {
       setLoadingDaily(false);
     }
-  }, [user?.id, lastAxiomMessage]);
+  }, [user?.id]);
 
   const generateBrief = useCallback(async () => {
     setLoadingReport(true);

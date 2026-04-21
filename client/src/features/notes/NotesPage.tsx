@@ -187,11 +187,18 @@ const NotesPage: React.FC = () => {
     return parsed?.message || err.message || fallback;
   };
 
+  // Per-request locale/timezone so the server PDF cover stamps the user's
+  // local time + a human place label, not the Railway UTC default.
+  const exportMeta = () => ({
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    locale: navigator.language || 'en-US',
+  });
+
   const handleExportPdf = async () => {
     if (!currentUserId) return;
     setExporting('pdf');
     try {
-      const res = await api.post('/diary/export', {}, { responseType: 'blob' });
+      const res = await api.post('/diary/export', exportMeta(), { responseType: 'blob' });
       downloadPdfBlob(res.data, `praxis-notebook-${new Date().toISOString().slice(0, 10)}.pdf`);
       toast.success('Notebook PDF downloaded!');
       setExportDialogOpen(false);
@@ -206,7 +213,7 @@ const NotesPage: React.FC = () => {
     if (!currentUserId) return;
     setExporting('axiom');
     try {
-      const res = await api.post('/diary/export/axiom', {}, { responseType: 'blob' });
+      const res = await api.post('/diary/export/axiom', exportMeta(), { responseType: 'blob' });
       downloadPdfBlob(res.data, `praxis-axiom-${new Date().toISOString().slice(0, 10)}.pdf`);
       setPraxisPoints(prev => (prev ?? 0) - 300);
       toast.success('Axiom narrative ready!');
@@ -222,7 +229,7 @@ const NotesPage: React.FC = () => {
     if (!currentUserId) return;
     setExporting('self');
     try {
-      const res = await api.post('/diary/export/self-authoring', {}, { responseType: 'blob' });
+      const res = await api.post('/diary/export/self-authoring', exportMeta(), { responseType: 'blob' });
       downloadPdfBlob(res.data, `praxis-self-authoring-${new Date().toISOString().slice(0, 10)}.pdf`);
       setPraxisPoints(prev => (prev ?? 0) - 500);
       toast.success('Self-Authoring workbook ready!');
