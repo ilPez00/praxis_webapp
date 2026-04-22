@@ -275,9 +275,6 @@ apiRouter.use('/fails', generalLimiter, failsRoutes);
 apiRouter.use('/weekly-challenge', generalLimiter, weeklyChallengeRoutes);
 apiRouter.use('/agent', generalLimiter, agentRoutes);
 
-// MCP server for AI agents
-app.use('/mcp', mcpRoutes);
-
 app.use('/api', apiRouter);
 
 // Health check endpoints (no auth required - for monitoring)
