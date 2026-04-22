@@ -7,8 +7,12 @@ async function main() {
   const server = createTools();
   const transport = new StdioServerTransport();
   
+  const hasSupabase = !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+  const hasApiKey = !!process.env.PRAXIS_API_KEY;
+  
   console.error('Praxis MCP server starting...');
   console.error('API URL:', process.env.PRAXIS_API_URL || 'https://web-production-646a4.up.railway.app/api');
+  console.error('Auth: ' + (hasApiKey ? 'API key configured' : 'no API key') + ', ' + (hasSupabase ? 'Supabase configured (login/OAuth enabled)' : 'no Supabase (login/OAuth disabled)'));
   console.error('Listening for MCP client on stdio...');
   
   await server.connect(transport);

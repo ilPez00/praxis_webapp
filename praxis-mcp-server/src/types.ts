@@ -7,3 +7,12 @@ export interface User {
   points?: number;
   streak?: number;
 }
+
+export interface AuthSession {
+  accessToken: string;
+  refreshToken?: string;
+  user: {
+    id: string;
+    email?: string;
+  };
+}

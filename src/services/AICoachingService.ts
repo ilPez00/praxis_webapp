@@ -260,6 +260,9 @@ export class AICoachingService {
     // 1. Try DeepSeek first - cheapest per token when key is configured
     if (this.deepseekApiKey) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        
         const response = await fetch('https://api.deepseek.com/chat/completions', {
           method: 'POST',
           headers: {
@@ -271,13 +274,20 @@ export class AICoachingService {
             messages: [{ role: 'user', content: prompt }],
             max_tokens: 1500,
           }),
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
+        
         const data = await response.json();
         const text = data?.choices?.[0]?.message?.content?.trim();
         if (response.ok && text) return text;
         errors.push(`[DeepSeek] ${response.status}`);
       } catch (err: any) {
-        errors.push(`[DeepSeek] FetchEx`);
+        if (err.name === 'AbortError') {
+          errors.push(`[DeepSeek] Timeout`);
+        } else {
+          errors.push(`[DeepSeek] FetchEx`);
+        }
       }
     }
 
@@ -326,11 +336,15 @@ export class AICoachingService {
             await new Promise(resolve => setTimeout(resolve, 150));
             
             const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelName}:generateContent?key=${key}`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
             const response = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+              signal: controller.signal,
             });
+            clearTimeout(timeoutId);
 
             const rawText = await response.text();
             let data: any;
@@ -350,7 +364,11 @@ export class AICoachingService {
 
             if (status === 429 || status === 403 || status === 401) break; 
           } catch (error: any) {
-            errors.push(`[K${keyIdx}|FetchEx]`);
+            if (error.name === 'AbortError') {
+              errors.push(`[K${keyIdx}|Timeout]`);
+            } else {
+              errors.push(`[K${keyIdx}|FetchEx]`);
+            }
             break;
           }
         }

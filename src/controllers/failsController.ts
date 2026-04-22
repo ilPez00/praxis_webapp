@@ -44,7 +44,7 @@ export const getFails = catchAsync(async (_req: Request, res: Response, _next: N
   const { data, error, count } = await query;
 
   if (error) {
-    logger.error('[Fails] Fetch error:', error.message);
+    logger.error('[Fails] Fetch error:', error.message, error.details, error.hint, error.code);
     throw error;
   }
 

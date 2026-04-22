@@ -17,16 +17,16 @@ export function createTools() {
   // ==================== AUTH TOOLS ====================
   server.tool(
     'login',
-    'Login to Praxis with email and password',
+    'Login to Praxis with email and password. Stores auth token for subsequent API calls.',
     {
       email: z.string().email().describe('User email address'),
       password: z.string().min(8).describe('User password'),
     },
     async ({ email, password }) => {
       try {
-        const res = await praxisClient.login(email, password);
+        const res = await praxisClient.loginWithSupabase(email, password);
         return {
-          content: [{ type: 'text', text: `Logged in as user ${res.user.id}` }],
+          content: [{ type: 'text', text: `Logged in as ${res.user.email || res.user.id}. Auth token stored.` }],
         };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Login failed: ' + err.message }], isError: true };
@@ -50,6 +50,62 @@ export function createTools() {
         return { content: [{ type: 'text', text: 'Account created. Check email to verify.' }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Signup failed: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'set_token',
+    'Set a JWT auth token manually. Get token from browser devtools → Application → Local Storage → supabase.auth.token → access_token. Useful after Google OAuth login on the website.',
+    {
+      token: z.string().min(10).describe('JWT access token from Supabase auth session'),
+    },
+    async ({ token }) => {
+      try {
+        praxisClient.setAuthToken(token);
+        return { content: [{ type: 'text', text: 'Auth token set. You are now authenticated for API calls.' }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'logout',
+    'Clear the stored auth token. Subsequent API calls will be unauthenticated.',
+    {},
+    async () => {
+      try {
+        praxisClient.clearAuth();
+        return { content: [{ type: 'text', text: 'Logged out. Auth token cleared.' }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'get_auth_status',
+    'Check if you are authenticated and get basic auth info.',
+    {},
+    async () => {
+      try {
+        const token = praxisClient.getAuthToken();
+        const hasApiKey = !!process.env.PRAXIS_API_KEY;
+        const hasSupabase = !!process.env.SUPABASE_URL && !!process.env.SUPABASE_ANON_KEY;
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              authenticated: !!token,
+              hasApiKey,
+              hasSupabase,
+              authMethod: token ? 'bearer_token' : process.env.PRAXIS_API_KEY ? 'api_key' : 'none',
+            }, null, 2),
+          }],
+        };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
     }
   );
@@ -126,7 +182,10 @@ server.tool(
     {},
     async () => {
       try {
-        const res = await praxisClient.getGoals();
+        const me = await praxisClient.getMe();
+        const userId = me.user?.id || me.id;
+        if (!userId) throw new Error('Could not get current user ID');
+        const res = await praxisClient.getGoalTree(userId);
         return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
@@ -212,7 +271,7 @@ server.tool(
     },
     async ({ goalId, name, description, parentNodeId }) => {
       try {
-        const res = await praxisClient.createGoalNode(goalId, { name, description, parent_id: parentNodeId });
+        const res = await praxisClient.createGoalNode(goalId, { name, description, parentId: parentNodeId });
         return { content: [{ type: 'text', text: 'Created goal node: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
@@ -231,7 +290,10 @@ server.tool(
     },
     async ({ goalId, nodeId, progress, note }) => {
       try {
-        await praxisClient.updateProgress(goalId, nodeId, progress, note);
+        const me = await praxisClient.getMe();
+        const userId = me.user?.id || me.id;
+        if (!userId) throw new Error('Could not get current user ID');
+        await praxisClient.updateNodeProgress(userId, nodeId, progress, note);
         return { content: [{ type: 'text', text: 'Progress updated' }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
