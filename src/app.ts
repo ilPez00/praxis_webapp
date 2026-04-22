@@ -63,8 +63,6 @@ import accountabilityBuddyRoutes from './routes/accountabilityBuddyRoutes';
 import failsRoutes from './routes/failsRoutes';
 import weeklyChallengeRoutes from './routes/weeklyChallengeRoutes';
 import agentRoutes from './routes/agentRoutes';
-import mcpRoutes from './routes/mcpRoutes';
-
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 import { authLimiter, aiLimiter, axiomLimiter, generalLimiter, strictLimiter } from './middleware/rateLimiter';
