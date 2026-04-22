@@ -368,7 +368,7 @@ function createMcpServer(userId: string) {
       try {
         const { data: sent } = await supabase.from('messages').select('receiver_id').eq('sender_id', userId);
         const { data: received } = await supabase.from('messages').select('sender_id').eq('receiver_id', userId);
-        const userIds = new Set([...sent.map((m: any) => m.receiver_id), ...received.map((m: any) => m.sender_id)]);
+        const userIds = new Set([...(sent || []).map((m: any) => m.receiver_id), ...(received || []).map((m: any) => m.sender_id)]);
         return { content: [{ type: 'text', text: JSON.stringify(Array.from(userIds), null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
@@ -511,7 +511,7 @@ router.post('/', async (req, res) => {
   const server = createMcpServer(userId);
   
   try {
-    await server.connect(req, res);
+    await server.connect();
   } catch (err) {
     console.error('MCP error:', err);
     res.status(500).json({ error: 'MCP server error' });
