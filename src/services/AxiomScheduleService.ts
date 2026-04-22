@@ -72,6 +72,13 @@ export class AxiomScheduleService {
     this.googleCalendar = new GoogleCalendarService();
   }
 
+  private async withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+    const timeout = new Promise<T>((resolve) => {
+      setTimeout(() => resolve(fallback), ms);
+    });
+    return Promise.race([promise, timeout]);
+  }
+
   /**
    * Generate a complete daily schedule using Gemini AI
    */
@@ -83,18 +90,39 @@ export class AxiomScheduleService {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    // Fetch suggested matches, events, and places for context
-    const [matchesRes, eventsRes, placesRes, googleEvents] = await Promise.all([
+    // Fetch suggested matches, events, and places for context with timeouts
+    const matchesPromise = this.withTimeout(
       supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 10 }),
+      10000,
+      { data: [], error: null }
+    );
+    const eventsPromise = this.withTimeout(
       supabase.from('events')
         .select('id, title, event_date, city, description')
         .gte('event_date', new Date().toISOString().slice(0, 10))
         .order('event_date', { ascending: true })
         .limit(5),
+      10000,
+      { data: [], error: null }
+    );
+    const placesPromise = this.withTimeout(
       supabase.from('places')
         .select('id, name, city, tags, description, latitude, longitude')
         .limit(10),
+      10000,
+      { data: [], error: null }
+    );
+    const googleEventsPromise = this.withTimeout(
       this.googleCalendar.getEvents(userId, startDate, endDate),
+      30000,
+      []
+    );
+
+    const [matchesRes, eventsRes, placesRes, googleEvents] = await Promise.all([
+      matchesPromise,
+      eventsPromise,
+      placesPromise,
+      googleEventsPromise,
     ]);
 
     const matches = matchesRes.data || [];
