@@ -7,6 +7,15 @@ import { catchAsync, UnauthorizedError, BadRequestError, NotFoundError } from '.
 const scheduleService = new AxiomScheduleService();
 const engagementMetricService = new EngagementMetricService();
 
+const TIMEOUT_MS = 30000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  const timeout = new Promise<T>((_, reject) => {
+    setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]);
+}
+
 /**
  * GET /api/schedule/today
  * Get today's schedule (generates if doesn't exist)
@@ -17,12 +26,17 @@ export const getTodaySchedule = catchAsync(async (req: Request, res: Response) =
 
   const today = new Date().toISOString().slice(0, 10);
   
-  // Try to get existing schedule
-  let schedule = await scheduleService.getSchedule(userId, today);
+  // Try to get existing schedule with timeout
+  let schedule;
+  try {
+    schedule = await withTimeout(scheduleService.getSchedule(userId, today), TIMEOUT_MS);
+  } catch (error) {
+    // If timeout or error, schedule remains undefined
+  }
   
-  // Generate new schedule if doesn't exist
+  // Generate new schedule if doesn't exist (with timeout)
   if (!schedule) {
-    schedule = await generateScheduleForUser(userId, today);
+    schedule = await withTimeout(generateScheduleForUser(userId, today), TIMEOUT_MS);
   }
   
   // Get completion status for each slot
