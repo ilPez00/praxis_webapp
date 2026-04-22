@@ -608,24 +608,6 @@ server.tool(
   );
 
   server.tool(
-    'create_bet',
-    'Create a new bet',
-    {
-      title: z.string().describe('Bet title'),
-      amount: z.number().min(1).describe('Bet amount'),
-      deadline: z.string().optional().describe('Deadline (YYYY-MM-DD)'),
-    },
-    async ({ title, amount, deadline }) => {
-      try {
-        const res = await praxisClient.createBet({ title, amount, deadline });
-        return { content: [{ type: 'text', text: 'Bet created: ' + JSON.stringify(res.bet, null, 2) }] };
-      } catch (err: any) {
-        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
-      }
-    }
-  );
-
-server.tool(
     'resolve_bet',
     'Resolve a bet',
     {
@@ -745,25 +727,6 @@ server.tool(
   );
 
   server.tool(
-    'create_calendar_event',
-    'Create a calendar event',
-    {
-      title: z.string().describe('Event title'),
-      startTime: z.string().describe('Start time (ISO 8601)'),
-      endTime: z.string().optional().describe('End time (ISO 8601)'),
-      description: z.string().optional().describe('Event description'),
-    },
-    async ({ title, startTime, endTime, description }) => {
-      try {
-        const res = await praxisClient.createCalendarEvent({ title, start_time: startTime, end_time: endTime, description });
-        return { content: [{ type: 'text', text: 'Event created: ' + JSON.stringify(res, null, 2) }] };
-      } catch (err: any) {
-        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
-      }
-    }
-  );
-
-server.tool(
     'get_google_calendar_status',
     'Check Google Calendar connection status',
     {},
@@ -810,23 +773,6 @@ server.tool(
   );
 
   server.tool(
-    'create_tracker',
-    'Create a new tracker',
-    {
-      name: z.string().describe('Tracker name'),
-      nodeId: z.string().describe('Associated goal node ID'),
-    },
-    async ({ name, nodeId }) => {
-      try {
-        const res = await praxisClient.createTracker({ name, node_id: nodeId });
-        return { content: [{ type: 'text', text: 'Tracker created: ' + JSON.stringify(res.tracker, null, 2) }] };
-      } catch (err: any) {
-        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
-      }
-    }
-  );
-
-server.tool(
     'log_tracker_progress',
     'Log progress on a tracker',
     {
@@ -854,23 +800,6 @@ server.tool(
       try {
         const res = await praxisClient.getTrackerCalendar(trackerId, month);
         return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
-      } catch (err: any) {
-        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
-      }
-    }
-  );
-
-  server.tool(
-    'get_tracker_calendar',
-    'Get tracker calendar view',
-    {
-      trackerId: z.string().describe('Tracker ID'),
-      month: z.string().describe('Month (YYYY-MM)'),
-    },
-    async ({ trackerId, month }) => {
-      try {
-        const res = await praxisClient.getTrackerCalendar(trackerId, month);
-        return { content: [{ type: 'text', text: JSON.stringify(res.calendar, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -938,52 +867,6 @@ server.tool(
     }
   );
 
-  server.tool(
-    'find_matches',
-    'Find potential buddies',
-    {},
-    async () => {
-      try {
-        const res = await praxisClient.findMatches();
-        return { content: [{ type: 'text', text: JSON.stringify(res.matches, null, 2) }] };
-      } catch (err: any) {
-        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
-      }
-    }
-  );
-
-  server.tool(
-    'add_buddy',
-    'Add a buddy',
-    {
-      buddyId: z.string().describe('Buddy user ID'),
-    },
-    async ({ buddyId }) => {
-      try {
-        await praxisClient.addBuddy(buddyId);
-        return { content: [{ type: 'text', text: 'Buddy added' }] };
-      } catch (err: any) {
-        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
-      }
-    }
-  );
-
-  server.tool(
-    'remove_buddy',
-    'Remove a buddy',
-    {
-      buddyId: z.string().describe('Buddy user ID'),
-    },
-    async ({ buddyId }) => {
-      try {
-        await praxisClient.removeBuddy(buddyId);
-        return { content: [{ type: 'text', text: 'Buddy removed' }] };
-      } catch (err: any) {
-        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
-      }
-    }
-  );
-
   // ==================== POINTS TOOLS ====================
 server.tool(
     'get_points',
@@ -1009,22 +892,6 @@ server.tool(
       try {
         const res = await praxisClient.getPointsHistory(days);
         return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
-      } catch (err: any) {
-        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
-      }
-    }
-  );
-
-  server.tool(
-    'get_points_history',
-    'Get points history',
-    {
-      days: z.number().min(1).max(365).default(30).describe('Number of days'),
-    },
-    async ({ days }) => {
-      try {
-        const res = await praxisClient.getPointsHistory(days);
-        return { content: [{ type: 'text', text: JSON.stringify(res.history, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -1092,22 +959,6 @@ server.tool(
       try {
         const res = await praxisClient.markNotificationRead(notificationId);
         return { content: [{ type: 'text', text: 'Notification marked as read: ' + JSON.stringify(res, null, 2) }] };
-      } catch (err: any) {
-        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
-      }
-    }
-  );
-
-  server.tool(
-    'mark_notification_read',
-    'Mark a notification as read',
-    {
-      notificationId: z.string().describe('Notification ID'),
-    },
-    async ({ notificationId }) => {
-      try {
-        await praxisClient.markNotificationRead(notificationId);
-        return { content: [{ type: 'text', text: 'Notification marked as read' }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
