@@ -174,6 +174,7 @@ export class AICoachingService {
   private apiKeys: string[] = [];
   private currentKeyIndex = 0;
   private deepseekApiKey: string | null = null;
+  private groqApiKey: string | null = null;
   
   constructor() {
     // Gemini keys
@@ -192,15 +193,18 @@ export class AICoachingService {
     // DeepSeek key
     this.deepseekApiKey = (process.env.DEEPSEEK_API_KEY || '').trim();
 
-    if (this.apiKeys.length === 0 && !this.deepseekApiKey) {
-      logger.warn('[AICoachingService] No AI keys (Gemini or DeepSeek) found.');
+    // Groq key - free fallback
+    this.groqApiKey = (process.env.GROQ_API_KEY || '').trim();
+
+    if (this.apiKeys.length === 0 && !this.deepseekApiKey && !this.groqApiKey) {
+      logger.warn('[AICoachingService] No AI keys (Gemini, DeepSeek, or Groq) found.');
     } else {
-      logger.info(`[AICoachingService] Ready. Start Key: ${this.currentKeyIndex}. DeepSeek: ${!!this.deepseekApiKey}`);
+      logger.info(`[AICoachingService] Ready. Start Key: ${this.currentKeyIndex}. DeepSeek: ${!!this.deepseekApiKey}. Groq: ${!!this.groqApiKey}`);
     }
   }
 
   get isConfigured(): boolean {
-    return this.apiKeys.length > 0 || !!this.deepseekApiKey;
+    return this.apiKeys.length > 0 || !!this.deepseekApiKey || !!this.groqApiKey;
   }
 
   private rotateKey() {
@@ -291,7 +295,42 @@ export class AICoachingService {
       }
     }
 
-    // 2. Fallback to Gemini keys pool
+    // 2. Try Groq - free fallback, fast, good for structured output
+    if (this.groqApiKey) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
+        
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.groqApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'llama-3.1-8b-instant', // fast, cheap, free tier
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 1500,
+            temperature: 0.7,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content?.trim();
+        if (response.ok && text) return text;
+        errors.push(`[Groq] ${response.status}`);
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          errors.push(`[Groq] Timeout`);
+        } else {
+          errors.push(`[Groq] FetchEx`);
+        }
+      }
+    }
+
+    // 3. Fallback to Gemini keys pool
     if (this.apiKeys.length === 0) {
       throw new Error(`Axiom Offline. No Gemini keys available.`);
     }
