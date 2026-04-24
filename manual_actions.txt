@@ -3,8 +3,35 @@ Praxis — Manual Actions Required
 
  Run these in order against the production Supabase DB.
 
- --------------------------------------------------------------------
- 2026-04-21 — MCP Server (Model Context Protocol)
+--------------------------------------------------------------------
+  2026-04-24 — API Key Usage Tracker
+  --------------------------------------------------------------------
+
+  Track per-key usage for Gemini, DeepSeek, and Groq API keys.
+
+  -- Run this migration:
+  CREATE TABLE IF NOT EXISTS api_key_usage (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key_hash TEXT NOT NULL,        -- truncated key for display: "AIza...abcd"
+    provider TEXT NOT NULL,        -- 'gemini', 'deepseek', 'groq'
+    requests INTEGER DEFAULT 0,
+    errors INTEGER DEFAULT 0,
+    input_tokens INTEGER DEFAULT 0,
+    output_tokens INTEGER DEFAULT 0,
+    last_used TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(key_hash, provider)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_api_key_usage_provider ON api_key_usage(provider);
+  CREATE INDEX IF NOT EXISTS idx_api_key_usage_last_used ON api_key_usage(last_used);
+
+  -- Optional: add to existing axiom_daily_briefs tracking if desired later
+  -- (not needed for MVP)
+
+  --------------------------------------------------------------------
+  2026-04-21 — MCP Server (Model Context Protocol)
  --------------------------------------------------------------------
 
  The MCP server is a separate package at praxis-mcp-server/.

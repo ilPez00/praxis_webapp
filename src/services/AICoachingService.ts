@@ -199,7 +199,74 @@ export class AICoachingService {
     if (this.apiKeys.length === 0 && !this.deepseekApiKey && !this.groqApiKey) {
       logger.warn('[AICoachingService] No AI keys (Gemini, DeepSeek, or Groq) found.');
     } else {
-      logger.info(`[AICoachingService] Ready. Start Key: ${this.currentKeyIndex}. DeepSeek: ${!!this.deepseekApiKey}. Groq: ${!!this.groqApiKey}`);
+      logger.info(`[AICoachingService] Ready. Start Key: ${this.currentKeyIndex}. Groq: ${!!this.groqApiKey}. Gemini: ${this.apiKeys.length} keys. DeepSeek: ${!!this.deepseekApiKey}`);
+    }
+  }
+
+  // ── API Key Usage Tracking ───────────────────────────────────────────────────────────
+  private hashKey(key: string, provider: string): string {
+    // Show first 6 + last 4 chars for display (e.g., "AIzaSy...abcd")
+    if (provider === 'groq' || provider === 'deepseek') {
+      return key.slice(0, 6) + '...' + key.slice(-4);
+    }
+    return key.slice(0, 6) + '...' + key.slice(-4);
+  }
+
+  private async trackUsage(provider: string, key: string, success: boolean, inputTokens: number = 0, outputTokens: number = 0): Promise<void> {
+    try {
+      const keyHash = this.hashKey(key, provider);
+      const isError = success ? 0 : 1;
+      const now = new Date().toISOString();
+
+      // Upsert the usage record
+      await supabase.from('api_key_usage').upsert({
+        key_hash: keyHash,
+        provider,
+        requests: 1,
+        errors: isError,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        last_used: now,
+        updated_at: now,
+      }, { onConflict: 'key_hash,provider' });
+
+      // Increment existing counts using RPC or raw SQL
+      const { data: existing } = await supabase
+        .from('api_key_usage')
+        .select('requests, errors, input_tokens, output_tokens')
+        .eq('key_hash', keyHash)
+        .eq('provider', provider)
+        .single();
+
+      if (existing) {
+        await supabase.from('api_key_usage').update({
+          requests: existing.requests + 1,
+          errors: existing.errors + isError,
+          input_tokens: existing.input_tokens + inputTokens,
+          output_tokens: existing.output_tokens + outputTokens,
+          last_used: now,
+          updated_at: now,
+        }).eq('key_hash', keyHash).eq('provider', provider);
+      }
+    } catch (err) {
+      // Non-critical, log but don't throw
+      logger.warn(`[AICoachingService] Usage track failed: ${err}`);
+    }
+  }
+
+  // Get all key usage for admin
+  public async getKeyUsage(): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('api_key_usage')
+        .select('*')
+        .order('last_used', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      logger.error('[AICoachingService] getKeyUsage failed:', err);
+      return [];
     }
   }
 
@@ -254,48 +321,15 @@ export class AICoachingService {
   }
 
   /**
-   * Helper to attempt a generation with model fallbacks (including DeepSeek).
+   * Helper to attempt a generation with model fallbacks (free first, paid last).
+   * Priority: Groq (free) → Gemini (free tier) → DeepSeek (paid, last resort)
    */
   public async runWithFallback(
     prompt: string
   ): Promise<string> {
     const errors: string[] = [];
 
-    // 1. Try DeepSeek first - cheapest per token when key is configured
-    if (this.deepseekApiKey) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-        
-        const response = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.deepseekApiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 1500,
-          }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        
-        const data = await response.json();
-        const text = data?.choices?.[0]?.message?.content?.trim();
-        if (response.ok && text) return text;
-        errors.push(`[DeepSeek] ${response.status}`);
-      } catch (err: any) {
-        if (err.name === 'AbortError') {
-          errors.push(`[DeepSeek] Timeout`);
-        } else {
-          errors.push(`[DeepSeek] FetchEx`);
-        }
-      }
-    }
-
-    // 2. Try Groq - free fallback, fast, good for structured output
+    // 1. Try Groq first - free tier, fast inference
     if (this.groqApiKey) {
       try {
         const controller = new AbortController();
@@ -308,7 +342,7 @@ export class AICoachingService {
             'Authorization': `Bearer ${this.groqApiKey}`,
           },
           body: JSON.stringify({
-            model: 'llama-3.1-8b-instant', // fast, cheap, free tier
+            model: 'llama-3.1-8b-instant', // fast, free tier
             messages: [{ role: 'user', content: prompt }],
             max_tokens: 1500,
             temperature: 0.7,
@@ -319,18 +353,25 @@ export class AICoachingService {
         
         const data = await response.json();
         const text = data?.choices?.[0]?.message?.content?.trim();
-        if (response.ok && text) return text;
+        const usage = data?.usage || {};
+        
+        if (response.ok && text) {
+          await this.trackUsage('groq', this.groqApiKey!, true, usage?.prompt_tokens || 0, usage?.completion_tokens || 0);
+          return text;
+        }
         errors.push(`[Groq] ${response.status}`);
+        await this.trackUsage('groq', this.groqApiKey!, false, 0, 0);
       } catch (err: any) {
         if (err.name === 'AbortError') {
           errors.push(`[Groq] Timeout`);
         } else {
           errors.push(`[Groq] FetchEx`);
         }
+        if (this.groqApiKey) await this.trackUsage('groq', this.groqApiKey, false, 0, 0);
       }
     }
 
-    // 3. Fallback to Gemini keys pool
+    // 2. Fallback to Gemini keys pool
     if (this.apiKeys.length === 0) {
       throw new Error(`Axiom Offline. No Gemini keys available.`);
     }
@@ -393,6 +434,9 @@ export class AICoachingService {
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
               if (text) {
                 this.currentKeyIndex = keyIdx;
+                const inTokens = data.usage?.promptTokenCount || 0;
+                const outTokens = data.usage?.candidatesTokenCount || 0;
+                await this.trackUsage('gemini', key, true, inTokens, outTokens);
                 return text.trim();
               }
             }
@@ -400,6 +444,7 @@ export class AICoachingService {
             const status = response.status;
             // Record result for this specific key
             errors.push(`[K${keyIdx}:${keyPrefix}|${modelName}] ${status}`);
+            await this.trackUsage('gemini', key, false, 0, 0);
 
             if (status === 429 || status === 403 || status === 401) break; 
           } catch (error: any) {
@@ -408,6 +453,7 @@ export class AICoachingService {
             } else {
               errors.push(`[K${keyIdx}|FetchEx]`);
             }
+            await this.trackUsage('gemini', key, false, 0, 0);
             break;
           }
         }
@@ -416,12 +462,53 @@ export class AICoachingService {
       }
     }
 
+    // 3. Last resort: Try DeepSeek - paid option
+    if (this.deepseekApiKey) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.deepseekApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 1500,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content?.trim();
+        const usage = data?.usage || {};
+        
+        if (response.ok && text) {
+          await this.trackUsage('deepseek', this.deepseekApiKey!, true, usage?.prompt_tokens || 0, usage?.completion_tokens || 0);
+          return text;
+        }
+        errors.push(`[DeepSeek] ${response.status}`);
+        if (this.deepseekApiKey) await this.trackUsage('deepseek', this.deepseekApiKey, false, 0, 0);
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          errors.push(`[DeepSeek] Timeout`);
+        } else {
+          errors.push(`[DeepSeek] FetchEx`);
+        }
+        if (this.deepseekApiKey) await this.trackUsage('deepseek', this.deepseekApiKey, false, 0, 0);
+      }
+    }
+
     // Optional Discovery log if all failed
     let discovered = '';
     try { discovered = ` | Available: ${(await this.listAvailableModels(this.apiKeys[0])).slice(0, 3).join(',')}`; } catch {}
 
     const uniqueErrors = Array.from(new Set(errors)).slice(0, 15).join(' | ');
-    throw new Error(`Axiom Offline. Tried ${this.apiKeys.length} keys. Status: ${uniqueErrors}${discovered}`);
+    throw new Error(`Axiom Offline. Tried Groq, Gemini, DeepSeek. Status: ${uniqueErrors}${discovered}`);
   }
 
   /**

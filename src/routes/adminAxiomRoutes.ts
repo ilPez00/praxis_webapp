@@ -5,6 +5,7 @@ import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
 import { AxiomScanService } from '../services/AxiomScanService';
 import { AxiomProgressEstimationService } from '../services/AxiomProgressEstimationService';
+import { AICoachingService } from '../services/AICoachingService';
 import logger from '../utils/logger';
 
 const router = Router();
@@ -204,6 +205,16 @@ router.get('/summaries/:userId', authenticateToken, requireAdmin, catchAsync(asy
   }
   
   res.json({ summary });
+}));
+
+/**
+ * GET /admin/axiom/key-usage
+ * Get API key usage statistics per provider/key
+ */
+router.get('/key-usage', authenticateToken, requireAdmin, catchAsync(async (_req: Request, res: Response) => {
+  const aiService = new AICoachingService();
+  const keyUsage = await aiService.getKeyUsage();
+  res.json({ keys: keyUsage });
 }));
 
 export default router;

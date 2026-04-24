@@ -42,6 +42,8 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
   const [forcePushing, setForcePushing] = useState(false);
   const [axiomStats, setAxiomStats] = useState<any>(null);
   const [loadingAxiomStats, setLoadingAxiomStats] = useState(false);
+  const [keyUsage, setKeyUsage] = useState<any[]>([]);
+  const [loadingKeyUsage, setLoadingKeyUsage] = useState(false);
 
   // Handlers
   const fetchAxiomPrompt = useCallback(async () => {
@@ -68,6 +70,18 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
       console.error('Failed to fetch Axiom stats:', err);
     } finally {
       setLoadingAxiomStats(false);
+    }
+  }, []);
+
+  const fetchKeyUsage = useCallback(async () => {
+    setLoadingKeyUsage(true);
+    try {
+      const res = await api.get('/admin/axiom/key-usage');
+      setKeyUsage(res.data?.keys || []);
+    } catch (err) {
+      console.error('Failed to fetch key usage:', err);
+    } finally {
+      setLoadingKeyUsage(false);
     }
   }, []);
 
@@ -156,7 +170,8 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
   useEffect(() => {
     fetchAxiomPrompt();
     fetchAxiomStats();
-  }, [fetchAxiomPrompt, fetchAxiomStats]);
+    fetchKeyUsage();
+  }, [fetchAxiomPrompt, fetchAxiomStats, fetchKeyUsage]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -432,6 +447,88 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
                   Balanced (Random)
                 </Button>
               </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* API Key Usage */}
+        <Grid size={{ xs: 12 }}>
+          <Card sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 3 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AutoAwesomeIcon sx={{ color: '#A78BFA' }} /> API Key Usage
+                </Typography>
+                <Button size="small" onClick={fetchKeyUsage} disabled={loadingKeyUsage} startIcon={<RefreshIcon />}>
+                  Refresh
+                </Button>
+              </Box>
+              {loadingKeyUsage ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={24} /></Box>
+              ) : keyUsage.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">No key usage recorded yet.</Typography>
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Key</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Provider</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700, align: 'right' }}>Requests</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700, align: 'right' }}>Errors</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700, align: 'right' }}>Input Tokens</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700, align: 'right' }}>Output Tokens</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Last Used</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {keyUsage.map((k, idx) => {
+                        const errorRate = k.requests > 0 ? (k.errors / k.requests * 100) : 0;
+                        return (
+                          <TableRow key={idx} sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                                {k.key_hash}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={k.provider}
+                                size="small"
+                                sx={{
+                                  bgcolor: k.provider === 'gemini' ? 'rgba(59,130,246,0.15)' : k.provider === 'deepseek' ? 'rgba(236,72,153,0.15)' : 'rgba(34,197,94,0.15)',
+                                  color: k.provider === 'gemini' ? '#60A5FA' : k.provider === 'deepseek' ? '#F472B6' : '#4ADE80',
+                                  fontWeight: 600,
+                                  textTransform: 'capitalize',
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography sx={{ fontWeight: 700, color: '#A78BFA' }}>{k.requests.toLocaleString()}</Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography sx={{ fontWeight: 600, color: errorRate > 10 ? '#EF4444' : errorRate > 0 ? '#F59E0B' : 'text.secondary' }}>
+                                {k.errors.toLocaleString()} {errorRate > 0 && `(${errorRate.toFixed(1)}%)`}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" color="text.secondary">{k.input_tokens.toLocaleString()}</Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" color="text.secondary">{k.output_tokens.toLocaleString()}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" color="text.secondary">
+                                {k.last_used ? new Date(k.last_used).toLocaleString() : '—'}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
             </CardContent>
           </Card>
         </Grid>
