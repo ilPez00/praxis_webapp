@@ -323,22 +323,25 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
       {/* History date strip */}
       <Collapse in={historyOpen}>
         <Box sx={{ display: 'flex', gap: 1, mb: 2, px: 1, flexWrap: 'wrap' }}>
-          {briefs.map((b, idx) => (
-            <Chip
-              key={b.date}
-              label={idx === 0 ? 'Today' : formatDate(b.date)}
-              size="small"
-              onClick={() => { setBriefIndex(idx); setHistoryOpen(false); }}
-              sx={{
-                fontWeight: briefIndex === idx ? 900 : 500,
-                bgcolor: briefIndex === idx ? 'primary.main' : 'rgba(255,255,255,0.05)',
-                color: briefIndex === idx ? '#000' : 'text.secondary',
-                border: '1px solid',
-                borderColor: briefIndex === idx ? 'primary.main' : 'rgba(255,255,255,0.1)',
-                cursor: 'pointer',
-              }}
-            />
-          ))}
+          {briefs.map((b, idx) => {
+            const brief = typeof b.brief === 'string' ? JSON.parse(b.brief) : (b.brief || {});
+            return (
+              <Chip
+                key={b.date}
+                label={idx === 0 ? 'Today' : formatDate(b.date)}
+                size="small"
+                onClick={() => { setBriefIndex(idx); setHistoryOpen(false); }}
+                sx={{
+                  fontWeight: briefIndex === idx ? 900 : 500,
+                  bgcolor: briefIndex === idx ? 'primary.main' : 'rgba(255,255,255,0.05)',
+                  color: briefIndex === idx ? '#000' : 'text.secondary',
+                  border: '1px solid',
+                  borderColor: briefIndex === idx ? 'primary.main' : 'rgba(255,255,255,0.1)',
+                  cursor: 'pointer',
+                }}
+              />
+            );
+          })}
         </Box>
       </Collapse>
 

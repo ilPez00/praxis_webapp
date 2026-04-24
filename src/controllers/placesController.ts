@@ -96,17 +96,19 @@ export const createPlace = catchAsync(async (req: Request, res: Response, _next:
 
   // Auto-create linked group room for the place
   if (data?.id) {
-    supabase.from('chat_rooms').insert({
-      name: data.name,
-      description: `Community group for ${data.name}`,
-      creator_id: userId,
-      type: 'place',
-      place_id: data.id,
-    }).then(({ error: roomErr }) => {
-      if (roomErr) logger.warn('Could not auto-create place group room:', roomErr.message);
-    }).catch((roomErr: any) => {
-      logger.warn('Could not auto-create place group room:', roomErr?.message);
-    });
+    (async () => {
+      try {
+        await supabase.from('chat_rooms').insert({
+          name: data.name,
+          description: `Community group for ${data.name}`,
+          creator_id: userId,
+          type: 'place',
+          place_id: data.id,
+        });
+      } catch (roomErr: any) {
+        logger.warn('Could not auto-create place group room:', roomErr?.message);
+      }
+    })();
   }
 
   res.status(201).json(data);

@@ -114,6 +114,7 @@ const AICoachPage: React.FC = () => {
   const [savedNarratives, setSavedNarratives] = useState<any[]>([]);
   const [loadingNarratives, setLoadingNarratives] = useState(false);
   const [narrativesOpen, setNarrativesOpen] = useState(false);
+  const [expandedBriefId, setExpandedBriefId] = useState<string | null>(null);
 
   // Bet dialog state
   const [isBetDialogOpen, setIsBetDialogOpen] = useState(false);
@@ -778,82 +779,107 @@ const AICoachPage: React.FC = () => {
               <CircularProgress />
               <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>Loading narratives...</Typography>
             </Box>
-          ) : savedNarratives.length === 0 ? (
+) : savedNarratives.length === 0 ? (
             <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
               <MenuBookIcon sx={{ fontSize: 48, mb: 2, opacity: 0.3 }} />
-              <Typography variant="body2">No narratives yet</Typography>
-              <Typography variant="caption">Your daily briefs and AI responses will be auto-saved here</Typography>
+              <Typography variant="body2">No axiom briefs yet</Typography>
+              <Typography variant="caption">Your daily briefs will appear here</Typography>
             </Box>
           ) : (
-            <List sx={{ maxHeight: 500, overflow: 'auto' }}>
-              {savedNarratives.map((narrative, i) => (
-                <ListItem
-                  key={narrative.id}
-                  secondaryAction={
-                    <IconButton 
-                      edge="end" 
-                      onClick={() => handleDownloadNarrative(narrative.id, narrative.title)}
-                      size="small"
+            <Box sx={{ maxHeight: 500, overflowY: 'auto' }}>
+              {savedNarratives.map((narrative, i) => {
+                const brief = narrative.brief || {};
+                const expanded = expandedBriefId === narrative.id;
+                return (
+                  <Box key={narrative.id}>
+                    <Button
+                      fullWidth
+                      onClick={() => setExpandedBriefId(expanded ? null : narrative.id)}
+                      sx={{
+                        justifyContent: 'flex-start',
+                        py: 2,
+                        borderBottom: i < savedNarratives.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                        textTransform: 'none',
+                      }}
                     >
-                      <DownloadIcon />
-                    </IconButton>
-                  }
-                  sx={{
-                    borderBottom: i < savedNarratives.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                  }}
-                >
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: narrative.narrative_type === 'daily_brief' ? 'rgba(167,139,250,0.2)' : 'rgba(245,158,11,0.2)' }}>
-                      {narrative.narrative_type === 'daily_brief' ? '📅' : '💬'}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                          {narrative.title || 'Untitled Narrative'}
-                        </Typography>
-                        {narrative.source === 'llm' && (
-                          <Chip label="AI" size="small" sx={{ height: 16, fontSize: '0.5rem', bgcolor: 'rgba(167,139,250,0.2)', color: '#A78BFA' }} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                        <Avatar sx={{ bgcolor: 'rgba(167,139,250,0.2)', width: 36, height: 36 }}>
+                          📅
+                        </Avatar>
+                        <Box sx={{ flex: 1, textAlign: 'left' }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            {brief.title || `Axiom Brief - ${narrative.date}`}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {narrative.date} · {brief.source === 'llm' ? 'AI' : brief.source === 'algorithm' ? 'Algorithm' : 'Generated'}
+                          </Typography>
+                        </Box>
+                        {brief.source === 'llm' && (
+                          <Chip label="AI" size="small" sx={{ height: 18, bgcolor: 'rgba(167,139,250,0.2)', color: '#A78BFA' }} />
                         )}
                       </Box>
-                    }
-                    secondary={
-                      <>
-                        <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-                          {new Date(narrative.created_at).toLocaleString()}
-                        </Typography>
-                        {narrative.brief?.source && (
-                          <Chip 
-                            label={narrative.brief.source === 'llm' ? 'AI' : 'Algorithm'} 
-                            size="small" 
-                            sx={{ height: 16, fontSize: '0.5rem', bgcolor: narrative.brief.source === 'llm' ? 'rgba(167,139,250,0.2)' : 'rgba(245,158,11,0.2)', color: narrative.brief.source === 'llm' ? '#A78BFA' : '#F59E0B' }} 
-                          />
+                    </Button>
+                    {expanded && (
+                      <Box sx={{ p: 2, bgcolor: 'rgba(139,92,246,0.05)', borderBottom: '1px solid rgba(139,92,246,0.2)' }}>
+                        {brief.message && (
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 2 }}>
+                            {brief.message}
+                          </Typography>
                         )}
-                      </>
-                    }
-                  />
-                  {/* Expandable brief preview */}
-                  {narrative.brief?.content && (
-                    <Box sx={{ pl: 2, pr: 2, pb: 2, display: 'none' }} className="brief-preview">
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>
-                        {narrative.brief.content?.slice(0, 300)}...
-                      </Typography>
-                      {narrative.brief.routine?.length > 0 && (
-                        <Box sx={{ mt: 1.5 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#A78BFA' }}>Today's Protocol</Typography>
-                          {narrative.brief.routine.slice(0, 3).map((r: any, i: number) => (
-                            <Typography key={i} variant="caption" display="block" sx={{ ml: 1 }}>
-                              {r.time}: {r.task}
+                        {brief.routine?.length > 0 && (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#A78BFA', display: 'block', mb: 1 }}>
+                              📋 Today's Protocol
                             </Typography>
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  )}
-                </ListItem>
-              ))}
-            </List>
+                            {brief.routine.map((r: any, idx: number) => (
+                              <Typography key={idx} variant="caption" display="block" sx={{ ml: 1.5, color: 'text.secondary' }}>
+                                {r.time}: {r.task}
+                              </Typography>
+                            ))}
+                          </Box>
+                        )}
+                        {brief.challenge && (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#F59E0B', display: 'block', mb: 0.5 }}>
+                              🎯 Challenge
+                            </Typography>
+                            <Typography variant="body2">{brief.challenge}</Typography>
+                          </Box>
+                        )}
+                        {brief.match && (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#EC4899', display: 'block', mb: 0.5 }}>
+                              👤 Matched Buddy
+                            </Typography>
+                            <Typography variant="body2">{brief.match.name} — {brief.match.reason}</Typography>
+                          </Box>
+                        )}
+                        {brief.event && (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#6366F1', display: 'block', mb: 0.5 }}>
+                              📅 Event
+                            </Typography>
+                            <Typography variant="body2">{brief.event.title} — {brief.event.reason}</Typography>
+                          </Box>
+                        )}
+                        {brief.resources?.length > 0 && (
+                          <Box>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#10B981', display: 'block', mb: 1 }}>
+                              📚 Resources
+                            </Typography>
+                            {brief.resources.slice(0, 3).map((res: any, idx: number) => (
+                              <Typography key={idx} variant="caption" display="block" sx={{ ml: 1.5, color: 'text.secondary' }}>
+                                • {res.suggestion}
+                              </Typography>
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })}
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
