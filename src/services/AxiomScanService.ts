@@ -537,6 +537,11 @@ export class AxiomScanService {
     oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
     const oneMonthAgoStr = oneMonthAgo.toISOString();
     
+    // Calculate date 1 week ago for mood avg
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const oneWeekAgoStr = oneWeekAgo.toISOString();
+    
     // Calculate date 6 weeks ago for note filtering (keep existing)
     const sixWeeksAgo = new Date();
     sixWeeksAgo.setDate(sixWeeksAgo.getDate() - (6 * 7));
@@ -547,7 +552,7 @@ export class AxiomScanService {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    const [goalTreeRes, checkinsRes, trackersRes, matchesRes, eventsRes, placesRes, diaryEntriesRes, notebookEntriesRes, monthCheckinsRes, monthTrackersRes, googleEvents] = await Promise.all([
+    const [goalTreeRes, checkinsRes, trackersRes, matchesRes, eventsRes, placesRes, diaryEntriesRes, notebookEntriesRes, monthCheckinsRes, monthTrackersRes, googleEvents, buddiesRes, duelsRes, profileRes, activeBetsLost, activeBets, recentMoods] = await Promise.all([
       supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
       // Recent check-ins (7 days)
       supabase.from('checkins').select('checked_in_at,streak_day,mood,win_of_the_day').eq('user_id', userId).order('checked_in_at', { ascending: false }).limit(7),
@@ -579,6 +584,18 @@ export class AxiomScanService {
         .limit(200),
       // NEW: Fetch Google Calendar events
       googleCalendarService.getEvents(userId, startDate, endDate),
+      // NEW: Fetch buddies/connections
+      supabase.from('buddies').select('buddy_id, status').eq('user_id', userId).eq('status', 'active'),
+      // NEW: Fetch active duels
+      supabase.from('duels').select('id, opponent_id, goal_id, goal_name').eq('user_id', userId).eq('status', 'accepted'),
+      // NEW: Fetch profile for occupation/bio/city
+      supabase.from('profiles').select('occupation, bio, city, location').eq('id', userId).single(),
+      // NEW: Fetch lost bets (setbacks)
+      supabase.from('bets').select('id, goal_name, deadline, resolved_at').eq('user_id', userId).eq('status', 'lost').gte('resolved_at', oneMonthAgoStr).order('resolved_at', { ascending: false }).limit(3),
+      // NEW: Fetch active bets
+      supabase.from('bets').select('id, goal_name, deadline').eq('user_id', userId).eq('status', 'active'),
+      // NEW: Fetch mood for avg calculation (last 7 days)
+      supabase.from('checkins').select('mood').eq('user_id', userId).gte('checked_in_at', oneWeekAgoStr),
     ]);
 
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
@@ -723,6 +740,71 @@ CONTEXT (LAST 30 DAYS OF ACTIVITY):
 ${notebookContext}
 ${calendarContext ? `\n${calendarContext}` : ''}
 ${recapText ? `- Yesterday's activity: ${recapText}` : '- Yesterday: No activity logged'}
+
+--- USER PROFILE CONTEXT ---
+${
+  (() => {
+    const profile = (profileRes.data || {}) as Record<string, any>;
+    const parts: string[] = [];
+    if (profile.occupation) parts.push(`Occupation: ${profile.occupation}`);
+    if (profile.bio) parts.push(`Bio: ${profile.bio?.slice(0, 200)}`);
+    if (profile.city || profile.location) parts.push(`Location: ${profile.city || profile.location}`);
+    return parts.length > 0 ? parts.join('\n') : 'Profile: Not filled in';
+  })()
+}
+
+--- PERSONALIZATION CONTEXT ---
+- Estimated mood: ${
+  (() => {
+    const moods = (recentMoods?.data || []) as any[];
+    const valid = moods.filter((c: any) => typeof c.mood === 'number');
+    if (valid.length === 0) return 'No data';
+    const avg = valid.reduce((sum: number, c: any) => sum + c.mood, 0) / valid.length;
+    return `${Math.round(avg * 10) / 10}/10`;
+  })()
+} (recent check-ins)
+- Active connections: ${
+  (() => {
+    const buddies = (buddiesRes.data || []) as any[];
+    if (buddies.length === 0) return 'None';
+    return `${buddies.length} active ${buddies.length === 1 ? 'buddy' : 'buddies'}`;
+  })()
+}
+- Active duels: ${
+  (() => {
+    const duels = (duelsRes.data || []) as any[];
+    return duels.length > 0 
+      ? duels.map((d: any) => d.goal_name).join(', ')
+      : 'None';
+  })()
+}
+- Active bets: ${
+  (() => {
+    const bets = (activeBets?.data || []) as any[];
+    return bets.length > 0 
+      ? bets.map((b: any) => b.goal_name).join(', ')
+      : 'None';
+  })()
+}
+- Recent setbacks: ${
+  (() => {
+    // Calculate missed check-in days in last 30 days
+    const checkins = (monthCheckinsRes.data || []) as any[];
+    const checkinDates = new Set(checkins.map((c: any) => c.checked_in_at?.slice(0, 10)).filter(Boolean));
+    let missed = 0;
+    for (let i = 0; i < 30; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      if (!checkinDates.has(ds)) missed++;
+    }
+    const lost = (activeBetsLost?.data || []) as any[];
+    const parts: string[] = [];
+    if (missed > 2) parts.push(`${missed} missed days`);
+    if (lost.length > 0) parts.push(`${lost.length} lost ${lost.length === 1 ? 'bet' : 'bets'}`);
+    return parts.length > 0 ? parts.join(', ') : 'None';
+  })()
+}
 
 IMPORTANT: This brief is based on the LAST 30 DAYS of user activity, not just yesterday.
 - Consider long-term patterns and trends
@@ -1005,10 +1087,12 @@ CRITICAL RULES:
     // Send push notification for new daily brief
     try {
       const { pushNotification } = await import('../controllers/notificationController');
+      const keySuggestion = recommendations?.message?.slice(0, 50) || 'your personalized protocol';
+      const mood = metrics?.checkinStreak ? `🔥 ${metrics.checkinStreak}-day streak` : 'Start your day right';
       await pushNotification({
         userId,
-        title: '🌟 Your Axiom Daily Brief is Ready!',
-        body: `Hey ${userName}, your personalized daily protocol is ready. Let's make today count!`,
+        title: '🌟 Your Daily Brief is Ready',
+        body: `${userName}! ${mood}. "${keySuggestion}"... tap to see your protocol.`,
         type: 'axiom_daily_brief',
       });
       logger.info(`[AxiomScan] Brief notification sent to ${userId}`);

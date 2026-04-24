@@ -53,6 +53,9 @@ export const getDashboardSummary = catchAsync(async (req: Request, res: Response
     activeBets: betsRes.status      === 'fulfilled' ? (betsRes.value.data ?? []) : [],
     checkedIn:  checkinRes.status   === 'fulfilled' ? (checkinRes.value.data?.length ?? 0) > 0 : false,
     briefs:     briefsRes.status    === 'fulfilled' ? (briefsRes.value.data ?? []) : [],
+    todayBrief: briefsRes.status    === 'fulfilled' 
+      ? (briefsRes.value.data?.find((b: any) => b.date === today) ?? null)
+      : null,
   };
 
   // Cache for 2 min — short enough that a check-in refresh feels instant

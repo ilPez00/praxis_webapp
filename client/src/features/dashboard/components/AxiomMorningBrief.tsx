@@ -42,6 +42,8 @@ interface MorningBriefProps {
   initialBriefs?: BriefRecord[];
   initialCheckedIn?: boolean;
   streakShield?: boolean;
+  /** Today's brief pre-loaded from /dashboard/summary for instant display */
+  initialTodayBrief?: BriefRecord | null;
 }
 
 interface DailyProtocol {
@@ -60,6 +62,7 @@ interface BriefRecord {
 const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
   userName, streak, points, avgProgress, hasGoals, userId, onCheckIn,
   initialBriefs, initialCheckedIn, streakShield = false,
+  initialTodayBrief,
 }) => {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -69,11 +72,22 @@ const AxiomMorningBrief: React.FC<MorningBriefProps> = ({
   const [briefs, setBriefs] = useState<BriefRecord[]>(initialBriefs ?? []);
   const [briefIndex, setBriefIndex] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [loading, setLoading] = useState(!initialBriefs);
+  const [loading, setLoading] = useState(!initialBriefs && !initialTodayBrief);
   const [checkedIn, setCheckedIn] = useState(initialCheckedIn ?? false);
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [isBetDialogOpen, setIsBetDialogOpen] = useState(false);
   const [weekStats, setWeekStats] = useState({ total: 0, streak: 0 });
+
+  // Use pre-loaded brief data instantly if available
+  useEffect(() => {
+    if (initialTodayBrief) {
+      setBriefs(prev => {
+        if (prev.length > 0) return prev;
+        return [initialTodayBrief];
+      });
+      setLoading(false);
+    }
+  }, [initialTodayBrief]);
 
   useEffect(() => {
     if (!userId) return;

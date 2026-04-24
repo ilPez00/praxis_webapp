@@ -55,6 +55,7 @@ const DashboardPage: React.FC = () => {
   const [tourOpen, setTourOpen] = useState(false);
   const [initialCheckedIn, setInitialCheckedIn] = useState(false);
   const [initialBriefs, setInitialBriefs] = useState<any[]>([]);
+  const [initialTodayBrief, setInitialTodayBrief] = useState<any>(null);
 
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [matchProfiles, setMatchProfiles] = useState<Record<string, MatchProfile>>({});
@@ -70,10 +71,11 @@ const DashboardPage: React.FC = () => {
       setLoadingContent(true);
       try {
         const res = await api.get(`/dashboard/summary`, { params: { userId: currentUserId } });
-        const { goalTree: tree, checkedIn, briefs } = res.data;
+        const { goalTree: tree, checkedIn, briefs, todayBrief } = res.data;
         setGoalTree(tree ?? null);
         setInitialCheckedIn(!!checkedIn);
         setInitialBriefs(Array.isArray(briefs) ? briefs : []);
+        setInitialTodayBrief(todayBrief ?? null);
       } catch (err: any) {
         const isNetworkError = !err.response && err.message === 'Network Error';
         if (isNetworkError) {
@@ -205,6 +207,7 @@ const DashboardPage: React.FC = () => {
                 initialBriefs={initialBriefs}
                 initialCheckedIn={initialCheckedIn}
                 streakShield={user?.streak_shield ?? false}
+                initialTodayBrief={initialTodayBrief}
                 onCheckIn={() => {}}
               />
             )}
