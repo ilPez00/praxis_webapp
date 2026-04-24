@@ -16,6 +16,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import { Domain } from '../../../models/Domain';
 import { DOMAIN_COLORS } from '../../../types/goal';
+import ActivityGraph from './ActivityGraph';
 
 interface GoalNodeDisplayProps {
   node: GoalNode;
@@ -89,7 +90,8 @@ const GoalNodeDisplay: React.FC<GoalNodeDisplayProps> = ({
         </Typography>
       )}
 
-      <Stack direction="row" spacing={2} justifyContent="flex-end" alignItems="center">
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <ActivityGraph nodeId={node.id} days={14} />
         <Typography variant="body2" color="text.secondary">
           Progress: {Math.round(node.progress * 100)}%
         </Typography>
@@ -105,7 +107,7 @@ const GoalNodeDisplay: React.FC<GoalNodeDisplayProps> = ({
         <IconButton size="small" onClick={() => onDelete(node.id)} color="error">
           <DeleteIcon fontSize="small" />
         </IconButton>
-      </Stack>
+      </Box>
     </Paper>
   );
 };

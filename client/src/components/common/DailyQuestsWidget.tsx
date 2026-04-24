@@ -74,7 +74,8 @@ const DailyQuestsWidget: React.FC = () => {
   const fetchQuests = async (signal?: AbortSignal) => {
     try {
       const { data } = await api.get('/gamification/quests', { signal });
-      setQuests(data.quests || []);
+      // Filter out check_in quest - check-in is handled via the AxiomMorningBrief button
+      setQuests((data.quests || []).filter((q: Quest) => q.quest_type !== 'check_in'));
     } catch (error: any) {
       if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
         return;

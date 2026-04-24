@@ -487,8 +487,8 @@ const NotesPage: React.FC = () => {
         const parentId = editingNode ? editingNode.id : undefined;
         const res = await api.post(`/goals/${currentUserId}/node`, {
           name: editName.trim(), description: editDesc.trim() || undefined,
-          completionMetric: editMetric.trim() || undefined, targetDate: editTargetDate || undefined,
-          parentId, domain,
+          completion_metric: editMetric.trim() || undefined, target_date: editTargetDate || undefined,
+          parent_id: parentId, domain,
         });
         toast.success(parentId ? 'Chapter added!' : 'Topic added!');
         if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);
@@ -499,7 +499,7 @@ const NotesPage: React.FC = () => {
         if (metadataChanged) {
           const res = await api.patch(`/goals/${currentUserId}/node/${editingNode.id}`, {
             name: editName.trim(), description: editDesc.trim() || undefined,
-            completionMetric: editMetric.trim() || undefined, targetDate: editTargetDate || undefined,
+            completion_metric: editMetric.trim() || undefined, target_date: editTargetDate || undefined,
           });
           toast.success('Updated!');
           if (res.data.newBalance !== undefined) setPraxisPoints(res.data.newBalance);

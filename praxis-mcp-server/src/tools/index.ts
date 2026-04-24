@@ -62,8 +62,28 @@ export function createTools() {
     },
     async ({ token }) => {
       try {
+        if (token.startsWith('pk_live_')) {
+          praxisClient.setApiKey(token);
+          return { content: [{ type: 'text', text: 'API key set (X-API-Key header). You are now authenticated.' }] };
+        }
         praxisClient.setAuthToken(token);
         return { content: [{ type: 'text', text: 'Auth token set. You are now authenticated for API calls.' }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'set_api_key',
+    'Set a Praxis API key. Get key from Account Settings → API Keys. Format: pk_live_...',
+    {
+      key: z.string().min(10).describe('Praxis API key (starts with pk_live_)'),
+    },
+    async ({ key }) => {
+      try {
+        praxisClient.setApiKey(key);
+        return { content: [{ type: 'text', text: 'API key set. You are now authenticated via X-API-Key header.' }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
       }
@@ -91,16 +111,17 @@ export function createTools() {
     async () => {
       try {
         const token = praxisClient.getAuthToken();
-        const hasApiKey = !!process.env.PRAXIS_API_KEY;
+        const apiKey = (praxisClient as any).client?.defaults?.headers?.['X-API-Key'];
+        const hasApiKey = !!apiKey || !!process.env.PRAXIS_API_KEY;
         const hasSupabase = !!process.env.SUPABASE_URL && !!process.env.SUPABASE_ANON_KEY;
         return {
           content: [{
             type: 'text',
             text: JSON.stringify({
-              authenticated: !!token,
+              authenticated: !!token || !!apiKey,
               hasApiKey,
               hasSupabase,
-              authMethod: token ? 'bearer_token' : process.env.PRAXIS_API_KEY ? 'api_key' : 'none',
+              authMethod: apiKey ? 'api_key' : token ? 'bearer_token' : process.env.PRAXIS_API_KEY ? 'api_key' : 'none',
             }, null, 2),
           }],
         };
@@ -326,7 +347,14 @@ server.tool(
     },
     async (args) => {
       try {
-        const res = await praxisClient.createCheckIn(args);
+        const me = await praxisClient.getMe();
+        const userId = me.user?.id || me.id;
+        if (!userId) throw new Error('Could not get current user ID');
+        const checkinData = {
+          mood: args.mood?.toString(),
+          winOfTheDay: args.notes,
+        };
+        const res = await praxisClient.createCheckIn(userId, checkinData);
         return { content: [{ type: 'text', text: 'Check-in created: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };
@@ -359,7 +387,7 @@ server.tool(
     },
     async ({ limit }) => {
       try {
-        const res = await praxisClient.getNotebookEntries(limit);
+        const res = await praxisClient.getNotebookEntries({ limit });
         return { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };

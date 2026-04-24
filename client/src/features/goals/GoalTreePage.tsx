@@ -315,9 +315,9 @@ const GoalTreePage: React.FC = () => {
           {
             name: editName.trim(),
             description: editDesc.trim() || undefined,
-            completionMetric: editMetric.trim() || undefined,
-            targetDate: editTargetDate || undefined,
-            parentId,
+            completion_metric: editMetric.trim() || undefined,
+            target_date: editTargetDate || undefined,
+            parent_id: parentId,
             domain,
           },
         );
@@ -337,8 +337,8 @@ const GoalTreePage: React.FC = () => {
             {
               name: editName.trim(),
               description: editDesc.trim() || undefined,
-              completionMetric: editMetric.trim() || undefined,
-              targetDate: editTargetDate || undefined,
+              completion_metric: editMetric.trim() || undefined,
+              target_date: editTargetDate || undefined,
             },
           );
           toast.success('Details updated! -50 PP');

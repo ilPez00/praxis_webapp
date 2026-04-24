@@ -92,23 +92,23 @@ export class AxiomScheduleService {
 
     // Fetch suggested matches, events, and places for context with timeouts
     const matchesPromise = this.withTimeout(
-      supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 10 }),
+      (supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 10 }) as any).then((r: any) => r.data ? { data: r.data, error: null } : { data: [], error: r.error }),
       10000,
-      { data: [], error: null }
+      { data: [] as any, error: null }
     );
     const eventsPromise = this.withTimeout(
-      supabase.from('events')
+      (supabase.from('events')
         .select('id, title, event_date, city, description')
         .gte('event_date', new Date().toISOString().slice(0, 10))
         .order('event_date', { ascending: true })
-        .limit(5),
+        .limit(5) as any).then((r: any) => r.data ? { data: r.data, error: null } : { data: [], error: r.error }),
       10000,
-      { data: [], error: null }
+      { data: [] as any, error: null }
     );
     const placesPromise = this.withTimeout(
-      supabase.from('places')
+      (supabase.from('places')
         .select('id, name, city, tags, description, latitude, longitude')
-        .limit(10),
+        .limit(10) as any).then((r: any) => r.data ? { data: r.data, error: null } : { data: [], error: r.error }),
       10000,
       { data: [], error: null }
     );

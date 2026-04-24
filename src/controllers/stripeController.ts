@@ -28,11 +28,13 @@ type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number];
  * @param res - The Express response object.
  */
 export const createCheckoutSession = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { userId, email, interval = 'month' } = req.body; // Extract user ID and email from the request body
+  const { interval = 'month' } = req.body; // Extract interval from the request body
+  const userId = req.user?.id;
+  const email = req.user?.email;
 
   // Validate required input
   if (!userId || !email) {
-    throw new BadRequestError('User ID and email are required to create a checkout session.');
+    throw new BadRequestError('Authentication required.');
   }
 
   // Retrieve Stripe Price ID from environment variables (support monthly and annual)
@@ -71,10 +73,11 @@ export const createCheckoutSession = catchAsync(async (req: Request, res: Respon
 });
 
 export const createPPCheckout = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-  const { email, tier, currency: rawCurrency } = req.body as { email?: string; tier?: string; currency?: string };
+  const { tier, currency: rawCurrency } = req.body as { tier?: string; currency?: string };
   const userId = req.user?.id;
-  if (!userId) throw new BadRequestError('Authentication required');
-  if (!email || !tier) throw new BadRequestError('email and tier are required');
+  const email = req.user?.email;
+  if (!userId || !email) throw new BadRequestError('Authentication required');
+  if (!tier) throw new BadRequestError('tier required');
   if (!PP_TIERS[tier]) throw new BadRequestError(`Invalid tier. Valid: ${Object.keys(PP_TIERS).join(', ')}`);
 
   const currency: SupportedCurrency = SUPPORTED_CURRENCIES.includes(rawCurrency as SupportedCurrency)

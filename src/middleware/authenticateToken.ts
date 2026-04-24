@@ -27,6 +27,6 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     return next(new UnauthorizedError('Invalid or expired authentication token.'));
   }
 
-  req.user = { id: user.id };
+  req.user = { id: user.id, email: user.email };
   next();
 };

@@ -104,6 +104,8 @@ export const createPlace = catchAsync(async (req: Request, res: Response, _next:
       place_id: data.id,
     }).then(({ error: roomErr }) => {
       if (roomErr) logger.warn('Could not auto-create place group room:', roomErr.message);
+    }).catch((roomErr: any) => {
+      logger.warn('Could not auto-create place group room:', roomErr?.message);
     });
   }
 

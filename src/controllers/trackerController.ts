@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, UnauthorizedError, BadRequestError } from '../utils/appErrors';
 import { writeStructured, isStructuredType } from '../services/StructuredTrackerWriter';
+import { recordActivity } from '../utils/recordActivity';
 
 const SCHEMA_MISSING = (msg: string) =>
   msg?.includes('schema cache') || msg?.includes('42P01') || msg?.includes('does not exist');
@@ -427,6 +428,20 @@ export const logTracker = catchAsync(async (req: Request, res: Response) => {
       }
     });
 
+  // Progress daily quest for tracker logging (fire-and-forget)
+  (async () => {
+    try {
+      await supabase.rpc('progress_user_quest', {
+        p_user_id: userId,
+        p_quest_type: 'log_tracker',
+        p_amount: 1,
+      });
+    } catch { /* ignore */ }
+  })();
+
+  // Record activity for streak (fire-and-forget)
+  recordActivity(userId).catch(() => {});
+
   res.json({ ok: true, ppAwarded: PP_PER_LOG });
 });
 
@@ -462,4 +477,62 @@ export const deleteTrackerEntry = catchAsync(async (req: Request, res: Response)
   if (delErr) throw new Error(`Failed to delete entry: ${delErr.message}`);
 
   res.json({ ok: true });
+});
+
+/**
+ * GET /trackers/node-activity/:nodeId
+ * Returns activity counts per day for a specific goal node
+ * Query params: ?days=30 (default 30, max 90)
+ */
+export const getNodeActivity = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const { nodeId } = req.params;
+  const days = Math.min(Math.max(Number(req.query.days ?? 30), 1), 90);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const result: Record<string, { date: string; count: number }> = {};
+
+  // 1. Query tracker_entries linked to this node (via trackers table)
+  const { data: linkedTrackers } = await supabase
+    .from('trackers')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('node_id', nodeId);
+
+  if (linkedTrackers && linkedTrackers.length > 0) {
+    const trackerIds = linkedTrackers.map(t => t.id);
+    const { data: entries } = await supabase
+      .from('tracker_entries')
+      .select('logged_at')
+      .in('tracker_id', trackerIds)
+      .gte('logged_at', since);
+
+    entries?.forEach(entry => {
+      const date = entry.logged_at.slice(0, 10);
+      result[date] = result[date] || { date, count: 0 };
+      result[date].count++;
+    });
+  }
+
+  // 2. Query notebook_entries linked to this node
+  const { data: notes } = await supabase
+    .from('notebook_entries')
+    .select('occurred_at')
+    .eq('user_id', userId)
+    .eq('goal_id', nodeId)
+    .gte('occurred_at', since);
+
+  notes?.forEach(note => {
+    const date = (note.occurred_at || '').slice(0, 10);
+    if (!date) return;
+    result[date] = result[date] || { date, count: 0 };
+    result[date].count++;
+  });
+
+  // 3. Sort by date
+  const sorted = Object.values(result).sort((a, b) => a.date.localeCompare(b.date));
+
+  res.json({ node_id: nodeId, days, activities: sorted });
 });

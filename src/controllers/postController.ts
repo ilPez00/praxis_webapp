@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import { catchAsync, NotFoundError, BadRequestError, ForbiddenError, InternalServerError } from '../utils/appErrors';
 import { classifyPostDomain, bumpDomainProficiency } from '../utils/proficiency';
+import { recordActivity } from '../utils/recordActivity';
 
 const handleSupabaseError = (error: any) => {
   logger.error('Supabase error (posts):', {
@@ -366,6 +367,9 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
     }
 
     logger.info('[createPost] Post created successfully:', { postId: data.id });
+    
+    // Record activity for streak (fire-and-forget)
+    recordActivity(userId).catch(() => {});
     
     // Track social reward for post creation
     try {

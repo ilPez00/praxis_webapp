@@ -355,8 +355,10 @@ class PraxisClient {
     return this.getGamificationProfile();
   }
   async getStreak() { 
-    // Not sure endpoint - maybe from user profile
-    throw new Error('getStreak not implemented');
+    const me = await this.getMe();
+    // Try to extract streak from user object
+    const streak = me.current_streak || me.user?.current_streak || 0;
+    return { current_streak: streak };
   }
   async getBets() { 
     // Need userId for getUserBets
@@ -405,6 +407,20 @@ class PraxisClient {
   }
   async getCoachingAdvice(goalId: string) { 
     throw new Error('getCoachingAdvice not implemented');
+  }
+
+  // Stripe Payments
+  async createCheckoutSession(plan: 'monthly' | 'annual') {
+    return this.post<any>('/stripe/create-checkout-session', { interval: plan });
+  }
+  async createPPCheckout(tier: string, currency: string = 'eur') {
+    return this.post<any>('/stripe/create-pp-checkout', { tier, currency });
+  }
+  async createPortalSession() {
+    return this.post<any>('/stripe/create-portal-session', {});
+  }
+  async verifySession(sessionId: string) {
+    return this.get<any>(`/stripe/verify-session?session_id=${sessionId}`);
   }
 }
 

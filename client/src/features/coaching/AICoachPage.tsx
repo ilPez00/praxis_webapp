@@ -823,14 +823,34 @@ const AICoachPage: React.FC = () => {
                         <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
                           {new Date(narrative.created_at).toLocaleString()}
                         </Typography>
-                        {narrative.pp_cost > 0 && (
-                          <Typography variant="caption" sx={{ color: '#F59E0B' }}>
-                            Cost: {narrative.pp_cost} PP
-                          </Typography>
+                        {narrative.brief?.source && (
+                          <Chip 
+                            label={narrative.brief.source === 'llm' ? 'AI' : 'Algorithm'} 
+                            size="small" 
+                            sx={{ height: 16, fontSize: '0.5rem', bgcolor: narrative.brief.source === 'llm' ? 'rgba(167,139,250,0.2)' : 'rgba(245,158,11,0.2)', color: narrative.brief.source === 'llm' ? '#A78BFA' : '#F59E0B' }} 
+                          />
                         )}
                       </>
                     }
                   />
+                  {/* Expandable brief preview */}
+                  {narrative.brief?.content && (
+                    <Box sx={{ pl: 2, pr: 2, pb: 2, display: 'none' }} className="brief-preview">
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>
+                        {narrative.brief.content?.slice(0, 300)}...
+                      </Typography>
+                      {narrative.brief.routine?.length > 0 && (
+                        <Box sx={{ mt: 1.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#A78BFA' }}>Today's Protocol</Typography>
+                          {narrative.brief.routine.slice(0, 3).map((r: any, i: number) => (
+                            <Typography key={i} variant="caption" display="block" sx={{ ml: 1 }}>
+                              {r.time}: {r.task}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                 </ListItem>
               ))}
             </List>

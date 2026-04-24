@@ -4,6 +4,7 @@ import { catchAsync, UnauthorizedError, BadRequestError, NotFoundError } from '.
 import { authenticateToken } from '../middleware/authenticateToken';
 import logger from '../utils/logger';
 import * as notebookAxiomController from '../controllers/notebookAxiomController';
+import { recordActivity } from '../utils/recordActivity';
 
 const router = Router();
 
@@ -151,6 +152,10 @@ router.post('/entries', authenticateToken, catchAsync(async (req: Request, res: 
   }
 
   logger.info(`Notebook entry created successfully: ${data.id}`);
+  
+  // Record activity for streak (fire-and-forget)
+  recordActivity(userId).catch(() => {});
+  
   res.status(201).json(data);
 }));
 
