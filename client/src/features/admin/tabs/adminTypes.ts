@@ -133,3 +133,22 @@ export const TabPanel: React.FC<{ value: number; index: number; children: React.
 };
 
 export const isBanned = (u: AdminUser) => !!u.banned_until && new Date(u.banned_until) > new Date();
+
+export interface VocabularyStats {
+  totalWords: number;
+  uniqueWords: number;
+  vocabularyRichness: number;
+  variationIndex: number;
+  topWords: { word: string; count: number }[];
+  interestTags: string[];
+  targetingScores: Record<string, number>;
+  avgMood: number;
+  moodVariance: number;
+  dominantTone: string;
+  positivityRatio: number;
+  topAffinityUsers: { userId: string; name: string; textAffinity: number }[];
+  avgTextAffinityScore: number;
+  mostActiveHour: number;
+  writingFrequency: number;
+  avgEntryLength: number;
+}

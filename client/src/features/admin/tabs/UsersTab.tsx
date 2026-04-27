@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
 import {
-  Box, Typography, Card, CardContent,
+  Box, Typography, Card, CardContent, Collapse,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   IconButton, Chip, Avatar, TextField, InputAdornment,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Divider,
+  Stack,
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import BlockIcon from '@mui/icons-material/Block';
@@ -21,9 +23,12 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import EditTreeIcon from '@mui/icons-material/AccountTree';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import toast from 'react-hot-toast';
 import api from '../../../lib/api';
-import { AdminUser, UserDetail, ConfirmAction, downloadCSV, isBanned } from './adminTypes';
+import { AdminUser, UserDetail, ConfirmAction, downloadCSV, isBanned, VocabularyStats } from './adminTypes';
 
 interface UsersTabProps {
   currentUserId?: string;
@@ -41,6 +46,9 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
   const [ppAmounts, setPpAmounts] = useState<Record<string, string>>({});
   const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [vocabStats, setVocabStats] = useState<VocabularyStats | null>(null);
+  const [loadingVocab, setLoadingVocab] = useState(false);
+  const [vocabOpen, setVocabOpen] = useState(false);
 
   // ── User actions ─────────────────────────────────────────────────────────────
 
@@ -124,10 +132,17 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
   const handleOpenDetail = async (userId: string) => {
     setLoadingDetail(true);
     setUserDetail(null);
+    setVocabStats(null);
+    setVocabOpen(false);
     try {
-      const res = await api.get(`/admin/users/${userId}/detail`);
-      setUserDetail(res.data);
-    } catch { toast.error('Failed to load user detail.'); } finally { setLoadingDetail(false); }
+      const [detailRes, vocabRes] = await Promise.allSettled([
+        api.get(`/admin/users/${userId}/detail`),
+        api.get(`/admin/users/${userId}/vocabulary-stats`),
+      ]);
+      if (detailRes.status === 'fulfilled') setUserDetail(detailRes.value.data);
+      else toast.error('Failed to load user detail.');
+      if (vocabRes.status === 'fulfilled') setVocabStats(vocabRes.value.data);
+    } catch { toast.error('Failed to load user data.'); } finally { setLoadingDetail(false); }
   };
 
   const handleDeleteAllDemo = async () => {
@@ -351,7 +366,141 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
                                 <BlockIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                          )}
+          )}
+
+          {/* ── Vocabulary & Signals Section ── */}
+          {userDetail && vocabStats && (
+            <Box sx={{ mt: 3 }}>
+              <Box
+                onClick={() => setVocabOpen(o => !o)}
+                sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', py: 1, px: 1.5, borderRadius: 1, bgcolor: 'rgba(167,139,250,0.06)', '&:hover': { bgcolor: 'rgba(167,139,250,0.12)' } }}
+              >
+                <AutoAwesomeIcon sx={{ color: '#A78BFA', fontSize: 18 }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, flexGrow: 1, color: '#A78BFA' }}>
+                  Vocabulary & Signals
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled', mr: 1 }}>
+                  {vocabStats.totalWords} tokens
+                </Typography>
+                {vocabOpen ? <ExpandLessIcon sx={{ color: 'text.disabled', fontSize: 18 }} /> : <ExpandMoreIcon sx={{ color: 'text.disabled', fontSize: 18 }} />}
+              </Box>
+              <Collapse in={vocabOpen}>
+                <Box sx={{ pt: 2, px: 1 }}>
+                  {/* Variation & Richness */}
+                  <Box sx={{ display: 'flex', gap: 2, mb: 2.5 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.3 }}>
+                        Variation Index {vocabStats.variationIndex > 0.6 ? '🟢' : vocabStats.variationIndex > 0.35 ? '🟡' : '🔴'} {+(vocabStats.variationIndex * 100).toFixed(0)}%
+                      </Typography>
+                      <LinearProgress variant="determinate" value={Math.min(vocabStats.variationIndex * 100, 100)} sx={{ height: 5, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.06)', '& .MuiLinearProgress-bar': { bgcolor: vocabStats.variationIndex > 0.6 ? '#34D399' : vocabStats.variationIndex > 0.35 ? '#FBBF24' : '#F87171' } }} />
+                      <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', mt: 0.2, display: 'block' }}>
+                        Higher = more varied vocabulary
+                      </Typography>
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.3 }}>
+                        Richness {+(vocabStats.vocabularyRichness * 100).toFixed(0)}%
+                      </Typography>
+                      <LinearProgress variant="determinate" value={Math.min(vocabStats.vocabularyRichness * 100, 100)} sx={{ height: 5, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.06)', '& .MuiLinearProgress-bar': { bgcolor: '#A78BFA' } }} />
+                      <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', mt: 0.2, display: 'block' }}>
+                        Unique / total words
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Top Words */}
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                    Top Words
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                    {vocabStats.topWords.slice(0, 15).map(w => (
+                      <Chip key={w.word} label={`${w.word} (${w.count})`} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600, bgcolor: 'rgba(167,139,250,0.1)', color: '#A78BFA' }} />
+                    ))}
+                  </Box>
+
+                  {/* Interest Tags */}
+                  {vocabStats.interestTags.length > 0 && (
+                    <>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                        Interest Tags
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                        {vocabStats.interestTags.map(tag => (
+                          <Chip key={tag} label={tag} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(52,211,153,0.12)', color: '#34D399' }} />
+                        ))}
+                      </Box>
+                    </>
+                  )}
+
+                  {/* Targeting Scores */}
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 1 }}>
+                    Targeting
+                  </Typography>
+                  {Object.entries(vocabStats.targetingScores).filter(([, v]) => v > 0.01).sort(([, a], [, b]) => b - a).slice(0, 5).map(([domain, score]) => (
+                    <Box key={domain} sx={{ mb: 0.8 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>{domain}</Typography>
+                        <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 600 }}>{(score * 100).toFixed(0)}%</Typography>
+                      </Box>
+                      <LinearProgress variant="determinate" value={Math.min(score * 100, 100)} sx={{ height: 4, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.06)', '& .MuiLinearProgress-bar': { bgcolor: '#FBBF24' } }} />
+                    </Box>
+                  ))}
+
+                  {/* Tone & Mood */}
+                  <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.3 }}>
+                        Tone: {vocabStats.dominantTone === 'positive' ? '😊' : vocabStats.dominantTone === 'struggling' ? '😔' : vocabStats.dominantTone === 'aspirational' ? '🚀' : vocabStats.dominantTone === 'reflective' ? '🤔' : '😐'} {vocabStats.dominantTone}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="caption" sx={{ color: 'text.disabled' }}>Positivity</Typography>
+                        <Box sx={{ flex: 1 }}>
+                          <LinearProgress variant="determinate" value={Math.min(vocabStats.positivityRatio * 100, 100)} sx={{ height: 5, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.06)', '& .MuiLinearProgress-bar': { bgcolor: vocabStats.positivityRatio > 0.6 ? '#34D399' : '#F87171' } }} />
+                        </Box>
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.disabled' }}>{(vocabStats.positivityRatio * 100).toFixed(0)}%</Typography>
+                      </Box>
+                      {vocabStats.avgMood > 0 && (
+                        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.5 }}>
+                          Mood: {vocabStats.avgMood} ± {vocabStats.moodVariance}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.3 }}>Activity</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block' }}>
+                        Active hour: {vocabStats.mostActiveHour}:00
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block' }}>
+                        ~{vocabStats.writingFrequency} entries/week
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block' }}>
+                        ~{vocabStats.avgEntryLength} chars/entry
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Text Affinity */}
+                  {vocabStats.topAffinityUsers.length > 0 && (
+                    <Box sx={{ mt: 2.5, pt: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                        Top Affinity Users
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {vocabStats.topAffinityUsers.map(u => (
+                          <Chip key={u.userId} label={`${u.name} (${(u.textAffinity * 100).toFixed(0)}%)`} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600, bgcolor: 'rgba(96,165,250,0.1)', color: '#60A5FA' }} />
+                        ))}
+                      </Box>
+                      {vocabStats.avgTextAffinityScore > 0 && (
+                        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.5 }}>
+                          Avg text affinity: {(vocabStats.avgTextAffinityScore * 100).toFixed(0)}%
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              </Collapse>
+            </Box>
+          )}
                           <Tooltip title="Reset to onboarding">
                             <IconButton size="small" onClick={() => setConfirm({ type: 'reset', user: u })} sx={{ color: 'info.main', opacity: 0.6, '&:hover': { opacity: 1 } }}>
                               <RefreshIcon fontSize="small" />
@@ -476,7 +625,7 @@ const UsersTab: React.FC<UsersTabProps> = ({ currentUserId, users, setUsers, loa
       </Dialog>
 
       {/* ── User Detail Dialog ──────────────────────────────────────────────── */}
-      <Dialog open={!!userDetail || loadingDetail} onClose={() => setUserDetail(null)} maxWidth="sm" fullWidth>
+      <Dialog open={!!userDetail || loadingDetail} onClose={() => { setUserDetail(null); setVocabStats(null); }} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
           <InfoOutlinedIcon sx={{ color: 'primary.main' }} />
           User Metrics

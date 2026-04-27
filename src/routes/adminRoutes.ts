@@ -13,6 +13,7 @@ import {
   getAdminMetrics,
   refreshProfileEmbeddings,
 } from '../controllers/adminController';
+import { getUserVocabularyStats } from '../controllers/wordsController';
 import adminAxiomRoutes from './adminAxiomRoutes';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -42,6 +43,7 @@ router.post('/users/:id/grant-points', authenticateToken, requireAdmin, validate
 router.post('/users/grant-points-all', authenticateToken, requireAdmin, grantPointsToAll);
 router.post('/users/:id/reset-tree-edits', authenticateToken, requireAdmin, resetTreeEdits);
 router.get('/users/:id/detail', authenticateToken, requireAdmin, getUserDetail);
+router.get('/users/:id/vocabulary-stats', authenticateToken, requireAdmin, getUserVocabularyStats);
 router.delete('/posts/:id', authenticateToken, requireAdmin, adminDeletePost);
 router.delete('/groups/:id', authenticateToken, requireAdmin, adminDeleteGroup);
 

@@ -623,6 +623,10 @@ const Navbar: React.FC = () => {
                       <StorefrontOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Marketplace</Typography>
                     </MenuItem>
+                    <MenuItem onClick={() => handleNav('/fails')} sx={{ gap: 1.5, py: 1.25 }}>
+                      <WarningIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">Fails</Typography>
+                    </MenuItem>
                     <MenuItem onClick={() => handleNav('/settings')} sx={{ gap: 1.5, py: 1.25 }}>
                       <SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
                       <Typography variant="body2">Settings</Typography>
