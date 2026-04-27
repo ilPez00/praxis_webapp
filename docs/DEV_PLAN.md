@@ -252,4 +252,5 @@ Spotify-style year-in-review: biggest goal, total PP, top domain, streak record,
 
 ## Change Log
 
+- **2026-04-27** — Profile embeddings for semantic text affinity matching. New `profile_embeddings` table + `match_profiles_by_text` RPC + `TextAnalysisService` for Gemini embedding generation. Composite match score: 50% goal + 35% text affinity + 10% geo + 5% reliability. Admin endpoint: `POST /api/admin/refresh-profile-embeddings`.
 - **2026-04-19** — Document created. Removed events from Discover (this session). PDF notebook export shipped.

@@ -1254,6 +1254,14 @@ export const importOSMPlacesEndpoint = catchAsync(async (req: Request, res: Resp
 
 // ── Metrics Dashboard ──────────────────────────────────────────────────────────
 
+export const refreshProfileEmbeddings = catchAsync(async (_req: Request, res: Response) => {
+  logger.info('[Admin] Refreshing profile embeddings...');
+  const { TextAnalysisService } = await import('../services/TextAnalysisService');
+  const service = new TextAnalysisService();
+  const result = await service.refreshAllActiveUsers();
+  res.json({ message: 'Profile embeddings refresh complete', ...result });
+});
+
 export const getAdminMetrics = catchAsync(async (req: Request, res: Response) => {
   const { days = 30 } = req.query;
   const daysNum = parseInt(days as string, 10) || 30;

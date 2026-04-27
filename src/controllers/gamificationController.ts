@@ -253,10 +253,10 @@ export const claimQuestReward = catchAsync(async (req: Request, res: Response) =
     throw new BadRequestError('Quest ID is required');
   }
 
-  // Get quest - remove date filter to allow claiming recent quests
+  // Get quest
   const { data: quest, error: questError } = await supabase
     .from('user_daily_quests')
-    .select('*, daily_quests(xp_reward, pp_reward)')
+    .select('*')
     .eq('id', questId)
     .eq('user_id', userId)
     .single();
@@ -274,6 +274,13 @@ export const claimQuestReward = catchAsync(async (req: Request, res: Response) =
     throw new BadRequestError('Quest already claimed');
   }
 
+  // Get quest rewards from daily_quests config
+  const { data: questConfig } = await supabase
+    .from('daily_quests')
+    .select('xp_reward, pp_reward')
+    .eq('id', quest.quest_id)
+    .single();
+
   // Mark as claimed
   const { error: updateError } = await supabase
     .from('user_daily_quests')
@@ -286,8 +293,8 @@ export const claimQuestReward = catchAsync(async (req: Request, res: Response) =
   }
 
   // Award rewards
-  const xpReward = quest.daily_quests?.xp_reward || 0;
-  const ppReward = quest.daily_quests?.pp_reward || 0;
+  const xpReward = questConfig?.xp_reward || 0;
+  const ppReward = questConfig?.pp_reward || 0;
 
   if (xpReward > 0 || ppReward > 0) {
     const { error: rpcError } = await supabase.rpc('add_xp_to_user', {

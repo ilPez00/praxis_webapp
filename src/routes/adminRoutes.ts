@@ -10,7 +10,8 @@ import {
   getSystemConfig, updateSystemConfig, triggerAxiomScan, togglePremium,
   importOSMPlacesEndpoint,
   clearSeenMessages,
-  getAdminMetrics
+  getAdminMetrics,
+  refreshProfileEmbeddings,
 } from '../controllers/adminController';
 import adminAxiomRoutes from './adminAxiomRoutes';
 import { authenticateToken } from '../middleware/authenticateToken';
@@ -66,6 +67,7 @@ router.put('/config/:key', authenticateToken, requireAdmin, validateBody(updateS
 router.post('/config/clear-seen-messages', authenticateToken, requireAdmin, clearSeenMessages);
 router.post('/axiom/trigger-scan', authenticateToken, requireAdmin, triggerAxiomScan);
 router.post('/axiom/generate-all-briefs', authenticateToken, requireAdmin, generateAllBriefs);
+router.post('/refresh-profile-embeddings', authenticateToken, requireAdmin, refreshProfileEmbeddings);
 // OSM place import
 router.post('/import-osm-places', authenticateToken, requireAdmin, validateBody(importOSMPlacesBodySchema), importOSMPlacesEndpoint);
 

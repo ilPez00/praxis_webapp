@@ -129,3 +129,32 @@ No env changes required.
    `supabase.auth.getUser()` in client/src/features/** and replace with
    `supabase.auth.getSession()` — the former holds a Web Lock, the latter
    is a local read.
+
+--------------------------------------------------------------------
+2026-04-27 — Profile Embeddings (semantic text affinity matching)
+--------------------------------------------------------------------
+
+1. Run migration:
+
+   psql -h db.xxx.supabase.co -U postgres -d postgres -f migrations/2026-04-27-profile-embeddings.sql
+
+2. This creates:
+   - public.profile_embeddings table (one row per user, vector(768) embedding)
+   - public.match_profiles_by_text() RPC for cosine-similarity search
+   - pgvector ivfflat index on the embedding column
+
+3. No new env vars. Reuses existing GEMINI_API_KEY.
+
+4. After migration, seed initial embeddings for active users:
+
+   -- Via the backend (deploy first, then hit once):
+   -- POST /api/admin/refresh-profile-embeddings
+
+   Or from Node console:
+     const { TextAnalysisService } = require('./dist/services/TextAnalysisService');
+     await new TextAnalysisService().refreshAllActiveUsers();
+
+5. Weekly cron (optional, for ongoing freshness):
+   - Schedule: POST /api/admin/refresh-profile-embeddings every Sunday
+   - Only processes users active in last 7 days
+   - Cost: ~$0.0025/week for 50 active users

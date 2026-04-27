@@ -394,6 +394,20 @@ export const createOrUpdateGoalTree = catchAsync(async (req: Request, res: Respo
       logger.warn('Could not update streak on initial save:', streakErr);
     }
 
+    // Auto-grant onboarding PP + set completion flag if first-time user
+    const isFirstTime = !profile?.onboarding_completed;
+    if (isFirstTime) {
+      logger.info(`[createOrUpdateGoalTree] First-time user, granting 200 PP + marking onboarding complete`);
+      try {
+        await supabase.from('profiles').update({
+          onboarding_completed: true,
+          praxis_points: (profile?.praxis_points ?? 0) + 200
+        }).eq('id', userId);
+      } catch (onboardErr) {
+        logger.warn('Could not grant onboarding PP:', onboardErr);
+      }
+    }
+
     res.status(201).json(data); // Respond with the newly created goal tree
   }
 });

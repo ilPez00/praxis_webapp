@@ -40,6 +40,8 @@ interface MatchProfile {
   bio?: string;
   domains: string[];
   sharedGoals: string[];
+  goalScore?: number;
+  textAffinity?: number;
   progressPace?: number;
   overallProgress?: number;
   currentStreak?: number;
@@ -81,6 +83,8 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
           bio: m.bio,
           domains: m.domains ?? [],
           sharedGoals: m.sharedGoals ?? [],
+          goalScore: m.goalScore,
+          textAffinity: m.textAffinity,
           overallProgress: m.overallProgress,
           currentStreak: m.currentStreak ?? 0,
           lastCheckinDate: m.lastCheckinDate ?? null,
@@ -207,8 +211,15 @@ const MatchesPage: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
             displayedMatches.map((match) => (
               <Grid size={{ xs: 12, sm: compact ? 12 : 6, md: compact ? 6 : 4 }} key={match.userId}>
                 <GlassCard sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', borderColor: 'primary.main', boxShadow: '0 12px 40px rgba(245,158,11,0.1)' } }}>
-                  <Box sx={{ position: 'absolute', top: 16, right: 16, bgcolor: 'primary.main', color: '#0A0B14', px: 1.5, py: 0.5, borderRadius: '10px', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(245,158,11,0.3)', zIndex: 2 }}>
-                    {Math.round(match.score * 100)}%
+                  <Box sx={{ position: 'absolute', top: 16, right: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.3, zIndex: 2 }}>
+                    <Box sx={{ bgcolor: 'primary.main', color: '#0A0B14', px: 1.5, py: 0.5, borderRadius: '10px', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(245,158,11,0.3)' }}>
+                      {Math.round(match.score * 100)}%
+                    </Box>
+                    {match.goalScore !== undefined && match.textAffinity !== undefined && (
+                      <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6rem', lineHeight: 1.2, textAlign: 'center' }}>
+                        Goal: {Math.round(match.goalScore * 100)}% · Vibe: {Math.round(match.textAffinity * 100)}%
+                      </Typography>
+                    )}
                   </Box>
                   <CardContent sx={{ p: 3, flexGrow: 1 }}>
                     <Box sx={{ display: 'flex', gap: 2, mb: 2.5 }}>
