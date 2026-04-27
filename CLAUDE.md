@@ -52,6 +52,11 @@ npm start            # React dev server on :3000
 # Type check
 cd client && npx tsc --noEmit
 
+# Test
+NODE_OPTIONS="--max-old-space-size=4096" npm test          # backend (needs extra heap for ts-jest)
+cd client && npm test                                       # frontend (vitest, fast)
+cd client && npm run test:coverage                          # frontend with coverage
+
 # Build
 cd client && npm run build
 ```
