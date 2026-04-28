@@ -253,13 +253,16 @@ export const claimQuestReward = catchAsync(async (req: Request, res: Response) =
     throw new BadRequestError('Quest ID is required');
   }
 
-  // Get quest
+  // The :questId param is the daily_quests template id (returned as `quest_id`
+  // by get_daily_quests_for_user). Look up the user's row by template id + today.
+  const today = new Date().toISOString().slice(0, 10);
   const { data: quest, error: questError } = await supabase
     .from('user_daily_quests')
-    .select('*')
-    .eq('id', questId)
+    .select('id, quest_id, completed, claimed')
+    .eq('quest_id', questId)
     .eq('user_id', userId)
-    .single();
+    .eq('date', today)
+    .maybeSingle();
 
   if (questError || !quest) {
     logger.error('Quest claim error:', questError?.message || 'Quest not found');
@@ -281,11 +284,11 @@ export const claimQuestReward = catchAsync(async (req: Request, res: Response) =
     .eq('id', quest.quest_id)
     .single();
 
-  // Mark as claimed
+  // Mark as claimed (use the user_daily_quests row id we just fetched)
   const { error: updateError } = await supabase
     .from('user_daily_quests')
     .update({ claimed: true })
-    .eq('id', questId);
+    .eq('id', quest.id);
 
   if (updateError) {
     logger.error('Failed to mark quest as claimed:', updateError.message);

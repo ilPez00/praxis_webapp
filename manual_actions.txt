@@ -4,6 +4,95 @@ Praxis — Manual Actions Required
  Run these in order against the production Supabase DB.
 
 --------------------------------------------------------------------
+  2026-04-28 — Fix daily-quest reward path (no PP from "Track Your Progress")
+  --------------------------------------------------------------------
+
+  Two bugs in the daily-quest flow caused completion to award no PP:
+    1. progress_user_quest auto-awarded via add_xp_to_user AND the
+       claim_quest_reward controller awarded on claim → double or zero.
+    2. claim_quest_reward looked up user_daily_quests by id, but the
+       :questId in the URL is the daily_quests template id → claim
+       always failed with "not found".
+
+  Run the SQL migration to make claim the single award path:
+
+    psql "$SUPABASE_DB_URL" -f migrations/2026-04-28-fix-quest-double-award.sql
+
+  No env or schema changes. Controller fix already in src/.
+
+--------------------------------------------------------------------
+  2026-04-27 — Tracker backfill (JSONB → structured per-category tables)
+  --------------------------------------------------------------------
+
+  Pre-2026-04-19 tracker_entries rows live only as JSONB. Run the
+  one-shot backfill so Axiom + notebook PDFs can read typed columns
+  with computed metrics (volume_kg, calories, pace_min_per_km, …).
+
+  Idempotent: rows with an existing tracker_entry_id in the target
+  table are skipped, so it can be re-run safely.
+
+  # Dry-run first to inspect the scope
+  npm run backfill-trackers -- --user-id=all --dry-run
+
+  # Backfill all users
+  npm run backfill-trackers -- --user-id=all
+
+  # Or one user / one type
+  npm run backfill-trackers -- --user-id=<uuid>
+  npm run backfill-trackers -- --user-id=all --type=lift
+
+  Requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in env.
+
+--------------------------------------------------------------------
+  2026-04-27 — Stripe production setup
+  --------------------------------------------------------------------
+
+  Backend now mounts POST /api/stripe/webhook BEFORE express.json()
+  so signature verification gets the raw body (was silently broken).
+  Pure deploy — no code action on your part — but the production env
+  vars must exist before the next Railway redeploy or checkout will
+  start returning 500.
+
+  1. Create live-mode prices in Stripe Dashboard → Products:
+     - Praxis Premium (monthly, recurring)  → copy price_…  → STRIPE_PRICE_ID
+     - Praxis Premium (annual,  recurring)  → copy price_…  → STRIPE_PRICE_ID_ANNUAL
+     PP one-time tiers use price_data inline; no extra IDs needed.
+
+  2. Register the production webhook:
+     Dashboard → Developers → Webhooks → Add endpoint
+       URL:    https://web-production-646a4.up.railway.app/api/stripe/webhook
+       Events: checkout.session.completed,
+               customer.subscription.updated,
+               customer.subscription.deleted
+     Copy the signing secret (whsec_…) → STRIPE_WEBHOOK_SECRET.
+
+  3. Set Railway env vars (Service → Variables):
+       STRIPE_SECRET_KEY=sk_live_...
+       STRIPE_PRICE_ID=price_...
+       STRIPE_PRICE_ID_ANNUAL=price_...
+       STRIPE_WEBHOOK_SECRET=whsec_...
+       CLIENT_URL=https://praxisweb.xyz
+     Set Vercel env var (Project → Settings → Environment Variables):
+       REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_live_...
+     Redeploy both. Backend startup logs print a "Stripe audit" line
+     listing which vars are configured; missing vars in production
+     log at error level.
+
+  4. End-to-end smoke test (test mode, before flipping to live keys):
+       stripe login
+       bash scripts/stripe-cli-test.sh listen
+       # paste printed whsec_* into .env, restart backend
+       bash scripts/stripe-cli-test.sh fire-sub
+     Confirm: backend log shows "Stripe Webhook Event Received:
+     checkout.session.completed" and the webhook returns 200.
+
+  5. Live smoke test (real card, immediately refund):
+     - Subscribe via the app with a real test card → confirm
+       user_subscriptions row created and profiles.is_premium = true.
+     - Cancel/refund in Stripe Dashboard → confirm subscription
+       update event flips status to 'canceled' / row deleted.
+
+--------------------------------------------------------------------
   2026-04-24 — API Key Usage Tracker
   --------------------------------------------------------------------
 
