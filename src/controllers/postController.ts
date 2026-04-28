@@ -308,7 +308,25 @@ export const getUserPosts = catchAsync(async (req: Request, res: Response, _next
 // ---------------------------------------------------------------------------
 export const createPost = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
   const userId = req.user?.id;
-  const { userName, userAvatarUrl, title, content, mediaUrl, mediaType, context, reference } = req.body;
+  let { userName, userAvatarUrl } = req.body;
+  const { title, content, mediaUrl, mediaType, context, reference } = req.body;
+
+  if (!userId) throw new BadRequestError('Authentication required.');
+  if (!content || !content.trim()) throw new BadRequestError('content is required.');
+  if (content.length > 10000) throw new BadRequestError('Content exceeds maximum length of 10,000 characters.');
+
+  // Fall back to the authed user's profile so MCP/agent clients don't have
+  // to send userName/userAvatarUrl explicitly. Web client still wins if it
+  // sends them (saves a round-trip).
+  if (!userName) {
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('name, avatar_url')
+      .eq('id', userId)
+      .single();
+    userName = prof?.name ?? 'User';
+    userAvatarUrl = userAvatarUrl ?? prof?.avatar_url ?? null;
+  }
 
   logger.info('[createPost] Received request:', {
     userId,
@@ -317,11 +335,6 @@ export const createPost = catchAsync(async (req: Request, res: Response, _next: 
     context,
     hasReference: !!reference,
   });
-
-  if (!userId) throw new BadRequestError('Authentication required.');
-  if (!userName) throw new BadRequestError('userName is required.');
-  if (!content || !content.trim()) throw new BadRequestError('content is required.');
-  if (content.length > 10000) throw new BadRequestError('Content exceeds maximum length of 10,000 characters.');
 
   logger.info('[createPost] Validation passed, attempting insert...');
 

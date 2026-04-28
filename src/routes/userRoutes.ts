@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getUserProfile,
+  getMyProfile,
   updateUserProfile,
   completeOnboarding,
   verifyIdentity,
@@ -23,6 +24,8 @@ router.get('/stats/public', getPublicStats);
 router.post('/complete-onboarding', authenticateToken, completeOnboarding);
 router.get('/leaderboard', getLeaderboard);
 router.get('/nearby', authenticateToken, getNearbyUsers);
+
+router.get('/me', authenticateToken, getMyProfile);
 
 // GDPR endpoints
 router.delete('/me', authenticateToken, validateBody(deleteAccountSchema), deleteMyAccount);

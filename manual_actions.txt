@@ -4,6 +4,22 @@ Praxis — Manual Actions Required
  Run these in order against the production Supabase DB.
 
 --------------------------------------------------------------------
+  2026-04-28 — Fix duels schema drift (goal_node_id missing)
+  --------------------------------------------------------------------
+
+  POST /duels in production fails with:
+    PGRST204 "Could not find the 'goal_node_id' column of 'duels'
+    in the schema cache"
+  surfaced as a 503 "Duels not yet enabled. Run DB migrations."
+  The table was created by an older CREATE IF NOT EXISTS that ran
+  before goal_node_id was added to setup.sql, so the column never
+  landed. Add it (nullable TEXT, idempotent):
+
+    psql "$SUPABASE_DB_URL" -f migrations/2026-04-28-fix-duels-schema-drift.sql
+
+  Or paste the file contents into the Supabase SQL editor.
+
+--------------------------------------------------------------------
   2026-04-28 — Fix daily-quest reward path (no PP from "Track Your Progress")
   --------------------------------------------------------------------
 

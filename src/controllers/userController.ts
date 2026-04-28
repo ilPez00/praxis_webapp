@@ -101,6 +101,27 @@ export const getLeaderboard = catchAsync(async (req: Request, res: Response, _ne
  * @param req - The Express request object, with userId in params.
  * @param res - The Express response object.
  */
+// GET /users/me — returns the authenticated user's profile.
+// Returned as { user: profile } so MCP/agent clients can do `me.user.id`.
+export const getMyProfile = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated.');
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name, avatar_url, bio, city, is_premium, is_admin, praxis_points, current_streak, honor_score, reliability_score, onboarding_completed, created_at')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    logger.error('Supabase error fetching own profile:', error.message);
+    throw new InternalServerError('Failed to fetch profile.');
+  }
+  if (!data) throw new NotFoundError('Profile not found.');
+
+  res.status(200).json({ user: data });
+});
+
 export const getUserProfile = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params as { id: string }; // Extract user ID from request parameters
 

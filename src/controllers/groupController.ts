@@ -44,8 +44,12 @@ export const listRooms = catchAsync(async (req: Request, res: Response, next: Ne
  * POST /groups — create a new chat room; creator is auto-joined.
  */
 export const createRoom = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { name, description, domain, type, creatorId } = req.body;
-  if (!name || !creatorId) throw new BadRequestError('name and creatorId are required.');
+  // creatorId comes from the authenticated user, not the body — clients
+  // (web app, MCP, agents) should not have to look up their own id first.
+  const creatorId = req.user?.id ?? req.body.creatorId;
+  const { name, description, domain, type } = req.body;
+  if (!creatorId) throw new BadRequestError('Authentication required.');
+  if (!name) throw new BadRequestError('name is required.');
 
   const { data: room, error } = await supabase
     .from('chat_rooms')
