@@ -1,15 +1,17 @@
 import express from 'express';
-import { 
-  createCheckoutSession, 
-  createPPCheckout, 
-  handleWebhook,
+import {
+  createCheckoutSession,
+  createPPCheckout,
   createPortalSession,
   verifySession,
 } from '../controllers/stripeController';
-import bodyParser from 'body-parser'; // Import body-parser
 import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = express.Router();
+
+// NOTE: POST /webhook is NOT mounted here. It is registered directly on the
+// app in src/app.ts BEFORE express.json() so the handler receives a raw Buffer
+// for Stripe signature verification.
 
 // Subscription checkout (supports monthly and annual)
 router.post('/create-checkout-session', authenticateToken, createCheckoutSession);
@@ -22,8 +24,5 @@ router.post('/create-portal-session', authenticateToken, createPortalSession);
 
 // Server-side session verification
 router.get('/verify-session', authenticateToken, verifySession);
-
-// Use raw body parser for webhook endpoint
-router.post('/webhook', bodyParser.raw({ type: 'application/json' }), handleWebhook);
 
 export default router;

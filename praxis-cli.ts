@@ -336,6 +336,15 @@ async function runMigrations(): Promise<void> {
   }
 }
 
+// Backfill structured tracker tables from JSONB tracker_entries.
+async function backfillTrackers(passThrough: string[]): Promise<void> {
+  info('Backfilling structured tracker tables...');
+  await runCommand('npx', ['ts-node', 'scripts/backfill-trackers.ts', ...passThrough], {
+    cwd: BACKEND_DIR,
+  });
+  success('Backfill complete.');
+}
+
 // Seed database
 async function seedDatabase(): Promise<void> {
   info('Seeding database...');
@@ -503,6 +512,8 @@ ${colors.bright}Database:${colors.reset}
   ${colors.yellow}migrate${colors.reset}     Run database migrations
   ${colors.yellow}seed${colors.reset}        Seed the database with sample data
   ${colors.yellow}db${colors.reset}          Open database shell
+  ${colors.yellow}backfill-trackers${colors.reset}  Backfill structured tracker tables (JSONB → typed rows)
+              --user-id=<uuid|all> [--type=lift] [--dry-run]
 
 ${colors.bright}Testing:${colors.reset}
   ${colors.yellow}test${colors.reset}        Run unit tests
@@ -571,7 +582,11 @@ async function main(): Promise<void> {
       case 'seed':
         await seedDatabase();
         break;
-        
+
+      case 'backfill-trackers':
+        await backfillTrackers(args.slice(1));
+        break;
+
       case 'db':
         await dbShell();
         break;

@@ -731,14 +731,27 @@ server.tool(
 
   server.tool(
     'create_duel',
-    'Challenge someone to a duel',
+    'Challenge someone to a duel (or open challenge if no opponent)',
     {
-      opponentId: z.string().describe('Opponent user ID'),
-      goalId: z.string().describe('Goal ID to duel on'),
+      title: z.string().min(1).max(200).describe('Duel title/challenge name'),
+      category: z.string().min(1).max(100).describe('Category (e.g., Fitness, Career, Learning)'),
+      description: z.string().max(1000).optional().describe('Challenge description'),
+      stakePP: z.number().int().min(10).max(5000).default(50).describe('Points to stake'),
+      deadlineDays: z.number().int().min(1).max(90).default(7).describe('Days until deadline'),
+      opponentId: z.string().uuid().optional().describe('Optional opponent user ID (omit = open challenge)'),
+      goalNodeId: z.string().uuid().optional().describe('Optional goal node UUID'),
     },
-    async ({ opponentId, goalId }) => {
+    async ({ title, category, description, stakePP, deadlineDays, opponentId, goalNodeId }) => {
       try {
-        const res = await praxisClient.createDuel({ opponent_id: opponentId, goal_id: goalId });
+        const res = await praxisClient.createDuel({
+          title,
+          category,
+          description,
+          stakePP,
+          deadlineDays,
+          opponentId,
+          goalNodeId,
+        });
         return { content: [{ type: 'text', text: 'Duel created: ' + JSON.stringify(res, null, 2) }] };
       } catch (err: any) {
         return { content: [{ type: 'text', text: 'Error: ' + err.message }], isError: true };

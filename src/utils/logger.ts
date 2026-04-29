@@ -140,6 +140,56 @@ export const auditSecurity = () => {
   });
 };
 
+/**
+ * Validate Stripe configuration on startup. Logs the state of each required
+ * env var so production misconfigurations surface immediately in Railway logs
+ * instead of failing silently the first time a customer tries to pay.
+ */
+export const auditStripe = () => {
+  const secret = process.env.STRIPE_SECRET_KEY || '';
+  if (!secret) {
+    logger.info('Stripe audit: STRIPE_SECRET_KEY not set — payments disabled');
+    return;
+  }
+
+  const isProd = process.env.NODE_ENV === 'production';
+  const mode = secret.startsWith('sk_live_') ? 'live' : secret.startsWith('sk_test_') ? 'test' : 'unknown';
+  const monthlyPrice = process.env.STRIPE_PRICE_ID || '';
+  const annualPrice = process.env.STRIPE_PRICE_ID_ANNUAL || '';
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+  const clientUrl = process.env.CLIENT_URL || '';
+
+  const issues: string[] = [];
+  if (!monthlyPrice) issues.push('STRIPE_PRICE_ID missing (monthly subscription will 500)');
+  if (!annualPrice) issues.push('STRIPE_PRICE_ID_ANNUAL missing (annual subscription will 500)');
+  if (!webhookSecret) issues.push('STRIPE_WEBHOOK_SECRET missing (webhooks will 500)');
+  if (!clientUrl) issues.push('CLIENT_URL missing (checkout success/cancel redirects will be malformed)');
+
+  if (isProd && mode !== 'live') {
+    issues.push(`STRIPE_SECRET_KEY is ${mode}, expected sk_live_* in production`);
+  }
+  if (isProd && monthlyPrice && !monthlyPrice.startsWith('price_')) {
+    issues.push('STRIPE_PRICE_ID does not look like a Stripe price ID (price_…)');
+  }
+  if (isProd && webhookSecret && !webhookSecret.startsWith('whsec_')) {
+    issues.push('STRIPE_WEBHOOK_SECRET does not look like a webhook secret (whsec_…)');
+  }
+
+  logger.info('Stripe audit', {
+    mode,
+    monthlyPriceConfigured: !!monthlyPrice,
+    annualPriceConfigured: !!annualPrice,
+    webhookSecretConfigured: !!webhookSecret,
+    clientUrlConfigured: !!clientUrl,
+    nodeEnv: process.env.NODE_ENV,
+  });
+
+  for (const msg of issues) {
+    if (isProd) logger.error(`Stripe config: ${msg}`);
+    else logger.warn(`Stripe config: ${msg}`);
+  }
+};
+
 // ============================================================================
 // Rate Limit Logging
 // ============================================================================

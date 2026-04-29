@@ -63,12 +63,13 @@ import accountabilityBuddyRoutes from './routes/accountabilityBuddyRoutes';
 import failsRoutes from './routes/failsRoutes';
 import weeklyChallengeRoutes from './routes/weeklyChallengeRoutes';
 import agentRoutes from './routes/agentRoutes';
+import { handleWebhook as handleStripeWebhook } from './controllers/stripeController';
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 import { authLimiter, aiLimiter, axiomLimiter, generalLimiter, strictLimiter } from './middleware/rateLimiter';
 import { authenticateToken } from './middleware/authenticateToken';
 import { requireAdmin } from './middleware/requireAdmin';
-import { requestTracer, auditSecurity } from './utils/logger';
+import { requestTracer, auditSecurity, auditStripe } from './utils/logger';
 
 const app = express();
 
@@ -159,6 +160,17 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'same-site' },
 }));
 
+// Stripe webhook needs the RAW request body for signature verification.
+// Must be mounted BEFORE express.json() — otherwise req.body is a parsed
+// object instead of a Buffer and stripe.webhooks.constructEvent throws,
+// silently breaking subscription/PP provisioning in production.
+app.post(
+  '/api/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  strictLimiter,
+  handleStripeWebhook,
+);
+
 app.use(express.json());
 
 // Apply request tracing middleware (after CORS, before routes)
@@ -166,6 +178,7 @@ app.use(requestTracer);
 
 // Run security audit on startup
 auditSecurity();
+auditStripe();
 
 // Liveness — must return instantly, no external I/O (Railway healthcheck path)
 app.get('/health', (_req, res) => {

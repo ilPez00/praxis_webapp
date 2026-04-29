@@ -252,5 +252,6 @@ Spotify-style year-in-review: biggest goal, total PP, top domain, streak record,
 
 ## Change Log
 
+- **2026-04-27** — Tracker backfill script + Stripe production hardening. New `scripts/backfill-trackers.ts` (CLI: `npm run backfill-trackers -- --user-id=all`) idempotently fills the per-category structured tables from legacy `tracker_entries` JSONB. Stripe: moved webhook raw-body parsing ahead of `express.json()` (was silently breaking signature verification), added `auditStripe()` startup validation that warns/errors on missing `STRIPE_PRICE_ID*` / `STRIPE_WEBHOOK_SECRET` / `CLIENT_URL` and flags non-`sk_live_*` keys in production. New `scripts/stripe-cli-test.sh` for local end-to-end webhook testing. `.env.example` now documents the full Stripe block; production setup steps in `manual_actions.txt`.
 - **2026-04-27** — Profile embeddings for semantic text affinity matching. New `profile_embeddings` table + `match_profiles_by_text` RPC + `TextAnalysisService` for Gemini embedding generation. Composite match score: 50% goal + 35% text affinity + 10% geo + 5% reliability. Admin endpoint: `POST /api/admin/refresh-profile-embeddings`.
 - **2026-04-19** — Document created. Removed events from Discover (this session). PDF notebook export shipped.

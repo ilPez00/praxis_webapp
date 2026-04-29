@@ -22,6 +22,7 @@
     "license:check": "license-checker --production --summary --failOn 'GPL;AGPL;LGPL'",
     "migrate": "ts-node scripts/run-migrations.ts",
     "migrate:status": "ts-node scripts/run-migrations.ts --status",
+    "backfill-trackers": "ts-node scripts/backfill-trackers.ts",
     "security:audit": "node scripts/security-audit.js",
     "prepare": "husky || true",
     "lint:fix": "eslint --fix"
