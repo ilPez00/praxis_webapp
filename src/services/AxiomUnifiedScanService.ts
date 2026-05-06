@@ -18,6 +18,7 @@ import { AxiomScheduleService } from './AxiomScheduleService';
 import { GoogleCalendarService } from './GoogleCalendarService';
 import { AxiomProgressEstimationService } from './AxiomProgressEstimationService';
 import { AxiomDailySummaryService } from './AxiomDailySummaryService';
+import { AxiomPersonaService } from './AxiomPersonaService';
 
 interface UserData {
   profile: any;
@@ -43,6 +44,7 @@ export class AxiomUnifiedScanService {
   private googleCalendar: GoogleCalendarService;
   private progressService: AxiomProgressEstimationService;
   private summaryService: AxiomDailySummaryService;
+  private personaService: AxiomPersonaService;
 
   constructor() {
     this.aiCoaching = new AICoachingService();
@@ -51,6 +53,7 @@ export class AxiomUnifiedScanService {
     this.googleCalendar = new GoogleCalendarService();
     this.progressService = new AxiomProgressEstimationService();
     this.summaryService = new AxiomDailySummaryService();
+    this.personaService = new AxiomPersonaService();
   }
 
   /**
@@ -127,19 +130,28 @@ export class AxiomUnifiedScanService {
       return;
     }
 
-    // === PHASE 2: Agentic actions — Axiom decides what to do ===
+    // === PHASE 2: Compute behavioral persona (nightly fingerprint) ===
+    logger.info(`[AxiomUnifiedScan] Computing persona for ${userId}...`);
+    try {
+      const persona = await this.personaService.computePersona(userId);
+      await this.personaService.savePersona(persona);
+    } catch (err: any) {
+      logger.warn(`[AxiomUnifiedScan] Persona computation failed for ${userId}:`, err.message);
+    }
+
+    // === PHASE 3: Agentic actions — Axiom decides what to do ===
     logger.info(`[AxiomUnifiedScan] Agentic decision phase for ${userId}...`);
     await this.agenticActions(userId, userData);
 
-    // === PHASE 3: Generate daily brief (uses shared data) ===
+    // === PHASE 4: Generate daily brief (uses shared data) ===
     logger.info(`[AxiomUnifiedScan] Generating brief for ${userId}...`);
     await this.generateBrief(userId, userData);
 
-    // === PHASE 4: Estimate progress (uses shared data) ===
+    // === PHASE 5: Estimate progress (uses shared data) ===
     logger.info(`[AxiomUnifiedScan] Estimating progress for ${userId}...`);
     await this.estimateProgress(userId, userData);
 
-    // === PHASE 5: Generate daily summary (uses shared data) ===
+    // === PHASE 6: Generate daily summary (uses shared data) ===
     logger.info(`[AxiomUnifiedScan] Generating summary for ${userId}...`);
     await this.generateSummary(userId, userData);
 

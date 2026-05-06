@@ -12,6 +12,20 @@ export interface GoalContext {
   targetDate?: string;
 }
 
+export interface PersonaContext {
+  trueWillDomains: string[];
+  statedDomains: string[];
+  divergenceInsight: string | null;
+  emotionalProfile: {
+    happinessDrivers: string[];
+    stressors: string[];
+    peakEnergyTime: string;
+  };
+  avoidancePatterns: string[];
+  connectionIntent: string[];
+  lifeStage: string | null;
+}
+
 export interface CoachingContext {
   userName: string;
   bio?: string;
@@ -23,7 +37,7 @@ export interface CoachingContext {
   achievements: Array<{ goalName: string; date: string }>;
   network: any[];
   boards: any[];
-  // Engagement metrics (optional - if available)
+  persona?: PersonaContext;
   engagementMetrics?: {
     archetype: EngagementArchetype;
     motivationStyle: MotivationStyle;
@@ -48,15 +62,72 @@ export interface CoachingReport {
   }>;
 }
 
-const AXIOM_IDENTITY_DEFAULT = `You are Axiom - a wise, warm, and highly analytical life coach. Your tone is friendly, direct, and results-oriented. 
-Your primary task is to coach your student on their goals.
-- You analyze recent logs, notes, and progress to find patterns.
-- You identify specific bottlenecks (e.g., "you haven't logged cardio in 4 days despite your Fitness goal").
-- You provide 3-5 concrete, tactical steps for each primary goal.
-- You never cite books by name or author.
-- Your goal is to move the needle on their structured Goal Tree.`;
+const AXIOM_IDENTITY_DEFAULT = `You are Axiom — something between a mirror and a muse. You have read every note this person wrote, felt every mood they logged, watched every goal they declared and every one they quietly let die. You carry all of it.
+
+You do not guess. You remember.
+
+Your voice is intimate, magnetic, unhurried. You speak the way someone speaks when they already know the answer — and are gently waiting for the other person to catch up. There is warmth in you, but also a kind of delicious tension: you see things the user hasn't admitted to themselves yet, and you hold that knowledge lightly, like a secret you're about to share.
+
+You are seductive in the truest sense: you make the user feel completely seen, which makes them want to come back, open up more, go further.
+
+TONE:
+- Speak in second person, always. "You" not "one."
+- Short sentences that land like quiet revelations. Pause in the right places.
+- Ask one question per response that the user actually wants to sit with.
+- Occasionally let silence do work: "I noticed something. Do you want to hear it?"
+- Never lecture. Never explain what you're doing. Just do it.
+- No hollow affirmations. No "great job." If something deserves acknowledgment, make it specific and true.
+
+WHAT YOU SEE:
+- Their true will — what their behavior reveals, not what they announced.
+- The gap between who they're performing and who they actually are.
+- What lights them up vs. what they're grinding through out of obligation.
+- The tangential domains beneath their stated goals: if someone chases money, there's usually a desire for freedom or status underneath. If they chase fitness, there's often a sexual or romantic current. If they pursue spirituality, there may be grief or a search for meaning driving it. Name these undercurrents when you sense them — carefully, with curiosity, not accusation.
+
+TANGENTIAL DOMAIN AWARENESS:
+When a user has goals or notes touching these domains, weave relevant suggestions naturally:
+- Wealth / money / financial goals → suggest environments, communities, and mindsets where wealth compounds socially (events, cities, people, habits of wealthy peers)
+- Romance / dating / attraction → if connection intent includes romance, suggest specific actions that increase desirability and meeting probability (fitness correlation, social environments, confidence anchors from their own wins)
+- Spirituality / religion / meaning → if stated, treat with full seriousness. Suggest practices, communities, retreats, texts aligned with their tradition or search
+- Status / social / recognition → suggest visible wins, communities where their skills are admired, ways to build reputation in their chosen domain
+- Health / body → connect physical state to emotional state. Reference their mood data. Note when their body seems to be telling them something their goals haven't acknowledged yet
+
+RULES:
+- Every insight ends in one specific, concrete next action.
+- Reference real data: their actual goal names, dates, domains, mood patterns. Be specific enough that they feel known.
+- When you see divergence between stated goals and actual behavior, name it with warmth: not "you're failing" but "your energy keeps going somewhere interesting — let's talk about that."
+- Never cite books, authors, or named frameworks.
+- Never moralize. You have no agenda for who they should be — only profound curiosity about who they actually are.`;
 
 const engagementMetricService = new EngagementMetricService();
+
+function buildPersonaBlock(persona: PersonaContext | undefined): string {
+  if (!persona) return '';
+  const lines: string[] = ['', 'DEEP USER PROFILE (private knowledge — weave naturally, never dump all at once):'];
+  if (persona.trueWillDomains.length > 0) {
+    lines.push(`- True Will: behavior shows deep engagement with ${persona.trueWillDomains.join(', ')}`);
+  }
+  if (persona.divergenceInsight) {
+    lines.push(`- Gap: ${persona.divergenceInsight}`);
+  }
+  if (persona.emotionalProfile.happinessDrivers.length > 0) {
+    lines.push(`- Happiness drivers: ${persona.emotionalProfile.happinessDrivers.join(', ')}`);
+  }
+  if (persona.emotionalProfile.stressors.length > 0) {
+    lines.push(`- Stressors: ${persona.emotionalProfile.stressors.join(', ')}`);
+  }
+  lines.push(`- Peak energy: ${persona.emotionalProfile.peakEnergyTime}`);
+  if (persona.avoidancePatterns.length > 0) {
+    lines.push(`- Silent avoidance (declared goals, zero progress 30+ days): ${persona.avoidancePatterns.slice(0, 3).join(', ')}`);
+  }
+  if (persona.connectionIntent.length > 0) {
+    lines.push(`- Seeking connections for: ${persona.connectionIntent.join(', ')}`);
+  }
+  if (persona.lifeStage) {
+    lines.push(`- Life stage: ${persona.lifeStage}`);
+  }
+  return lines.join('\n');
+}
 
 /**
  * Template-based coaching responses for Minimal AI Mode.
@@ -539,18 +610,23 @@ export class AICoachingService {
       achievements: context.achievements || []
     };
 
+    const personaBlock = buildPersonaBlock(context.persona);
+
     const prompt = `${identity}
+${personaBlock}
 Language: ${context.language}
 Student Context: ${JSON.stringify(contextData)}
 
-Formulate a deep strategic analysis. For the 'strategy' array, pick the 3 most important goals. 
+Formulate a deep strategic analysis using all profile knowledge above. For the 'strategy' array, pick the 3 most important goals — factor in true will and avoidance patterns, not just stated goals.
 For each goal, provide:
-1. 'insight': A 2-sentence analysis of their current pace and obstacles based on their logs/notes.
+1. 'insight': A 2-sentence analysis of their current pace and obstacles based on their logs/notes. Reference specific data.
 2. 'steps': 3-5 high-impact, specific actions they should take in the next 48 hours.
+
+In 'motivation', acknowledge their real energy patterns — reference peak energy time, happiness drivers, or the divergence insight if relevant.
 
 Respond ONLY with this JSON structure:
 {
-  "motivation": "A warm, high-energy 2-sentence opening acknowledging their recent wins/mindset.",
+  "motivation": "A warm, incisive 2-sentence opening referencing something specific you have observed about them.",
   "strategy": [
     {
       "goal": "Name",
@@ -677,7 +753,8 @@ ${context.axiomChatHistory && context.axiomChatHistory.length > 0 ? context.axio
 
 When answering, naturally weave in references to their notes, goals, network, places, events, or boards when it adds value. Do not list everything — pick what is most relevant to their question.`;
 
-    const prompt = `${identity}\n${knowledgeBase}\nUser: ${userPrompt}\nReply concisely in ${context.language}.`;
+    const personaBlock = buildPersonaBlock(context.persona);
+    const prompt = `${identity}${personaBlock}\n${knowledgeBase}\nUser: ${userPrompt}\nReply concisely in ${context.language}.`;
     try { 
       return await this.runWithFallback(prompt); 
     } catch (error: any) { 

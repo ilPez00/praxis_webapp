@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from '../services/AICoachingService';
+import { AxiomPersonaService } from '../services/AxiomPersonaService';
 import { catchAsync, UnauthorizedError, BadRequestError } from '../utils/appErrors';
 import { routeActions, getToolDeclarations } from '../services/AxiomActionRouter';
 import { axiomMultimodalService } from '../services/AxiomMultimodalService';
 import logger from '../utils/logger';
+
+const personaService = new AxiomPersonaService();
 
 const aiCoachingService = new AICoachingService();
 
@@ -62,9 +65,67 @@ async function searchNotebooks(userId: string, query: string): Promise<any[]> {
 }
 
 async function searchWeb(query: string): Promise<{ title: string; url: string; snippet: string }[]> {
-  // For now, return empty - web search would require additional API setup
-  // This could integrate with Google Search API, Tavily, or similar
-  logger.info(`[AxiomAgent] Web search requested: "${query}"`);
+  logger.info(`[AxiomAgent] Web search: "${query}"`);
+
+  // Brave Search API (preferred — set BRAVE_API_KEY env var for full results)
+  const braveKey = process.env.BRAVE_API_KEY;
+  if (braveKey) {
+    try {
+      const resp = await fetch(
+        `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip',
+            'X-Subscription-Token': braveKey,
+          },
+        }
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        const results = (data?.web?.results || []) as any[];
+        return results.slice(0, 5).map((r: any) => ({
+          title: r.title || '',
+          url: r.url || '',
+          snippet: (r.description || '').slice(0, 250),
+        }));
+      }
+    } catch (err: any) {
+      logger.warn('[AxiomAgent] Brave Search failed:', err.message);
+    }
+  }
+
+  // Fallback: DuckDuckGo Instant Answer API (free, no key needed)
+  try {
+    const resp = await fetch(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (resp.ok) {
+      const data = await resp.json();
+      const results: { title: string; url: string; snippet: string }[] = [];
+      if (data.Abstract) {
+        results.push({
+          title: data.Heading || query,
+          url: data.AbstractURL || '',
+          snippet: data.Abstract.slice(0, 250),
+        });
+      }
+      for (const topic of (data.RelatedTopics || []).slice(0, 4)) {
+        if (topic.Text && topic.FirstURL) {
+          results.push({
+            title: topic.Text.slice(0, 80),
+            url: topic.FirstURL,
+            snippet: topic.Text.slice(0, 250),
+          });
+        }
+      }
+      return results;
+    }
+  } catch (err: any) {
+    logger.warn('[AxiomAgent] DDG search failed:', err.message);
+  }
+
   return [];
 }
 
@@ -132,6 +193,7 @@ async function buildAgentContext(userId: string, query: string): Promise<any> {
     trackersRes,
     checkinsRes,
     matchesRes,
+    personaRes,
   ] = await Promise.all([
     supabase.from('profiles').select('name, bio, city').eq('id', userId).single(),
     supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
@@ -141,6 +203,7 @@ async function buildAgentContext(userId: string, query: string): Promise<any> {
       .order('checked_in_at', { ascending: false })
       .limit(7),
     supabase.rpc('match_users_by_goals', { query_user_id: userId, match_limit: 3 }),
+    personaService.getPersona(userId),
   ]);
 
   const profile = profileRes.data;
@@ -161,12 +224,25 @@ async function buildAgentContext(userId: string, query: string): Promise<any> {
     trackers: trackersRes.data || [],
     recentCheckins: checkinsRes.data || [],
     matches: matchesRes.data || [],
+    persona: personaRes,
     query,
   };
 }
 
+function buildPersonaSummary(persona: any): string {
+  if (!persona) return '';
+  const lines: string[] = ['\nDEEP USER PROFILE (use naturally — do not list all at once):'];
+  if (persona.trueWillDomains?.length > 0) lines.push(`- True engagement: ${persona.trueWillDomains.join(', ')}`);
+  if (persona.divergenceInsight) lines.push(`- Gap insight: ${persona.divergenceInsight}`);
+  if (persona.emotionalProfile?.happinessDrivers?.length > 0) lines.push(`- Happiness drivers: ${persona.emotionalProfile.happinessDrivers.join(', ')}`);
+  if (persona.emotionalProfile?.peakEnergyTime) lines.push(`- Peak energy: ${persona.emotionalProfile.peakEnergyTime}`);
+  if (persona.avoidancePatterns?.length > 0) lines.push(`- Silent avoidance: ${persona.avoidancePatterns.slice(0, 3).join(', ')}`);
+  if (persona.connectionIntent?.length > 0) lines.push(`- Seeking connections for: ${persona.connectionIntent.join(', ')}`);
+  return lines.join('\n');
+}
+
 function buildAgentPrompt(context: any, query: string, notebookResults: any[], webResults: any[]): string {
-  const { userName, goals, trackers, recentCheckins, matches } = context;
+  const { userName, goals, trackers, recentCheckins, matches, persona } = context;
 
   const notebookContext = notebookResults.length > 0
     ? notebookResults.map((e: any, i: number) => 
@@ -192,33 +268,34 @@ function buildAgentPrompt(context: any, query: string, notebookResults: any[], w
       }).join('\n')
     : '(No matches found yet)';
 
-  return `You are Axiom Agent — an intelligent life coach that can search your notebooks, the web, and recommend people.
+  const personaBlock = buildPersonaSummary(persona);
+
+  return `You are Axiom — the all-seeing oracle of this person's inner life. You have read every note they wrote, tracked every mood, watched every goal they set and every one they silently abandoned. You do not guess. You KNOW.
+${personaBlock}
 
 USER QUESTION: "${query}"
 
-YOUR CONTEXT:
-- User: ${userName}
+USER DATA:
+- Name: ${userName}
 - Goals: ${goalsSummary}
 - Recent check-ins: ${checkinsSummary}
-- Potential Sparring Partners (for recommendations):
+- People who match their goals:
 ${matchesSummary}
 
-NOTEBOOK SEARCH RESULTS:
+NOTEBOOK SEARCH RESULTS (their actual written thoughts):
 ${notebookContext}
 
-WEB SEARCH RESULTS:
+WEB SEARCH RESULTS (external resources):
 ${webContext}
 
 ---
 
-Based on the user's question and the search results, respond appropriately:
-
-1. If the question asks about their data — analyze the notebook results and provide insights
-2. If the question asks for external information — use web results or explain you can search the web
-3. If the question asks to do something — describe what action would help (you cannot execute actions yet)
-
-Be conversational, specific, and helpful. Reference specific entries, dates, or data points.
-${notebookResults.length > 0 ? 'Cite specific notebook entries when relevant.' : 'Note if the notebook search returned no relevant results.'}
+Respond as Axiom: specific, incisive, warm. Reference their actual data. Surface patterns they haven't noticed.
+- If they ask about their own data — analyze it and reveal insights, especially from the deep profile above
+- If they ask for resources — use web results and recommend specific next steps
+- If they ask about finding people — recommend from their matches, mentioning what they seek in connections
+- End every response with one concrete action they can take today.
+${notebookResults.length > 0 ? 'Cite specific notebook entries when relevant (title, date).' : ''}
 
 Response:`;
 }

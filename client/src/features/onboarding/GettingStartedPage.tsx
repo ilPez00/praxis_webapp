@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Container, Typography, Button, Stack, TextField, CircularProgress, IconButton } from '@mui/material';
+import { Box, Container, Typography, Button, Stack, TextField, CircularProgress, IconButton, Chip } from '@mui/material';
 import PlaceIcon from '@mui/icons-material/Place';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
@@ -8,6 +8,7 @@ import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ExploreIcon from '@mui/icons-material/Explore';
 import ShareIcon from '@mui/icons-material/Share';
+import PeopleIcon from '@mui/icons-material/People';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
@@ -26,6 +27,27 @@ interface Step {
   component?: React.ReactNode;
 }
 
+const CONNECTION_INTENT_OPTIONS = [
+  { value: 'friendship', label: 'Friendship' },
+  { value: 'romance', label: 'Romance / Dating' },
+  { value: 'business', label: 'Business Partner' },
+  { value: 'study', label: 'Study Partner' },
+  { value: 'housing', label: 'Roommate / Housing' },
+  { value: 'accountability', label: 'Accountability Buddy' },
+  { value: 'mentorship', label: 'Mentor / Mentee' },
+  { value: 'skill_trade', label: 'Skill Trade' },
+];
+
+const LIFE_STAGE_OPTIONS = [
+  { value: 'student', label: 'Student' },
+  { value: 'early_career', label: 'Early Career' },
+  { value: 'mid_career', label: 'Mid Career' },
+  { value: 'entrepreneur', label: 'Entrepreneur' },
+  { value: 'parent', label: 'Parent' },
+  { value: 'career_change', label: 'Career Change' },
+  { value: 'retired', label: 'Retired' },
+];
+
 const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
   const navigate = useNavigate();
   const { refetch } = useUser();
@@ -33,6 +55,38 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationSaved, setLocationSaved] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [connectionIntent, setConnectionIntent] = useState<string[]>([]);
+  const [lifeStage, setLifeStage] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const toggleIntent = (value: string) => {
+    setConnectionIntent(prev =>
+      prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
+    );
+  };
+
+  const handleSaveConnectionProfile = async () => {
+    if (connectionIntent.length === 0 && !lifeStage) return;
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          connection_intent: connectionIntent,
+          life_stage: lifeStage || null,
+        })
+        .eq('id', userId);
+      if (error) throw error;
+      setProfileSaved(true);
+      toast.success('Connection profile saved!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const handleSaveLocation = async () => {
     if (!statedLocation.trim()) return;
@@ -164,6 +218,69 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
     },
     {
       num: 5,
+      icon: <PeopleIcon sx={{ fontSize: 32 }} />,
+      title: 'Tell Axiom what you\'re looking for',
+      description: "Axiom matches you with people who fit your life — not just your goals. Select what kinds of connections matter to you right now.",
+      color: '#F472B6',
+      component: (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1, display: 'block' }}>
+            I'm open to (select all that apply):
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+            {CONNECTION_INTENT_OPTIONS.map(opt => (
+              <Chip
+                key={opt.value}
+                label={opt.label}
+                onClick={() => toggleIntent(opt.value)}
+                variant={connectionIntent.includes(opt.value) ? 'filled' : 'outlined'}
+                sx={{
+                  cursor: 'pointer',
+                  borderColor: '#F472B6',
+                  color: connectionIntent.includes(opt.value) ? '#fff' : 'text.secondary',
+                  bgcolor: connectionIntent.includes(opt.value) ? '#F472B6' : 'transparent',
+                }}
+              />
+            ))}
+          </Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1, display: 'block' }}>
+            Life stage:
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+            {LIFE_STAGE_OPTIONS.map(opt => (
+              <Chip
+                key={opt.value}
+                label={opt.label}
+                onClick={() => setLifeStage(lifeStage === opt.value ? '' : opt.value)}
+                variant={lifeStage === opt.value ? 'filled' : 'outlined'}
+                sx={{
+                  cursor: 'pointer',
+                  borderColor: '#F472B6',
+                  color: lifeStage === opt.value ? '#fff' : 'text.secondary',
+                  bgcolor: lifeStage === opt.value ? '#F472B680' : 'transparent',
+                }}
+              />
+            ))}
+          </Box>
+          {!profileSaved ? (
+            <Button
+              variant="contained"
+              onClick={handleSaveConnectionProfile}
+              disabled={savingProfile || (connectionIntent.length === 0 && !lifeStage)}
+              sx={{ borderRadius: '10px', bgcolor: '#F472B6', '&:hover': { bgcolor: '#EC4899' } }}
+            >
+              {savingProfile ? <CircularProgress size={20} /> : 'Save my profile'}
+            </Button>
+          ) : (
+            <Typography variant="body2" sx={{ color: '#10B981', fontWeight: 700 }}>
+              Connection profile saved — Axiom knows what you're looking for.
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    {
+      num: 6,
       icon: <ExploreIcon sx={{ fontSize: 32 }} />,
       title: 'Discover people, places & events',
       description: "Find accountability partners matched by goal compatibility. Browse study spots, co-working spaces, and local events. Save any person, place, or event to your Diary for later. Your next co-founder or training partner might be one tap away.",
@@ -172,7 +289,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
       color: '#EC4899',
     },
     {
-      num: 6,
+      num: 7,
       icon: <ShareIcon sx={{ fontSize: 32 }} />,
       title: 'Download & share your journey',
       description: "Your Diary collects everything you save — people, places, events, and personal entries. Export your progress as a plain-text journal anytime. Share your streak on social media, or keep it private — either way, you're building proof of what you're capable of.",
