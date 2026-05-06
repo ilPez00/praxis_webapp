@@ -930,9 +930,18 @@ const NotesPage: React.FC = () => {
         {/* Export Dialog */}
         <Dialog open={exportDialogOpen} onClose={() => !exporting && setExportDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle sx={{ fontWeight: 800 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <DownloadIcon sx={{ color: '#A78BFA' }} />
-              Export Your Notebook
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <DownloadIcon sx={{ color: '#A78BFA' }} />
+                Export Your Notebook
+              </Box>
+              {praxisPoints !== null && (
+                <Chip
+                  label={`${praxisPoints} PP`}
+                  size="small"
+                  sx={{ bgcolor: 'rgba(245,158,11,0.15)', color: '#F59E0B', fontWeight: 800, fontSize: '0.75rem' }}
+                />
+              )}
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
               Download your goals, notes, trackers, and accountability network
@@ -974,19 +983,28 @@ const NotesPage: React.FC = () => {
               </Box>
 
               {/* Tier 2 — Axiom AI memoir, 300 PP */}
+              {(() => {
+                const canAfford = (praxisPoints ?? 0) >= 300;
+                const need = 300 - (praxisPoints ?? 0);
+                return (
               <Box
-                onClick={exporting ? undefined : handleExportAxiom}
+                onClick={(exporting || !canAfford) ? undefined : handleExportAxiom}
                 sx={{
-                  p: 2.5, borderRadius: '16px', cursor: exporting ? 'default' : 'pointer',
-                  border: '1px solid rgba(245,158,11,0.3)', bgcolor: 'rgba(245,158,11,0.06)',
-                  '&:hover': exporting ? {} : { bgcolor: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.5)' },
-                  opacity: exporting && exporting !== 'axiom' ? 0.4 : 1,
+                  p: 2.5, borderRadius: '16px',
+                  cursor: exporting || !canAfford ? 'default' : 'pointer',
+                  border: `1px solid ${canAfford ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  bgcolor: canAfford ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.02)',
+                  '&:hover': (exporting || !canAfford) ? {} : { bgcolor: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.5)' },
+                  opacity: (exporting && exporting !== 'axiom') ? 0.4 : canAfford ? 1 : 0.5,
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <AutoAwesomeIcon sx={{ color: '#F59E0B' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Axiom Narrative</Typography>
+                  <AutoAwesomeIcon sx={{ color: canAfford ? '#F59E0B' : 'text.disabled' }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: canAfford ? 'text.primary' : 'text.disabled' }}>Axiom Narrative</Typography>
                   <Chip label="300 PP" size="small" sx={{ height: 18, bgcolor: 'rgba(245,158,11,0.2)', color: '#F59E0B', fontWeight: 700 }} />
+                  {!canAfford && praxisPoints !== null && (
+                    <Chip label={`Need ${need} more PP`} size="small" sx={{ height: 18, bgcolor: 'rgba(239,68,68,0.15)', color: '#EF4444', fontWeight: 600 }} />
+                  )}
                 </Box>
                 <Typography variant="caption" color="text.secondary">
                   Axiom rewrites your journal as a short memoir — 3-5 chapters of first-person prose, pull-quotes from your own entries, and a closing letter back to you. Delivered as a styled PDF.
@@ -998,21 +1016,31 @@ const NotesPage: React.FC = () => {
                   </Box>
                 )}
               </Box>
+              )})()}
 
               {/* Tier 3 — Self-Authoring workbook, 500 PP */}
+              {(() => {
+                const canAfford = (praxisPoints ?? 0) >= 500;
+                const need = 500 - (praxisPoints ?? 0);
+                return (
               <Box
-                onClick={exporting ? undefined : handleExportSelfAuthoring}
+                onClick={(exporting || !canAfford) ? undefined : handleExportSelfAuthoring}
                 sx={{
-                  p: 2.5, borderRadius: '16px', cursor: exporting ? 'default' : 'pointer',
-                  border: '1px solid rgba(34,197,94,0.3)', bgcolor: 'rgba(34,197,94,0.06)',
-                  '&:hover': exporting ? {} : { bgcolor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.5)' },
-                  opacity: exporting && exporting !== 'self' ? 0.4 : 1,
+                  p: 2.5, borderRadius: '16px',
+                  cursor: exporting || !canAfford ? 'default' : 'pointer',
+                  border: `1px solid ${canAfford ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  bgcolor: canAfford ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.02)',
+                  '&:hover': (exporting || !canAfford) ? {} : { bgcolor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.5)' },
+                  opacity: (exporting && exporting !== 'self') ? 0.4 : canAfford ? 1 : 0.5,
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <EditNoteIcon sx={{ color: '#22C55E' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Self-Authoring Workbook</Typography>
+                  <EditNoteIcon sx={{ color: canAfford ? '#22C55E' : 'text.disabled' }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: canAfford ? 'text.primary' : 'text.disabled' }}>Self-Authoring Workbook</Typography>
                   <Chip label="500 PP" size="small" sx={{ height: 18, bgcolor: 'rgba(34,197,94,0.2)', color: '#22C55E', fontWeight: 700 }} />
+                  {!canAfford && praxisPoints !== null && (
+                    <Chip label={`Need ${need} more PP`} size="small" sx={{ height: 18, bgcolor: 'rgba(239,68,68,0.15)', color: '#EF4444', fontWeight: 600 }} />
+                  )}
                 </Box>
                 <Typography variant="caption" color="text.secondary">
                   A structured three-part workbook inspired by the Self-Authoring tradition: Past (six life epochs), Present (5-7 faults + 5-7 virtues), Future (the life worth having, the life to avoid, and a concrete path). Filled in with your actual data as evidence.
@@ -1029,6 +1057,7 @@ const NotesPage: React.FC = () => {
                   </Box>
                 )}
               </Box>
+              )})()}
             </Stack>
           </DialogContent>
           <DialogActions>
