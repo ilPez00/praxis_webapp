@@ -98,7 +98,7 @@ const NotesPage: React.FC = () => {
   const [backendNodes, setBackendNodes] = useState<any[]>([]);
   const [loadingContent, setLoadingContent] = useState(true);
   const [streak, setStreak] = useState<number>(0);
-  const [praxisPoints, setPraxisPoints] = useState<number | null>(null);
+  const [praxisPoints, setPraxisPoints] = useState<number | null>(user?.praxis_points ?? null);
 
   const [selectedNode, setSelectedNode] = useState<FrontendGoalNode | null>(null);
   const [activeLogType, setActiveLogType] = useState<string | null>(null);
@@ -157,6 +157,13 @@ const NotesPage: React.FC = () => {
   const [exporting, setExporting] = useState<'pdf' | 'axiom' | 'self' | null>(null);
 
   const currentUserId = user?.id;
+
+  // Sync praxisPoints from useUser when user object loads/changes
+  useEffect(() => {
+    if (user?.praxis_points != null) {
+      setPraxisPoints(user.praxis_points);
+    }
+  }, [user?.praxis_points]);
 
   // Filter map entries by selected calendar day (YYYY-MM-DD match on occurred_at)
   const mapEntriesFiltered = useMemo(() => {
@@ -278,14 +285,9 @@ const NotesPage: React.FC = () => {
           setTreeData([]);
         }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('current_streak, praxis_points, is_premium')
-          .eq('id', currentUserId)
-          .single();
-        if (profile?.current_streak) setStreak(profile.current_streak);
-        if (profile?.praxis_points != null) setPraxisPoints(profile.praxis_points);
-        if (profile?.is_premium != null) setIsPremium(profile.is_premium);
+        // streak/points/premium come from useUser — no separate query needed
+        if (user?.current_streak) setStreak(user.current_streak);
+        if (user?.is_premium != null) setIsPremium(user.is_premium);
 
         const betsRes = await supabase
           .from('bets')
