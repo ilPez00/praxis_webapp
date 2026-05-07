@@ -263,3 +263,22 @@ No env changes required.
    - Schedule: POST /api/admin/refresh-profile-embeddings every Sunday
    - Only processes users active in last 7 days
    - Cost: ~$0.0025/week for 50 active users
+
+--------------------------------------------------------------------
+2026-05-07 — Notebook Resumes (cost reduction for NotebookLM queries)
+--------------------------------------------------------------------
+
+Adds periodic snapshot cache so NotebookLM queries are not re-run on every scan.
+Saves results in `notebook_resumes` table with TTL expiry.
+
+1. Run migration:
+
+   psql "$SUPABASE_DB_URL" -f migrations/2026-05-07-notebook-resumes.sql
+
+   Or paste contents into Supabase SQL editor.
+
+2. This creates:
+   - public.notebook_resumes table (user_id, context_hash, data, expires_at)
+   - Indexes for user lookup and TTL expiry cleanup
+
+3. No env changes required. Cache is used automatically by AxiomNotebookLMService.

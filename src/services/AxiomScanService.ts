@@ -16,6 +16,33 @@ const dailySummaryService = new AxiomDailySummaryService();
 const progressEstimationService = new AxiomProgressEstimationService();
 
 // ---------------------------------------------------------------------------
+// Caveman-style compression for internal data (NOT user-facing messages)
+// Strips articles, fillers, shortens entries. Keeps technical substance.
+// ---------------------------------------------------------------------------
+function compressInternalData(text: string): string {
+  if (!text || text.length < 20) return text;
+  let compressed = text;
+  // Remove articles
+  compressed = compressed.replace(/\b(the|a|an)\b/gi, '');
+  // Remove filler words
+  compressed = compressed.replace(/\b(just|really|basically|actually|simply|literally|totally|very|quite|rather)\b/gi, '');
+  // Shorten common phrases
+  compressed = compressed.replace(/in order to/gi, 'to');
+  compressed = compressed.replace(/due to the fact that/gi, 'because');
+  compressed = compressed.replace(/at this point in time/gi, 'now');
+  compressed = compressed.replace(/in the event that/gi, 'if');
+  compressed = compressed.replace(/with regard to/gi, 'about');
+  compressed = compressed.replace(/is able to/gi, 'can');
+  compressed = compressed.replace(/take into consideration/gi, 'consider');
+  compressed = compressed.replace(/as well as/gi, 'and');
+  compressed = compressed.replace(/in addition to/gi, 'plus');
+  compressed = compressed.replace(/on the other hand/gi, 'but');
+  // Collapse multiple spaces
+  compressed = compressed.replace(/\s{2,}/g, ' ');
+  return compressed.trim();
+}
+
+// ---------------------------------------------------------------------------
 // Metric-based brief generation (no content scanning)
 // ---------------------------------------------------------------------------
 
@@ -724,12 +751,13 @@ export class AxiomScanService {
     try {
       // Build comprehensive notebook context for routine personalization
       // Include ALL entry types: notes, trackers, goals, achievements, etc.
+      // Compress internal data to save tokens — fluent output unchanged.
       const notebookContext = recentNotebookNotes.length > 0
-        ? `Recent Activity (last 6 weeks from notebook - includes notes, trackers, goal commits, achievements):\n${recentNotebookNotes.map((n: any, i: number) => {
-            const typeInfo = n.entryType !== 'note' ? ` [${n.entryType}${n.sourceTable ? '/' + n.sourceTable : ''}]` : '';
-            const goalInfo = n.goalName ? ` → ${n.goalName}` : '';
-            const domainInfo = n.domain ? ` (${n.domain})` : '';
-            return `${i + 1}${typeInfo}${domainInfo}: "${n.title}" — ${n.content?.slice(0, 100) || ''}${goalInfo}`;
+        ? `Recent Activity (last 6 weeks from notebook):\n${recentNotebookNotes.map((n: any, i: number) => {
+            const typeInfo = n.entryType !== 'note' ? `[${n.entryType}${n.sourceTable ? '/' + n.sourceTable : ''}]` : '';
+            const goalInfo = n.goalName ? ` -> ${n.goalName}` : '';
+            const domainInfo = n.domain ? `(${n.domain})` : '';
+            return `${i + 1} ${typeInfo}${domainInfo} "${compressInternalData(n.title || '')}" ${compressInternalData((n.content || '').slice(0, 80))} ${goalInfo}`;
           }).join('\n')}`
         : 'No recent notebook entries';
 

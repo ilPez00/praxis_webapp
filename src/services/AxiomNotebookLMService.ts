@@ -9,6 +9,7 @@ import { promisify } from 'util';
 import { supabase } from '../lib/supabaseClient';
 import logger from '../utils/logger';
 import path from 'path';
+import { NotebookResumeService } from './NotebookResumeService';
 
 const execFileAsync = promisify(execFileSync);
 
@@ -123,6 +124,15 @@ class AxiomNotebookLMService {
       return { notebookInsights: '', notebooksQueried: 0, errors: [] };
     }
 
+    // Check cached snapshot first — avoids re-querying every scan
+    const nbIds = notebooks.map((n: any) => n.notebookId || n.id).filter(Boolean);
+    const contextHash = NotebookResumeService.hashNotebookSet(nbIds, context.slice(0, 200));
+    const cached = await NotebookResumeService.loadSnapshot(userId, contextHash);
+    if (cached) {
+      logger.info(`[NotebookLM] Resume cache hit for ${userId} — skipping re-query`);
+      return cached;
+    }
+
     const question = `Based on this user's Praxis data, what insights can you provide?\n\nUser context:\n${context.slice(0, 500)}`;
     const errors: string[] = [];
     const answers: string[] = [];
@@ -151,11 +161,16 @@ class AxiomNotebookLMService {
       ? `\n\n## NotebookLM Insights\n${answers.join('\n\n---\n\n')}`
       : '';
 
-    return {
+    const result = {
       notebookInsights,
       notebooksQueried: toQuery.length,
       errors,
     };
+
+    // Cache snapshot for next scan
+    await NotebookResumeService.saveSnapshot(userId, contextHash, result);
+
+    return result;
   }
 
   /**

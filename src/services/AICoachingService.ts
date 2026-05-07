@@ -395,9 +395,40 @@ export class AICoachingService {
    * Helper to attempt a generation with model fallbacks (free first, paid last).
    * Priority: Groq (free) → Gemini (free tier) → DeepSeek (paid, last resort)
    */
+  /**
+   * Lightweight prompt compression — safe for all contexts.
+   * Removes excess whitespace, trims lines, shortens common fillers.
+   * Does NOT strip articles or alter instruction clarity.
+   */
+  private lightCompress(text: string): string {
+    let t = text;
+    t = t.replace(/\s{3,}/g, '  ');        // Collapse excessive whitespace
+    t = t.replace(/^\s+/gm, '');             // Trim leading whitespace per line
+    t = t.replace(/[ \t]+\n/g, '\n');        // Trailing whitespace before newlines
+    t = t.replace(/\n{3,}/g, '\n\n');        // Max 1 blank line
+    t = t.replace(/in order to be able to/gi, 'to');
+    t = t.replace(/due to the fact that/gi, 'because');
+    t = t.replace(/at this point in time/gi, 'now');
+    t = t.replace(/in the event that/gi, 'if');
+    t = t.replace(/with regard to/gi, 'about');
+    t = t.replace(/is able to/gi, 'can');
+    t = t.replace(/has the ability to/gi, 'can');
+    t = t.replace(/take into consideration/gi, 'consider');
+    t = t.replace(/as well as/gi, 'and');
+    t = t.replace(/in addition to/gi, 'plus');
+    t = t.replace(/on the other hand/gi, 'but');
+    t = t.replace(/for the purpose of/gi, 'to');
+    t = t.replace(/in connection with/gi, 'on');
+    t = t.replace(/with the exception of/gi, 'except');
+    t = t.replace(/in the course of/gi, 'during');
+    return t;
+  }
+
   public async runWithFallback(
     prompt: string
   ): Promise<string> {
+    // Light compression — safe, preserves instruction clarity
+    prompt = this.lightCompress(prompt);
     const errors: string[] = [];
 
     // 1. Try Groq first - free tier, fast inference
