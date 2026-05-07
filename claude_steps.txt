@@ -2213,3 +2213,18 @@ User taps camera icon → AxiomCameraCapture (rear camera, full-screen)
 - Consider adding continuous capture mode (like Aurora visor ACTIVE mode) for real-time HUD overlay
 
 - Sign: opencode
+
+2026-05-07 - Axiom midnight scan LLM retry overhaul (AxiomScanService.ts):
+  - Root cause: generateDailyBrief catches ALL LLM failures internally (line 936),
+    produces algorithm fallback silently — generateDailyBriefWithRetry never sees 429s
+  - Added skipNotification: boolean = false param to generateDailyBrief
+    → wrapped push notification block: if (!skipNotification) { ... }
+    → avoids double push on LLM retry passes
+  - Improved generateDailyBriefWithRetry delays: [1000, 2000, 4000] → [2000, 8000, 20000]
+  - New retryLLMForAlgorithmBriefs(users, roundDelayMs) static method:
+    → Queries axiom_daily_briefs WHERE source='algorithm' AND llm_error IS NOT NULL
+    → Up to 3 rounds: wait 10→15→20 min between rounds, 15s inter-user delay
+    → Calls generateDailyBrief(userId, ..., force=true, skipNotification=true)
+    → Final verification log: total, LLM count, algo count, missing count
+  - runGlobalScan: schedules retryLLMForAlgorithmBriefs via non-blocking setTimeout(0)
+    after main scan completes (only when usersLoggedInToday.length > 0)

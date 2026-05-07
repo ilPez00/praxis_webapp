@@ -310,12 +310,11 @@ export class AxiomScanService {
     const CONCURRENCY = 3;
     let successCount = 0;
     let failCount = 0;
-    
+
     for (let i = 0; i < usersLoggedInToday.length; i += CONCURRENCY) {
       const batch = usersLoggedInToday.slice(i, i + CONCURRENCY);
-      const results = await Promise.allSettled(batch.map(async user => {
+      await Promise.allSettled(batch.map(async user => {
         try {
-          // Use retry logic with exponential backoff for LLM calls
           await this.generateDailyBriefWithRetry(user.id, user.name || 'Student', user.city || 'Unknown', true);
           successCount++;
         } catch (err: any) {
@@ -323,14 +322,27 @@ export class AxiomScanService {
           failCount++;
         }
       }));
-       
-      // Larger pause between batches to respect RPM limits (3s instead of 2s)
+
+      // Larger pause between batches to respect RPM limits
       if (i + CONCURRENCY < usersLoggedInToday.length) {
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
-    
-    logger.info(`[AxiomScan] Scan complete: ${successCount} succeeded, ${failCount} failed.`);
+
+    logger.info(`[AxiomScan] Scan complete: ${successCount} succeeded, ${failCount} hard-failed.`);
+
+    // Schedule LLM recovery pass: when Gemini is under high demand, generateDailyBrief
+    // silently produces algorithm-fallback briefs. This detects and upgrades those briefs
+    // once the API recovers. Runs in background — does not block the main scan.
+    if (usersLoggedInToday.length > 0) {
+      logger.info('[AxiomScan] Scheduling LLM retry pass in 10 minutes for any algorithm-fallback briefs...');
+      setTimeout(() => {
+        AxiomScanService.retryLLMForAlgorithmBriefs(
+          usersLoggedInToday.map(u => ({ id: u.id, name: u.name, city: u.city })),
+          10 * 60 * 1000,
+        ).catch((err: any) => logger.error('[AxiomScan] LLM retry pass crashed:', err.message));
+      }, 0); // fires after current call stack clears; actual delay is inside retryLLMForAlgorithmBriefs
+    }
 
     // Auto-generate tracker templates for users who don't have one yet
     try {
@@ -458,6 +470,7 @@ export class AxiomScanService {
     useLLM: boolean = true,
     userData?: any,
     force: boolean = false,
+    skipNotification: boolean = false,
   ) {
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
@@ -1084,20 +1097,22 @@ CRITICAL RULES:
       logger.info(`[AxiomScan] Brief upserted for ${userId} (${todayStr}, source=${source})`);
     }
 
-    // Send push notification for new daily brief
-    try {
-      const { pushNotification } = await import('../controllers/notificationController');
-      const keySuggestion = recommendations?.message?.slice(0, 50) || 'your personalized protocol';
-      const mood = metrics?.checkinStreak ? `🔥 ${metrics.checkinStreak}-day streak` : 'Start your day right';
-      await pushNotification({
-        userId,
-        title: '🌟 Your Daily Brief is Ready',
-        body: `${userName}! ${mood}. "${keySuggestion}"... tap to see your protocol.`,
-        type: 'axiom_daily_brief',
-      });
-      logger.info(`[AxiomScan] Brief notification sent to ${userId}`);
-    } catch (err: any) {
-      logger.warn(`[AxiomScan] Failed to send brief notification: ${err.message}`);
+    // Send push notification for new daily brief (skipped on retry to avoid double-push)
+    if (!skipNotification) {
+      try {
+        const { pushNotification } = await import('../controllers/notificationController');
+        const keySuggestion = recommendations?.message?.slice(0, 50) || 'your personalized protocol';
+        const mood = metrics?.checkinStreak ? `🔥 ${metrics.checkinStreak}-day streak` : 'Start your day right';
+        await pushNotification({
+          userId,
+          title: '🌟 Your Daily Brief is Ready',
+          body: `${userName}! ${mood}. "${keySuggestion}"... tap to see your protocol.`,
+          type: 'axiom_daily_brief',
+        });
+        logger.info(`[AxiomScan] Brief notification sent to ${userId}`);
+      } catch (err: any) {
+        logger.warn(`[AxiomScan] Failed to send brief notification: ${err.message}`);
+      }
     }
 
     // Run progress estimation during midnight brief generation
@@ -1194,8 +1209,10 @@ ${resources.map((r: any, i: number) => `${i + 1}. **${r.goal}**: ${r.suggestion}
   }
 
   /**
-   * Generate daily brief with exponential backoff retry
-   * Retries 3 times with increasing delays: 1s, 2s, 4s
+   * Generate daily brief with exponential backoff retry.
+   * NOTE: LLM failures are caught inside generateDailyBrief and produce algorithm
+   * fallback briefs — they do NOT cause throws here. This retry handles DB/infra
+   * failures only. Use retryLLMForAlgorithmBriefs for post-scan LLM recovery.
    */
   public static async generateDailyBriefWithRetry(
     userId: string,
@@ -1203,28 +1220,125 @@ ${resources.map((r: any, i: number) => `${i + 1}. **${r.goal}**: ${r.suggestion}
     userCity: string,
     useLLM: boolean = true
   ): Promise<void> {
-    const RETRY_DELAYS = [1000, 2000, 4000]; // 1s, 2s, 4s
-    
+    // Short delays for transient infra errors; rate-limit recovery is handled
+    // by retryLLMForAlgorithmBriefs which waits minutes between attempts.
+    const RETRY_DELAYS = [2000, 8000, 20000]; // 2s, 8s, 20s
+
     for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
       try {
         await AxiomScanService.generateDailyBrief(userId, userName, userCity, useLLM);
-        return; // Success
+        return;
       } catch (err: any) {
         const isLastAttempt = attempt === RETRY_DELAYS.length;
-        const isRetryable = err?.message?.includes('429') || 
+        const isRetryable = err?.message?.includes('429') ||
                            err?.message?.includes('rate') ||
                            err?.message?.includes('RESOURCE_EXHAUSTED') ||
-                           err?.message?.includes('503');
-        
+                           err?.message?.includes('503') ||
+                           err?.message?.includes('502');
+
         if (isLastAttempt || !isRetryable) {
-          throw err; // No more retries or non-retryable error
+          throw err;
         }
-        
+
         const delay = RETRY_DELAYS[attempt];
         logger.info(`[AxiomScan] Retry ${attempt + 1}/${RETRY_DELAYS.length} for ${userId} after ${delay}ms`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
+  }
+
+  /**
+   * Post-scan LLM recovery pass.
+   *
+   * When Gemini is under high demand, generateDailyBrief silently falls back to
+   * the algorithm brief. This method finds those users, waits for the API to
+   * recover, then force-regenerates their briefs with the LLM.
+   *
+   * Called from runGlobalScan via setTimeout (no await) so it doesn't block
+   * the main scan loop.
+   *
+   * @param users - The usersLoggedInToday array from runGlobalScan
+   * @param roundDelayMs - How long to wait before the first retry attempt
+   */
+  public static async retryLLMForAlgorithmBriefs(
+    users: { id: string; name: string | null; city: string | null }[],
+    roundDelayMs: number = 10 * 60 * 1000,
+  ): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    const userIds = users.map(u => u.id);
+
+    for (let round = 1; round <= 3; round++) {
+      logger.info(`[AxiomScan] LLM retry round ${round}: waiting ${roundDelayMs / 60000}min for Gemini to recover...`);
+      await new Promise(resolve => setTimeout(resolve, roundDelayMs));
+
+      const { data: briefs } = await supabase
+        .from('axiom_daily_briefs')
+        .select('user_id, brief')
+        .in('user_id', userIds)
+        .eq('date', today);
+
+      const needsLLM = (briefs || [])
+        .filter((b: any) => b.brief?.source === 'algorithm' && b.brief?.llm_error)
+        .map((b: any) => b.user_id as string);
+
+      if (needsLLM.length === 0) {
+        logger.info(`[AxiomScan] LLM retry round ${round}: all users have LLM briefs.`);
+        break;
+      }
+
+      logger.info(`[AxiomScan] LLM retry round ${round}: upgrading ${needsLLM.length} algorithm briefs to LLM.`);
+
+      let upgraded = 0;
+      let stillFailed = 0;
+
+      for (const userId of needsLLM) {
+        const user = users.find(u => u.id === userId);
+        try {
+          // force=true bypasses the "brief exists" early-return so we actually re-run LLM.
+          // skipNotification=true avoids double-pushing to users who already got one.
+          await AxiomScanService.generateDailyBrief(
+            userId,
+            user?.name || 'Student',
+            user?.city || 'Unknown',
+            true,
+            undefined,
+            true,
+            true, // skipNotification
+          );
+          upgraded++;
+          logger.info(`[AxiomScan] LLM retry: upgraded brief for ${user?.name || userId}`);
+        } catch (err: any) {
+          stillFailed++;
+          logger.warn(`[AxiomScan] LLM retry: failed for ${user?.name || userId}: ${err.message}`);
+        }
+        // Long pause between users to respect RPM limits after the API recovers
+        await new Promise(resolve => setTimeout(resolve, 15_000));
+      }
+
+      logger.info(`[AxiomScan] LLM retry round ${round} done: ${upgraded} upgraded, ${stillFailed} still failed.`);
+
+      if (stillFailed === 0) break;
+      // Next round waits progressively longer (10min, 15min, 20min)
+      roundDelayMs = Math.min(roundDelayMs + 5 * 60 * 1000, 20 * 60 * 1000);
+    }
+
+    // Final verification
+    const { data: finalBriefs } = await supabase
+      .from('axiom_daily_briefs')
+      .select('user_id, brief')
+      .in('user_id', userIds)
+      .eq('date', today);
+
+    const total = (finalBriefs || []).length;
+    const llmCount = (finalBriefs || []).filter((b: any) => b.brief?.source === 'llm').length;
+    const algoCount = total - llmCount;
+    const missingCount = userIds.length - total;
+
+    logger.info(
+      `[AxiomScan] Final verification for ${today}: ` +
+      `${total}/${userIds.length} users have briefs ` +
+      `(${llmCount} LLM, ${algoCount} algorithm, ${missingCount} missing).`
+    );
   }
 }
 
