@@ -50,6 +50,7 @@ const AchievementCollectionPage = React.lazy(() => import('../features/achieveme
 const GoLivePage = React.lazy(() => import('../features/streaming/GoLivePage'));
 const WatchStreamPage = React.lazy(() => import('../features/streaming/WatchStreamPage'));
 const CameraPage = React.lazy(() => import('../features/camera/CameraPage'));
+const AxiomCameraCapture = React.lazy(() => import('../features/camera/AxiomCameraCapture'));
 
 // Route definitions used by AppRouter to build the data router
 export const publicRoutes: RouteObject[] = [
@@ -104,6 +105,7 @@ export const privateRoutes: RouteObject[] = [
   { path: 'go-live', element: <GoLivePage /> },
   { path: 'stream/:id', element: <WatchStreamPage /> },
   { path: 'camera', element: <CameraPage /> },
+  { path: 'camera/axiom', element: <AxiomCameraCapture /> },
 ];
 
 export default { publicRoutes, privateRoutes };

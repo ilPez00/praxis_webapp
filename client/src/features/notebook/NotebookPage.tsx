@@ -30,6 +30,7 @@ import ReplyIcon from '@mui/icons-material/Reply';
 import ShareIcon from '@mui/icons-material/Share';
 import SendIcon from '@mui/icons-material/Send';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import toast from 'react-hot-toast';
 import { useUser } from '../../hooks/useUser';
 import api from '../../lib/api';
@@ -275,6 +276,27 @@ const NotebookPage: React.FC = () => {
             <Typography variant="h4" sx={{ fontWeight: 900 }}>
               📓 Smart Notebook
             </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<PhotoCameraIcon />}
+              onClick={() => navigate('/camera/axiom')}
+              sx={{
+                borderRadius: '12px',
+                fontWeight: 700,
+                px: 2,
+                py: 0.5,
+                border: '2px solid #8B5CF6',
+                color: '#C4B5FD',
+                fontSize: '0.85rem',
+                '&:hover': {
+                  border: '2px solid #7C3AED',
+                  bgcolor: 'rgba(139, 92, 246, 0.08)',
+                },
+              }}
+            >
+              Capture
+            </Button>
             <Button
               variant="outlined"
               size="small"

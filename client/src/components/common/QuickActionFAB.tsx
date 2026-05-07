@@ -9,6 +9,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import MessageIcon from '@mui/icons-material/Message';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
@@ -49,8 +50,13 @@ const QuickActionFAB: React.FC<Props> = ({ onPostClick }) => {
     navigate('/discover?tab=places&action=bookmark');
   };
 
+  const handleAxiomCapture = () => {
+    navigate('/camera/axiom');
+  };
+
   const actions = [
     { icon: <EditIcon />, name: 'New Post', onClick: handleNewPost },
+    { icon: <PhotoCameraIcon />, name: 'Axiom Capture', onClick: handleAxiomCapture },
     { icon: <MessageIcon />, name: 'New Message', onClick: handleNewMessage },
     { icon: <BookmarkIcon />, name: 'Bookmark Place', onClick: handleBookmarkPlace },
     { icon: <NoteAddIcon />, name: 'Quick Log', onClick: () => setQuickLogOpen(true) },

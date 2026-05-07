@@ -12,6 +12,7 @@ import {
 import VideocamIcon from '@mui/icons-material/Videocam';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 interface Props {
   open: boolean;
@@ -99,6 +100,29 @@ const CameraActionSheet: React.FC<Props> = ({ open, onClose }) => {
               <Typography sx={{ fontWeight: 700 }}>Take Picture</Typography>
               <Typography variant="caption" color="text.secondary">
                 Save a still moment
+              </Typography>
+            </Box>
+          </Button>
+
+          <Button
+            variant="outlined"
+            size="large"
+            startIcon={<AutoAwesomeIcon sx={{ color: '#8B5CF6' }} />}
+            onClick={() => go('/camera/axiom')}
+            sx={{
+              justifyContent: 'flex-start',
+              borderRadius: 2,
+              py: 1.5,
+              px: 2,
+              borderColor: 'rgba(139,92,246,0.4)',
+              color: 'text.primary',
+              '&:hover': { borderColor: '#8B5CF6', bgcolor: 'rgba(139,92,246,0.06)' },
+            }}
+          >
+            <Box sx={{ textAlign: 'left' }}>
+              <Typography sx={{ fontWeight: 700 }}>Ask Axiom</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Capture & analyze with AI
               </Typography>
             </Box>
           </Button>

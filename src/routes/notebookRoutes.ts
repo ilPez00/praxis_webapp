@@ -311,4 +311,14 @@ router.delete('/tags/:id', authenticateToken, catchAsync(async (req: Request, re
  */
 router.post('/axiom-query', authenticateToken, notebookAxiomController.queryNotebookAxiom);
 
+/**
+ * POST /notebook/capture
+ * Capture image + optional text → Axiom analysis → auto-created notebook + diary entries
+ * Body: { imageUrl: string, text?: string, domain?: string }
+ */
+router.post('/capture', authenticateToken, catchAsync(async (req: Request, res: Response, next: any) => {
+  const { captureAxiom } = await import('../controllers/axiomCaptureController');
+  await captureAxiom(req, res, next);
+}));
+
 export default router;

@@ -2160,3 +2160,56 @@ Transformed Axiom from a generic coach into a deep oracle that knows the user fr
 4. Consider adding connection_intent matching dimension to MatchingEngineService
 
 - Sign: Claude
+
+---
+
+# Session: May 7, 2026 — Axiom Camera Capture (Aurora Visor Integration)
+
+## Summary
+Added camera → Axiom integration to Praxis, mirroring the Aurora visor pattern from Merlin AI. User can point camera at anything → Axiom analyzes it via Gemini vision → auto-creates notebook + diary entries.
+
+## New Files
+- `src/controllers/axiomCaptureController.ts` — Backend endpoint for `POST /notebook/capture`. Accepts imageUrl + optional text, runs through AxiomMultimodalService + AICoachingService.runMultimodal(), creates notebook_entry (type: observation) + diary_entry, returns Axiom's analysis + domain + tags.
+- `client/src/features/camera/AxiomCameraCapture.tsx` — Full-screen camera component. Opens rear camera immediately (Aurora visor-style), captures frame → uploads to Supabase → calls Axiom → shows analysis as overlay → saves to notebook + diary. Supports face flip, optional user note, retake flow.
+
+## Modified Files
+- `src/routes/notebookRoutes.ts` — Added `POST /capture` route with lazy-imported controller
+- `client/src/config/routes.tsx` — Added lazy-loaded `/camera/axiom` route for AxiomCameraCapture
+- `client/src/components/common/Navbar.tsx` — Added Axiom capture icon (AutoAwesome star) in desktop nav row + "Capture" entry in mobile drawer
+- `client/src/components/common/QuickActionFAB.tsx` — Added "Axiom Capture" action with camera icon
+- `client/src/components/common/CameraActionSheet.tsx` — Added "Ask Axiom" option below "Take Picture"
+- `client/src/features/notebook/NotebookPage.tsx` — Added "Capture" button next to "Ask Axiom"
+
+## Data Flow
+```
+User taps camera icon → AxiomCameraCapture (rear camera, full-screen)
+  → Capture frame (canvas.toBlob, JPEG 0.85)
+  → Upload to supabase storage bucket 'chat-media' path axiom/${userId}/${ts}.jpg
+  → POST /api/notebook/capture { imageUrl, text? }
+  → Backend: AxiomMultimodalService base64-encodes image
+  → Backend: AICoachingService.runMultimodal() with Gemini vision (gemini-2.0-flash+)
+  → Backend: Creates notebook_entries row (entry_type: 'observation') + diary_entries row
+  → Backend: Returns { analysis, domain, tags, notebookEntry, diaryEntry }
+  → Frontend: Shows Axiom's analysis overlay (domain chip, tag chips, insight text)
+  → User can add text note → "Saved to Notebook" → navigates to /notes
+```
+
+## Entry Points
+| Location | Icon | Action |
+|---|---|---|
+| Navbar (desktop) | AutoAwesome star | Opens `/camera/axiom` |
+| Navbar (mobile drawer) | "Capture" menu item | Opens `/camera/axiom` |
+| QuickActionFAB (bottom-right) | Camera icon | Opens `/camera/axiom` |
+| CameraActionSheet | "Ask Axiom" option | Opens `/camera/axiom` |
+| NotebookPage header | "Capture" button | Opens `/camera/axiom` |
+
+## Verification
+- TypeScript check (frontend): 0 errors from new code (pre-existing test type defs only)
+- TypeScript check (backend): 0 errors from new code (pre-existing qrcode/pdfkit/googleapis type defs only)
+- Vite build: successful (3.79s)
+
+## Next
+- Run `ALTER TABLE notebook_entries ADD COLUMN IF NOT EXISTS metadata JSONB;` if metadata column doesn't exist (for future use)
+- Consider adding continuous capture mode (like Aurora visor ACTIVE mode) for real-time HUD overlay
+
+- Sign: opencode

@@ -55,6 +55,7 @@ import ForumIcon from '@mui/icons-material/Forum';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import NoteIcon from '@mui/icons-material/Note';
 import WarningIcon from '@mui/icons-material/Warning';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 interface AppNotification {
   id: string;
@@ -305,6 +306,23 @@ const Navbar: React.FC = () => {
                       </Button>
                     );
                   })}
+                  {user && (
+                    <Tooltip title="Capture with Axiom">
+                      <IconButton
+                        onClick={() => navigate('/camera/axiom')}
+                        sx={{
+                          color: location.pathname === '/camera/axiom' ? '#A78BFA' : 'text.secondary',
+                          ml: 0.5,
+                          width: 36,
+                          height: 36,
+                          bgcolor: location.pathname === '/camera/axiom' ? 'rgba(167,139,250,0.12)' : 'transparent',
+                          '&:hover': { bgcolor: 'rgba(167,139,250,0.18)', color: '#A78BFA' },
+                        }}
+                      >
+                        <AutoAwesomeIcon sx={{ fontSize: 20 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </>
               )}
             </Box>
@@ -786,6 +804,7 @@ const Navbar: React.FC = () => {
               {[
                 { label: 'Today', to: '/dashboard', icon: <DashboardIcon />, primary: true },
                 { label: 'Notebook', to: '/notes', icon: <NoteIcon />, primary: true },
+                { label: 'Capture', to: '/camera/axiom', icon: <AutoAwesomeIcon />, primary: true },
                 { label: 'Discover', to: '/discover', icon: <ExploreIcon />, primary: true },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
