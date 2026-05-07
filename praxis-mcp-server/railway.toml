@@ -1,0 +1,26 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm install --include-dev && npm run build"
+
+[deploy]
+startCommand = "NODE_ENV=production TRANSPORT=http node dist/index.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[[services.env]]
+key = "PRAXIS_API_KEY"
+value = "pk_live_xxx"
+
+[[services.env]]
+key = "PRAXIS_API_URL"
+value = "https://web-production-646a4.up.railway.app/api"
+
+[[services.env]]
+key = "TRANSPORT"
+value = "http"
+
+[[services.env]]
+key = "PORT"
+value = "3456"

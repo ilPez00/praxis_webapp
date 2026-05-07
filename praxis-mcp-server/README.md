@@ -68,6 +68,41 @@ PRAXIS_API_KEY=pk_live_xxx npm start
 | PRAXIS_API_KEY | -                                               | Your API key from Praxis |
 | PRAXIS_API_URL | https://web-production-646a4.up.railway.app/api | Praxis API URL           |
 
+## Railway Deployment
+
+The MCP server supports both stdio (local) and HTTP/SSE (Railway) transports.
+
+### Quick Deploy
+
+1. Create new Railway project → Deploy from GitHub
+2. Root Directory: `praxis-mcp-server/`
+3. Add environment variables:
+
+| Variable         | Value                                             |
+| ---------------- | ------------------------------------------------- |
+| `PRAXIS_API_KEY` | `pk_live_xxx` (from Settings → API Keys)          |
+| `PRAXIS_API_URL` | `https://web-production-646a4.up.railway.app/api` |
+| `TRANSPORT`      | `http`                                            |
+| `PORT`           | `3456`                                            |
+
+4. Railway will auto-detect `railway.toml` and deploy
+
+### Health Check
+
+`GET /health` → `{ "status": "ok", "transport": "http" }`
+
+### HTTP MCP Config (Claude Desktop / Cursor)
+
+```json
+{
+  "mcpServers": {
+    "praxis": {
+      "url": "https://your-mcp-server.railway.app/mcp"
+    }
+  }
+}
+```
+
 ## Development
 
 ```bash
