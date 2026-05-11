@@ -282,3 +282,21 @@ Saves results in `notebook_resumes` table with TTL expiry.
    - Indexes for user lookup and TTL expiry cleanup
 
 3. No env changes required. Cache is used automatically by AxiomNotebookLMService.
+
+--------------------------------------------------------------------
+2026-05-11 — Axiom Provider Health Tracking Table
+--------------------------------------------------------------------
+
+Adds a table to persist provider health check results for the admin panel.
+
+1. Run migration:
+
+    psql "$SUPABASE_DB_URL" -f migrations/2026-05-11-axiom-provider-health.sql
+
+   Or paste contents into Supabase SQL editor.
+
+2. This creates:
+   - public.axiom_provider_health table (one row per provider, reachable/latency/error)
+   - RLS policy (service_role only)
+
+3. No env changes required. The table is populated by the Health Check button in Admin → Axiom tab.

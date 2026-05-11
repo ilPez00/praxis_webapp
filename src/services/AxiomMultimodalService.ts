@@ -222,6 +222,32 @@ async function processAttachment(attachment: Attachment): Promise<ProcessedAttac
 const MAX_FILES_TOTAL = 20;
 const MAX_FILES_PER_GOAL = 5;
 
+/**
+ * Run Mistral OCR on an image URL to extract text
+ */
+async function runMistralOCR(imageUrl: string, apiKey: string): Promise<string | null> {
+  try {
+    const endpoint = process.env.OCR_MISTRAL_ENDPOINT || 'https://api.mistral.ai/v1/ocr';
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'mistral-ocr-latest',
+        document: { type: 'image_url', image_url: imageUrl },
+      }),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const pages = data?.pages || [];
+    return pages.map((p: any) => p.text || p.markdown || '').join('\n').trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 class AxiomMultimodalService {
   /**
    * Process all attachments from notebook entries
@@ -290,6 +316,15 @@ class AxiomMultimodalService {
     return textContexts
       .map((ctx, i) => `[${i + 1}] ${ctx}`)
       .join('\n\n');
+  }
+
+  /**
+   * Run Mistral OCR on an image URL to extract text
+   */
+  async ocrImage(imageUrl: string): Promise<string | null> {
+    const mistralKey = process.env.AI_MISTRAL_KEY || process.env.MISTRAL_API_KEY;
+    if (!mistralKey) return null;
+    return runMistralOCR(imageUrl, mistralKey);
   }
 }
 

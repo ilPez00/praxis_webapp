@@ -3,6 +3,58 @@ import { supabase } from '../lib/supabaseClient';
 import { EngagementMetricService, EngagementArchetype, MotivationStyle } from './EngagementMetricService';
 import logger from '../utils/logger';
 
+// ---------------------------------------------------------------------------
+// Multi-LLM Provider Registry
+// ---------------------------------------------------------------------------
+
+export interface LLMProvider {
+  name: string;
+  baseUrl: string;
+  apiKey: string | null;
+  models: string[];
+  priority: number;
+  enabled: boolean;
+  type: 'openai' | 'gemini' | 'proxy';
+}
+
+const OPENAI_COMPAT_PROVIDERS: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
+  { name: 'groq',          baseUrl: 'https://api.groq.com/openai/v1',     models: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],             priority: 1,  type: 'openai' },
+  { name: 'deepseek',      baseUrl: 'https://api.deepseek.com/v1',         models: ['deepseek-chat', 'deepseek-reasoner'],                                               priority: 20, type: 'openai' },
+  { name: 'openrouter',    baseUrl: 'https://openrouter.ai/api/v1',        models: ['openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'meta-llama/llama-3.3-70b-instruct'], priority: 10, type: 'openai' },
+  { name: 'mistral',       baseUrl: 'https://api.mistral.ai/v1',           models: ['mistral-large-latest', 'mistral-small-latest', 'pixtral-large-latest'],              priority: 15, type: 'openai' },
+  { name: 'cerebras',      baseUrl: 'https://api.cerebras.ai/v1',          models: ['llama3.1-8b', 'llama3.1-70b'],                                                       priority: 12, type: 'openai' },
+  { name: 'cohere',        baseUrl: 'https://api.cohere.com/v2',           models: ['command-r-plus', 'command-r'],                                                       priority: 18, type: 'openai' },
+  { name: 'sambanova',     baseUrl: 'https://api.sambanova.ai/v1',         models: ['Meta-Llama-3.1-8B-Instruct', 'Meta-Llama-3.1-70B-Instruct', 'Qwen2.5-72B-Instruct'], priority: 13, type: 'openai' },
+  { name: 'xai',           baseUrl: 'https://api.x.ai/v1',                 models: ['grok-2', 'grok-beta'],                                                                priority: 16, type: 'openai' },
+  { name: 'together',      baseUrl: 'https://api.together.xyz/v1',         models: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'mistralai/Mixtral-8x22B-Instruct-v0.1'],  priority: 14, type: 'openai' },
+  { name: 'deepinfra',     baseUrl: 'https://api.deepinfra.com/v1',        models: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'mistralai/Mixtral-8x22B-Instruct-v0.1'],  priority: 17, type: 'openai' },
+  { name: 'nvidia',        baseUrl: 'https://integrate.api.nvidia.com/v1',  models: ['nvidia/llama-3.1-nemotron-70b-instruct', 'meta/llama-3.1-8b-instruct'],              priority: 19, type: 'openai' },
+  { name: 'zhipu',         baseUrl: 'https://open.bigmodel.cn/api/paas/v4',models: ['glm-4', 'glm-4v'],                                                                     priority: 22, type: 'openai' },
+  { name: 'bazaarlink',    baseUrl: 'https://api.bazaarlink.ai/v1',        models: ['gpt-4o', 'claude-3.5-sonnet'],                                                       priority: 21, type: 'openai' },
+  { name: 'kluster',       baseUrl: 'https://api.kluster.ai/v1',           models: ['llama-3.3-70b', 'qwen-2.5-72b'],                                                     priority: 23, type: 'openai' },
+];
+
+const KEYLESS_PROXIES: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
+  { name: 'llm7',          baseUrl: 'https://llm7.io/v1',                  models: ['gpt-4o', 'claude-sonnet-4'],                                                          priority: 30, type: 'proxy' },
+  { name: 'apifree',       baseUrl: 'https://apifreellm.com/api/v1',       models: ['gpt-4o-mini', 'claude-3-haiku'],                                                     priority: 31, type: 'proxy' },
+  { name: 'ovhcloud',      baseUrl: 'https://endpoints.ai.cloud.ovh.net',  models: ['Mixtral-8x22B-Instruct-v0.1'],                                                      priority: 32, type: 'proxy' },
+  { name: 'gptoss',        baseUrl: 'https://broken-water-d859.junioralive.workers.dev', models: ['gpt-4o'],                                                      priority: 33, type: 'proxy' },
+  { name: 'g4f_hosted',    baseUrl: 'https://g4f.space/v1',                models: ['gpt-4o', 'gpt-4o-mini'],                                                            priority: 34, type: 'proxy' },
+];
+
+const OLLAMA_ENDPOINTS: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
+  { name: 'ollama1',        baseUrl: 'http://108.181.196.208:11434/v1',    models: ['llama3.1', 'qwen2.5', 'mistral'],                                                   priority: 40, type: 'proxy' },
+  { name: 'ollama2',        baseUrl: 'http://5.149.249.212:11434/v1',      models: ['llama3.1', 'qwen2.5', 'mistral'],                                                   priority: 41, type: 'proxy' },
+  { name: 'ollama3',        baseUrl: 'http://89.111.170.212:11434/v1',     models: ['llama3.1', 'qwen2.5', 'mistral'],                                                   priority: 42, type: 'proxy' },
+  { name: 'ollama4',        baseUrl: 'http://185.211.5.32:11434/v1',       models: ['llama3.1', 'qwen2.5', 'mistral'],                                                   priority: 43, type: 'proxy' },
+  { name: 'ollama_local',   baseUrl: 'http://localhost:11434/v1',           models: ['llama3.1', 'qwen2.5', 'mistral'],                                                   priority: 44, type: 'proxy' },
+];
+
+function getApiKey(envKey: string): string | null {
+  const key = (process.env[envKey] || '').replace(/['"\s]+/g, '').trim();
+  return key || null;
+}
+
 export interface GoalContext {
   name: string;
   domain: string;
@@ -246,6 +298,7 @@ export class AICoachingService {
   private currentKeyIndex = 0;
   private deepseekApiKey: string | null = null;
   private groqApiKey: string | null = null;
+  private openAIProviders: LLMProvider[] = [];
   
   constructor() {
     // Gemini keys
@@ -267,11 +320,91 @@ export class AICoachingService {
     // Groq key - free fallback
     this.groqApiKey = (process.env.GROQ_API_KEY || '').trim();
 
-    if (this.apiKeys.length === 0 && !this.deepseekApiKey && !this.groqApiKey) {
+    // Build multi-LLM provider registry from master .env
+    this.openAIProviders = this.buildProviderRegistry();
+
+    const enabledExtras = this.openAIProviders.filter(p => p.enabled).map(p => p.name);
+    if (this.apiKeys.length === 0 && !this.deepseekApiKey && !this.groqApiKey && enabledExtras.length === 0) {
       logger.warn('[AICoachingService] No AI keys (Gemini, DeepSeek, or Groq) found.');
     } else {
-      logger.info(`[AICoachingService] Ready. Start Key: ${this.currentKeyIndex}. Groq: ${!!this.groqApiKey}. Gemini: ${this.apiKeys.length} keys. DeepSeek: ${!!this.deepseekApiKey}`);
+      logger.info(`[AICoachingService] Ready. Start Key: ${this.currentKeyIndex}. Groq: ${!!this.groqApiKey}. Gemini: ${this.apiKeys.length} keys. DeepSeek: ${!!this.deepseekApiKey}. Extras: [${enabledExtras.join(', ')}]`);
     }
+  }
+
+  /**
+   * Build provider registry from master .env vars
+   * Each provider reads AI_{NAME}_KEY and optionally EP_{NAME} for base URL override
+   */
+  private buildProviderRegistry(): LLMProvider[] {
+    const providers: LLMProvider[] = [];
+
+    // Map provider name to its env key suffix
+    const nameToEnv: Record<string, string> = {
+      groq: 'AI_GROQ_KEY',
+      deepseek: 'AI_DEEPSEEK_KEY',
+      openrouter: 'AI_OPENROUTER_KEY',
+      mistral: 'AI_MISTRAL_KEY',
+      cerebras: 'AI_CEREBRAS_KEY',
+      cohere: 'AI_COHERE_KEY',
+      sambanova: 'AI_SAMBA_NOVA_KEY',
+      xai: 'AI_XAI_KEY',
+      together: 'AI_TOGETHER_KEY',
+      deepinfra: 'AI_DEEPINFRA_KEY',
+      nvidia: 'AI_NVIDIA_KEY',
+      zhipu: 'AI_ZHIPU_KEY',
+      bazaarlink: 'AI_BAZAARLINK_KEY',
+      kluster: 'AI_KLUSTER_KEY',
+    };
+
+    // Map provider name to base URL override env key
+    const nameToEndpoint: Record<string, string> = {
+      openrouter: 'EP_HERMES',
+      mistral: 'EP_MISTRAL',
+      cerebras: 'EP_CEREBRAS',
+      sambanova: 'EP_SAMBA_NOVA',
+      xai: 'EP_XAI',
+      together: 'EP_TOGETHER',
+      deepinfra: 'EP_DEEPINFRA',
+      nvidia: 'EP_NVIDIA',
+      zhipu: 'EP_ZHIPU',
+      bazaarlink: 'EP_BAZAARLINK',
+      kluster: 'EP_KLUSTER',
+      cohere: 'EP_COHERE',
+    };
+
+    const allConfigs = [
+      ...OPENAI_COMPAT_PROVIDERS,
+      ...KEYLESS_PROXIES,
+      ...OLLAMA_ENDPOINTS,
+    ];
+
+    for (const cfg of allConfigs) {
+      let apiKey: string | null = null;
+
+      if (cfg.type === 'openai') {
+        const envKey = nameToEnv[cfg.name];
+        if (envKey) apiKey = getApiKey(envKey);
+      }
+
+      // Base URL override from EP_* env var
+      let baseUrl = cfg.baseUrl;
+      const epKey = nameToEndpoint[cfg.name];
+      if (epKey) {
+        const epUrl = (process.env[epKey] || '').trim();
+        if (epUrl) baseUrl = epUrl.replace(/\/+$/, '') + '/chat/completions';
+      }
+
+      const enabled = cfg.type === 'proxy' ? true : apiKey !== null;
+
+      providers.push({
+        ...cfg,
+        baseUrl,
+        apiKey,
+        enabled,
+      });
+    }
+
+    return providers.sort((a, b) => a.priority - b.priority);
   }
 
   // ── API Key Usage Tracking ───────────────────────────────────────────────────────────
@@ -341,8 +474,104 @@ export class AICoachingService {
     }
   }
 
+  /**
+   * Get provider status for admin panel
+   */
+  getProviderStatus(): Array<{ name: string; enabled: boolean; type: string; hasKey: boolean; models: string[]; priority: number }> {
+    return this.openAIProviders.map(p => ({
+      name: p.name,
+      enabled: p.enabled,
+      type: p.type,
+      hasKey: !!p.apiKey,
+      models: p.models,
+      priority: p.priority,
+    }));
+  }
+
+  /**
+   * Toggle a provider's enabled state, persisted in system_config
+   */
+  public async setProviderEnabled(name: string, enabled: boolean): Promise<void> {
+    const provider = this.openAIProviders.find(p => p.name === name);
+    if (!provider) throw new Error(`Provider '${name}' not found`);
+    provider.enabled = enabled;
+    const key = `axiom_provider_${name}_enabled`;
+    await supabase.from('system_config').upsert(
+      { key, value: enabled ? 'true' : 'false', updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+    logger.info(`[AICoachingService] Provider '${name}' ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Reorder a provider's priority, persisted in system_config
+   */
+  public async setProviderPriority(name: string, priority: number): Promise<void> {
+    const provider = this.openAIProviders.find(p => p.name === name);
+    if (!provider) throw new Error(`Provider '${name}' not found`);
+    provider.priority = priority;
+    const key = `axiom_provider_${name}_priority`;
+    await supabase.from('system_config').upsert(
+      { key, value: String(priority), updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+    this.openAIProviders.sort((a, b) => a.priority - b.priority);
+    logger.info(`[AICoachingService] Provider '${name}' priority set to ${priority}`);
+  }
+
+  /**
+   * Refresh provider enabled/priority overrides from system_config
+   */
+  public async refreshFromConfig(): Promise<void> {
+    try {
+      const { data } = await supabase
+        .from('system_config')
+        .select('key, value')
+        .in('key', [
+          ...this.openAIProviders.map(p => `axiom_provider_${p.name}_enabled`),
+          ...this.openAIProviders.map(p => `axiom_provider_${p.name}_priority`),
+        ]);
+      if (!data) return;
+      for (const row of data) {
+        const parts = row.key.replace('axiom_provider_', '').split('_');
+        const field = parts.pop();
+        const name = parts.join('_');
+        const provider = this.openAIProviders.find(p => p.name === name);
+        if (!provider) continue;
+        if (field === 'enabled') provider.enabled = row.value === 'true';
+        if (field === 'priority') provider.priority = parseInt(row.value, 10);
+      }
+      this.openAIProviders.sort((a, b) => a.priority - b.priority);
+    } catch (err) {
+      logger.warn(`[AICoachingService] refreshFromConfig failed: ${err}`);
+    }
+  }
+
+  /**
+   * Health-check all providers by sending a tiny prompt
+   */
+  public async checkAllProviders(): Promise<Array<{ name: string; reachable: boolean; latencyMs: number | null; error: string | null }>> {
+    const results: Array<{ name: string; reachable: boolean; latencyMs: number | null; error: string | null }> = [];
+    for (const provider of this.openAIProviders) {
+      if (!provider.enabled && provider.type !== 'proxy') {
+        results.push({ name: provider.name, reachable: false, latencyMs: null, error: 'disabled' });
+        continue;
+      }
+      const start = Date.now();
+      const result = await this.callOpenAICompat(provider, 'Reply OK', { maxTokens: 5, model: provider.models[0] });
+      const latency = Date.now() - start;
+      if (result.text) {
+        results.push({ name: provider.name, reachable: true, latencyMs: latency, error: null });
+      } else {
+        results.push({ name: provider.name, reachable: false, latencyMs: latency, error: result.status ? `HTTP ${result.status}` : 'FetchEx' });
+      }
+    }
+    return results;
+  }
+
   get isConfigured(): boolean {
-    return this.apiKeys.length > 0 || !!this.deepseekApiKey || !!this.groqApiKey;
+    return this.apiKeys.length > 0 || !!this.deepseekApiKey || !!this.groqApiKey ||
+      this.openAIProviders.some(p => p.enabled);
   }
 
   private rotateKey() {
@@ -424,6 +653,48 @@ export class AICoachingService {
     return t;
   }
 
+  /**
+   * Call an OpenAI-compatible chat completions endpoint
+   */
+  private async callOpenAICompat(
+    provider: LLMProvider,
+    prompt: string,
+    options: { maxTokens?: number; model?: string } = {}
+  ): Promise<{ text: string | null; usage: any; status: number | null }> {
+    const model = options.model || provider.models[0];
+    const maxTokens = options.maxTokens || 1500;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+      const response = await fetch(`${provider.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(provider.apiKey ? { 'Authorization': `Bearer ${provider.apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: maxTokens,
+          temperature: 0.7,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content?.trim();
+      const usage = data?.usage || {};
+
+      return { text: response.ok && text ? text : null, usage, status: response.status };
+    } catch (err: any) {
+      if (err.name === 'AbortError') return { text: null, usage: {}, status: 408 };
+      return { text: null, usage: {}, status: null };
+    }
+  }
+
   public async runWithFallback(
     prompt: string
   ): Promise<string> {
@@ -471,6 +742,21 @@ export class AICoachingService {
         }
         if (this.groqApiKey) await this.trackUsage('groq', this.groqApiKey, false, 0, 0);
       }
+    }
+
+    // 1b. Try other OpenAI-compatible providers in priority order
+    for (const provider of this.openAIProviders) {
+      if (!provider.enabled || provider.name === 'groq' || provider.name === 'deepseek') continue;
+      if (!provider.apiKey && provider.type === 'openai') continue;
+
+      const result = await this.callOpenAICompat(provider, prompt);
+      if (result.text) {
+        await this.trackUsage(provider.name, provider.apiKey || 'proxy', true, result.usage?.prompt_tokens || 0, result.usage?.completion_tokens || 0);
+        return result.text;
+      }
+      const code = result.status ? `[${provider.name}] ${result.status}` : `[${provider.name}] FetchEx`;
+      errors.push(code);
+      if (provider.apiKey) await this.trackUsage(provider.name, provider.apiKey, false, 0, 0);
     }
 
     // 2. Fallback to Gemini keys pool
@@ -564,53 +850,23 @@ export class AICoachingService {
       }
     }
 
-    // 3. Last resort: Try DeepSeek - paid option
-    if (this.deepseekApiKey) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-        
-        const response = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.deepseekApiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 1500,
-          }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        
-        const data = await response.json();
-        const text = data?.choices?.[0]?.message?.content?.trim();
-        const usage = data?.usage || {};
-        
-        if (response.ok && text) {
-          await this.trackUsage('deepseek', this.deepseekApiKey!, true, usage?.prompt_tokens || 0, usage?.completion_tokens || 0);
-          return text;
-        }
-        errors.push(`[DeepSeek] ${response.status}`);
-        if (this.deepseekApiKey) await this.trackUsage('deepseek', this.deepseekApiKey, false, 0, 0);
-      } catch (err: any) {
-        if (err.name === 'AbortError') {
-          errors.push(`[DeepSeek] Timeout`);
-        } else {
-          errors.push(`[DeepSeek] FetchEx`);
-        }
-        if (this.deepseekApiKey) await this.trackUsage('deepseek', this.deepseekApiKey, false, 0, 0);
+    // 3. Last resort: Try DeepSeek from provider registry - paid option
+    const deepseekProvider = this.openAIProviders.find(p => p.name === 'deepseek');
+    if (deepseekProvider?.enabled && deepseekProvider.apiKey) {
+      const result = await this.callOpenAICompat(deepseekProvider, prompt);
+      if (result.text) {
+        await this.trackUsage('deepseek', deepseekProvider.apiKey, true, result.usage?.prompt_tokens || 0, result.usage?.completion_tokens || 0);
+        return result.text;
       }
+      const code = result.status ? `[DeepSeek] ${result.status}` : `[DeepSeek] FetchEx`;
+      errors.push(code);
+      if (deepseekProvider.apiKey) await this.trackUsage('deepseek', deepseekProvider.apiKey, false, 0, 0);
     }
 
-    // Optional Discovery log if all failed
-    let discovered = '';
-    try { discovered = ` | Available: ${(await this.listAvailableModels(this.apiKeys[0])).slice(0, 3).join(',')}`; } catch {}
+    const triedProviders = ['Groq', ...this.openAIProviders.filter(p => p.name !== 'groq').map(p => p.name), 'Gemini'];
 
-    const uniqueErrors = Array.from(new Set(errors)).slice(0, 15).join(' | ');
-    throw new Error(`Axiom Offline. Tried Groq, Gemini, DeepSeek. Status: ${uniqueErrors}${discovered}`);
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 20).join(' | ');
+    throw new Error(`Axiom Offline. Tried ${triedProviders.join(', ')}. Status: ${uniqueErrors}`);
   }
 
   /**

@@ -64,66 +64,142 @@ async function searchNotebooks(userId: string, query: string): Promise<any[]> {
     .map(s => s.entry);
 }
 
-async function searchWeb(query: string): Promise<{ title: string; url: string; snippet: string }[]> {
-  logger.info(`[AxiomAgent] Web search: "${query}"`);
+// ── Search provider helpers ───────────────────────────────────────────────
 
-  // Brave Search API (preferred — set BRAVE_API_KEY env var for full results)
-  const braveKey = process.env.BRAVE_API_KEY;
-  if (braveKey) {
-    try {
-      const resp = await fetch(
-        `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
-        {
-          headers: {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip',
-            'X-Subscription-Token': braveKey,
-          },
-        }
-      );
-      if (resp.ok) {
-        const data = await resp.json();
-        const results = (data?.web?.results || []) as any[];
-        return results.slice(0, 5).map((r: any) => ({
-          title: r.title || '',
-          url: r.url || '',
-          snippet: (r.description || '').slice(0, 250),
-        }));
-      }
-    } catch (err: any) {
-      logger.warn('[AxiomAgent] Brave Search failed:', err.message);
-    }
-  }
+async function searchTavily(query: string): Promise<{ title: string; url: string; snippet: string }[] | null> {
+  const key = process.env.SEARCH_TAVILY_KEY || process.env.TAVILY_API_KEY;
+  if (!key) return null;
+  try {
+    const resp = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: key, query, max_results: 5, search_depth: 'basic' }),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return (data.results || []).map((r: any) => ({
+      title: r.title || '',
+      url: r.url || '',
+      snippet: (r.content || '').slice(0, 250),
+    }));
+  } catch { return null; }
+}
 
-  // Fallback: DuckDuckGo Instant Answer API (free, no key needed)
+async function searchBrave(query: string): Promise<{ title: string; url: string; snippet: string }[] | null> {
+  const key = process.env.SEARCH_BRAVE_KEY || process.env.BRAVE_API_KEY;
+  if (!key) return null;
+  try {
+    const resp = await fetch(
+      `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
+      { headers: { 'Accept': 'application/json', 'Accept-Encoding': 'gzip', 'X-Subscription-Token': key } }
+    );
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return (data?.web?.results || []).slice(0, 5).map((r: any) => ({
+      title: r.title || '',
+      url: r.url || '',
+      snippet: (r.description || '').slice(0, 250),
+    }));
+  } catch { return null; }
+}
+
+async function searchSerper(query: string): Promise<{ title: string; url: string; snippet: string }[] | null> {
+  const key = process.env.SEARCH_SERPER_KEY;
+  if (!key) return null;
+  try {
+    const resp = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: { 'X-API-KEY': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: query, num: 5 }),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return (data.organic || []).slice(0, 5).map((r: any) => ({
+      title: r.title || '',
+      url: r.link || '',
+      snippet: (r.snippet || '').slice(0, 250),
+    }));
+  } catch { return null; }
+}
+
+async function searchSerpApi(query: string): Promise<{ title: string; url: string; snippet: string }[] | null> {
+  const key = process.env.SEARCH_SERPAPI_KEY;
+  if (!key) return null;
+  try {
+    const resp = await fetch(`https://serpapi.com/search?q=${encodeURIComponent(query)}&api_key=${key}&engine=google&num=5`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return (data.organic_results || []).slice(0, 5).map((r: any) => ({
+      title: r.title || '',
+      url: r.link || '',
+      snippet: (r.snippet || '').slice(0, 250),
+    }));
+  } catch { return null; }
+}
+
+async function searchJina(query: string): Promise<{ title: string; url: string; snippet: string }[] | null> {
+  const endpoint = process.env.SEARCH_JINA_ENDPOINT || 'https://r.jina.ai';
+  try {
+    const resp = await fetch(`${endpoint}/search?q=${encodeURIComponent(query)}`, {
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return (data.data || []).slice(0, 5).map((r: any) => ({
+      title: r.title || '',
+      url: r.url || '',
+      snippet: (r.description || r.content || '').slice(0, 250),
+    }));
+  } catch { return null; }
+}
+
+async function searchDuckDuckGo(query: string): Promise<{ title: string; url: string; snippet: string }[] | null> {
   try {
     const resp = await fetch(
       `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
       { headers: { 'Accept': 'application/json' } }
     );
-    if (resp.ok) {
-      const data = await resp.json();
-      const results: { title: string; url: string; snippet: string }[] = [];
-      if (data.Abstract) {
-        results.push({
-          title: data.Heading || query,
-          url: data.AbstractURL || '',
-          snippet: data.Abstract.slice(0, 250),
-        });
-      }
-      for (const topic of (data.RelatedTopics || []).slice(0, 4)) {
-        if (topic.Text && topic.FirstURL) {
-          results.push({
-            title: topic.Text.slice(0, 80),
-            url: topic.FirstURL,
-            snippet: topic.Text.slice(0, 250),
-          });
-        }
-      }
-      return results;
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const results: { title: string; url: string; snippet: string }[] = [];
+    if (data.Abstract) {
+      results.push({ title: data.Heading || query, url: data.AbstractURL || '', snippet: data.Abstract.slice(0, 250) });
     }
-  } catch (err: any) {
-    logger.warn('[AxiomAgent] DDG search failed:', err.message);
+    for (const topic of (data.RelatedTopics || []).slice(0, 4)) {
+      if (topic.Text && topic.FirstURL) {
+        results.push({ title: topic.Text.slice(0, 80), url: topic.FirstURL, snippet: topic.Text.slice(0, 250) });
+      }
+    }
+    return results.length > 0 ? results : null;
+  } catch { return null; }
+}
+
+/**
+ * Multi-provider web search with fallback chain.
+ * Priority: Tavily → Brave → Serper → SerpAPI → Jina → DuckDuckGo
+ */
+async function searchWeb(query: string): Promise<{ title: string; url: string; snippet: string }[]> {
+  logger.info(`[AxiomAgent] Web search: "${query}" (6 providers in fallback chain)`);
+
+  const providers = [
+    { name: 'Tavily', fn: () => searchTavily(query) },
+    { name: 'Brave', fn: () => searchBrave(query) },
+    { name: 'Serper', fn: () => searchSerper(query) },
+    { name: 'SerpAPI', fn: () => searchSerpApi(query) },
+    { name: 'Jina', fn: () => searchJina(query) },
+    { name: 'DuckDuckGo', fn: () => searchDuckDuckGo(query) },
+  ];
+
+  for (const { name, fn } of providers) {
+    try {
+      const results = await fn();
+      if (results && results.length > 0) {
+        logger.info(`[AxiomAgent] ${name} returned ${results.length} results`);
+        return results;
+      }
+    } catch (err: any) {
+      logger.warn(`[AxiomAgent] ${name} search failed:`, err.message);
+    }
   }
 
   return [];

@@ -4,12 +4,17 @@ import {
   Box, Typography, Card, CardContent,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Button, Chip, Avatar, TextField, Select, MenuItem, FormControl, InputLabel,
-  Grid, Stack, List, ListItem, ListItemText,
+  Grid, Stack, List, ListItem, ListItemText, Switch, IconButton, Tooltip,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
 import toast from 'react-hot-toast';
 import api from '../../../lib/api';
 import { AdminUser } from './adminTypes';
@@ -44,6 +49,11 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
   const [loadingAxiomStats, setLoadingAxiomStats] = useState(false);
   const [keyUsage, setKeyUsage] = useState<any[]>([]);
   const [loadingKeyUsage, setLoadingKeyUsage] = useState(false);
+  const [providers, setProviders] = useState<any[]>([]);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+  const [providerHealth, setProviderHealth] = useState<any[] | null>(null);
+  const [checkingHealth, setCheckingHealth] = useState(false);
+  const [togglingProvider, setTogglingProvider] = useState<string | null>(null);
 
   // Handlers
   const fetchAxiomPrompt = useCallback(async () => {
@@ -84,6 +94,68 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
       setLoadingKeyUsage(false);
     }
   }, []);
+
+  const fetchProviders = useCallback(async () => {
+    setLoadingProviders(true);
+    try {
+      const res = await api.get('/admin/axiom/providers');
+      setProviders(res.data?.providers || []);
+    } catch (err) {
+      console.error('Failed to fetch providers:', err);
+    } finally {
+      setLoadingProviders(false);
+    }
+  }, []);
+
+  const handleToggleProvider = async (name: string, enabled: boolean) => {
+    setTogglingProvider(name);
+    try {
+      await api.put(`/admin/axiom/providers/${name}/toggle`, { enabled });
+      setProviders(prev => prev.map(p => p.name === name ? { ...p, enabled } : p));
+      toast.success(`${name} ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (err) {
+      toast.error(`Failed to toggle ${name}`);
+    } finally {
+      setTogglingProvider(null);
+    }
+  };
+
+  const handlePriorityUp = async (name: string, currentPriority: number) => {
+    const newPriority = Math.max(1, currentPriority - 1);
+    try {
+      await api.put(`/admin/axiom/providers/${name}/priority`, { priority: newPriority });
+      setProviders(prev => prev.map(p => p.name === name ? { ...p, priority: newPriority } : p).sort((a, b) => a.priority - b.priority));
+      toast.success(`${name} priority → ${newPriority}`);
+    } catch (err) {
+      toast.error(`Failed to update ${name} priority`);
+    }
+  };
+
+  const handlePriorityDown = async (name: string, currentPriority: number) => {
+    const newPriority = currentPriority + 1;
+    try {
+      await api.put(`/admin/axiom/providers/${name}/priority`, { priority: newPriority });
+      setProviders(prev => prev.map(p => p.name === name ? { ...p, priority: newPriority } : p).sort((a, b) => a.priority - b.priority));
+      toast.success(`${name} priority → ${newPriority}`);
+    } catch (err) {
+      toast.error(`Failed to update ${name} priority`);
+    }
+  };
+
+  const handleCheckHealth = async () => {
+    setCheckingHealth(true);
+    setProviderHealth(null);
+    try {
+      const res = await api.post('/admin/axiom/check-providers');
+      setProviderHealth(res.data?.results || []);
+      const reachable = res.data?.results?.filter((r: any) => r.reachable)?.length || 0;
+      toast.success(`Health check: ${reachable}/${res.data?.results?.length} providers reachable`);
+    } catch (err) {
+      toast.error('Health check failed');
+    } finally {
+      setCheckingHealth(false);
+    }
+  };
 
   const handleUpdateStrategy = async (newStrategy: 'first' | 'last' | 'random') => {
     setUpdatingStrategy(true);
@@ -171,7 +243,8 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
     fetchAxiomPrompt();
     fetchAxiomStats();
     fetchKeyUsage();
-  }, [fetchAxiomPrompt, fetchAxiomStats, fetchKeyUsage]);
+    fetchProviders();
+  }, [fetchAxiomPrompt, fetchAxiomStats, fetchKeyUsage, fetchProviders]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -520,6 +593,110 @@ const AxiomTab: React.FC<AxiomTabProps> = ({ users }) => {
                             <TableCell>
                               <Typography variant="caption" color="text.secondary">
                                 {k.last_used ? new Date(k.last_used).toLocaleString() : '—'}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Provider Registry */}
+        <Grid size={{ xs: 12 }}>
+          <Card sx={{ bgcolor: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 3 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AutoAwesomeIcon sx={{ color: '#10B981' }} /> LLM Provider Registry
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={handleCheckHealth}
+                  disabled={checkingHealth}
+                  startIcon={checkingHealth ? <CircularProgress size={16} /> : <PlayArrowIcon />}
+                >
+                  {checkingHealth ? 'Checking...' : 'Health Check'}
+                </Button>
+              </Box>
+              {loadingProviders ? (
+                <CircularProgress size={24} />
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Provider</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Type</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Enabled</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Key</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Priority</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Health</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Models</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {providers.map((p, idx) => {
+                        const healthRow = providerHealth?.find((h: any) => h.name === p.name);
+                        return (
+                          <TableRow key={idx} sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' }, opacity: p.enabled ? 1 : 0.5 }}>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                                {p.name}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={p.type} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
+                            </TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={p.enabled}
+                                onChange={(e) => handleToggleProvider(p.name, e.target.checked)}
+                                disabled={togglingProvider === p.name}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={p.hasKey ? '✓ Key Set' : '—'}
+                                size="small"
+                                color={p.hasKey ? 'success' : 'default'}
+                                variant={p.hasKey ? 'filled' : 'outlined'}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Stack direction="row" spacing={0.5} alignItems="center">
+                                <IconButton size="small" onClick={() => handlePriorityUp(p.name, p.priority)} sx={{ width: 24, height: 24 }}>
+                                  <ArrowUpwardIcon sx={{ fontSize: 14 }} />
+                                </IconButton>
+                                <Typography variant="body2" sx={{ fontWeight: 700, minWidth: 20, textAlign: 'center' }}>
+                                  {p.priority}
+                                </Typography>
+                                <IconButton size="small" onClick={() => handlePriorityDown(p.name, p.priority)} sx={{ width: 24, height: 24 }}>
+                                  <ArrowDownwardIcon sx={{ fontSize: 14 }} />
+                                </IconButton>
+                              </Stack>
+                            </TableCell>
+                            <TableCell>
+                              {healthRow ? (
+                                <Chip
+                                  icon={healthRow.reachable ? <CheckCircleIcon sx={{ fontSize: 14 }} /> : <ErrorIcon sx={{ fontSize: 14 }} />}
+                                  label={healthRow.reachable ? `${healthRow.latencyMs}ms` : (healthRow.error || 'unreachable')}
+                                  size="small"
+                                  color={healthRow.reachable ? 'success' : 'error'}
+                                  variant="outlined"
+                                />
+                              ) : (
+                                <Typography variant="caption" color="text.secondary">—</Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: 10 }}>
+                                {p.models?.slice(0, 2).join(', ')}{p.models?.length > 2 ? '…' : ''}
                               </Typography>
                             </TableCell>
                           </TableRow>

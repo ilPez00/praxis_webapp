@@ -1,4 +1,9 @@
 /// <reference path="./types/express.d.ts" />
+
+// Load master env BEFORE dotenv so project .env overrides master vars
+import { loadMasterEnv } from './lib/envLoader';
+loadMasterEnv();
+
 require('dotenv').config();
 import express from 'express';
 import cors from 'cors';

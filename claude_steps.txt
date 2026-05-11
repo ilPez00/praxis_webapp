@@ -2228,3 +2228,36 @@ User taps camera icon → AxiomCameraCapture (rear camera, full-screen)
     → Final verification log: total, LLM count, algo count, missing count
   - runGlobalScan: schedules retryLLMForAlgorithmBriefs via non-blocking setTimeout(0)
     after main scan completes (only when usersLoggedInToday.length > 0)
+
+# 2026-05-11 — Master .env Full Integration (All 11 Phases)
+## Phase 1-9: Service Creation
+- Created src/lib/envLoader.ts — loads master /home/gio/.env at startup (Phase 1)
+- Updated src/app.ts — import envLoader before dotenv.config() (Phase 1)
+- Rewrote AICoachingService.ts: multi-LLM provider registry (14 OpenAI-compat, 5 keyless proxies, 5 Ollama endpoints) with callOpenAICompat(), updated runWithFallback() priority chain (Groq → OpenAI-compat → Gemini → DeepSeek) (Phase 2)
+- Enhanced axiomAgentController.ts searchWeb(): Tavily → Brave → Serper → SerpAPI → Jina → DuckDuckGo priority chain (Phase 3)
+- Created AxiomSTTService.ts: Deepgram → AssemblyAI → Groq Whisper (Phase 4)
+- Created AxiomTTSService.ts: ElevenLabs → Kokoro (Phase 5)
+- Created AxiomImageGenService.ts: Pollinations → Pixazo → Wavespeed (Phase 6)
+- Created AxiomTranslationService.ts: DeepL → LibreTranslate → MyMemory (Phase 7)
+- Created AxiomEmotionService.ts: Hume AI + keyword fallback (Phase 7)
+- Added runMistralOCR() to AxiomMultimodalService.ts (Phase 7)
+- Created AxiomRetrievalService.ts: Qdrant → Chroma → Pinecone (Phase 8)
+- Created AxiomMemoryService.ts: Mem0 → Zep (Phase 8)
+- Created Axiom3DGenService.ts: Tripo3D → Meshy (Phase 9)
+- Created AxiomVoiceService.ts: LiveKit → Daily (Phase 9)
+## Phase 10: Admin Provider Management
+- Added getProviderStatus() to AICoachingService.ts — returns provider registry with enabled/type/key/priority/models
+- Added setProviderEnabled() — toggles provider via system_config, persists
+- Added setProviderPriority() — reorders priority, persists
+- Added refreshFromConfig() — reloads overrides from system_config
+- Added checkAllProviders() — health-checks each provider with tiny prompt
+- Added GET /admin/axiom/providers route (phase 9 partial — read-only)
+- Added PUT /admin/axiom/providers/:name/toggle — enable/disable
+- Added PUT /admin/axiom/providers/:name/priority — set priority
+- Added POST /admin/axiom/check-providers — health check endpoint (parallel)
+- Updated AxiomTab.tsx: interactive provider registry with Switch toggles, ArrowUp/Down priority controls, Health Check button with per-provider latency/error chips
+## Phase 11: SQL Migration & Docs
+- Created migrations/2026-05-11-axiom-provider-health.sql — axiom_provider_health table
+- Updated manual_actions.txt with migration steps
+- Updated docs/DEV_PLAN.md with change log entry + updated Admin section
+- All 11 phases of master .env integration complete

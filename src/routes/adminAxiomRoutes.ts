@@ -217,4 +217,62 @@ router.get('/key-usage', authenticateToken, requireAdmin, catchAsync(async (_req
   res.json({ keys: keyUsage });
 }));
 
+/**
+ * GET /admin/axiom/providers
+ * List all LLM providers and their status
+ */
+router.get('/providers', authenticateToken, requireAdmin, catchAsync(async (_req: Request, res: Response) => {
+  const aiService = new AICoachingService();
+  const providers = aiService.getProviderStatus();
+  res.json({ providers });
+}));
+
+/**
+ * PUT /admin/axiom/providers/:name/toggle
+ * Enable or disable a provider
+ * Body: { enabled: boolean }
+ */
+router.put('/providers/:name/toggle', authenticateToken, requireAdmin, catchAsync(async (req: Request, res: Response) => {
+  const name = req.params.name as string;
+  const { enabled } = req.body;
+
+  if (typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'Body must include "enabled" boolean' });
+  }
+
+  const aiService = new AICoachingService();
+  await aiService.setProviderEnabled(name, enabled);
+
+  res.json({ success: true, name, enabled });
+}));
+
+/**
+ * PUT /admin/axiom/providers/:name/priority
+ * Set a provider's priority (lower = tried first)
+ * Body: { priority: number }
+ */
+router.put('/providers/:name/priority', authenticateToken, requireAdmin, catchAsync(async (req: Request, res: Response) => {
+  const name = req.params.name as string;
+  const { priority } = req.body;
+
+  if (typeof priority !== 'number' || priority < 1) {
+    return res.status(400).json({ error: 'Body must include "priority" (number >= 1)' });
+  }
+
+  const aiService = new AICoachingService();
+  await aiService.setProviderPriority(name, Math.floor(priority));
+
+  res.json({ success: true, name, priority });
+}));
+
+/**
+ * POST /admin/axiom/check-providers
+ * Run health checks against all providers
+ */
+router.post('/check-providers', authenticateToken, requireAdmin, catchAsync(async (_req: Request, res: Response) => {
+  const aiService = new AICoachingService();
+  const results = await aiService.checkAllProviders();
+  res.json({ results });
+}));
+
 export default router;
