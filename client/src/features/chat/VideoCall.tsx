@@ -220,8 +220,14 @@ const VideoCall: React.FC<Props> = ({ open, onClose, channelName, currentUserId,
 
     init();
 
+    const handleBeforeUnload = () => {
+      if (open) cleanup();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       mounted = false;
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

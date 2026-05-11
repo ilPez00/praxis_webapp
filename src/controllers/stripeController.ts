@@ -5,10 +5,11 @@ import logger from '../utils/logger'; // Import the logger
 import { catchAsync, BadRequestError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
 
 // Initialize Stripe with the secret key and API version.
-// The API version is temporarily set to '2026-01-28.clover' as a workaround
-// for a TypeScript type conflict encountered during compilation.
+// The API version '2026-01-28.clover' may not be in Stripe's type union yet,
+// so we cast through `unknown` to satisfy the type checker while preserving
+// type safety on all other config fields.
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2026-01-28.clover' as any, // Use the version requested by TS for now
+  apiVersion: '2026-01-28.clover' as unknown as Stripe.LatestApiVersion,
 });
 
 // Prices are the same number in EUR and USD (e.g. €4.99 / $4.99)

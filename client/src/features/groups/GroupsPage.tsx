@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
-import { DOMAIN_COLORS, Domain } from '../../types/goal';
+import { Domain } from '../../models/Domain';
+import { DOMAIN_COLORS } from '../../types/goal';
 import {
   Container,
   Box,

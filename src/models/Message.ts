@@ -4,4 +4,5 @@ export interface Message {
   receiverId: string;
   content: string;
   timestamp: Date;
+  read_at?: string | null;
 }

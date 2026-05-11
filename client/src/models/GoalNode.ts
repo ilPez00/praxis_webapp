@@ -38,19 +38,27 @@ export function updateWeightFromGrade(goalNode: GoalNode, grade: FeedbackGrade):
   let newWeight = goalNode.weight;
   switch (grade) {
     case FeedbackGrade.SUCCEEDED:
-      newWeight *= 0.8; // Task was successfully navigated; reduce priority weight as it's becoming easier.
+      newWeight *= 0.8;
+      break;
+    case FeedbackGrade.TRIED_BUT_FAILED:
+      newWeight *= 0.95;
+      break;
+    case FeedbackGrade.MEDIOCRE:
+      newWeight *= 1.1;
       break;
     case FeedbackGrade.DISTRACTED:
-      newWeight *= 1.2; // User was distracted; increase priority weight to refocus efforts.
+      newWeight *= 1.2;
+      break;
+    case FeedbackGrade.TOTAL_NOOB:
+      newWeight *= 1.5;
       break;
     case FeedbackGrade.LEARNED:
-      newWeight *= 0.9; // Significant learning occurred, making future progress slightly easier.
+      newWeight *= 0.9;
       break;
     case FeedbackGrade.ADAPTED:
-      newWeight *= 1.05; // User adapted their approach, requiring a slight increase in focus.
+      newWeight *= 1.05;
       break;
     case FeedbackGrade.NOT_APPLICABLE:
-      // No change in weight for non-applicable feedback.
       break;
   }
   return { ...goalNode, weight: newWeight };

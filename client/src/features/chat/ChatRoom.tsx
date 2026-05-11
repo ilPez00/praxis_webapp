@@ -73,6 +73,7 @@ const ChatRoom: React.FC = () => {
   const [myStreak, setMyStreak] = useState<number>(0);
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingBroadcastRef = useRef<number>(0);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [userGoalTree, setUserGoalTree] = useState<GoalTree | null>(null);
   const [receiverGoalTree, setReceiverGoalTree] = useState<GoalTree | null>(null);
@@ -783,7 +784,11 @@ const ChatRoom: React.FC = () => {
               onChange={(e) => {
                 setNewMessage(e.target.value);
                 if (channelRef.current && currentUserId) {
-                  channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { senderId: currentUserId } });
+                  const now = Date.now();
+                  if (now - lastTypingBroadcastRef.current > 1500) {
+                    lastTypingBroadcastRef.current = now;
+                    channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { senderId: currentUserId } });
+                  }
                 }
               }}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
