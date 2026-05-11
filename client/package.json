@@ -10,7 +10,7 @@
     "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.9",
     "@mui/x-charts": "^8.27.0",
-    "@sentry/react": "^10.46.0",
+    "@sentry/react": "^10.52.0",
     "@supabase/supabase-js": "^2.99.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
