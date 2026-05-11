@@ -18,33 +18,32 @@
 import type { Request, Response } from 'express';
 
 // ─── Stripe mock ─────────────────────────────────────────────────────────────
-// We control constructEvent to return a canned PP-purchase session twice.
 const constructEventMock = jest.fn();
+const subscriptionsRetrieveMock = jest.fn();
+const customersRetrieveMock = jest.fn();
+
 jest.mock('stripe', () => {
   const MockStripe: any = jest.fn().mockImplementation(() => ({
     webhooks: { constructEvent: constructEventMock },
-    subscriptions: { retrieve: jest.fn() },
-    customers:     { retrieve: jest.fn() },
+    subscriptions: { retrieve: subscriptionsRetrieveMock },
+    customers:     { retrieve: customersRetrieveMock },
   }));
-  // Re-export namespace-style types so `Stripe.Event` etc. don't crash at import.
   MockStripe.Event = class {};
   return { __esModule: true, default: MockStripe };
 });
 
-// ─── Supabase mock ───────────────────────────────────────────────────────────
-// marketplace_transactions: first webhook → maybeSingle returns null (no prior row)
-// Second webhook → maybeSingle returns a row (idempotency hit, should short-circuit)
+// ─── Shared mock helpers ────────────────────────────────────────────────────
 const profilesSelectSingleMock = jest.fn().mockResolvedValue({ data: { praxis_points: 100 }, error: null });
 const profilesUpdateEqMock = jest.fn().mockResolvedValue({ data: null, error: null });
 const profilesUpdateMock = jest.fn(() => ({ eq: profilesUpdateEqMock }));
 const txnInsertMock = jest.fn().mockResolvedValue({ data: null, error: null });
-const maybeSingleMock = jest.fn();
+const txnMaybeSingleMock = jest.fn();
 
 const buildTxnSelectChain = () => ({
   select: jest.fn(() => ({
     eq: jest.fn(() => ({
       eq: jest.fn(() => ({
-        contains: jest.fn(() => ({ maybeSingle: maybeSingleMock })),
+        contains: jest.fn(() => ({ maybeSingle: txnMaybeSingleMock })),
       })),
     })),
   })),
@@ -58,11 +57,31 @@ const buildProfilesChain = () => ({
   update: profilesUpdateMock,
 });
 
+// ─── Subscription table mock ────────────────────────────────────────────────
+const subUpsertMock = jest.fn().mockResolvedValue({ data: null, error: null });
+const subUpdateEqMock = jest.fn().mockResolvedValue({ data: null, error: null });
+const subUpdateMock = jest.fn(() => ({ eq: subUpdateEqMock }));
+const subDeleteEqMock = jest.fn().mockResolvedValue({ data: null, error: null });
+const subDeleteMock = jest.fn(() => ({ eq: subDeleteEqMock }));
+const subMaybeSingleMock = jest.fn();
+const subSelectEqMock = jest.fn(() => ({ maybeSingle: subMaybeSingleMock }));
+const subSelectMock = jest.fn(() => ({ eq: subSelectEqMock }));
+
+const buildSubChain = () => ({
+  select: subSelectMock,
+  insert: jest.fn(),
+  upsert: subUpsertMock,
+  update: subUpdateMock,
+  delete: subDeleteMock,
+});
+
 jest.mock('../lib/supabaseClient', () => ({
   supabase: {
-    from: jest.fn((table: string) =>
-      table === 'profiles' ? buildProfilesChain() : buildTxnSelectChain()
-    ),
+    from: jest.fn((table: string) => {
+      if (table === 'profiles') return buildProfilesChain();
+      if (table === 'user_subscriptions') return buildSubChain();
+      return buildTxnSelectChain();
+    }),
   },
 }));
 
@@ -112,7 +131,7 @@ describe('handleWebhook — PP purchase idempotency', () => {
   });
 
   it('credits PP once on the first delivery', async () => {
-    maybeSingleMock.mockResolvedValue({ data: null, error: null });
+    txnMaybeSingleMock.mockResolvedValue({ data: null, error: null });
 
     const res = makeRes();
     await handleWebhook(makeReq(), res);
@@ -124,17 +143,14 @@ describe('handleWebhook — PP purchase idempotency', () => {
   });
 
   it('short-circuits and does NOT credit again on a duplicate delivery', async () => {
-    // Simulate the row inserted by a prior successful delivery.
-    maybeSingleMock.mockResolvedValue({ data: { id: 'existing-txn' }, error: null });
+    txnMaybeSingleMock.mockResolvedValue({ data: { id: 'existing-txn' }, error: null });
 
     const res = makeRes();
     await handleWebhook(makeReq(), res);
     await flush();
 
-    // The idempotency guard must prevent ANY write side-effect on a duplicate.
     expect(txnInsertMock).not.toHaveBeenCalled();
     expect(profilesUpdateMock).not.toHaveBeenCalled();
-    // Must still 200 so Stripe stops retrying.
     expect(res.json).toHaveBeenCalledWith({ received: true });
   });
 
@@ -150,5 +166,135 @@ describe('handleWebhook — PP purchase idempotency', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(profilesUpdateMock).not.toHaveBeenCalled();
     expect(txnInsertMock).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Subscription webhook event fixtures ─────────────────────────────────────
+
+const SUB_EVENT = {
+  type: 'checkout.session.completed',
+  data: {
+    object: {
+      id: 'cs_test_sub_1',
+      customer: 'cus_sub_abc',
+      subscription: 'sub_xyz_789',
+      metadata: { userId: 'user-42' },
+      mode: 'subscription',
+    },
+  },
+};
+
+const SUB_OBJECT = {
+  id: 'sub_xyz_789',
+  status: 'active',
+  customer: 'cus_sub_abc',
+  metadata: { userId: 'user-42' },
+  items: { data: [{ price: { id: 'price_monthly', product: 'prod_premium' } }] },
+  current_period_start: 1710000000,
+  current_period_end:   1712592000,
+  created: 1710000000,
+};
+
+const SUB_UPDATED_EVENT = {
+  type: 'customer.subscription.updated',
+  data: { object: { ...SUB_OBJECT } },
+};
+
+const SUB_DELETED_EVENT = {
+  type: 'customer.subscription.deleted',
+  data: { object: { ...SUB_OBJECT, status: 'canceled' } },
+};
+
+describe('handleWebhook — subscription checkout.session.completed', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    constructEventMock.mockReturnValue(SUB_EVENT);
+    subscriptionsRetrieveMock.mockResolvedValue(SUB_OBJECT);
+  });
+
+  it('creates a subscription row on the first delivery', async () => {
+    subMaybeSingleMock.mockResolvedValue({ data: null, error: null });
+
+    const res = makeRes();
+    await handleWebhook(makeReq(), res);
+    await flush();
+
+    expect(subscriptionsRetrieveMock).toHaveBeenCalledWith('sub_xyz_789');
+    expect(subUpsertMock).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  it('short-circuits and updates status on a duplicate delivery', async () => {
+    subMaybeSingleMock.mockResolvedValue({ data: { id: 'sub_xyz_789', status: 'active' }, error: null });
+
+    const res = makeRes();
+    await handleWebhook(makeReq(), res);
+    await flush();
+
+    expect(subscriptionsRetrieveMock).not.toHaveBeenCalled();
+    expect(subUpdateMock).toHaveBeenCalled();
+    expect(subUpsertMock).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  it('returns 400 when session metadata lacks userId', async () => {
+    const noUserEvent = {
+      ...SUB_EVENT,
+      data: { object: { ...SUB_EVENT.data.object, metadata: {} } },
+    };
+    constructEventMock.mockReturnValue(noUserEvent);
+
+    const res = makeRes();
+    await handleWebhook(makeReq(), res);
+    await flush();
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(subUpsertMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleWebhook — customer.subscription.updated', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    constructEventMock.mockReturnValue(SUB_UPDATED_EVENT);
+    customersRetrieveMock.mockResolvedValue({ metadata: { userId: 'user-42' } });
+  });
+
+  it('upserts the subscription with latest status', async () => {
+    const res = makeRes();
+    await handleWebhook(makeReq(), res);
+    await flush();
+
+    expect(customersRetrieveMock).toHaveBeenCalledWith('cus_sub_abc');
+    expect(subUpsertMock).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  it('returns 400 when userId cannot be resolved from subscription or customer', async () => {
+    customersRetrieveMock.mockResolvedValue({ metadata: {} });
+
+    const res = makeRes();
+    await handleWebhook(makeReq(), res);
+    await flush();
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(subUpsertMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleWebhook — customer.subscription.deleted', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    constructEventMock.mockReturnValue(SUB_DELETED_EVENT);
+    customersRetrieveMock.mockResolvedValue({ metadata: { userId: 'user-42' } });
+  });
+
+  it('deletes the subscription row', async () => {
+    const res = makeRes();
+    await handleWebhook(makeReq(), res);
+    await flush();
+
+    expect(subDeleteMock).toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ received: true });
   });
 });

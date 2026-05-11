@@ -4,13 +4,17 @@ import { supabase } from '../lib/supabaseClient'; // Assuming supabase client is
 import logger from '../utils/logger'; // Import the logger
 import { catchAsync, BadRequestError, InternalServerError } from '../utils/appErrors'; // Import custom errors and catchAsync
 
-// Initialize Stripe with the secret key and API version.
-// The API version '2026-01-28.clover' may not be in Stripe's type union yet,
-// so we cast through `unknown` to satisfy the type checker while preserving
-// type safety on all other config fields.
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2026-01-28.clover' as unknown as Stripe.LatestApiVersion,
-});
+let _stripe: Stripe;
+
+function ensureStripe(): Stripe {
+  if (_stripe) return _stripe;
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new InternalServerError('Stripe secret key not configured.');
+  _stripe = new Stripe(key, {
+    apiVersion: '2026-01-28.clover' as unknown as Stripe.LatestApiVersion,
+  });
+  return _stripe;
+}
 
 // Prices are the same number in EUR and USD (e.g. €4.99 / $4.99)
 const PP_TIERS: Record<string, { pp: number; amountCents: number; label: string }> = {
@@ -49,7 +53,7 @@ export const createCheckoutSession = catchAsync(async (req: Request, res: Respon
   }
 
   // Create a new Stripe Checkout Session
-  const session = await stripe.checkout.sessions.create({
+  const session = await ensureStripe().checkout.sessions.create({
     payment_method_types: ['card'], // Allow card payments
     line_items: [
       {
@@ -87,7 +91,7 @@ export const createPPCheckout = catchAsync(async (req: Request, res: Response, _
 
   const { amountCents, pp, label } = PP_TIERS[tier];
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await ensureStripe().checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [{
       price_data: {
@@ -128,7 +132,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
 
   // Verify the webhook signature to ensure the event is from Stripe and has not been tampered with
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
+    event = ensureStripe().webhooks.constructEvent(req.body, sig as string, webhookSecret);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error(`Webhook signature verification failed: ${msg}`);
@@ -223,7 +227,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
 
         // Retrieve the full subscription object from Stripe to get all details,
         // including product and price IDs which might not be fully available on the session object.
-        const fullSubscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription;
+        const fullSubscription = await ensureStripe().subscriptions.retrieve(subscriptionId) as Stripe.Subscription;
         const priceId = fullSubscription.items.data[0].price?.id;
         const productId = fullSubscription.items.data[0].price?.product as string;
 
@@ -268,7 +272,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
       // We update or remove the subscription record in our database accordingly.
       const subObject = event.data.object as Stripe.Subscription; // The updated/deleted subscription object
       const subscriptionUserId = subObject.metadata?.userId; // Attempt to get userId from subscription metadata
-      const customer = await stripe.customers.retrieve(subObject.customer as string) as Stripe.Customer;
+      const customer = await ensureStripe().customers.retrieve(subObject.customer as string) as Stripe.Customer;
       const customerUserId = customer.metadata?.userId; // Fallback to customer metadata if not in subscription
 
       const finalUserId = subscriptionUserId || customerUserId; // Determine the associated user ID
@@ -347,7 +351,7 @@ export const createPortalSession = catchAsync(async (req: Request, res: Response
   }
 
   // Create portal session
-  const portalSession = await stripe.billingPortal.sessions.create({
+  const portalSession = await ensureStripe().billingPortal.sessions.create({
     customer: subscription.customer_id,
     return_url: `${process.env.CLIENT_URL}/profile`,
   });
@@ -369,7 +373,7 @@ export const verifySession = catchAsync(async (req: Request, res: Response) => {
   }
 
   // Retrieve session from Stripe
-  const session = await stripe.checkout.sessions.retrieve(session_id as string);
+  const session = await ensureStripe().checkout.sessions.retrieve(session_id as string);
 
   if (!session) {
     throw new BadRequestError('Invalid session ID');
@@ -378,13 +382,13 @@ export const verifySession = catchAsync(async (req: Request, res: Response) => {
   // Verify payment status
   const paymentStatus = session.payment_status;
   const subscriptionStatus = session.mode === 'subscription' 
-    ? (await stripe.subscriptions.retrieve(session.subscription as string)).status 
+    ? (await ensureStripe().subscriptions.retrieve(session.subscription as string)).status 
     : null;
 
   // Get subscription details if applicable
   let subscriptionDetails = null;
   if (session.mode === 'subscription' && session.subscription) {
-    const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+    const sub = await ensureStripe().subscriptions.retrieve(session.subscription as string);
     subscriptionDetails = {
       id: sub.id,
       status: sub.status,

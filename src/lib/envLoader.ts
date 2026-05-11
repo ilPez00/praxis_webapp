@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import logger from '../utils/logger';
 
-const MASTER_ENV_PATH = '/home/gio/.env';
+const MASTER_ENV_PATH = process.env.MASTER_ENV_PATH || '/home/gio/.env';
 
 export function loadMasterEnv(): void {
   if (!fs.existsSync(MASTER_ENV_PATH)) {

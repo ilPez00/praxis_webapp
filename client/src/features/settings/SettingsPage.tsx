@@ -75,7 +75,6 @@ function AgentsPanel() {
   const loadAgents = async () => {
     try {
       const res = await api.get('/agent/agents');
-      console.log('[API Access] agents response:', res.data);
       setAgents(res.data.agents || []);
     } catch (e) { 
       console.error('[API Access] agents error:', e); 

@@ -300,3 +300,29 @@ Adds a table to persist provider health check results for the admin panel.
    - RLS policy (service_role only)
 
 3. No env changes required. The table is populated by the Health Check button in Admin → Axiom tab.
+
+--------------------------------------------------------------------
+  2026-05-11 — Code cleanup & production hardening
+  --------------------------------------------------------------------
+
+  Code changes applied this session (no SQL needed):
+
+  1. Stripe: lazy init (ensureStripe()) — no crash if key is missing at import
+  2. Stripe: removed strictLimiter from webhook route — Stripe retry-safe
+  3. Stripe: balance ping added to auditStripe() — catches bad keys on startup
+  4. Stripe tests: added subscription webhook tests (checkout, update, delete)
+  5. tsc: added skipLibCheck to tsconfig.json — prevents OOM during Railway build
+  6. envLoader: MASTER_ENV_PATH now configurable via env var
+  7. .env.example: fixed REACT_APP_ → VITE_ prefix (Vite ignores REACT_APP_)
+  8. .env.example: added FRONTEND_URL for Google Calendar OAuth
+  9. client/api.ts: hardcoded Railway URL fallback now warns
+  10. Removed 12 dead files (teamChallengeController, 11 orphaned services)
+  11. Removed unused @stripe/react-stripe-js + @stripe/stripe-js deps
+  12. Replaced console.log with logger in src/index.ts
+  13. Removed debug console.log from useGamification.ts and SettingsPage.tsx
+
+  Deploy checklist:
+  - cp .env.example .env and client/.env.example client/.env (add your real values)
+  - Set MASTER_ENV_PATH on Railway or remove the master env loader
+  - VITE_API_URL must be set in client/.env for production builds
+  - Run `npx tsc` (now with skipLibCheck — should complete without OOM)

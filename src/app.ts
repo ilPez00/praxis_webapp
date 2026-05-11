@@ -169,10 +169,11 @@ app.use(helmet({
 // Must be mounted BEFORE express.json() — otherwise req.body is a parsed
 // object instead of a Buffer and stripe.webhooks.constructEvent throws,
 // silently breaking subscription/PP provisioning in production.
+// No rate limiter: Stripe handles its own retry pacing, and signature
+// verification is the security gate instead.
 app.post(
   '/api/stripe/webhook',
   express.raw({ type: 'application/json' }),
-  strictLimiter,
   handleStripeWebhook,
 );
 
@@ -183,7 +184,9 @@ app.use(requestTracer);
 
 // Run security audit on startup
 auditSecurity();
-auditStripe();
+auditStripe().catch((err) => {
+  console.error('Stripe audit failed:', err);
+});
 
 // Liveness — must return instantly, no external I/O (Railway healthcheck path)
 app.get('/health', (_req, res) => {

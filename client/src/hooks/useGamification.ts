@@ -109,9 +109,6 @@ export const useGamification = (userId: string): UseGamificationReturn => {
       });
 
       if (data.success && data.pp_earned > 0) {
-        // Could trigger PP toast here
-        console.log(`Earned ${data.pp_earned} PP and ${data.xp_earned} XP`);
-        
         if (data.leveled_up) {
           hotToast.success(`Level Up! You reached level ${data.new_level}!`);
           // Refresh to get updated profile
@@ -120,7 +117,7 @@ export const useGamification = (userId: string): UseGamificationReturn => {
       }
     } catch (error: any) {
       if (error.response?.data?.reason === 'daily_limit_reached') {
-        console.log('Daily limit reached for this action');
+        // silent — daily limit is expected UX
       } else {
         console.error('Failed to track action:', error);
       }

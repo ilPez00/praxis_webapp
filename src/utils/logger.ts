@@ -1,5 +1,6 @@
 import { createLogger, format, transports } from 'winston';
 import * as crypto from 'crypto';
+import Stripe from 'stripe';
 const { combine, timestamp, printf, colorize, json } = format;
 
 // Simple UUID v4 generator using Node.js crypto (avoids ESM uuid package)
@@ -145,7 +146,7 @@ export const auditSecurity = () => {
  * env var so production misconfigurations surface immediately in Railway logs
  * instead of failing silently the first time a customer tries to pay.
  */
-export const auditStripe = () => {
+export const auditStripe = async () => {
   const secret = process.env.STRIPE_SECRET_KEY || '';
   if (!secret) {
     logger.info('Stripe audit: STRIPE_SECRET_KEY not set — payments disabled');
@@ -173,6 +174,16 @@ export const auditStripe = () => {
   }
   if (isProd && webhookSecret && !webhookSecret.startsWith('whsec_')) {
     issues.push('STRIPE_WEBHOOK_SECRET does not look like a webhook secret (whsec_…)');
+  }
+
+  try {
+    const stripe = new Stripe(secret, {
+      apiVersion: '2026-01-28.clover' as unknown as Stripe.LatestApiVersion,
+    });
+    await stripe.balance.retrieve();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    issues.push(`Stripe API ping failed: ${msg} (key may be invalid or network unreachable)`);
   }
 
   logger.info('Stripe audit', {
