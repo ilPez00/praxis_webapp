@@ -58,7 +58,7 @@ export class AxiomSTTService {
         'Authorization': `Token ${apiKey}`,
         'Content-Type': mimeType,
       },
-      body: buffer,
+      body: buffer as unknown as BodyInit,
     });
     if (!resp.ok) return null;
     const data = await resp.json();
@@ -78,7 +78,7 @@ export class AxiomSTTService {
     const uploadResp = await fetch('https://api.assemblyai.com/v2/upload', {
       method: 'POST',
       headers: { 'Authorization': apiKey },
-      body: buffer,
+      body: buffer as unknown as BodyInit,
     });
     if (!uploadResp.ok) return null;
     const { upload_url } = await uploadResp.json();
@@ -111,7 +111,7 @@ export class AxiomSTTService {
   private async transcribeGroq(buffer: Buffer, apiKey: string): Promise<STTResult | null> {
     const model = process.env.STT_GROQ_MODEL || 'whisper-large-v3-turbo';
     const formData = new FormData();
-    const blob = new Blob([buffer], { type: 'audio/webm' });
+    const blob = new Blob([buffer as unknown as BlobPart], { type: 'audio/webm' });
     formData.append('file', blob, 'audio.webm');
     formData.append('model', model);
 

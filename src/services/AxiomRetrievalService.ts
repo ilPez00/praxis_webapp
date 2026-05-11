@@ -68,7 +68,7 @@ export class AxiomRetrievalService {
       text: r.payload?.text || r.payload?.content || '',
       score: r.score || 0,
       source: 'qdrant',
-    })).filter(r => r.text);
+    })).filter((r: any) => r.text);
   }
 
   private async queryChroma(
@@ -117,7 +117,7 @@ export class AxiomRetrievalService {
       text: m.metadata?.text || m.metadata?.content || '',
       score: m.score || 0,
       source: 'pinecone',
-    })).filter(r => r.text);
+    })).filter((r: any) => r.text);
   }
 }
 

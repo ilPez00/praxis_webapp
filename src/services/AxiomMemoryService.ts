@@ -90,7 +90,7 @@ export class AxiomMemoryService {
       text: m.text || m.memory || '',
       score: m.score || 0,
       createdAt: m.created_at,
-    })).filter(m => m.text);
+    })).filter((m: any) => m.text);
   }
 
   private async storeZep(userId: string, text: string, _categories: string[] | undefined, baseUrl: string): Promise<void> {
@@ -119,7 +119,7 @@ export class AxiomMemoryService {
       text: m.message?.content || m.content || '',
       score: m.score || 0,
       createdAt: m.created_at,
-    })).filter(m => m.text);
+    })).filter((m: any) => m.text);
   }
 }
 
