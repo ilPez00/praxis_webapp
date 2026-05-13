@@ -254,6 +254,20 @@ Spotify-style year-in-review: biggest goal, total PP, top domain, streak record,
 ## Change Log
 
 - **2026-05-11** — Axiom multi-LLM provider management (Phase 10-11). Full provider registry in `AICoachingService.ts` with 14 OpenAI-compat, 5 keyless proxies, 5 Ollama endpoints. Admin UI toggles enable/disable, adjusts priority, runs health checks. New endpoints: `PUT /admin/axiom/providers/:name/toggle`, `PUT /admin/axiom/providers/:name/priority`, `POST /admin/axiom/check-providers`. New migration: `2026-05-11-axiom-provider-health.sql`. All 11 phases of master `.env` integration complete.
+
+- **2026-05-11** — **Wiki integration** (Phase 12-14). Persistent semantic search via `llmwiki` (Rust) for:
+  - Daily brief context (14-day window)
+  - Notebook entries (50 entries max)
+  - Tracker logs (100 entries max)
+  - Provider fallback caching
+  - Wiki schema migration SQL in `manual_actions.txt`
+  - Services: `AxiomWikiWriterService`, `AxiomWikiMaterializer`, `AxiomWikiSearchService`
+  - Dockerfile multi-stage build (Rust + Node.js)
+  - Railway volume mount for `/wiki` directory
+  - Response caching in `AICoachingService`
+  - Context window reduced (30d → 14d)
+  - Notebook/tracker entry limits adjusted (100→50, 200→100)
+
 - **2026-05-07** — Notebook Resumes cost reduction for NotebookLM queries (TTL cache in `notebook_resumes` table).
 - **2026-04-27** — Tracker backfill script + Stripe production hardening. New `scripts/backfill-trackers.ts` (CLI: `npm run backfill-trackers -- --user-id=all`) idempotently fills the per-category structured tables from legacy `tracker_entries` JSONB. Stripe: moved webhook raw-body parsing ahead of `express.json()` (was silently breaking signature verification), added `auditStripe()` startup validation that warns/errors on missing `STRIPE_PRICE_ID*` / `STRIPE_WEBHOOK_SECRET` / `CLIENT_URL` and flags non-`sk_live_*` keys in production. New `scripts/stripe-cli-test.sh` for local end-to-end webhook testing. `.env.example` now documents the full Stripe block; production setup steps in `manual_actions.txt`.
 - **2026-04-27** — Profile embeddings for semantic text affinity matching. New `profile_embeddings` table + `match_profiles_by_text` RPC + `TextAnalysisService` for Gemini embedding generation. Composite match score: 50% goal + 35% text affinity + 10% geo + 5% reliability. Admin endpoint: `POST /api/admin/refresh-profile-embeddings`.

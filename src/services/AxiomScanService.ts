@@ -572,9 +572,9 @@ export class AxiomScanService {
     }
 
     // --- Phase 2: Fetch all data for LLM context ---
-    // Calculate date 1 month ago for comprehensive activity analysis
+    // Calculate date 2 weeks ago for comprehensive activity analysis (reduced from 30d for token savings)
     const oneMonthAgo = new Date();
-    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 14);
     const oneMonthAgoStr = oneMonthAgo.toISOString();
     
     // Calculate date 1 week ago for mood avg
@@ -608,7 +608,7 @@ export class AxiomScanService {
         .eq('user_id', userId)
         .gte('occurred_at', sixWeeksAgoStr)
         .order('occurred_at', { ascending: false })
-        .limit(100),
+        .limit(50),
       // NEW: Fetch last month of check-ins for monthly context
       supabase.from('checkins')
         .select('checked_in_at,streak_day,mood,win_of_the_day')
@@ -621,7 +621,7 @@ export class AxiomScanService {
         .in('tracker_id', ((await supabase.from('trackers').select('id').eq('user_id', userId)).data || []).map((t: any) => t.id))
         .gte('logged_at', oneMonthAgoStr)
         .order('logged_at', { ascending: false })
-        .limit(200),
+        .limit(100),
       // NEW: Fetch Google Calendar events
       googleCalendarService.getEvents(userId, startDate, endDate),
       // NEW: Fetch buddies/connections

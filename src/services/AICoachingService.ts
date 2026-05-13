@@ -32,6 +32,11 @@ const OPENAI_COMPAT_PROVIDERS: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
   { name: 'zhipu',         baseUrl: 'https://open.bigmodel.cn/api/paas/v4',models: ['glm-4', 'glm-4v'],                                                                     priority: 22, type: 'openai' },
   { name: 'bazaarlink',    baseUrl: 'https://api.bazaarlink.ai/v1',        models: ['gpt-4o', 'claude-3.5-sonnet'],                                                       priority: 21, type: 'openai' },
   { name: 'kluster',       baseUrl: 'https://api.kluster.ai/v1',           models: ['llama-3.3-70b', 'qwen-2.5-72b'],                                                     priority: 23, type: 'openai' },
+  // NEW providers (free tiers)
+  { name: 'github',        baseUrl: 'https://models.inference.ai.azure.com',   models: ['gpt-4o-mini', 'gpt-4o', 'Phi-3.5-mini-instruct'],                           priority: 24, type: 'openai' },
+  { name: 'huggingface',   baseUrl: 'https://api-inference.huggingface.co/v1',  models: ['mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct'],      priority: 25, type: 'openai' },
+  { name: 'aimlapi',       baseUrl: 'https://api.aimlapi.com/v2',               models: ['gpt-4o-mini', 'gpt-4o', 'claude-3-haiku'],                                priority: 26, type: 'openai' },
+  { name: 'replicate',     baseUrl: 'https://api.replicate.com/v1',             models: ['meta/llama-2-70b-chat', 'mistralai/mixtral-8x7b-instruct-v0.1'],          priority: 27, type: 'openai' },
 ];
 
 const KEYLESS_PROXIES: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
@@ -40,6 +45,18 @@ const KEYLESS_PROXIES: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
   { name: 'ovhcloud',      baseUrl: 'https://endpoints.ai.cloud.ovh.net',  models: ['Mixtral-8x22B-Instruct-v0.1'],                                                      priority: 32, type: 'proxy' },
   { name: 'gptoss',        baseUrl: 'https://broken-water-d859.junioralive.workers.dev', models: ['gpt-4o'],                                                      priority: 33, type: 'proxy' },
   { name: 'g4f_hosted',    baseUrl: 'https://g4f.space/v1',                models: ['gpt-4o', 'gpt-4o-mini'],                                                            priority: 34, type: 'proxy' },
+  // NEW keyless proxies
+  { name: 'pollinations',  baseUrl: 'https://gen.pollinations.ai/v1',      models: ['gpt-4o-mini', 'mistral', 'llama'],                                                   priority: 35, type: 'proxy' },
+  { name: 'airforce',      baseUrl: 'https://api.airforce/v1',             models: ['gpt-4o', 'claude-3.5-sonnet', 'llama-3.1-70b'],                                     priority: 36, type: 'proxy' },
+  { name: 'vibheksoni',    baseUrl: 'https://free-ai.vibheksoni.net/v1',   models: ['gpt-4o-mini', 'llama-3.1-8b'],                                                       priority: 37, type: 'proxy' },
+  { name: 'gemini_openai', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/', models: ['gemini-2.5-flash'],                                          priority: 38, type: 'proxy' },
+  // G4F proxy suite (g4f.space multi-backend)
+  { name: 'g4f_groq',       baseUrl: 'https://g4f.space/api/groq',         models: ['llama-3.1-8b'],                                                                        priority: 45, type: 'proxy' },
+  { name: 'g4f_ollama',     baseUrl: 'https://g4f.space/api/ollama',       models: ['llama3.1', 'qwen2.5'],                                                                priority: 46, type: 'proxy' },
+  { name: 'g4f_pollinations', baseUrl: 'https://g4f.space/api/pollinations', models: ['gpt-4o-mini'],                                                                   priority: 47, type: 'proxy' },
+  { name: 'g4f_nvidia',     baseUrl: 'https://g4f.space/api/nvidia',        models: ['llama-3.1-nemotron'],                                                                priority: 48, type: 'proxy' },
+  { name: 'g4f_gemini',     baseUrl: 'https://g4f.space/api/gemini',        models: ['gemini-2.5-flash'],                                                                  priority: 49, type: 'proxy' },
+  { name: 'g4f_auto',       baseUrl: 'https://g4f.space/api/auto',          models: ['auto'],                                                                              priority: 50, type: 'proxy' },
 ];
 
 const OLLAMA_ENDPOINTS: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
@@ -338,22 +355,26 @@ export class AICoachingService {
   private buildProviderRegistry(): LLMProvider[] {
     const providers: LLMProvider[] = [];
 
-    // Map provider name to its env key suffix
-    const nameToEnv: Record<string, string> = {
-      groq: 'AI_GROQ_KEY',
-      deepseek: 'AI_DEEPSEEK_KEY',
-      openrouter: 'AI_OPENROUTER_KEY',
-      mistral: 'AI_MISTRAL_KEY',
-      cerebras: 'AI_CEREBRAS_KEY',
-      cohere: 'AI_COHERE_KEY',
-      sambanova: 'AI_SAMBA_NOVA_KEY',
-      xai: 'AI_XAI_KEY',
-      together: 'AI_TOGETHER_KEY',
-      deepinfra: 'AI_DEEPINFRA_KEY',
-      nvidia: 'AI_NVIDIA_KEY',
-      zhipu: 'AI_ZHIPU_KEY',
-      bazaarlink: 'AI_BAZAARLINK_KEY',
-      kluster: 'AI_KLUSTER_KEY',
+    // Map provider name to its env key suffix (with fallback aliases)
+    const nameToEnv: Record<string, string[]> = {
+      groq: ['AI_GROQ_KEY', 'GROQ_KEY'],
+      deepseek: ['AI_DEEPSEEK_KEY', 'DEEPSEEK_KEY'],
+      openrouter: ['AI_OPENROUTER_KEY', 'OPENROUTER_KEY'],
+      mistral: ['AI_MISTRAL_KEY', 'MISTRAL'],
+      cerebras: ['AI_CEREBRAS_KEY', 'CEREBRAS_KEY'],
+      cohere: ['AI_COHERE_KEY', 'COHERE_KEY'],
+      sambanova: ['AI_SAMBA_NOVA_KEY', 'SAMBA_NOVA_KEY'],
+      xai: ['AI_XAI_KEY', 'XAI_KEY'],
+      together: ['AI_TOGETHER_KEY', 'TOGETHER_KEY'],
+      deepinfra: ['AI_DEEPINFRA_KEY', 'DEEPINFRA_KEY'],
+      nvidia: ['AI_NVIDIA_KEY', 'NVIDIA_KEY'],
+      zhipu: ['AI_ZHIPU_KEY', 'ZHIPU_KEY'],
+      bazaarlink: ['AI_BAZAARLINK_KEY', 'BAZAARLINK_KEY'],
+      kluster: ['AI_KLUSTER_KEY', 'KLUSTER_KEY'],
+      github: ['AI_GITHUB_TOKEN', 'GITHUB_TOKEN'],
+      huggingface: ['SVC_HUGGINGFACE_TOKEN', 'AI_HUGGINGFACE_KEY', 'HUGGINGFACE_KEY'],
+      aimlapi: ['AI_AIMLAPI_KEY', 'AIMLAPI_KEY'],
+      replicate: ['SVC_REPLICATE_KEY', 'AI_REPLICATE_KEY', 'REPLICATE_KEY'],
     };
 
     // Map provider name to base URL override env key
@@ -370,6 +391,13 @@ export class AICoachingService {
       bazaarlink: 'EP_BAZAARLINK',
       kluster: 'EP_KLUSTER',
       cohere: 'EP_COHERE',
+      github: 'EP_GITHUB',
+      huggingface: 'EP_HUGGINGFACE',
+      aimlapi: 'EP_AIMLAPI',
+      pollinations: 'EP_POLLINATIONS',
+      airforce: 'EP_AIRFORCE',
+      vibheksoni: 'EP_VIBHEKSONI',
+      gemini_openai: 'EP_GEMINI',
     };
 
     const allConfigs = [
@@ -382,8 +410,13 @@ export class AICoachingService {
       let apiKey: string | null = null;
 
       if (cfg.type === 'openai') {
-        const envKey = nameToEnv[cfg.name];
-        if (envKey) apiKey = getApiKey(envKey);
+        const envKeys = nameToEnv[cfg.name];
+        if (envKeys) {
+          for (const key of envKeys) {
+            apiKey = getApiKey(key);
+            if (apiKey) break;
+          }
+        }
       }
 
       // Base URL override from EP_* env var
@@ -695,11 +728,52 @@ export class AICoachingService {
     }
   }
 
+  /**
+   * In-memory response cache keyed by prompt hash + date.
+   * TTL: end of current day (midnight).
+   */
+  private responseCache = new Map<string, { text: string; expiresAt: number }>();
+
+  private getCacheKey(prompt: string): string {
+    const today = new Date().toISOString().slice(0, 10);
+    const hash = prompt.length > 100 ? prompt.slice(0, 100) + prompt.length : prompt;
+    return `${today}:${hash}`;
+  }
+
+  private getCachedResponse(prompt: string): string | null {
+    const key = this.getCacheKey(prompt);
+    const cached = this.responseCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      logger.debug(`[Axiom] Cache hit for prompt (${key.slice(0, 20)}...)`);
+      return cached.text;
+    }
+    if (cached) this.responseCache.delete(key);
+    return null;
+  }
+
+  private setCachedResponse(prompt: string, text: string): void {
+    const key = this.getCacheKey(prompt);
+    // Cache until end of day
+    const expiresAt = new Date();
+    expiresAt.setHours(23, 59, 59, 999);
+    this.responseCache.set(key, { text, expiresAt: expiresAt.getTime() });
+    // Evict old entries if cache grows too large
+    if (this.responseCache.size > 100) {
+      const firstKey = this.responseCache.keys().next().value;
+      if (firstKey) this.responseCache.delete(firstKey);
+    }
+  }
+
   public async runWithFallback(
     prompt: string
   ): Promise<string> {
     // Light compression — safe, preserves instruction clarity
     prompt = this.lightCompress(prompt);
+
+    // Check cache first
+    const cached = this.getCachedResponse(prompt);
+    if (cached) return cached;
+
     const errors: string[] = [];
 
     // 1. Try Groq first - free tier, fast inference
@@ -745,9 +819,18 @@ export class AICoachingService {
     }
 
     // 1b. Try other OpenAI-compatible providers in priority order
+    // Skip providers known unhealthy from scanner
+    const healthMap: Record<string, boolean> = await import('./AxiomProviderHealthSyncService')
+      .then(m => m.AxiomProviderHealthSyncService.getHealthMap())
+      .catch(() => ({} as Record<string, boolean>));
+
     for (const provider of this.openAIProviders) {
       if (!provider.enabled || provider.name === 'groq' || provider.name === 'deepseek') continue;
       if (!provider.apiKey && provider.type === 'openai') continue;
+
+      // Skip provider if scanner flagged it as unreachable or broken
+      const isHealthy = healthMap[provider.name];
+      if (isHealthy === false) continue;
 
       const result = await this.callOpenAICompat(provider, prompt);
       if (result.text) {

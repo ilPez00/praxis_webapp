@@ -4,8 +4,10 @@ import { AICoachingService } from '../services/AICoachingService';
 import { catchAsync, UnauthorizedError, BadRequestError } from '../utils/appErrors';
 import logger from '../utils/logger';
 import { getStructuredSummary, summaryToPromptText } from '../services/StructuredTrackerReader';
+import { AxiomWikiSearchService } from '../services/AxiomWikiSearchService';
 
 const aiCoachingService = new AICoachingService();
+const wikiSearch = new AxiomWikiSearchService();
 
 // ---------------------------------------------------------------------------
 // PP cost constants for Axiom notebook queries
@@ -72,14 +74,14 @@ async function buildNotebookContext(userId: string, question: string): Promise<a
       .eq('id', userId)
       .single(),
 
-    // 2. Recent notebook entries (last 30 days, up to 100 entries)
+    // 2. Recent notebook entries (last 30 days, up to 50 entries — reduced from 100 for token savings)
     supabase
       .from('notebook_entries')
       .select('id, entry_type, title, content, mood, tags, domain, occurred_at, created_at')
       .eq('user_id', userId)
       .gte('occurred_at', thirtyDaysAgoStr)
       .order('occurred_at', { ascending: false })
-      .limit(100),
+      .limit(50),
 
     // 3. User's tags
     supabase
@@ -142,6 +144,14 @@ async function buildNotebookContext(userId: string, question: string): Promise<a
 
   const structuredSummary = await structuredSummaryPromise;
 
+  // Wiki context — semantic memory snippets replace raw data dumps
+  let wikiSnippets: any[] = [];
+  try {
+    wikiSnippets = await wikiSearch.search(userId, question || 'notebook themes patterns goals');
+  } catch {
+    // Non-fatal — wiki may not be available
+  }
+
   return {
     userName: profile?.name || 'User',
     bio: profile?.bio,
@@ -155,6 +165,7 @@ async function buildNotebookContext(userId: string, question: string): Promise<a
     structuredSummary,
     checkins,
     question,
+    wikiSnippets,
   };
 }
 
@@ -166,11 +177,11 @@ async function buildNotebookContext(userId: string, question: string): Promise<a
  * Generate a prompt for Axiom to answer questions about user's notebook data.
  */
 function buildNotebookQueryPrompt(context: any): string {
-  const { userName, notebookEntries, tags, goals, trackers, structuredSummary, checkins, question } = context;
+  const { userName, notebookEntries, tags, goals, trackers, structuredSummary, checkins, question, wikiSnippets } = context;
 
   const entriesSummary = notebookEntries.length > 0
     ? notebookEntries.map((e: any, i: number) => 
-        `[${i + 1}] ${e.date?.slice(0, 10)} | ${e.type} | ${e.title} | ${e.content.slice(0, 100)}...`
+        `[${i + 1}] ${e.date?.slice(0, 10)} | ${e.type} | ${e.title} | ${(e.content || '').slice(0, 80)}...`
       ).join('\n')
     : '(No recent entries)';
 
@@ -218,6 +229,9 @@ ${structuredTrackerSummary}
 
 RECENT CHECK-INS:
 ${checkinsSummary}
+
+WIKI INSIGHTS (synthesized from user's long-term patterns):
+${wikiSnippets?.length > 0 ? wikiSnippets.map((s: any) => `[${s.pagePath}] ${s.snippet?.slice(0, 150)}`).join('\n') : '(No wiki context yet)'}
 
 ---
 

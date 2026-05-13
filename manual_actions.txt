@@ -321,6 +321,42 @@ Adds a table to persist provider health check results for the admin panel.
   12. Replaced console.log with logger in src/index.ts
   13. Removed debug console.log from useGamification.ts and SettingsPage.tsx
 
+--------------------------------------------------------------------
+  2026-05-13 — Axiom Wiki Pages (semantic memory via krakiun/llmwiki)
+--------------------------------------------------------------------
+
+  Replaces 15+ raw DB queries per call with a single llmwiki search
+  returning ~150 tokens of dense, LLM-synthesized context snippets.
+
+  1. Install llmwiki binary (one-time):
+       cargo install llmwiki
+
+  2. Init wiki root:
+       mkdir -p /home/gio/ai/wiki && cd /home/gio/ai/wiki && llmwiki init
+
+  3. Run the migration:
+       psql "$SUPABASE_DB_URL" -f migrations/2026-05-13-axiom-wiki-pages.sql
+     Or paste contents into Supabase SQL editor.
+
+  4. This creates:
+     - public.axiom_wiki_pages table (user wiki content + FTS index)
+     - public.wiki_search() RPC function (Railway FTS fallback)
+
+  5. 3 new service files (no env changes):
+     - src/services/AxiomWikiWriterService.ts    — LLM writes 5 wiki pages nightly
+     - src/services/AxiomWikiMaterializer.ts     — PG ↔ filesystem + llmwiki reindex
+     - src/services/AxiomWikiSearchService.ts    — search (llmwiki local, FTS Railway)
+
+  6. Provider expansion — 35+ providers in fallback chain:
+     - Added: github, huggingface, aimlapi, replicate (keyed)
+     - Added: pollinations, airforce, vibheksoni, gemini_openai (keyless)
+     - Added: g4f_groq, g4f_ollama, g4f_pollinations, g4f_nvidia,
+              g4f_gemini, g4f_auto (G4F proxy suite, 6 endpoints)
+     - Fixed: nameToEnv now uses fallback arrays (e.g. MISTRAL → AI_MISTRAL_KEY)
+
+  7. Railway deploy: add Rust build stage to Dockerfile for llmwiki binary.
+     mount Railway volume at /wiki for persistent wiki file storage.
+
   Deploy checklist:
   - cp .env.example .env and client/.env.example client/.env (add your real values)
   - Set MASTER_ENV_PATH on Railway or remove the master env loader

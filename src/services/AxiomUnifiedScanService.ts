@@ -19,6 +19,9 @@ import { GoogleCalendarService } from './GoogleCalendarService';
 import { AxiomProgressEstimationService } from './AxiomProgressEstimationService';
 import { AxiomDailySummaryService } from './AxiomDailySummaryService';
 import { AxiomPersonaService } from './AxiomPersonaService';
+import { AxiomWikiWriterService } from './AxiomWikiWriterService';
+import { AxiomWikiMaterializer } from './AxiomWikiMaterializer';
+import { AxiomProviderHealthSyncService } from './AxiomProviderHealthSyncService';
 
 interface UserData {
   profile: any;
@@ -45,6 +48,8 @@ export class AxiomUnifiedScanService {
   private progressService: AxiomProgressEstimationService;
   private summaryService: AxiomDailySummaryService;
   private personaService: AxiomPersonaService;
+  private wikiWriter: AxiomWikiWriterService;
+  private wikiMaterializer: AxiomWikiMaterializer;
 
   constructor() {
     this.aiCoaching = new AICoachingService();
@@ -54,6 +59,8 @@ export class AxiomUnifiedScanService {
     this.progressService = new AxiomProgressEstimationService();
     this.summaryService = new AxiomDailySummaryService();
     this.personaService = new AxiomPersonaService();
+    this.wikiWriter = new AxiomWikiWriterService();
+    this.wikiMaterializer = new AxiomWikiMaterializer();
   }
 
   /**
@@ -107,6 +114,11 @@ export class AxiomUnifiedScanService {
         }
       }
 
+      // Provider health scan (non-blocking, runs in parallel after user processing)
+      AxiomProviderHealthSyncService.prototype.runScanAndSync.call(new AxiomProviderHealthSyncService())
+        .then(count => logger.info(`[AxiomUnifiedScan] Provider health scan complete (${count} providers)`))
+        .catch(err => logger.warn(`[AxiomUnifiedScan] Provider health scan failed (non-fatal): ${err.message}`));
+
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       logger.info(
         `[AxiomUnifiedScan] Complete in ${duration}s: ${successCount} succeeded, ${failCount} failed`
@@ -130,7 +142,17 @@ export class AxiomUnifiedScanService {
       return;
     }
 
-    // === PHASE 2: Compute behavioral persona (nightly fingerprint) ===
+    // === PHASE 2: Write wiki pages (semantic memory — one LLM call replaces 15+ queries) ===
+    logger.info(`[AxiomUnifiedScan] Writing wiki pages for ${userId}...`);
+    try {
+      const wikiResult = await this.wikiWriter.writeAllPages(userId, userData);
+      await this.wikiMaterializer.materializeAndIndex(userId);
+      logger.info(`[AxiomUnifiedScan] Wiki: ${wikiResult.pages.length} pages written (LLM: ${wikiResult.llmUsed})`);
+    } catch (err: any) {
+      logger.warn(`[AxiomUnifiedScan] Wiki write failed for ${userId}:`, err.message);
+    }
+
+    // === PHASE 3: Compute behavioral persona (nightly fingerprint) ===
     logger.info(`[AxiomUnifiedScan] Computing persona for ${userId}...`);
     try {
       const persona = await this.personaService.computePersona(userId);
@@ -139,19 +161,19 @@ export class AxiomUnifiedScanService {
       logger.warn(`[AxiomUnifiedScan] Persona computation failed for ${userId}:`, err.message);
     }
 
-    // === PHASE 3: Agentic actions — Axiom decides what to do ===
+    // === PHASE 4: Agentic actions — Axiom decides what to do ===
     logger.info(`[AxiomUnifiedScan] Agentic decision phase for ${userId}...`);
     await this.agenticActions(userId, userData);
 
-    // === PHASE 4: Generate daily brief (uses shared data) ===
+    // === PHASE 5: Generate daily brief (uses shared data) ===
     logger.info(`[AxiomUnifiedScan] Generating brief for ${userId}...`);
     await this.generateBrief(userId, userData);
 
-    // === PHASE 5: Estimate progress (uses shared data) ===
+    // === PHASE 6: Estimate progress (uses shared data) ===
     logger.info(`[AxiomUnifiedScan] Estimating progress for ${userId}...`);
     await this.estimateProgress(userId, userData);
 
-    // === PHASE 6: Generate daily summary (uses shared data) ===
+    // === PHASE 7: Generate daily summary (uses shared data) ===
     logger.info(`[AxiomUnifiedScan] Generating summary for ${userId}...`);
     await this.generateSummary(userId, userData);
 

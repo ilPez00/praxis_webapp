@@ -34,9 +34,34 @@ Praxis = daily goal journal + accountability buddy PWA. Goal tree = emotional li
 ## AI Policy
 
 - Axiom daily briefs always use LLM (once-daily, fallback on failure)
+- **Wiki integration**: Persistent semantic search via `llmwiki` (Rust) for:
+  - Daily brief context (14-day window)
+  - Notebook entries (50 entries max)
+  - Tracker logs (100 entries max)
+  - Provider fallback caching
 - Matching = pure rule-based (domain overlap + progress similarity). No LLM.
 - Grading, streaks, weights, analytics = local math
 - Betting, streaks, leaderboard, goal tree viz = 100% AI-free
+
+## Wiki Architecture
+
+- **Storage**: Railway volume-mounted `/wiki` directory
+- **Sync**: PostgreSQL ↔ filesystem via `AxiomWikiMaterializer`
+- **Search**: Full-text + semantic via `AxiomWikiSearchService`
+- **Token savings**: 14-day context window (vs 30d), response caching in `AICoachingService`
+- **Providers**: 35+ integrated (Groq, OpenAI, Gemini, DeepSeek)
+
+## Deployment
+
+- **Dockerfile**: Multi-stage (Rust + Node.js) with `llmwiki` binary
+- **Volume**: `/wiki` → Railway persistent storage
+- **Override**: Railway `railway.toml` enables Docker (Nixpacks fallback)
+
+## Migration
+
+- **SQL**: `manual_actions.txt` for wiki table schema
+- **Data**: Ephemeral context → persistent wiki
+- **Fallback**: Existing providers unchanged
 
 ## Build & Run
 

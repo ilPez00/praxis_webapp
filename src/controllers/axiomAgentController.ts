@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from '../services/AICoachingService';
 import { AxiomPersonaService } from '../services/AxiomPersonaService';
+import { AxiomWikiSearchService } from '../services/AxiomWikiSearchService';
 import { catchAsync, UnauthorizedError, BadRequestError } from '../utils/appErrors';
 import { routeActions, getToolDeclarations } from '../services/AxiomActionRouter';
 import { axiomMultimodalService } from '../services/AxiomMultimodalService';
@@ -291,6 +292,15 @@ async function buildAgentContext(userId: string, query: string): Promise<any> {
     progress: Math.round((n.progress || 0) * 100),
   }));
 
+  // Wiki context — semantic memory enriches agent insights
+  let wikiSnippets: any[] = [];
+  try {
+    const wikiSearch = new AxiomWikiSearchService();
+    wikiSnippets = await wikiSearch.search(userId, query || 'goals persona behavioral patterns');
+  } catch {
+    // Wiki may not be available
+  }
+
   return {
     userId,
     userName: profile?.name || 'User',
@@ -301,6 +311,7 @@ async function buildAgentContext(userId: string, query: string): Promise<any> {
     recentCheckins: checkinsRes.data || [],
     matches: matchesRes.data || [],
     persona: personaRes,
+    wikiSnippets,
     query,
   };
 }
@@ -318,7 +329,7 @@ function buildPersonaSummary(persona: any): string {
 }
 
 function buildAgentPrompt(context: any, query: string, notebookResults: any[], webResults: any[]): string {
-  const { userName, goals, trackers, recentCheckins, matches, persona } = context;
+  const { userName, goals, trackers, recentCheckins, matches, persona, wikiSnippets } = context;
 
   const notebookContext = notebookResults.length > 0
     ? notebookResults.map((e: any, i: number) => 
@@ -363,6 +374,9 @@ ${notebookContext}
 
 WEB SEARCH RESULTS (external resources):
 ${webContext}
+
+WIKI INSIGHTS (compressed memory of their long-term patterns):
+${wikiSnippets?.length > 0 ? wikiSnippets.map((s: any) => `[${s.pagePath}] ${s.snippet?.slice(0, 150)}`).join('\n') : '(No wiki context yet)'}
 
 ---
 
