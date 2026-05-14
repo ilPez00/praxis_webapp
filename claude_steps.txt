@@ -2261,3 +2261,76 @@ User taps camera icon → AxiomCameraCapture (rear camera, full-screen)
 - Updated manual_actions.txt with migration steps
 - Updated docs/DEV_PLAN.md with change log entry + updated Admin section
 - All 11 phases of master .env integration complete
+
+---
+
+# Session: May 13, 2026 — Axiom Wiki Integration (persistent semantic memory via llmwiki)
+
+## Summary
+Replaced 15+ raw DB queries per daily brief with a single `llmwiki` search returning ~150 tokens of dense, LLM-synthesized context snippets.
+
+## New Files
+- `migrations/2026-05-13-axiom-wiki-pages.sql` — axiom_wiki_pages table + FTS index + wiki_search() RPC
+- `src/services/AxiomWikiWriterService.ts` — LLM writes 5 wiki pages from user data nightly
+- `src/services/AxiomWikiMaterializer.ts` — PostgreSQL ↔ filesystem sync + llmwiki reindex
+- `src/services/AxiomWikiSearchService.ts` — search (llmwiki local, FTS Railway fallback)
+- `src/services/AxiomProviderHealthSyncService.ts` — tracks provider health for admin panel
+- `Dockerfile` — multi-stage build (Rust for llmwiki binary, Node.js for Express)
+
+## Modified Files
+- `src/services/AxiomScanService.ts` — 30d→14d context window, 100→50 notebook entries, 200→100 tracker entries
+- `src/services/AICoachingService.ts` — response caching (in-memory daily TTL), feedback-aware prompt adjustment
+- `src/services/AxiomUnifiedScanService.ts` — unified scan now writes wiki → materializes → generates brief → summary
+- `src/controllers/axiomAgentController.ts` — wiki search integrated into agent context
+- `src/controllers/notebookAxiomController.ts` — wiki search integrated into notebook queries
+- `CLAUDE.md` — added Wiki Architecture, Deployment, Migration sections
+- `docs/DEV_PLAN.md` — added wiki integration entry
+- `manual_actions.txt` — added wiki migration entry
+- `railway.toml` — enables Docker override
+
+## Provider Expansion (35+)
+- Added: github, huggingface, aimlapi, replicate (keyed)
+- Added: pollinations, airforce, vibheksoni, gemini_openai (keyless)
+- Added: g4f_groq, g4f_ollama, g4f_pollinations, g4f_nvidia, g4f_gemini, g4f_auto (G4F proxy suite)
+- Fixed: nameToEnv now uses fallback arrays
+
+## Verification
+- Backend TypeScript: ✅ Passes (clean build)
+
+## Commits
+- cfa2de9: feat: Axiom wiki integration for semantic memory and token optimization
+
+## Next
+- Run migration: `psql "$SUPABASE_DB_URL" -f migrations/2026-05-13-axiom-wiki-pages.sql`
+- Mount Railway volume at /wiki for persistent wiki file storage
+
+---
+
+# Session: May 14, 2026 — Axiom Feedback Loop (Hermes-style learning)
+
+## Summary
+Added user feedback collection on Axiom outputs for adaptive prompt improvement. Implements a learning loop: feedback → prompt adjustment.
+
+## New Files
+- `migrations/2026-05-14-axiom-feedback.sql` — axiom_feedback table (user_id, prompt_hash, feedback_type, feedback_text)
+- `src/controllers/axiomFeedbackController.ts` — POST /axiom/feedback, GET /axiom/feedback/stats
+- `src/services/AxiomLearningService.ts` — aggregates feedback, adjusts prompts
+
+## Modified Files
+- `src/services/AICoachingService.ts` — runWithFallback now checks feedback stats before caching prompts
+- `src/routes/axiomRoutes.ts` — added /feedback and /feedback/stats routes
+- `manual_actions.txt` — added feedback migration entry
+
+## Integration
+- AICoachingService.runWithFallback checks feedback stats before caching
+- If like ratio >= 80% with >= 5 feedbacks, appends "keep tone consistent" snippet
+- Caching wraps response for cheaper repeated prompts
+
+## Verification
+- Backend TypeScript: ✅ Passes (clean build)
+
+## Commits
+- 7f5ea47: feat: Axiom feedback loop for adaptive prompt learning
+
+## Next
+- Run migration: `psql "$SUPABASE_DB_URL" -f migrations/2026-05-14-axiom-feedback.sql`
