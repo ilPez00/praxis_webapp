@@ -362,3 +362,26 @@ Adds a table to persist provider health check results for the admin panel.
   - Set MASTER_ENV_PATH on Railway or remove the master env loader
   - VITE_API_URL must be set in client/.env for production builds
   - Run `npx tsc` (now with skipLibCheck — should complete without OOM)
+
+--------------------------------------------------------------------
+  2026-05-14 — Axiom Feedback (Hermes-style learning loop)
+--------------------------------------------------------------------
+
+  Adds user feedback collection on Axiom outputs for adaptive prompt
+  improvement. Implements a learning loop: feedback → prompt adjustment.
+
+  1. Run the migration:
+       psql "$SUPABASE_DB_URL" -f migrations/2026-05-14-axiom-feedback.sql
+     Or paste contents into Supabase SQL editor.
+
+  2. This creates:
+     - public.axiom_feedback table (user_id, prompt_hash, feedback_type, feedback_text)
+     - Indexes on user_id and prompt_hash for fast lookup
+
+  3. 2 new files (no env changes):
+     - src/controllers/axiomFeedbackController.ts  — POST /axiom/feedback, GET /axiom/feedback/stats
+     - src/services/AxiomLearningService.ts        — aggregates feedback, adjusts prompts
+
+  4. Integration:
+     - AICoachingService.runWithFallback checks feedback stats before caching prompts
+     - If like ratio >= 80% with >= 5 feedbacks, appends "keep tone consistent" snippet

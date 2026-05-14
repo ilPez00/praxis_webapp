@@ -1,7 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../lib/supabaseClient';
 import { EngagementMetricService, EngagementArchetype, MotivationStyle } from './EngagementMetricService';
+import { AxiomLearningService } from './AxiomLearningService';
 import logger from '../utils/logger';
+
+const axiomLearning = new AxiomLearningService();
 
 // ---------------------------------------------------------------------------
 // Multi-LLM Provider Registry
@@ -18,6 +21,7 @@ export interface LLMProvider {
 }
 
 const OPENAI_COMPAT_PROVIDERS: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
+  { name: 'orchestrator',  baseUrl: 'http://localhost:8000/v1',           models: ['langgraph-orchestrator'],                                                            priority: 0,  type: 'openai' },
   { name: 'groq',          baseUrl: 'https://api.groq.com/openai/v1',     models: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],             priority: 1,  type: 'openai' },
   { name: 'deepseek',      baseUrl: 'https://api.deepseek.com/v1',         models: ['deepseek-chat', 'deepseek-reasoner'],                                               priority: 20, type: 'openai' },
   { name: 'openrouter',    baseUrl: 'https://openrouter.ai/api/v1',        models: ['openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'meta-llama/llama-3.3-70b-instruct'], priority: 10, type: 'openai' },
@@ -37,6 +41,8 @@ const OPENAI_COMPAT_PROVIDERS: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
   { name: 'huggingface',   baseUrl: 'https://api-inference.huggingface.co/v1',  models: ['mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct'],      priority: 25, type: 'openai' },
   { name: 'aimlapi',       baseUrl: 'https://api.aimlapi.com/v2',               models: ['gpt-4o-mini', 'gpt-4o', 'claude-3-haiku'],                                priority: 26, type: 'openai' },
   { name: 'replicate',     baseUrl: 'https://api.replicate.com/v1',             models: ['meta/llama-2-70b-chat', 'mistralai/mixtral-8x7b-instruct-v0.1'],          priority: 27, type: 'openai' },
+  { name: 'llm7',          baseUrl: 'https://llm7.io/v1',                       models: ['gpt-4o'],                                                               priority: 30, type: 'proxy' },
+  { name: 'g4f',           baseUrl: 'https://g4f.space/v1',                     models: ['gpt-4o'],                                                               priority: 31, type: 'proxy' },
 ];
 
 const KEYLESS_PROXIES: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
@@ -318,24 +324,21 @@ export class AICoachingService {
   private openAIProviders: LLMProvider[] = [];
   
   constructor() {
-    // Gemini keys
-    const keyString = process.env.GEMINI_API_KEY || '';
-    const rawKeys = keyString.split(',');
-    const cleanedKeys = rawKeys
+    // 1. Scavenge Gemini Pool (AI_GEMINI_KEY in .env)
+    const geminiKeys = (process.env.AI_GEMINI_KEY || process.env.GEMINI_API_KEY || '').split(',');
+    const cleanedGemini = geminiKeys
       .map(k => k.replace(/['"\s\u200B-\u200D\uFEFF]+/g, '').trim())
       .filter(k => k.startsWith('AIza'));
-    this.apiKeys = Array.from(new Set(cleanedKeys));
+    this.apiKeys = Array.from(new Set(cleanedGemini));
 
-    // Load balancing: pick a random starting key to distribute usage across projects
+    // 2. Scavenge All Other Providers
+    this.deepseekApiKey = (process.env.AI_DEEPSEEK_KEY || process.env.DEEPSEEK_API_KEY || '').trim() || null;
+    this.groqApiKey = (process.env.AI_GROQ_KEY || process.env.GROQ_API_KEY || '').trim() || null;
+
+    // Load balancing start point
     if (this.apiKeys.length > 0) {
       this.currentKeyIndex = Math.floor(Math.random() * this.apiKeys.length);
     }
-
-    // DeepSeek key
-    this.deepseekApiKey = (process.env.DEEPSEEK_API_KEY || '').trim();
-
-    // Groq key - free fallback
-    this.groqApiKey = (process.env.GROQ_API_KEY || '').trim();
 
     // Build multi-LLM provider registry from master .env
     this.openAIProviders = this.buildProviderRegistry();
@@ -769,6 +772,12 @@ export class AICoachingService {
   ): Promise<string> {
     // Light compression — safe, preserves instruction clarity
     prompt = this.lightCompress(prompt);
+
+    // Check feedback stats and adjust prompt if positive feedback exists
+    const promptHash = prompt.length > 100 ? prompt.slice(0, 100) + prompt.length : prompt;
+    if (await axiomLearning.shouldAdjustPrompt(promptHash)) {
+      prompt += `\n${axiomLearning.getAdjustedPromptSnippet(promptHash)}`;
+    }
 
     // Check cache first
     const cached = this.getCachedResponse(prompt);

@@ -8,6 +8,7 @@ import { AICoachingService } from '../services/AICoachingService';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
 import { authenticateToken } from '../middleware/authenticateToken';
 import * as axiomAgentController from '../controllers/axiomAgentController';
+import { submitAxiomFeedback, getFeedbackStats } from '../controllers/axiomFeedbackController';
 import logger from '../utils/logger';
 
 const router = Router();
@@ -283,6 +284,23 @@ router.put('/notebooklm/notebooks', authenticateToken, catchAsync(async (req: Re
     .eq('id', userId);
 
   res.json({ success: true, notebookIds });
+}));
+
+/**
+ * POST /axiom/feedback
+ * Store user feedback on Axiom outputs for learning.
+ * Body: { promptHash, feedbackType, feedbackText? }
+ */
+router.post('/feedback', authenticateToken, catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  await submitAxiomFeedback(req, res, next);
+}));
+
+/**
+ * GET /axiom/feedback/stats?promptHash=:hash
+ * Get aggregated feedback stats for a prompt.
+ */
+router.get('/feedback/stats', authenticateToken, catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  await getFeedbackStats(req, res, next);
 }));
 
 export default router;
