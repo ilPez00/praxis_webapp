@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { catchAsync, BadRequestError } from '../utils/appErrors';
 import { CreateActionRecordInput, ActionDomain, ActionMode } from '../models/ActionRecord';
+import { goalMaturityService } from '../services/GoalMaturityService';
 
 const VALID_DOMAINS: ActionDomain[] = ['FABRICATE', 'STUDY', 'CONSTRUCT', 'BOND', 'HEAL'];
 const VALID_MODES:   ActionMode[]   = ['LIFT', 'WALK', 'WORK', 'LEARN', 'CODE', 'CREATE', 'REST'];
@@ -50,6 +51,11 @@ export const createAction = catchAsync(async (req: Request, res: Response) => {
 
   if (error) throw new Error(error.message);
 
+  // Fire-and-forget: run maturity loops for linked goal
+  if (data?.goal_id) {
+    goalMaturityService.evaluateAfterAction(userId, data.goal_id, data.id).catch(() => {});
+  }
+
   res.status(201).json({ action: data });
 });
 
@@ -77,6 +83,21 @@ export const listActions = catchAsync(async (req: Request, res: Response) => {
   if (error) throw new Error(error.message);
 
   res.json({ actions: data, total: count, limit, offset });
+});
+
+/** GET /api/actions/maturity — goal maturity state for all user's goals. */
+export const goalMaturity = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) throw new BadRequestError('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('goal_maturity')
+    .select('*')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  res.json({ maturity: data });
 });
 
 /** GET /api/actions/stats — grade trends and domain distribution. */
