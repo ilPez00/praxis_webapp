@@ -1,3 +1,5 @@
+import { Domain } from './Domain';
+
 export interface Group {
   id: string;
   name: string;
