@@ -2334,3 +2334,57 @@ Added user feedback collection on Axiom outputs for adaptive prompt improvement.
 
 ## Next
 - Run migration: `psql "$SUPABASE_DB_URL" -f migrations/2026-05-14-axiom-feedback.sql`
+
+---
+
+# Session: May 14–17, 2026 — PraxisOntology + Aura Analytics Integration
+
+## Summary
+Implemented canonical ayu ontology mapping for all 14 Praxis life domains. Added `GET /analytics/aura-summary` endpoint (no pro gate). Surfaced scoreAxis dimensions in both AnalyticsPage and Aura PraxisScreen. Added Praxis → Aura auth handoff via Settings page. Fixed Railway Dockerfile for Rust 1.85 (edition2024).
+
+## New Files
+- `src/models/PraxisOntology.ts` — canonical 14-domain → ayu schema mapping:
+  - `DomainDef { ayuDomain, defaultMode, scoreAxis, unit, contextHints }`
+  - `PRAXIS_ONTOLOGY: Record<Domain, DomainDef>` — single source of truth for backend
+  - `resolveDomain(str)` — partial-match lookup
+  - `enrichGoalsContext(nodes)` — builds LLM prompt context lines with ontology tags
+- `client/src/lib/praxisOntology.ts` — frontend mirror:
+  - Same 14 domains + `color: string` + `icon: string` per domain
+  - `SCORE_AXIS_LABELS: Record<ScoreAxis, string>`
+
+## Modified Files
+- `src/controllers/analyticsController.ts`:
+  - `getDomainPerformance`: each domain now includes `ayuDomain, defaultMode, scoreAxis, unit` from ontology
+  - New `getAuraSummary`: aggregates `axisSum/axisWeight` per scoreAxis across active goals → `scoreAxes: {physical, economic, intellectual, psychological}`; top 5 active goals with ontology tags; streak + points; TTL.SHORT cache
+- `src/routes/analyticsRoutes.ts`:
+  - `router.get('/aura-summary/:userId', authenticateToken, getAuraSummary)` — no requirePro, own data only
+- `client/src/features/analytics/AnalyticsPage.tsx`:
+  - `auraSummary` state; fetched via `api.get('/analytics/aura-summary/${userId}')` in Promise.allSettled
+  - "ayu Score Axes" StatCard section after Domain Performance:
+    PHY(#FF6B6B) / ECO(#FBBF24) / INT(#3B82F6) / PSY(#A78BFA) LinearProgress bars
+- `client/src/features/settings/SettingsPage.tsx`:
+  - "Connect Aura" section: "Open in Aura" + "Copy link" buttons
+  - Calls `supabase.auth.getSession()` → builds `aura://praxis/callback#access_token=...&refresh_token=...&expires_in=...`
+  - User pastes this link in Aura's TokenPasteDialog to authenticate without device Google account
+- `src/services/AxiomScanService.ts`:
+  - Goals line in LLM prompt uses `enrichGoalsContext(goalsSlice)` with ontology tags
+- `Dockerfile`:
+  - `rust:1.84-slim-bookworm` → `rust:1.85-slim-bookworm` (llmwiki v0.2.1 requires edition2024/Cargo ≥ 1.85)
+- `src/models/Group.ts`:
+  - Added `import { Domain } from './Domain'` (was missing, caused TSC error)
+  - Fixed stray `'` in DomainRuleType enum: `other = 'other'';` → `other = 'other'`
+- `src/models/ReflectionTrainingData.ts`:
+  - Added `import { Domain } from './Domain'`
+
+## Architecture
+- Ontology is deterministic: no LLM for domain→ayu mapping
+- Backend `PraxisOntology.ts` = single source of truth; Aura `PraxisOntology.kt` mirrors it
+- `scoreAxis` aggregation: weighted average of goal progress grouped by axis dimension
+- `/aura-summary` uses `authenticateToken` only (no pro gate) — Aura fetches own user data freely
+
+## Commits
+- ae11470: feat(analytics): ontology axes + aura-summary endpoint + Dockerfile fix (pushed to praxis-backend main)
+
+## Next
+- Railway auto-deploy from Dockerfile fix; verify build passes with Rust 1.85
+- Add `aura://praxis/callback` to Supabase dashboard → Auth → URL Configuration → Redirect URLs
