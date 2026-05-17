@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from './AICoachingService';
 import { EngagementMetricService } from './EngagementMetricService';
 import { AxiomScheduleService } from './AxiomScheduleService';
+import { enrichGoalsContext } from '../models/PraxisOntology';
 import { GoogleCalendarService } from './GoogleCalendarService';
 import { AxiomDailySummaryService } from './AxiomDailySummaryService';
 import { AxiomProgressEstimationService } from './AxiomProgressEstimationService';
@@ -773,7 +774,8 @@ CONTEXT (LAST 30 DAYS OF ACTIVITY):
 - Streak: ${metrics.checkinStreak} days
 - Motivation style: ${metrics.motivationStyle}
 - Risk factors: ${metrics.riskFactors?.join(', ') || 'None'}
-- Goals: ${JSON.stringify(goalsSlice)}
+- Goals (with ayu ontology tags):
+${enrichGoalsContext(goalsSlice)}
 - Monthly check-ins: ${((monthCheckinsRes.data || []) as any[]).length} days logged in last month
 - Monthly tracker logs: ${((monthTrackersRes.data || []) as any[]).length} entries in last month
 - Recent check-ins: ${JSON.stringify((checkinsRes.data || []).slice(0, 3).map((c: any) => ({ mood: c.mood, win: c.win_of_the_day, streak: c.streak_day })))}
