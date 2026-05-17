@@ -5,7 +5,7 @@
 # =============================================================================
 
 # ── Stage 1: llmwiki builder ────────────────────────────────────────────────
-FROM rust:1.84-slim-bookworm AS llmwiki-builder
+FROM rust:1.85-slim-bookworm AS llmwiki-builder
 
 RUN apt-get update && apt-get install -y \
     pkg-config libssl-dev clang cmake \

@@ -350,6 +350,7 @@ const AnalyticsPage: React.FC = () => {
   const [feedbackTrends, setFeedbackTrends] = useState<any[]>([]);
   const [achievementRate, setAchievementRate] = useState<any>(null);
   const [comparisonData, setComparisonData] = useState<any>(null);
+  const [auraSummary, setAuraSummary] = useState<{ scoreAxes: Record<string, number>; topGoals: any[]; streak: number; points: number } | null>(null);
 
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [lbFilter, setLbFilter] = useState<'all' | 'aligned'>('all');
@@ -426,12 +427,13 @@ const AnalyticsPage: React.FC = () => {
       try {
         const userId = user.id;
         // Auth header required — analytics endpoints are protected by authenticateToken middleware
-        const [progressRes, domainRes, feedbackRes, achievementRes, comparisonRes] = await Promise.allSettled([
+        const [progressRes, domainRes, feedbackRes, achievementRes, comparisonRes, auraRes] = await Promise.allSettled([
           api.get(`/analytics/progress-over-time/${userId}`),
           api.get(`/analytics/domain-performance/${userId}`),
           api.get(`/analytics/feedback-trends/${userId}`),
           api.get(`/analytics/achievement-rate/${userId}`),
           api.get(`/analytics/comparison-data/${userId}`),
+          api.get(`/analytics/aura-summary/${userId}`),
         ]);
 
         if (progressRes.status === 'fulfilled') setProgressData(progressRes.value.data);
@@ -439,6 +441,7 @@ const AnalyticsPage: React.FC = () => {
         if (feedbackRes.status === 'fulfilled') setFeedbackTrends(feedbackRes.value.data);
         if (achievementRes.status === 'fulfilled') setAchievementRate(achievementRes.value.data);
         if (comparisonRes.status === 'fulfilled') setComparisonData(comparisonRes.value.data);
+        if (auraRes.status === 'fulfilled') setAuraSummary(auraRes.value.data);
 
         // Leaderboard
         try {
@@ -733,6 +736,47 @@ const AnalyticsPage: React.FC = () => {
           )}
         </StatCard>
         </ErrorBoundary>
+
+        {/* Score Axes — ayu ontology breakdown */}
+        {auraSummary && (
+          <ErrorBoundary label="Score Axes">
+          <StatCard icon={<AutoAwesomeIcon />} title="ayu Score Axes" glowColor="rgba(0,255,136,0.12)">
+            <Stack spacing={1.5}>
+              {([
+                { axis: 'physical',      label: 'Physical',      color: '#FF6B6B' },
+                { axis: 'economic',      label: 'Economic',      color: '#FBBF24' },
+                { axis: 'intellectual',  label: 'Intellectual',  color: '#3B82F6' },
+                { axis: 'psychological', label: 'Psychological', color: '#A78BFA' },
+              ] as const).map(({ axis, label, color }) => {
+                const val = auraSummary.scoreAxes[axis] ?? 0;
+                const pct = Math.round(val * 100);
+                return (
+                  <Box key={axis}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {label}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color }}>{pct}%</Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={pct}
+                      sx={{
+                        height: 6, borderRadius: 3,
+                        bgcolor: `${color}20`,
+                        '& .MuiLinearProgress-bar': { bgcolor: color, borderRadius: 3 },
+                      }}
+                    />
+                  </Box>
+                );
+              })}
+            </Stack>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+              Weighted goal progress aggregated per ayu.md action schema axis.
+            </Typography>
+          </StatCard>
+          </ErrorBoundary>
+        )}
 
         {/* Row 3: Feedback Trends + Comparison */}
         <ErrorBoundary label="Feedback & Comparison">

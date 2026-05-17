@@ -7,6 +7,7 @@ import { FeedbackGrade } from '../models/FeedbackGrade';
 import logger from '../utils/logger';
 import { catchAsync, NotFoundError, ForbiddenError, InternalServerError, BadRequestError } from '../utils/appErrors';
 import { cacheGet, cacheSet, TTL } from '../utils/cache';
+import { resolveDomain, ScoreAxis } from '../models/PraxisOntology';
 
 /**
  * @description Helper to check if a user is premium.
@@ -106,12 +107,20 @@ export const getDomainPerformance = catchAsync(async (req: Request, res: Respons
     domainPerformance[goal.domain].goalCount += 1;
   });
 
-  const result = Object.entries(domainPerformance).map(([domain, data]) => ({
-    domain,
-    averageProgress: data.goalCount > 0 ? data.totalProgress / data.goalCount : 0,
-    totalWeightedProgress: data.totalWeight > 0 ? (data.totalProgress * data.totalWeight) / data.goalCount : 0, // Simplified metric
-    goalCount: data.goalCount,
-  }));
+  const result = Object.entries(domainPerformance).map(([domain, data]) => {
+    const def = resolveDomain(domain);
+    return {
+      domain,
+      averageProgress: data.goalCount > 0 ? data.totalProgress / data.goalCount : 0,
+      totalWeightedProgress: data.totalWeight > 0 ? (data.totalProgress * data.totalWeight) / data.goalCount : 0,
+      goalCount: data.goalCount,
+      // ontology enrichment
+      ayuDomain: def?.ayuDomain ?? 'FABRICATE',
+      defaultMode: def?.defaultMode ?? 'WORK',
+      scoreAxis: def?.scoreAxis ?? 'intellectual',
+      unit: def?.unit ?? 'min',
+    };
+  });
 
   cacheSet(cacheKey, result, TTL.LONG);
   res.json(result);
@@ -281,4 +290,75 @@ export const getComparisonData = catchAsync(async (req: Request, res: Response, 
       honor_score:  pct(honors, user.honor_score ?? 0),
     },
   });
+});
+
+/**
+ * GET /analytics/aura-summary/:userId
+ * Compact ontology-enriched summary for Aura Android app.
+ * No pro gate — user's own data. Requires auth token.
+ *
+ * Returns:
+ *   scoreAxes: aggregated progress per ayu scoreAxis (0.0–1.0)
+ *   topGoals: top 5 active goals with ontology tags
+ *   streak: current check-in streak
+ *   wikiPageCount: number of wiki pages in user partition
+ */
+export const getAuraSummary = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.params.userId as string;
+  if (!userId) throw new BadRequestError('userId required');
+
+  const cacheKey = `analytics:aura-summary:${userId}`;
+  const cached = cacheGet<object>(cacheKey);
+  if (cached) return res.json(cached);
+
+  const [treeRes, profileRes] = await Promise.all([
+    supabase.from('goal_trees').select('nodes').eq('user_id', userId).single(),
+    supabase.from('profiles').select('current_streak, praxis_points').eq('id', userId).single(),
+  ]);
+
+  const nodes: GoalNode[] = treeRes.data?.nodes ?? [];
+  const streak: number = profileRes.data?.current_streak ?? 0;
+  const points: number = profileRes.data?.praxis_points ?? 0;
+
+  // Aggregate progress by scoreAxis (weighted by goal weight)
+  const axisSum: Record<ScoreAxis, number> = { physical: 0, economic: 0, intellectual: 0, psychological: 0 };
+  const axisWeight: Record<ScoreAxis, number> = { physical: 0, economic: 0, intellectual: 0, psychological: 0 };
+
+  nodes.forEach(n => {
+    const def = resolveDomain(n.domain ?? '');
+    if (!def) return;
+    const w = (n as any).weight ?? 1;
+    axisSum[def.scoreAxis] += (n.progress ?? 0) * w;
+    axisWeight[def.scoreAxis] += w;
+  });
+
+  const scoreAxes: Record<string, number> = {};
+  (Object.keys(axisSum) as ScoreAxis[]).forEach(axis => {
+    scoreAxes[axis] = axisWeight[axis] > 0
+      ? Math.round((axisSum[axis] / axisWeight[axis]) * 100) / 100
+      : 0;
+  });
+
+  // Top 5 active goals with ontology tags
+  const topGoals = nodes
+    .filter(n => (n.progress ?? 0) < 1.0)
+    .sort((a, b) => ((b as any).weight ?? 1) - ((a as any).weight ?? 1))
+    .slice(0, 5)
+    .map(n => {
+      const def = resolveDomain(n.domain ?? '');
+      return {
+        id: n.id,
+        name: n.name,
+        domain: n.domain,
+        progress: n.progress ?? 0,
+        ayuDomain: def?.ayuDomain ?? 'FABRICATE',
+        mode: def?.defaultMode ?? 'WORK',
+        scoreAxis: def?.scoreAxis ?? 'intellectual',
+        unit: def?.unit ?? 'min',
+      };
+    });
+
+  const summary = { scoreAxes, topGoals, streak, points };
+  cacheSet(cacheKey, summary, TTL.SHORT);
+  res.json(summary);
 });
