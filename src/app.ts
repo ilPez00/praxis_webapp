@@ -66,6 +66,7 @@ import gamificationRoutes from './routes/gamificationRoutes';
 import seasonalEventRoutes from './routes/seasonalEventRoutes';
 import accountabilityBuddyRoutes from './routes/accountabilityBuddyRoutes';
 import failsRoutes from './routes/failsRoutes';
+import actionRoutes from './routes/actionRoutes';
 import weeklyChallengeRoutes from './routes/weeklyChallengeRoutes';
 import agentRoutes from './routes/agentRoutes';
 import { handleWebhook as handleStripeWebhook } from './controllers/stripeController';
@@ -290,7 +291,8 @@ apiRouter.use('/sparring', generalLimiter, sparringRoutes);
 apiRouter.use('/gamification', generalLimiter, gamificationRoutes);
 apiRouter.use('/seasonal-events', generalLimiter, seasonalEventRoutes);
 apiRouter.use('/buddies', generalLimiter, accountabilityBuddyRoutes);
-apiRouter.use('/fails', generalLimiter, failsRoutes);
+apiRouter.use('/fails',   generalLimiter, failsRoutes);
+apiRouter.use('/actions', generalLimiter, actionRoutes);
 apiRouter.use('/weekly-challenge', generalLimiter, weeklyChallengeRoutes);
 apiRouter.use('/agent', generalLimiter, agentRoutes);
 
