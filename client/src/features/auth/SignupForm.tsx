@@ -48,7 +48,10 @@ const SignupForm: React.FC = () => {
   };
 
   const handleGoogleSignup = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
     if (error) { setIsError(true); setMessage(error.message); }
   };
 

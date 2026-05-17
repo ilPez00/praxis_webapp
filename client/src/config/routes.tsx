@@ -5,6 +5,7 @@ import type { RouteObject } from 'react-router-dom';
 import Root from '../layout/Root';
 import LoginPage from '../features/auth/LoginPage';
 import SignupPage from '../features/auth/SignupPage';
+import AuthCallback from '../features/auth/AuthCallback';
 import SuccessPage from '../features/payments/SuccessPage';
 import CancelPage from '../features/payments/CancelPage';
 import DesktopWidget from '../features/dashboard/components/DesktopWidget';
@@ -57,6 +58,7 @@ export const publicRoutes: RouteObject[] = [
   { index: true, element: <Root /> },
   { path: 'login', element: <LoginPage /> },
   { path: 'signup', element: <SignupPage /> },
+  { path: 'auth/callback', element: <AuthCallback /> },
   { path: 'success', element: <SuccessPage /> },
   { path: 'cancel', element: <CancelPage /> },
   { path: 'desktop-widget', element: <DesktopWidget /> },
