@@ -20,6 +20,7 @@ import LanguageIcon from '@mui/icons-material/Language';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 import GlassCard from '../../components/common/GlassCard';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
@@ -800,6 +801,48 @@ const SettingsPage: React.FC = () => {
           Connect AI assistants like OpenClaw, Hermes, Claude to access your Praxis data and help manage your goals.
         </Typography>
         <AgentsPanel />
+      </Section>
+
+      {/* Aura Connect */}
+      <Section icon={<PhoneAndroidIcon sx={{ color: '#00FF88' }} />} title="Connect Aura">
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Transfer your current session to the Aura Android app. Open this link on your phone with Aura installed,
+          or copy it to use via ADB.
+        </Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            variant="outlined"
+            startIcon={<PhoneAndroidIcon />}
+            sx={{ borderRadius: '10px', borderColor: '#00FF88', color: '#00FF88', '&:hover': { borderColor: '#00FF88', bgcolor: 'rgba(0,255,136,0.08)' } }}
+            onClick={async () => {
+              const { data } = await supabase.auth.getSession();
+              const s = data.session;
+              if (!s) { toast.error('No active session'); return; }
+              const fragment = `access_token=${encodeURIComponent(s.access_token)}&refresh_token=${encodeURIComponent(s.refresh_token ?? '')}&expires_in=${s.expires_in ?? 3600}`;
+              window.location.href = `aura://praxis/callback#${fragment}`;
+            }}
+          >
+            Open in Aura
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<ContentCopyIcon />}
+            sx={{ borderRadius: '10px' }}
+            onClick={async () => {
+              const { data } = await supabase.auth.getSession();
+              const s = data.session;
+              if (!s) { toast.error('No active session'); return; }
+              const fragment = `access_token=${encodeURIComponent(s.access_token)}&refresh_token=${encodeURIComponent(s.refresh_token ?? '')}&expires_in=${s.expires_in ?? 3600}`;
+              await navigator.clipboard.writeText(`aura://praxis/callback#${fragment}`);
+              toast.success('Link copied — open it on your Android device');
+            }}
+          >
+            Copy link
+          </Button>
+        </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+          Token is valid for ~1 hour. Re-generate if Aura shows "token expired".
+        </Typography>
       </Section>
 
       {/* Danger Zone */}
