@@ -75,14 +75,14 @@ const SEED_DATA = [
 
   // --- CREATIVE & SENSITIVE ---
   {
-    domain: Domain.CULTURE_HOBBIES,
+    domain: Domain.IMPACT_LEGACY,
     source: 'titan_woolf',
     scores: { intellectual: 1.0, psychological: 0.90, economic: 0.30, physical: 0.20 },
     tags: ['interiority', 'subjectivity', 'depth'],
     content: 'Pattern: The Stream of Mind. Truth in the internal moment, not external events. Match if: User is "highly sensitive", "writer", or "introspective".'
   },
   {
-    domain: Domain.CULTURE_HOBBIES,
+    domain: Domain.IMPACT_LEGACY,
     source: 'titan_kahlo',
     scores: { physical: 0.30, psychological: 1.0, intellectual: 0.70, economic: 0.40 },
     tags: ['pain-as-art', 'vibrancy', 'authenticity'],
@@ -91,7 +91,7 @@ const SEED_DATA = [
 
   // --- SCIENCE & INNOVATION ---
   {
-    domain: Domain.INTELLECTUAL_GROWTH,
+    domain: Domain.SPIRIT_PURPOSE,
     source: 'titan_tesla',
     scores: { intellectual: 1.0, physical: 0.40, psychological: 0.70, economic: 0.10 },
     tags: ['visionary', 'eccentricity', 'future-anchor'],
@@ -137,7 +137,7 @@ const SEED_DATA = [
     content: 'Pattern: The Honest Dog. Own nothing, say everything. Radical rejection of social status. Match if: User is "minimalist", "anti-consumerist", or "hates hypocrisy".'
   },
   {
-    domain: Domain.INTELLECTUAL_GROWTH,
+    domain: Domain.SPIRIT_PURPOSE,
     source: 'pdca_edison',
     scores: { intellectual: 1.0, psychological: 0.90, physical: 0.60, economic: 0.80 },
     tags: ['iterative-testing', 'failure-mining', 'empirical-patience'],

@@ -1,0 +1,74 @@
+{
+  "domains": {
+    "Body & Fitness": {
+      "ayuDomain": "HEAL",
+      "defaultMode": "LIFT",
+      "scoreAxis": "physical",
+      "unit": "reps",
+      "contextHints": ["gym", "workout", "lift", "sport", "exercise"]
+    },
+    "Rest & Recovery": {
+      "ayuDomain": "HEAL",
+      "defaultMode": "REST",
+      "scoreAxis": "physical",
+      "unit": "hours",
+      "contextHints": ["sleep", "rest", "nap", "recovery"]
+    },
+    "Mental Balance": {
+      "ayuDomain": "HEAL",
+      "defaultMode": "REST",
+      "scoreAxis": "psychological",
+      "unit": "min",
+      "contextHints": ["meditation", "journal", "breathe", "calm"]
+    },
+    "Environment & Home": {
+      "ayuDomain": "CONSTRUCT",
+      "defaultMode": "CREATE",
+      "scoreAxis": "psychological",
+      "unit": "tasks",
+      "contextHints": ["home", "clean", "organize", "repair", "build"]
+    },
+    "Health & Longevity": {
+      "ayuDomain": "HEAL",
+      "defaultMode": "WALK",
+      "scoreAxis": "physical",
+      "unit": "steps",
+      "contextHints": ["walk", "outside", "doctor", "pharmacy", "checkup"]
+    },
+    "Financial Security": {
+      "ayuDomain": "FABRICATE",
+      "defaultMode": "WORK",
+      "scoreAxis": "economic",
+      "unit": "€",
+      "contextHints": ["spreadsheet", "bank", "budget", "invoice", "finance"]
+    },
+    "Career & Craft": {
+      "ayuDomain": "FABRICATE",
+      "defaultMode": "WORK",
+      "scoreAxis": "intellectual",
+      "unit": "deliverables",
+      "contextHints": ["desk", "office", "ide", "code", "work", "project"]
+    },
+    "Wealth & Assets": {
+      "ayuDomain": "FABRICATE",
+      "defaultMode": "WORK",
+      "scoreAxis": "economic",
+      "unit": "€",
+      "contextHints": ["trading", "invest", "portfolio", "asset", "crypto"]
+    },
+    "Spirit & Purpose": {
+      "ayuDomain": "STUDY",
+      "defaultMode": "LEARN",
+      "scoreAxis": "psychological",
+      "unit": "pages",
+      "contextHints": ["read", "philosophy", "reflect", "meaning", "purpose"]
+    },
+    "Impact & Legacy": {
+      "ayuDomain": "CONSTRUCT",
+      "defaultMode": "CREATE",
+      "scoreAxis": "intellectual",
+      "unit": "projects",
+      "contextHints": ["write", "publish", "create", "launch", "build"]
+    }
+  }
+}
