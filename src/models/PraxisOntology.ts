@@ -129,6 +129,77 @@ export const PRAXIS_ONTOLOGY: Record<Domain, DomainDef> = {
   },
 };
 
+/**
+ * Visual/verbal object vocabulary → Praxis domain.
+ * Mirrored in Kotlin (rachmaninov/PraxisOntology.kt VISUAL_HINTS).
+ * Used by PraxisEventBridge to score vision/audio/screen wiki pages.
+ * Bump ONTOLOGY_LAST_MODIFIED in rachmaninov.ts when changing this map.
+ */
+export const VISUAL_HINTS: Record<string, string> = {
+  // Body & Fitness
+  dumbbell: 'Body & Fitness', barbell: 'Body & Fitness', weights: 'Body & Fitness',
+  squat: 'Body & Fitness', 'bench press': 'Body & Fitness', 'pull-up': 'Body & Fitness',
+  'push-up': 'Body & Fitness', pushup: 'Body & Fitness', treadmill: 'Body & Fitness',
+  'running shoes': 'Body & Fitness', 'yoga mat': 'Body & Fitness', stretching: 'Body & Fitness',
+  training: 'Body & Fitness', reps: 'Body & Fitness', sets: 'Body & Fitness',
+  protein: 'Body & Fitness', 'gym bag': 'Body & Fitness', sports: 'Body & Fitness',
+  fitness: 'Body & Fitness',
+  // Health & Longevity
+  food: 'Health & Longevity', meal: 'Health & Longevity', plate: 'Health & Longevity',
+  salad: 'Health & Longevity', fruit: 'Health & Longevity', vegetable: 'Health & Longevity',
+  eating: 'Health & Longevity', lunch: 'Health & Longevity', dinner: 'Health & Longevity',
+  breakfast: 'Health & Longevity', restaurant: 'Health & Longevity', cooking: 'Health & Longevity',
+  nutrition: 'Health & Longevity', groceries: 'Health & Longevity', vitamin: 'Health & Longevity',
+  supplement: 'Health & Longevity', medicine: 'Health & Longevity', prescription: 'Health & Longevity',
+  healthy: 'Health & Longevity', diet: 'Health & Longevity',
+  // Rest & Recovery
+  bed: 'Rest & Recovery', pillow: 'Rest & Recovery', sleeping: 'Rest & Recovery',
+  nap: 'Rest & Recovery', resting: 'Rest & Recovery', recovery: 'Rest & Recovery',
+  // Mental Balance
+  candle: 'Mental Balance', incense: 'Mental Balance', breathing: 'Mental Balance',
+  mindfulness: 'Mental Balance', journaling: 'Mental Balance', therapy: 'Mental Balance',
+  anxiety: 'Mental Balance',
+  // Financial Security
+  money: 'Financial Security', cash: 'Financial Security', receipt: 'Financial Security',
+  invoice: 'Financial Security', bill: 'Financial Security', wallet: 'Financial Security',
+  'credit card': 'Financial Security', transaction: 'Financial Security',
+  payment: 'Financial Security', expense: 'Financial Security', salary: 'Financial Security',
+  // Career & Craft
+  laptop: 'Career & Craft', computer: 'Career & Craft', monitor: 'Career & Craft',
+  keyboard: 'Career & Craft', whiteboard: 'Career & Craft', presentation: 'Career & Craft',
+  document: 'Career & Craft', 'office desk': 'Career & Craft', terminal: 'Career & Craft',
+  coding: 'Career & Craft',
+  // Spirit & Purpose
+  book: 'Spirit & Purpose', textbook: 'Spirit & Purpose', reading: 'Spirit & Purpose',
+  library: 'Spirit & Purpose', pages: 'Spirit & Purpose', studying: 'Spirit & Purpose',
+  learning: 'Spirit & Purpose', notes: 'Spirit & Purpose', philosophy: 'Spirit & Purpose',
+  knowledge: 'Spirit & Purpose', lecture: 'Spirit & Purpose', class: 'Spirit & Purpose',
+  course: 'Spirit & Purpose',
+  // Impact & Legacy
+  canvas: 'Impact & Legacy', painting: 'Impact & Legacy', drawing: 'Impact & Legacy',
+  guitar: 'Impact & Legacy', piano: 'Impact & Legacy', instrument: 'Impact & Legacy',
+  studio: 'Impact & Legacy', sketchbook: 'Impact & Legacy', microphone: 'Impact & Legacy',
+  camera: 'Impact & Legacy', art: 'Impact & Legacy', creative: 'Impact & Legacy',
+  // Friendship & Social
+  cafe: 'Friendship & Social', 'coffee shop': 'Friendship & Social',
+  gathering: 'Friendship & Social', party: 'Friendship & Social',
+  hangout: 'Friendship & Social', 'group photo': 'Friendship & Social',
+  // Wealth & Assets
+  chart: 'Wealth & Assets', trading: 'Wealth & Assets', investment: 'Wealth & Assets',
+  portfolio: 'Wealth & Assets', crypto: 'Wealth & Assets', property: 'Wealth & Assets',
+  // Gaming & Esports
+  controller: 'Gaming & Esports', console: 'Gaming & Esports', headset: 'Gaming & Esports',
+  esports: 'Gaming & Esports', 'gaming chair': 'Gaming & Esports',
+  // Environment & Home
+  vacuum: 'Environment & Home', cleaning: 'Environment & Home',
+  organizing: 'Environment & Home', tools: 'Environment & Home', repair: 'Environment & Home',
+  // Community & Contribution
+  volunteer: 'Community & Contribution', teaching: 'Community & Contribution',
+  charity: 'Community & Contribution', donation: 'Community & Contribution',
+  // Romance & Intimacy
+  flowers: 'Romance & Intimacy', romantic: 'Romance & Intimacy', couple: 'Romance & Intimacy',
+};
+
 /** Resolve a Praxis domain string → DomainDef. Fuzzy-matches on partial string. */
 export function resolveDomain(domainStr: string): DomainDef | null {
   const key = Object.keys(PRAXIS_ONTOLOGY).find(

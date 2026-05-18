@@ -69,6 +69,7 @@ import failsRoutes from './routes/failsRoutes';
 import actionRoutes from './routes/actionRoutes';
 import weeklyChallengeRoutes from './routes/weeklyChallengeRoutes';
 import agentRoutes from './routes/agentRoutes';
+import rachmaninov from './routes/rachmaninov';
 import { handleWebhook as handleStripeWebhook } from './controllers/stripeController';
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -295,6 +296,7 @@ apiRouter.use('/fails',   generalLimiter, failsRoutes);
 apiRouter.use('/actions', generalLimiter, actionRoutes);
 apiRouter.use('/weekly-challenge', generalLimiter, weeklyChallengeRoutes);
 apiRouter.use('/agent', generalLimiter, agentRoutes);
+apiRouter.use('/rachmaninov', generalLimiter, rachmaninov);
 
 app.use('/api', apiRouter);
 
