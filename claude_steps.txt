@@ -2388,3 +2388,32 @@ Implemented canonical ayu ontology mapping for all 14 Praxis life domains. Added
 ## Next
 - Railway auto-deploy from Dockerfile fix; verify build passes with Rust 1.85
 - Add `aura://praxis/callback` to Supabase dashboard → Auth → URL Configuration → Redirect URLs
+
+---
+
+# Session: May 18, 2026 — Rachmaninov ACT→Axiom Sync
+
+## Summary
+Closed the full PDCA loop: Aura's CheckinDialog grade now flows into both local WikiStore (Aura ACT) and the Axiom daily brief (Praxis). Rachmaninov PLAN phase reads historical grade stats before proposing next day's actions.
+
+## Modified Files
+- `src/services/AxiomScanService.ts`:
+  - Replaces flat checkin list with grade-aware summary block in Axiom prompt
+  - Parses `mood` field format `"RATIONALE:GRADE_PCT"` (sent by Aura after CheckinDialog)
+  - Computes: avg grade last 7 checkins, per-rationale breakdown, stagnation signals (grade <35%), win phrases
+  - Axiom brief now surfaces: `avg=68% | EFFORT:75% | COMPLETENESS:60% | ⚠ stagnating: ... | wins: ...`
+
+## Architecture
+- Mood field encodes both rationale and grade: `"EFFORT:75"` = EFFORT rationale, 75% grade
+- Backwards compatible: checkins without `:` in mood treated as ungraded (old format)
+- Axiom adapts brief tone to grade data: low avg → recovery focus; stagnating → flag for different approach
+
+## Commits
+- d5c9d7e: feat(axiom): parse Rachmaninov grade from checkin mood field → ACT→Axiom sync
+
+## PDCA Loop Status: COMPLETE
+- PLAN: Rachmaninov.proposeDay() ✅
+- DO: human acts on proposal ✅ (no code needed)
+- CHECK: CheckinDialog → postCheckin ✅
+- ACT: RachmaAct.record() → computeStats() → actInsight() → injects into next PLAN ✅
+       Axiom brief ingests grade data for next-day brief adjustment ✅
