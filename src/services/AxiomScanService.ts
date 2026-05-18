@@ -778,7 +778,30 @@ CONTEXT (LAST 30 DAYS OF ACTIVITY):
 ${enrichGoalsContext(goalsSlice)}
 - Monthly check-ins: ${((monthCheckinsRes.data || []) as any[]).length} days logged in last month
 - Monthly tracker logs: ${((monthTrackersRes.data || []) as any[]).length} entries in last month
-- Recent check-ins: ${JSON.stringify((checkinsRes.data || []).slice(0, 3).map((c: any) => ({ mood: c.mood, win: c.win_of_the_day, streak: c.streak_day })))}
+- Recent Rachmaninov grades: ${(() => {
+  const recent = (checkinsRes.data || []).slice(0, 7) as any[];
+  const graded = recent.filter((c: any) => c.mood && c.mood.includes(':'));
+  if (graded.length === 0) return 'none yet (check-ins logged without grade)';
+  const avg = Math.round(graded.reduce((s: number, c: any) => {
+    const g = parseInt(c.mood.split(':')[1] || '0', 10);
+    return s + g;
+  }, 0) / graded.length);
+  const byRationale: Record<string, number[]> = {};
+  graded.forEach((c: any) => {
+    const [rat, gStr] = c.mood.split(':');
+    if (!byRationale[rat]) byRationale[rat] = [];
+    byRationale[rat].push(parseInt(gStr || '0', 10));
+  });
+  const breakdown = Object.entries(byRationale)
+    .map(([r, gs]) => `${r}:${Math.round((gs as number[]).reduce((a: number, b: number) => a + b, 0) / (gs as number[]).length)}%`)
+    .join(' | ');
+  const stagnating = graded
+    .filter((c: any) => parseInt(c.mood.split(':')[1] || '100', 10) < 35)
+    .map((c: any) => c.win_of_the_day || c.mood.split(':')[0])
+    .slice(0, 3);
+  const wins = graded.filter((c: any) => c.win_of_the_day).map((c: any) => c.win_of_the_day).slice(0, 2);
+  return `avg=${avg}% | ${breakdown}${stagnating.length > 0 ? ` | ⚠ stagnating: ${stagnating.join(', ')}` : ''}${wins.length > 0 ? ` | wins: ${wins.join('; ')}` : ''}`;
+})()}
 - Tracker trends: ${metrics.trackerTrends?.map((t: any) => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
 ${notebookContext}
 ${calendarContext ? `\n${calendarContext}` : ''}
