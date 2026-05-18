@@ -11,11 +11,37 @@ export interface UserPersona {
     stressors: string[];
     peakEnergyTime: 'morning' | 'afternoon' | 'evening' | 'night';
   };
+  traits: {
+    openness: number;         // 0.0 - 1.0
+    conscientiousness: number;
+    extroversion: number;
+    agreeableness: number;
+    neuroticism: number;
+  };
+  archetypeAlignment: Record<string, number>; // Similarity to Titan seeds
   avoidancePatterns: string[];
   connectionIntent: string[];
   lifeStage: string | null;
   computedAt: string;
 }
+
+const TRAIT_MARKERS: Record<string, { trait: keyof UserPersona['traits']; weight: number }> = {
+  // Conscientiousness
+  'schedule': { trait: 'conscientiousness', weight: 0.1 },
+  'routine':  { trait: 'conscientiousness', weight: 0.1 },
+  'duty':     { trait: 'conscientiousness', weight: 0.2 },
+  'plan':     { trait: 'conscientiousness', weight: 0.1 },
+  // Openness
+  'new':      { trait: 'openness', weight: 0.1 },
+  'idea':     { trait: 'openness', weight: 0.1 },
+  'learn':    { trait: 'openness', weight: 0.1 },
+  'explore':  { trait: 'openness', weight: 0.2 },
+  // Extroversion
+  'people':   { trait: 'extroversion', weight: 0.1 },
+  'meeting':  { trait: 'extroversion', weight: 0.1 },
+  'party':    { trait: 'extroversion', weight: 0.2 },
+  'talk':     { trait: 'extroversion', weight: 0.1 },
+};
 
 const MOOD_SCORES: Record<string, number> = {
   '😊': 4, '😁': 5, '🥰': 5, '😎': 4, '💪': 4, '🎉': 5, '✅': 4,
@@ -57,7 +83,7 @@ export class AxiomPersonaService {
         .limit(200),
       supabase
         .from('profiles')
-        .select('connection_intent, life_stage')
+        .select('connection_intent, life_stage, avoidance_patterns')
         .eq('id', userId)
         .single(),
     ]);
@@ -129,11 +155,21 @@ export class AxiomPersonaService {
     const peakEnergyTime = (Object.entries(timeSlots)
       .sort((a, b) => b[1] - a[1])[0]?.[0] || 'morning') as UserPersona['emotionalProfile']['peakEnergyTime'];
 
-    // Avoidance: goals with 0 progress set more than 30 days ago
-    const avoidancePatterns = nodes
-      .filter((n: any) => (n.progress || 0) === 0 && n.created_at && n.created_at < cutoff)
-      .slice(0, 5)
-      .map((n: any) => n.name as string);
+    // Big Five Trait Inference
+    const traits = { openness: 0.5, conscientiousness: 0.5, extroversion: 0.5, agreeableness: 0.5, neuroticism: 0.5 };
+    const textContent = notes.map(n => (n.content || '').toLowerCase()).join(' ');
+    
+    Object.entries(TRAIT_MARKERS).forEach(([word, config]) => {
+      if (textContent.includes(word)) {
+        traits[config.trait] = Math.min(1.0, traits[config.trait] + config.weight);
+      }
+    });
+
+    // Simple Archetype Alignment (Placeholder for deeper vector comparison)
+    const archetypeAlignment: Record<string, number> = {};
+    if (traits.conscientiousness > 0.7) archetypeAlignment['titan_willink'] = 0.8;
+    if (traits.openness > 0.7) archetypeAlignment['titan_feynman'] = 0.8;
+    if (traits.neuroticism > 0.7) archetypeAlignment['titan_frankl'] = 0.7;
 
     return {
       userId,
@@ -141,7 +177,9 @@ export class AxiomPersonaService {
       statedDomains,
       divergenceInsight,
       emotionalProfile: { happinessDrivers, stressors, peakEnergyTime },
-      avoidancePatterns,
+      traits,
+      archetypeAlignment,
+      avoidancePatterns: Array.isArray(profile?.avoidance_patterns) ? profile.avoidance_patterns : [],
       connectionIntent: Array.isArray(profile?.connection_intent) ? profile.connection_intent : [],
       lifeStage: profile?.life_stage || null,
       computedAt: new Date().toISOString(),
@@ -183,6 +221,8 @@ export class AxiomPersonaService {
         stressors: [],
         peakEnergyTime: 'morning',
       },
+      traits: data.traits || { openness: 0.5, conscientiousness: 0.5, extroversion: 0.5, agreeableness: 0.5, neuroticism: 0.5 },
+      archetypeAlignment: data.archetype_alignment || {},
       avoidancePatterns: data.avoidance_patterns || [],
       connectionIntent: data.connection_intent || [],
       lifeStage: data.life_stage || null,

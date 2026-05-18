@@ -39,16 +39,43 @@ export class AxiomWikiSearchService {
       const ownerUserId = process.env.UBER_WIKI_OWNER_USER_ID;
       const isOwner = ownerUserId && userId === ownerUserId;
 
-      const [userSnippets, globalSnippets] = await Promise.all([
+      const [userSnippets, globalSnippets, communitySnippets] = await Promise.all([
         llmwikiUp
           ? this.searchLlmwiki(userId, query, maxResults)
           : this.searchPostgres(userId, query, maxResults),
         isOwner ? this.searchUberWiki(query, 2) : Promise.resolve([]),
+        this.searchCommunityWiki(query, 2),
       ]);
-      const merged = [...globalSnippets, ...userSnippets];
+      const merged = [...globalSnippets, ...communitySnippets, ...userSnippets];
       return merged.slice(0, maxResults + 2);
     } catch (err: any) {
       logger.warn(`[WikiSearch] search failed: ${err.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Search the community wiki aggregates (anonymized patterns).
+   * Uses simple keyword search on tags and source_type for now.
+   */
+  async searchCommunityWiki(query: string, maxResults: number = 2): Promise<WikiSnippet[]> {
+    try {
+      const { data, error } = await supabase
+        .from('community_wiki_aggregates')
+        .select('source_type, scores, tags, content, logged_at')
+        .or(`tags.cs.{${query}},source_type.ilike.%${query}%`)
+        .order('confidence', { ascending: false })
+        .limit(maxResults);
+
+      if (error || !data) return [];
+
+      return data.map((row: any) => ({
+        pagePath: `[community]/${row.source_type}`,
+        snippet: `${row.content || ''} (Tags: ${row.tags.join(', ')})`,
+        score: 0.8,
+      }));
+    } catch (err: any) {
+      logger.warn(`[WikiSearch] community search failed: ${err.message}`);
       return [];
     }
   }

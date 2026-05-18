@@ -1,295 +1,214 @@
-# ⚖️ Praxis
+# Praxis
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D%2020.0.0-brightgreen.svg)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-19-blue.svg)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Build-Vite%208-646CFF.svg)](https://vitejs.dev/)
-[![Supabase](https://img.shields.io/badge/Database-Supabase-blueviolet.svg)](https://supabase.com/)
-[![Status](https://img.shields.io/badge/Status-Active_Development-success.svg)](https://github.com/giovannigallo/praxis_webapp)
+Social OS for goal tracking and accountability. Structures the gap between intent and action through commitment partnerships, skin-in-the-game mechanics, and an AI agent (Axiom) that scans your progress daily and builds a causal model of what actually works for you.
 
-> **Aligning Will. Designing Intent.**<br>
-> Praxis transforms isolated goal-setting into mutual commitment through accountability partnerships that make achievement inevitable.
+**Stack:** Express 5 + TypeScript · React 19 + MUI v7 · Supabase (Postgres + RLS) · Stripe · Vite
 
 ---
 
-<p align="center">
-  <strong>🚀 Built for those who know that willpower alone isn't enough.</strong><br>
-  <em>Praxis pairs you with the right partner, gives you skin in the game, and tracks what actually matters.</em>
-</p>
-
----
-
-## 🎯 What Is Praxis?
-
-Praxis is a **next-generation accountability partnership platform** that moves beyond solitary habit-tracking by connecting you with committed partners who share your goals and values. Through structured accountability, meaningful stakes, and intelligent matching, Praxis ensures your goals are not just tracked — **they're achieved**.
-
-### The Problem We Solve
-
-| Traditional Habit Trackers            | Praxis                                                        |
-| ------------------------------------- | ------------------------------------------------------------- |
-| Solo journey — easy to quit           | **Social accountability** — harder to let your partner down   |
-| Hollow streaks — breaks feel punitive | **Grace & recovery** — life happens, systems adapt            |
-| No consequences for skipping          | **Skin in the game** — accountability bets with real stakes   |
-| Generic reminders                     | **Smart partner matching** — find people who share your drive |
-| Data you never look at                | **Rich analytics** — insights that drive behavior change      |
-
-### Who Praxis Is For
-
-- **🎯 Achievers** who know they perform better with a committed partner
-- **🤝 Accountability seekers** tired of breaking goals alone
-- **💪 Disciplined builders** who want to track progress with intentionality
-- **📈 Growth-minded individuals** who value sustainable intensity over hustle culture
-
----
-
-## ✨ Core Features
-
-### 🌲 Goal Trees
-
-Define high-level objectives and break them down into actionable, trackable sub-goals. Visualize your entire path from intention to completion.
-
-### 🤝 Smart Partner Matching
-
-Find accountability partners with overlapping goals, complementary schedules, and shared commitment levels. No more going it alone.
-
-### 💰 Accountability Bets
-
-Put real stakes on your commitments. Define what happens if you follow through — or don't. Skin in the game changes everything.
-
-### 📊 Rich Analytics
-
-Track streaks, reliability scores, completion rates, and partnership health. Data-driven insights into what's working and what needs attention.
-
-### 🎮 Gamification & XP System
-
-Earn XP for consistent engagement, unlock achievements, and climb status tiers from Newcomer to Relentless. Progress that feels rewarding.
-
-### 📓 Integrated Notebook
-
-Journal your journey with location tracking, automated logging, and intelligent pattern detection. Your growth narrative, preserved.
-
-### 🔥 Mutual Streaks
-
-Build streaks together with your partner. When one shows up, both benefit. Social accountability that compounds over time.
-
-### 🛡️ Privacy-First Design
-
-Built on Supabase with row-level security, encrypted messaging, and transparent data practices. Your goals are yours.
-
----
-
-## 🏗️ Architecture at a Glance
-
-```
-┌─────────────────────────────────────────────────────┐
-│                    CLIENT LAYER                      │
-│   React 19 (TypeScript) · Material UI · Vite 8      │
-│   Web App → Electron Desktop → Mobile (in progress) │
-└──────────────────────┬──────────────────────────────┘
-                       │ HTTPS
-┌──────────────────────┴──────────────────────────────┐
-│                     API LAYER                        │
-│         Express 5 (Node.js/TypeScript)               │
-│  Auth · Goals · Social · Payments · Scheduling      │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────┴──────────────────────────────┐
-│                   SERVICE LAYER                      │
-│   Engagement Metrics · Matching Engine · XP System  │
-│   Streak Logic · Notification System · Analytics    │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────┴──────────────────────────────┐
-│                    DATA LAYER                        │
-│     PostgreSQL (Supabase) · Stripe · Sentry ·       │
-│     Winston Logging · Node-cron Scheduling          │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-## 🛠️ Technology Stack
-
-| Layer          | Technology                    | Why                                            |
-| -------------- | ----------------------------- | ---------------------------------------------- |
-| **Frontend**   | React 19 + TypeScript         | Type-safe, component-driven UI                 |
-| **Routing**    | React Router v6 (Data Router) | Modern data fetching patterns                  |
-| **Styling**    | Material UI v6                | Consistent, accessible design system           |
-| **Build**      | Vite 8                        | 8× faster builds, optimized bundles            |
-| **Backend**    | Express 5 + TypeScript        | Stable, extensible API framework               |
-| **Database**   | PostgreSQL (Supabase)         | Relational integrity + real-time subscriptions |
-| **Auth**       | Supabase Auth                 | OAuth + email auth, JWT sessions               |
-| **Payments**   | Stripe                        | Global payments, subscription management       |
-| **Monitoring** | Sentry                        | Error tracking, performance profiling          |
-| **Logging**    | Winston                       | Structured, production-grade logging           |
-| **Testing**    | Jest · Playwright · K6        | Unit, E2E, and load testing coverage           |
-| **Deployment** | Vercel (FE) · Railway (BE)    | Zero-downtime deploys on `main`                |
-
----
-
-## 📖 Documentation
-
-Comprehensive documentation lives in `docs/`:
-
-### Product & Strategy
-
-- [Product Strategy (90-Day Plan)](./docs/PRODUCT_STRATEGY.md)
-- [How Praxis Works](./docs/HOW_PRAXIS_WORKS.md)
-- [Gamification System](./docs/gamification-enhancement-plan.md)
-- [Growth Sprint Plan](./docs/growth-sprint-plan.md)
-
-### Technical Reference
-
-- [Architecture Overview](./docs/wiki/Architecture.md)
-- [API Reference](./docs/API_REFERENCE.md)
-- [Database Schema](./docs/wiki/Database-Schema.md)
-- [Deployment Guide](./docs/wiki/Deployment.md)
-
-### Analytics & Growth
-
-- [Analytics Dashboard](./ANALYTICS_DASHBOARD_TEMPLATE.md)
-- [Metrics Dashboard Guide](./docs/METRICS_DASHBOARD_GUIDE.md)
-
----
-
-## 🚀 Quick Start (Developers)
-
-### Prerequisites
-
-- **Node.js** >= 20.0.0
-- **Supabase Project** — create at [supabase.com](https://supabase.com)
-- **Git** — for version control
-
-### Installation
+## Quick Start
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-username/praxis_webapp.git
-cd praxis_webapp
+git clone https://github.com/ilPez00/praxis_webapp && cd praxis_webapp
 
-# 2. Install all dependencies
 npm install
+cd client && npm install && cd ..
 
-# 3. Setup environment variables
 cp .env.example .env
-# Edit .env with your Supabase URL, service role key, Stripe keys, etc.
+cd client && cp .env.example .env && cd ..
+# fill in both .env files — see Environment section
 
-# 4. Start the backend (port 3001)
-npm run dev
-
-# 5. In another terminal, start the frontend (port 3000)
-cd client
-npm install
-cp .env.example .env
-# Edit client/.env with your Supabase URL, anon key, and API URL
-npm run dev
+npm run dev          # backend :3001
+cd client && npm run dev   # frontend :5173
 ```
 
-### Available Commands
+---
 
-**Backend:**
+## Architecture
 
-```bash
-npm run dev              # Development server with hot-reload
-npm run build            # Compile TypeScript
-npm start                # Production server
-npm test                 # Unit tests (Jest)
-npm run test:e2e         # E2E tests (Playwright)
-npm run test:load        # Load tests (K6)
-npm run lint             # Code quality checks
-npm run lint:fix         # Auto-fix lint issues
+```
+client/src/          React 19 SPA (Vite)
+  pages/             Route-level components
+  components/        Shared UI (MUI v7)
+  hooks/             Data fetching, auth state
+
+src/                 Express 5 backend
+  controllers/       Route handlers (~50 controllers)
+  services/          Business logic + Axiom AI
+  models/            Types, enums, PraxisOntology
+  routes/            Express router
+  middleware/        Auth (Supabase JWT), rate-limit, Sentry
+  migrations/        SQL migration files
 ```
 
-**Frontend** (`client/`):
+**Auth flow:** Client sends Supabase JWT → backend middleware verifies with `SUPABASE_JWT_SECRET` → handlers call Supabase with service-role key (bypasses RLS). Never expose service-role key to frontend.
 
-```bash
-npm run dev              # Vite dev server with HMR
-npm run build            # Production build
-npm run preview          # Preview production build
+**Deploys:** Backend → Railway · Frontend → Vercel · DB → Supabase hosted
+
+---
+
+## Core Features
+
+### Goal Trees
+
+14 life domains (Maslow-structured) each backed by `DomainDef` in `PraxisOntology`:
+
+| Domain                                                                                   | Score axis    |
+| ---------------------------------------------------------------------------------------- | ------------- |
+| Body & Fitness · Rest & Recovery · Health & Longevity                                    | Physical      |
+| Financial Security · Wealth & Assets                                                     | Economic      |
+| Career & Craft · Gaming & Esports · Impact & Legacy                                      | Intellectual  |
+| Mental Balance · Friendship & Social · Romance & Intimacy · Community · Spirit & Purpose | Psychological |
+
+Goals decompose into sub-goals (goal trees). Progress tracked as percentage. Each domain has a unit (`reps`, `€`, `pages`, `min`, …).
+
+### Axiom — AI Agent
+
+Background agent runs nightly scans and on-demand analysis:
+
+| Service                          | Purpose                                                         |
+| -------------------------------- | --------------------------------------------------------------- |
+| `AxiomScanService`               | Goal context enrichment — enriches goals with ayu action schema |
+| `AxiomUnifiedScanService`        | Daily scan: progress estimation + narrative generation          |
+| `AxiomDailySummaryService`       | Distills day's check-ins into daily summary                     |
+| `AxiomPersonaService`            | Builds user psychological profile over time                     |
+| `AxiomLearningService`           | Detects patterns: what methods work, what causes failure        |
+| `AxiomProgressEstimationService` | Estimates goal % from structured tracker data                   |
+| `AxiomWikiWriterService`         | Writes compressed `will→action→effect` flows to community wiki  |
+| `AxiomWikiSearchService`         | Semantic search over community wiki                             |
+| `AxiomNotebookLMService`         | Generates exportable PDF notebooks from goal history            |
+| `AICoachingService`              | Conversational coach with configurable personality              |
+
+All Axiom calls use Gemini (primary) via `@google/generative-ai`. MCP server available for programmatic access (`praxis-mcp-server/`).
+
+### Accountability & Social
+
+- **Partner matching** — `MatchingEngineService` pairs users by overlapping goals, schedule, commitment level
+- **Accountability bets** — `bettingController` + Stripe for real-stakes commitments
+- **Duels** — time-boxed head-to-head goal challenges (`duelResolutionCron`)
+- **Groups** — `groupController` + `groupRecommendationController`
+- **Sparring** — peer review of methods (`sparringController`)
+- **Honor system** — community reputation (`honorController`)
+
+### Check-ins & Tracking
+
+- Manual check-in with mood, win-of-the-day, free text
+- Structured trackers (`StructuredTrackerWriter/Reader`) — typed data points per domain
+- Calendar integration — Google Calendar sync (`GoogleCalendarService`)
+- Push notifications — web-push (`pushController`)
+- Streaks, fail tracking, weekly challenges
+
+### Aura Integration
+
+Aura (Android) connects directly via REST API:
+
+```
+POST /api/checkins          — auto check-in from vision/audio/voice events
+PATCH /api/goals/:id        — update node progress percentage
+GET  /api/goals/active      — fetch active goals for HUD/bridge scoring
 ```
 
-### Environment Variables
+Aura mirrors `PraxisOntology` in Kotlin (`rachmaninov/PraxisOntology.kt`). The `PraxisEventBridge` scores every wiki ingest against active goals and surfaces a one-tap check-in prompt when threshold is exceeded. `GoalHudStrip` shows the most context-relevant goal as a persistent HUD dot.
 
-**Root `.env`:**
+---
+
+## Environment Variables
+
+### Backend `.env`
 
 ```env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-STRIPE_SECRET_KEY=sk_test_...
+SUPABASE_URL=
+SUPABASE_SERVICE_KEY=
+SUPABASE_JWT_SECRET=
+GEMINI_API_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+RESEND_API_KEY=
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
 PORT=3001
+NODE_ENV=development
 ```
 
-**`client/.env`:**
+### Frontend `client/.env`
 
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_API_URL=http://localhost:3001/api
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_API_URL=http://localhost:3001
+VITE_STRIPE_PUBLIC_KEY=
+VITE_VAPID_PUBLIC_KEY=
 ```
 
 ---
 
-## 🧪 Testing & Quality
+## Database
 
-Praxis maintains a comprehensive test suite:
+Migrations in `migrations/`. Apply in order against your Supabase project:
 
-| Test Type | Tool       | Command             | Coverage                       |
-| --------- | ---------- | ------------------- | ------------------------------ |
-| **Unit**  | Jest       | `npm test`          | Core business logic, utilities |
-| **E2E**   | Playwright | `npm run test:e2e`  | Critical user flows            |
-| **Load**  | K6         | `npm run test:load` | API performance under load     |
+```bash
+# via Supabase CLI
+supabase db push
 
-**Code Quality:**
+# or directly
+psql $DATABASE_URL -f migrations/001_init.sql
+```
 
-- ESLint + TypeScript strict mode enforced
-- Pre-commit hooks via Husky
-- lint-staged for staged file checks
-- `.editorconfig` for consistent formatting
+RLS policies are defined per-table. Backend bypasses with service-role key.
 
 ---
 
-## 🤝 Contributing
+## Deployment
 
-Praxis welcomes contributions from the community. Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before submitting PRs.
+```bash
+# Backend (Railway)
+railway up
 
-### How to Contribute
+# Frontend (Vercel)
+cd client && vercel --prod
 
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to your branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
-
-### Contribution Areas
-
-- 🐛 **Bug fixes** — always welcome
-- 🎨 **UI/UX improvements** — make Praxis more intuitive
-- 📝 **Documentation** — help new contributors and users
-- 🧪 **Test coverage** — strengthen reliability
-- 🚀 **New features** — discuss in Issues first for major changes
-- 🌍 **Localization** — translate for your language
+# Docker (self-hosted)
+docker build -t praxis .
+docker run -p 3001:3001 --env-file .env praxis
+```
 
 ---
 
-## 📄 License
+## MCP Server
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+Praxis exposes an MCP server for AI agent access:
+
+```bash
+cd praxis-mcp-server && npm install
+node dist/index.js
+```
+
+Tools: `get_goals`, `post_checkin`, `update_progress`, `search_wiki`, `get_daily_summary`.
 
 ---
 
-## 🙏 Acknowledgments
+## API Reference (key endpoints)
 
-- **Supabase** — for the incredible backend platform
-- **Stripe** — for seamless payment infrastructure
-- **The open-source community** — for the tools and libraries that make Praxis possible
+```
+POST   /api/auth/register
+POST   /api/auth/login
 
----
+GET    /api/goals                  list active goals
+POST   /api/goals                  create goal
+PATCH  /api/goals/:id              update progress/status
 
-<p align="center">
-  <em>Praxis is built by individuals who believe that accountability transforms intention into action.</em><br>
-  <strong>Join us in making commitment contagious.</strong>
-</p>
+POST   /api/checkins               log check-in
+GET    /api/checkins/:userId       user check-in history
 
-<p align="center">
-  <sub>⚖️ Aligning Will · Designing Intent · Building Praxis</sub>
-</p>
+GET    /api/axiom/scan             trigger daily axiom scan
+GET    /api/axiom/summary/:userId  today's summary
+POST   /api/axiom/coach            conversational coaching
+
+GET    /api/matching               find accountability partners
+POST   /api/bets                   create accountability bet
+POST   /api/duels                  challenge a user
+
+GET    /api/wiki/search?q=         search community wiki
+```
+
+Full route list: `src/routes/`.

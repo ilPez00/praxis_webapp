@@ -51,7 +51,7 @@ const AchievementCollectionPage = React.lazy(() => import('../features/achieveme
 const GoLivePage = React.lazy(() => import('../features/streaming/GoLivePage'));
 const WatchStreamPage = React.lazy(() => import('../features/streaming/WatchStreamPage'));
 const CameraPage = React.lazy(() => import('../features/camera/CameraPage'));
-const AxiomCameraCapture = React.lazy(() => import('../features/camera/AxiomCameraCapture'));
+// AxiomCameraCapture removed — vision/image analysis is handled by Aura, not Praxis
 
 // Route definitions used by AppRouter to build the data router
 export const publicRoutes: RouteObject[] = [
@@ -107,7 +107,7 @@ export const privateRoutes: RouteObject[] = [
   { path: 'go-live', element: <GoLivePage /> },
   { path: 'stream/:id', element: <WatchStreamPage /> },
   { path: 'camera', element: <CameraPage /> },
-  { path: 'camera/axiom', element: <AxiomCameraCapture /> },
+  // camera/axiom removed — vision handled by Aura
 ];
 
 export default { publicRoutes, privateRoutes };

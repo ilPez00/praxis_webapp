@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import {
   listRooms,
   createRoom,
@@ -10,16 +10,23 @@ import {
   getRoom,
   getJoinedRooms,
   inviteMember,
-  recommendGroups,
 } from '../controllers/groupController';
+import { recommendGroups } from '../controllers/groupRecommendationController';
 import { authenticateToken } from '../middleware/authenticateToken';
+import { catchAsync } from '../utils/appErrors';
 
 const router = Router();
 
 router.get('/joined', authenticateToken, getJoinedRooms);   // must be before /:roomId
 router.get('/', listRooms);
-router.get('/by-domain', listDomainGroups);
-router.get('/recommendations', authenticateToken, recommendGroups);
+
+// GET /groups/recommendations — domain-based group suggestions for authenticated user
+router.get('/recommendations', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  const groups = await recommendGroups(userId);
+  res.json({ groups });
+}));
+
 router.post('/', authenticateToken, createRoom);
 router.get('/:roomId', getRoom);
 router.post('/:roomId/join', authenticateToken, joinRoom);

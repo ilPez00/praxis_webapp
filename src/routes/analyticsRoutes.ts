@@ -8,6 +8,7 @@ import {
   getAchievementRate,
   getComparisonData,
   getAuraSummary,
+  ingestWikiAggregate,
 } from '../controllers/analyticsController';
 
 const router = Router();
@@ -20,5 +21,8 @@ router.get('/comparison-data/:userId', ...requirePro, getComparisonData);
 
 // Compact ontology summary for Aura — no pro gate, own data only
 router.get('/aura-summary/:userId', authenticateToken, getAuraSummary);
+
+// Federated wiki aggregation
+router.post('/wiki/aggregate', authenticateToken, ingestWikiAggregate);
 
 export default router;

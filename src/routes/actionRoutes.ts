@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { createAction, listActions, actionStats, goalMaturity } from '../controllers/actionController';
-import { authenticate } from '../middleware/auth';
+import { authenticateToken } from '../middleware/authenticateToken';
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticateToken);
 
 router.post('/',       createAction);
 router.get('/',        listActions);

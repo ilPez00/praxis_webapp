@@ -362,3 +362,40 @@ export const getAuraSummary = catchAsync(async (req: Request, res: Response) => 
   cacheSet(cacheKey, summary, TTL.SHORT);
   res.json(summary);
 });
+
+/**
+ * POST /analytics/wiki/aggregate
+ * Ingest anonymized wiki summaries from Aura.
+ */
+export const ingestWikiAggregate = catchAsync(async (req: Request, res: Response) => {
+  const { pages, timestamp } = req.body;
+  const userId = (req as any).user?.id;
+
+  if (!userId) throw new BadRequestError('Authentication required');
+  if (!pages || !Array.isArray(pages)) {
+    throw new BadRequestError('Pages array required');
+  }
+
+  const rows = pages.map(p => ({
+    user_id: userId,
+    source_type: p.type,
+    confidence: p.confidence ?? 1.0,
+    scores: {
+      physical: p.score_physical,
+      economic: p.score_economic,
+      intellectual: p.score_intellectual,
+      psychological: p.score_psychological,
+    },
+    tags: p.tags ?? [],
+    logged_at: new Date(p.timestamp || timestamp || Date.now()).toISOString(),
+  }));
+
+  const { error } = await supabase.from('community_wiki_aggregates').insert(rows);
+  if (error) {
+    logger.error(`[WikiAggregate] Fail for ${userId}: ${error.message}`);
+    throw new InternalServerError('Failed to store wiki aggregate');
+  }
+
+  logger.info(`[WikiAggregate] Ingested ${rows.length} entries for user ${userId}`);
+  res.json({ success: true, count: rows.length });
+});

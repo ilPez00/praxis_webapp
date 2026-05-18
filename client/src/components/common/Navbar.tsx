@@ -306,22 +306,7 @@ const Navbar: React.FC = () => {
                       </Button>
                     );
                   })}
-                  {user && (
-                    <Tooltip title="Capture with Axiom">
-                      <IconButton
-                        onClick={() => navigate('/camera/axiom')}
-                        sx={{
-                          color: location.pathname === '/camera/axiom' ? '#A78BFA' : 'text.secondary',
-                          ml: 0.5,
-                          width: 36,
-                          height: 36,
-                          bgcolor: location.pathname === '/camera/axiom' ? 'rgba(167,139,250,0.12)' : 'transparent',
-                          '&:hover': { bgcolor: 'rgba(167,139,250,0.18)', color: '#A78BFA' },
-                        }}
-                      >
-                        <AutoAwesomeIcon sx={{ fontSize: 20 }} />
-                      </IconButton>
-                    </Tooltip>
+                  {false && ( /* Axiom vision removed — use Aura app for image capture */
                   )}
                 </>
               )}

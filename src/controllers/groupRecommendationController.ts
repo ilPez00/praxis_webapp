@@ -1,12 +1,10 @@
 import { supabase } from '../lib/supabaseClient';
 
 /**
- * Recommends groups to users based on their saved goal domains
- * Params: user_id
- * Returns: list of suggested groups with domainScore
+ * Recommends groups to users based on their saved goal domains.
+ * Returns list of suggested groups with domainScore.
  */
-export async function recommendGroups(userId: string) {
-  // 1. Get user's goal domains
+export async function recommendGroups(userId: string): Promise<any[]> {
   const { data: goalTrees } = await supabase
     .from('goal_trees')
     .select('nodes')
@@ -14,20 +12,23 @@ export async function recommendGroups(userId: string) {
 
   if (!goalTrees || !goalTrees[0]?.nodes) return [];
 
-  const userDomains = [...new Set(goalTrees[0].nodes.map((n: any) => n.domain))];
+  const userDomains: string[] = [
+    ...new Set<string>((goalTrees[0].nodes as any[]).map((n: any) => n.domain as string)),
+  ];
 
-  // 2. Fetch groups for each relevant domain
-  const groupPromises = userDomains.map((domain: string) => {
-    return supabase
-      .from('chat_rooms')
-      .select('*, chat_room_members(count)')
-      .eq('domain', domain)
-      .order('created_at', { ascending: false });
-  });
+  const groupResults = await Promise.all(
+    userDomains.map((domain: string) =>
+      supabase
+        .from('chat_rooms')
+        .select('*, chat_room_members(count)')
+        .eq('domain', domain)
+        .order('created_at', { ascending: false })
+    )
+  );
 
-  // 3. Process all group results
-  const groupResults = await Promise.all(groupPromises);
-  const allGroups: any[] = [].concat(...groupResults.map(r => r.data || []));
+  const allGroups: any[] = ([] as any[]).concat(
+    ...groupResults.map(r => r.data || [])
+  );
 
   return allGroups.map(group => ({
     ...group,
