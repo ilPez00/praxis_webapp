@@ -10,6 +10,7 @@ import {
   getRoom,
   getJoinedRooms,
   inviteMember,
+  recommendGroups,
 } from '../controllers/groupController';
 import { authenticateToken } from '../middleware/authenticateToken';
 
@@ -17,6 +18,8 @@ const router = Router();
 
 router.get('/joined', authenticateToken, getJoinedRooms);   // must be before /:roomId
 router.get('/', listRooms);
+router.get('/by-domain', listDomainGroups);
+router.get('/recommendations', authenticateToken, recommendGroups);
 router.post('/', authenticateToken, createRoom);
 router.get('/:roomId', getRoom);
 router.post('/:roomId/join', authenticateToken, joinRoom);

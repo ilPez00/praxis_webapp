@@ -18,7 +18,8 @@ import logger from '../utils/logger';
 const execFileAsync = promisify(execFileSync);
 
 const WIKI_ROOT = '/home/gio/ai/wiki';
-const LLMWIKI_BIN = 'llmwiki';
+const UBER_WIKI_ROOT = '/home/gio/uber-wiki/wiki';
+const LLMWIKI_BIN = '/home/gio/.cargo/bin/llmwiki';
 
 export interface WikiSnippet {
   pagePath: string;
@@ -34,12 +35,41 @@ export class AxiomWikiSearchService {
    */
   async search(userId: string, query: string, maxResults: number = 3): Promise<WikiSnippet[]> {
     try {
-      if (await this.isLlmwikiAvailable()) {
-        return await this.searchLlmwiki(userId, query, maxResults);
-      }
-      return await this.searchPostgres(userId, query, maxResults);
+      const llmwikiUp = await this.isLlmwikiAvailable();
+      const ownerUserId = process.env.UBER_WIKI_OWNER_USER_ID;
+      const isOwner = ownerUserId && userId === ownerUserId;
+
+      const [userSnippets, globalSnippets] = await Promise.all([
+        llmwikiUp
+          ? this.searchLlmwiki(userId, query, maxResults)
+          : this.searchPostgres(userId, query, maxResults),
+        isOwner ? this.searchUberWiki(query, 2) : Promise.resolve([]),
+      ]);
+      const merged = [...globalSnippets, ...userSnippets];
+      return merged.slice(0, maxResults + 2);
     } catch (err: any) {
       logger.warn(`[WikiSearch] search failed: ${err.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Search the global uber-wiki (personal knowledge base — user spec, projects, infra).
+   * Always local; no Postgres fallback.
+   */
+  async searchUberWiki(query: string, maxResults: number = 2): Promise<WikiSnippet[]> {
+    if (!fs.existsSync(UBER_WIKI_ROOT)) return [];
+    try {
+      const { stdout } = await execFileAsync(LLMWIKI_BIN, [
+        'search', query,
+        '--wiki-root', UBER_WIKI_ROOT,
+      ], { timeout: 10000 });
+      return this.parseLlmwikiOutput(stdout, maxResults).map(s => ({
+        ...s,
+        pagePath: `[uber-wiki]/${s.pagePath}`,
+      }));
+    } catch (err: any) {
+      logger.warn(`[WikiSearch] uber-wiki search failed: ${err.message}`);
       return [];
     }
   }
@@ -190,7 +220,7 @@ export class AxiomWikiSearchService {
    */
   private async isLlmwikiAvailable(): Promise<boolean> {
     try {
-      await execFileAsync(LLMWIKI_BIN, ['--help'], { timeout: 3000 });
+      await execFileAsync(LLMWIKI_BIN, ['--version'], { timeout: 3000 });
       return true;
     } catch {
       return false;

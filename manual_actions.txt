@@ -385,3 +385,32 @@ Adds a table to persist provider health check results for the admin panel.
   4. Integration:
      - AICoachingService.runWithFallback checks feedback stats before caching prompts
      - If like ratio >= 80% with >= 5 feedbacks, appends "keep tone consistent" snippet
+
+## Uber-Wiki Owner Gate (2026-05-17)
+
+Set Railway env var so uber-wiki context only injects for your account:
+
+  UBER_WIKI_OWNER_USER_ID=<your-supabase-user-uuid>
+
+Get your UUID:
+  select id from auth.users where email = '<your-email>';
+
+Also set locally in praxis_webapp/.env:
+  UBER_WIKI_OWNER_USER_ID=<uuid>
+
+## Agent PAT System (2026-05-18)
+
+Run migration to add actor_type + agent_name to checkins and related columns:
+
+  psql "$SUPABASE_DB_URL" -f src/migrations/2026-05-18-agent-pat-checkin-actor.sql
+
+Or paste into Supabase SQL editor.
+
+After migration, agents authenticate via:
+  x-api-key: pk_live_<token>   (instead of Bearer JWT)
+
+Create a PAT for Aura in Praxis Settings → Personal Agent Tokens → name "Aura" → Create PAT.
+Then in Aura app Settings → Praxis → paste the PAT in the token field (or use OAuth flow).
+
+The PAT lets Aura call all existing endpoints (/checkins, /trackers/log, /goals/.../progress)
+as an agent actor — all actions appear in your Praxis feed with actor_type='agent'.
