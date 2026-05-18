@@ -151,6 +151,36 @@ export const handleWebhook = async (req: Request, res: Response) => {
       const subscriptionId = session.subscription as string;
       const userId = session.metadata?.userId; // Retrieve our internal userId from session metadata
 
+      // Real-money bet: payment confirmed → activate pending bet
+      if (session.metadata?.purchase_type === 'real_bet') {
+        const { betId, userId: betUserId } = session.metadata;
+        const paymentIntentId = session.payment_intent as string;
+        if (betId && betUserId && paymentIntentId) {
+          // Idempotency: skip if already active
+          const { data: existing } = await supabase
+            .from('bets')
+            .select('status')
+            .eq('id', betId)
+            .maybeSingle();
+
+          if (existing?.status === 'pending') {
+            const { error: activateErr } = await supabase
+              .from('bets')
+              .update({ status: 'active', stripe_payment_intent_id: paymentIntentId })
+              .eq('id', betId);
+
+            if (activateErr) {
+              logger.error(`[webhook] Failed to activate real bet ${betId}:`, activateErr);
+              return res.status(500).send('Failed to activate bet.');
+            }
+            logger.info(`[webhook] Real bet ${betId} activated (PI: ${paymentIntentId})`);
+          } else {
+            logger.info(`[webhook] Real bet ${betId} already processed (status: ${existing?.status}), skipping`);
+          }
+        }
+        return res.json({ received: true });
+      }
+
       // PP one-time purchase
       if (session.metadata?.purchase_type === 'pp') {
         const ppAmount = parseInt(session.metadata.pp ?? '0', 10);

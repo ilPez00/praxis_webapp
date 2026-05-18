@@ -4,6 +4,7 @@ import logger from '../utils/logger';
 import { catchAsync, BadRequestError, NotFoundError, ForbiddenError, InternalServerError } from '../utils/appErrors';
 import { pushNotification } from './notificationController';
 import { logFail } from './failsController';
+import { resolveRealBetWin, resolveExpiredRealBets } from './realBetsController';
 
 /**
  * Find users with similar goals for duel matching
@@ -291,12 +292,16 @@ export const resolveExpiredBets = catchAsync(async (req: Request, res: Response,
     }
   }
 
-  // STUB: in production, route forfeited real-money stakes to charity escrow via Stripe transfer
-  if (totalForfeited > 0) {
-    logger.info(`[CHARITY STUB] ${totalForfeited} pts forfeited across ${resolved} bets — would trigger Stripe transfer to charity escrow in production`);
-  }
+  // Also sweep expired real-money bets
+  const realResult = await resolveExpiredRealBets();
 
-  res.json({ resolved, totalForfeited, message: `${resolved} expired bet(s) resolved.` });
+  res.json({
+    resolved,
+    totalForfeited,
+    realResolved: realResult.resolved,
+    charityTotalEuros: realResult.charityTotalEuros,
+    message: `${resolved} PP bet(s) + ${realResult.resolved} real-money bet(s) resolved.`,
+  });
 });
 
 /**
@@ -349,14 +354,17 @@ export const resolveBetsOnGoalCompletion = async (userId: string, goalNodeId: st
       await supabase.rpc('check_user_achievements', { p_user_id: userId });
       
       logger.info(`Bet ${bet.id} WON for user ${userId}: +${winnings} PP, +${xpWinnings} XP`);
-      
+
       pushNotification({
         userId,
         type: 'bet_result',
         title: `Goal completed! You won ${winnings} PP on "${bet.goal_name}"`,
-        link: '/betting',
+        link: '/commitments',
       });
     }
+
+    // Also resolve any real-money bets on this goal
+    await resolveRealBetWin(userId, goalNodeId);
   } catch (err) {
     // Non-fatal — bet resolution failure shouldn't block goal verification
     logger.error('Bet resolution failed (non-fatal):', err);

@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { 
+import {
   createBet, getUserBets, cancelBet, resolveExpiredBets, getBetById,
-  createDuel, acceptDuel, declineDuel, getDuel, getDuelByInvite 
+  createDuel, acceptDuel, declineDuel, getDuel, getDuelByInvite
 } from '../controllers/bettingController';
+import { createRealBetCheckout } from '../controllers/realBetsController';
 import { authenticateToken } from '../middleware/authenticateToken';
 import { validateBody } from '../middleware/validateRequest';
 import { createBetSchema, cancelBetSchema } from '../schemas/bettingSchemas';
@@ -11,6 +12,9 @@ const router = Router();
 
 // Webhook/cron — no JWT (uses admin-secret or is idempotent)
 router.post('/resolve-webhook', resolveExpiredBets);
+
+// Real-money bet checkout — must be before /:userId to avoid route shadowing
+router.post('/real/checkout', authenticateToken, createRealBetCheckout);
 
 // Authenticated routes
 router.post('/', authenticateToken, validateBody(createBetSchema), createBet);

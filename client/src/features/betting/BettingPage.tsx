@@ -20,6 +20,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import ShareIcon from '@mui/icons-material/Share';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import EuroIcon from '@mui/icons-material/Euro';
 import { GoalNode } from '../../models/GoalNode';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
@@ -30,11 +31,14 @@ interface Bet {
   goal_name: string;
   deadline: string;
   stake_points: number;
-  status: 'active' | 'won' | 'lost' | 'cancelled';
+  stake_euros?: number;
+  is_real_money?: boolean;
+  status: 'pending' | 'active' | 'won' | 'lost' | 'cancelled';
   created_at: string;
 }
 
 const STATUS_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  pending:   { label: 'Pending',    color: '#F59E0B', icon: <TimerIcon fontSize="small" /> },
   active:    { label: 'Active',     color: '#3B82F6', icon: <TimerIcon fontSize="small" /> },
   won:       { label: 'Fulfilled',  color: '#10B981', icon: <EmojiEventsIcon fontSize="small" /> },
   lost:      { label: 'Missed',     color: '#EF4444', icon: <HighlightOffIcon fontSize="small" /> },
@@ -63,6 +67,11 @@ const BettingPage: React.FC = () => {
   const [deadline, setDeadline] = useState('');
   const [stake, setStake] = useState(100);
 
+  // Real money bet state
+  const [realDialogOpen, setRealDialogOpen] = useState(false);
+  const [stakeEuros, setStakeEuros] = useState(10);
+  const [creatingReal, setCreatingReal] = useState(false);
+
   // Duel state
   const [duelDialogOpen, setDuelDialogOpen] = useState(false);
   const [opponentType, setOpponentType] = useState<'random' | 'specific'>('random');
@@ -72,6 +81,15 @@ const BettingPage: React.FC = () => {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => setCurrentUserId(u?.id));
+    // Handle return from Stripe for real-money bet
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('bet_placed') === 'real') {
+      toast.success('Payment confirmed! Your real-money commitment is now active.');
+      window.history.replaceState({}, '', '/commitments');
+    } else if (params.get('bet_cancelled') === '1') {
+      toast.error('Payment cancelled — commitment not created.');
+      window.history.replaceState({}, '', '/commitments');
+    }
   }, []);
 
   const fetchBets = useCallback(async () => {
@@ -151,9 +169,34 @@ const BettingPage: React.FC = () => {
     }
   };
 
+  const handleRealCreate = async () => {
+    if (!currentUserId || !selectedNodeId || !deadline) {
+      toast.error('Select a goal and deadline.');
+      return;
+    }
+    const node = goalNodes.find(n => n.id === selectedNodeId);
+    if (!node) return;
+    setCreatingReal(true);
+    try {
+      const res = await api.post('/bets/real/checkout', {
+        goalNodeId: selectedNodeId,
+        goalName: node.name,
+        deadline,
+        stakeEuros,
+      });
+      // Redirect to Stripe Checkout
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to initiate payment.');
+      setCreatingReal(false);
+    }
+  };
+
   const points = user?.praxis_points ?? 0;
-  const activeBets = bets.filter(b => b.status === 'active');
-  const historyBets = bets.filter(b => b.status !== 'active');
+  const activeBets = bets.filter(b => b.status === 'active' || b.status === 'pending');
+  const historyBets = bets.filter(b => b.status !== 'active' && b.status !== 'pending');
   const totalStaked = activeBets.reduce((s, b) => s + b.stake_points, 0);
   const totalWon = bets.filter(b => b.status === 'won').reduce((s, b) => s + Math.round(b.stake_points * 1.8), 0);
 
@@ -189,6 +232,15 @@ const BettingPage: React.FC = () => {
             sx={{ borderRadius: '12px', fontWeight: 700, px: 3 }}
           >
             Solo Pledge
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<EuroIcon />}
+            onClick={() => setRealDialogOpen(true)}
+            disabled={goalNodes.length === 0}
+            sx={{ borderRadius: '12px', fontWeight: 700, px: 3, borderColor: '#10B981', color: '#10B981' }}
+          >
+            Real Stakes (€)
           </Button>
           <Button
             variant="outlined"
@@ -253,26 +305,53 @@ const BettingPage: React.FC = () => {
                   >
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
                       <Box sx={{ flexGrow: 1, minWidth: 0, mr: 2 }}>
-                        <Typography variant="body1" sx={{ fontWeight: 700 }} noWrap>{bet.goal_name}</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 700 }} noWrap>{bet.goal_name}</Typography>
+                          {bet.is_real_money && (
+                            <Chip label="REAL €" size="small" sx={{ bgcolor: 'rgba(16,185,129,0.15)', color: '#10B981', border: '1px solid rgba(16,185,129,0.4)', fontWeight: 800, fontSize: '0.6rem', height: 18 }} />
+                          )}
+                          {bet.status === 'pending' && (
+                            <Chip label="PENDING PAYMENT" size="small" sx={{ bgcolor: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.4)', fontWeight: 800, fontSize: '0.6rem', height: 18 }} />
+                          )}
+                        </Box>
                         <Stack direction="row" spacing={1} sx={{ mt: 0.5 }} flexWrap="wrap">
-                          <Chip
-                            icon={<ElectricBoltIcon />}
-                            label={`${bet.stake_points} PP pledged`}
-                            size="small"
-                            sx={{ bgcolor: 'rgba(167,139,250,0.1)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.25)', fontWeight: 700, fontSize: '0.7rem' }}
-                          />
+                          {bet.is_real_money ? (
+                            <Chip
+                              icon={<EuroIcon />}
+                              label={`€${Number(bet.stake_euros ?? 0).toFixed(2)} staked`}
+                              size="small"
+                              sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)', fontWeight: 700, fontSize: '0.7rem' }}
+                            />
+                          ) : (
+                            <Chip
+                              icon={<ElectricBoltIcon />}
+                              label={`${bet.stake_points} PP pledged`}
+                              size="small"
+                              sx={{ bgcolor: 'rgba(167,139,250,0.1)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.25)', fontWeight: 700, fontSize: '0.7rem' }}
+                            />
+                          )}
                           <Chip
                             icon={<TimerIcon />}
                             label={days > 0 ? `${days}d left` : 'Overdue'}
                             size="small"
                             sx={{ bgcolor: urgent ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)', color: urgent ? '#EF4444' : '#3B82F6', border: `1px solid ${urgent ? 'rgba(239,68,68,0.25)' : 'rgba(59,130,246,0.25)'}`, fontWeight: 700, fontSize: '0.7rem' }}
                           />
-                          <Chip
-                            icon={<EmojiEventsIcon />}
-                            label={`Win: ${Math.round(bet.stake_points * 1.8)} PP`}
-                            size="small"
-                            sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)', fontWeight: 700, fontSize: '0.7rem' }}
-                          />
+                          {!bet.is_real_money && (
+                            <Chip
+                              icon={<EmojiEventsIcon />}
+                              label={`Win: ${Math.round(bet.stake_points * 1.8)} PP`}
+                              size="small"
+                              sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)', fontWeight: 700, fontSize: '0.7rem' }}
+                            />
+                          )}
+                          {bet.is_real_money && bet.status === 'active' && (
+                            <Chip
+                              icon={<EmojiEventsIcon />}
+                              label={`Win: refund + ${Math.round(Number(bet.stake_euros ?? 0) * 50)} PP`}
+                              size="small"
+                              sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)', fontWeight: 700, fontSize: '0.7rem' }}
+                            />
+                          )}
                         </Stack>
                       </Box>
                       <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
@@ -363,9 +442,19 @@ const BettingPage: React.FC = () => {
                         size="small"
                         sx={{ bgcolor: `${meta.color}18`, color: meta.color, border: `1px solid ${meta.color}44`, fontWeight: 700, fontSize: '0.65rem' }}
                       />
-                      {bet.status === 'won' && (
+                      {bet.status === 'won' && !bet.is_real_money && (
                         <Typography variant="caption" sx={{ display: 'block', color: '#10B981', fontWeight: 700, mt: 0.25 }}>
                           +{Math.round(bet.stake_points * 1.8)} PP
+                        </Typography>
+                      )}
+                      {bet.status === 'won' && bet.is_real_money && (
+                        <Typography variant="caption" sx={{ display: 'block', color: '#10B981', fontWeight: 700, mt: 0.25 }}>
+                          Refunded + {Math.round(Number(bet.stake_euros ?? 0) * 50)} PP
+                        </Typography>
+                      )}
+                      {bet.status === 'lost' && bet.is_real_money && (
+                        <Typography variant="caption" sx={{ display: 'block', color: '#6B7280', mt: 0.25 }}>
+                          €{Number(bet.stake_euros ?? 0).toFixed(2)} → charity
                         </Typography>
                       )}
                     </Box>
@@ -377,6 +466,112 @@ const BettingPage: React.FC = () => {
           </ErrorBoundary>
         )}
       </Container>
+
+      {/* Real money bet dialog */}
+      <Dialog open={realDialogOpen} onClose={() => !creatingReal && setRealDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <EuroIcon sx={{ color: '#10B981' }} />
+            Real-Money Commitment
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 400, display: 'block', mt: 0.5 }}>
+            Put real € behind your goal. Win → full refund + PP bonus. Miss → funds donated to charity.
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ pt: 1 }}>
+            <TextField
+              select
+              fullWidth
+              label="Goal to commit to"
+              value={selectedNodeId}
+              onChange={e => setSelectedNodeId(e.target.value)}
+              helperText="Only incomplete goals are eligible"
+            >
+              {goalNodes.length === 0
+                ? <MenuItem value="" disabled>No incomplete goals found</MenuItem>
+                : goalNodes.map(n => (
+                    <MenuItem key={n.id} value={n.id}>
+                      {n.name} ({Math.round((n.progress ?? 0) * 100)}% done)
+                    </MenuItem>
+                  ))
+              }
+            </TextField>
+
+            <TextField
+              fullWidth
+              label="Deadline"
+              type="date"
+              value={deadline}
+              onChange={e => setDeadline(e.target.value)}
+              inputProps={{ min: minDeadlineStr }}
+              InputLabelProps={{ shrink: true }}
+              helperText="If goal isn't peer-verified by this date, your stake goes to charity"
+            />
+
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>Stake amount</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: '#10B981' }}>
+                  €{stakeEuros.toFixed(2)}
+                </Typography>
+              </Box>
+              <Slider
+                value={stakeEuros}
+                onChange={(_, v) => setStakeEuros(v as number)}
+                min={1}
+                max={100}
+                step={1}
+                marks={[
+                  { value: 1, label: '€1' },
+                  { value: 25, label: '€25' },
+                  { value: 50, label: '€50' },
+                  { value: 100, label: '€100' },
+                ]}
+                sx={{ color: '#10B981' }}
+              />
+              <Divider sx={{ my: 2 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" color="text.secondary">If you win (peer-verified):</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: '#10B981' }}>
+                  €{(stakeEuros * 0.92).toFixed(2)} refunded + {stakeEuros * 50} PP
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">If you miss the deadline:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: '#EF4444' }}>
+                  €{stakeEuros.toFixed(2)} donated to charity
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">Platform fee (on win):</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  €{(stakeEuros * 0.08).toFixed(2)} (8%)
+                </Typography>
+              </Box>
+              <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                <Typography variant="caption" color="text.secondary">
+                  Payment processed via Stripe. Funds held in escrow until deadline. This is a personal commitment device, not gambling. EU consumer rights apply.
+                </Typography>
+              </Box>
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button onClick={() => setRealDialogOpen(false)} disabled={creatingReal} sx={{ borderRadius: '10px' }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleRealCreate}
+            disabled={creatingReal || !selectedNodeId || !deadline}
+            startIcon={creatingReal ? <CircularProgress size={16} color="inherit" /> : <EuroIcon />}
+            sx={{ borderRadius: '10px', fontWeight: 800, px: 3, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
+          >
+            {creatingReal ? 'Redirecting to Stripe…' : `Stake €${stakeEuros.toFixed(2)}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Create bet dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
