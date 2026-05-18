@@ -17,5 +17,7 @@ router.use(authenticateToken);
 router.get('/keys', controller.listKeys);
 router.get('/keys/:id', controller.getKey);
 router.delete('/keys/:id', controller.revokeKey);
+router.post('/keys/personal', controller.createPersonalKey);
+router.get('/activity', controller.getActivity);
 
 export default router;

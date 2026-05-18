@@ -7,9 +7,11 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
   const apiKey = req.headers['x-api-key'] as string | undefined;
 
   if (apiKey) {
-    const userId = await authenticateApiKey(apiKey);
-    if (userId) {
-      req.user = { id: userId };
+    const result = await authenticateApiKey(apiKey);
+    if (result) {
+      req.user = { id: result.userId };
+      req.actorType = 'agent';
+      req.agentName = result.agentLabel ?? 'agent';
       return next();
     }
   }

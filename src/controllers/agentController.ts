@@ -189,14 +189,16 @@ export const revokeKey = catchAsync(async (req: Request, res: Response) => {
   res.json({ message: 'Agent access revoked' });
 });
 
-export const authenticateApiKey = async function(apiKey: string): Promise<string | null> {
+export const authenticateApiKey = async function(
+  apiKey: string
+): Promise<{ userId: string; agentLabel: string | null } | null> {
   if (!apiKey.startsWith('pk_live_')) {
     return null;
   }
 
   const { data, error } = await supabase
     .from('agent_keys')
-    .select('user_id, expires_at, revoked_at')
+    .select('user_id, expires_at, revoked_at, agent_label, agents:agents(name)')
     .eq('api_key', apiKey)
     .single();
 
@@ -206,7 +208,7 @@ export const authenticateApiKey = async function(apiKey: string): Promise<string
   if (data.revoked_at) {
     return null;
   }
-  if (new Date(data.expires_at) < new Date()) {
+  if (data.expires_at && new Date(data.expires_at) < new Date()) {
     return null;
   }
 
@@ -215,8 +217,72 @@ export const authenticateApiKey = async function(apiKey: string): Promise<string
     .update({ last_used_at: new Date().toISOString() })
     .eq('api_key', apiKey);
 
-  return data.user_id;
+  const agentLabel = data.agent_label ?? (data.agents as any)?.name ?? null;
+  return { userId: data.user_id, agentLabel };
 };
+
+// POST /agents/keys/personal — create PAT for a custom-named agent (no agent_id required)
+export const createPersonalKey = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  const { name } = req.body as { name?: string };
+  if (!name || name.trim().length === 0) throw new BadRequestError('name is required');
+  if (name.length > 64) throw new BadRequestError('name must be ≤ 64 characters');
+
+  const apiKey = generateApiKey();
+
+  const { error } = await supabase.from('agent_keys').insert({
+    user_id: userId,
+    agent_label: name.trim(),
+    api_key: apiKey,
+    scope: ['read', 'write'],
+  });
+
+  if (error) throw new BadRequestError('Failed to create personal agent key');
+
+  res.status(201).json({
+    message: `PAT created for agent "${name.trim()}"`,
+    api_key: apiKey,   // shown once — not stored in plaintext again
+    name: name.trim(),
+    scope: ['read', 'write'],
+  });
+});
+
+// GET /agents/activity — list user's agents + their recent checkins
+export const getActivity = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  // Agent keys for this user
+  const { data: keys } = await supabase
+    .from('agent_keys')
+    .select('id, agent_label, agents:agents(name), last_used_at, created_at')
+    .eq('user_id', userId)
+    .is('revoked_at', null)
+    .order('last_used_at', { ascending: false });
+
+  const agents = (keys || []).map((k: any) => ({
+    id: k.id,
+    name: k.agent_label ?? k.agents?.name ?? 'unnamed',
+    last_used_at: k.last_used_at,
+    created_at: k.created_at,
+  }));
+
+  // Recent agent checkins (last 30 days, up to 50)
+  const since = new Date();
+  since.setDate(since.getDate() - 30);
+  const { data: checkins } = await supabase
+    .from('checkins')
+    .select('id, agent_name, mood, win_of_the_day, checked_in_at, streak_day')
+    .eq('user_id', userId)
+    .eq('actor_type', 'agent')
+    .gte('checked_in_at', since.toISOString())
+    .order('checked_in_at', { ascending: false })
+    .limit(50);
+
+  res.json({ agents, recentCheckins: checkins ?? [] });
+});
 
 export const createKeyDirect = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;

@@ -62,15 +62,27 @@ type AgentKey = {
   agent: Agent;
 };
 
+type PersonalAgentEntry = {
+  id: string;
+  name: string;
+  last_used_at: string | null;
+  created_at: string;
+  checkin_count?: number;
+};
+
 function AgentsPanel() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [keys, setKeys] = useState<AgentKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [personalAgents, setPersonalAgents] = useState<PersonalAgentEntry[]>([]);
+  const [newAgentName, setNewAgentName] = useState('');
+  const [creatingPat, setCreatingPat] = useState(false);
 
   useEffect(() => {
     loadAgents();
     loadKeys();
+    loadPersonalAgents();
   }, []);
 
   const loadAgents = async () => {
@@ -89,6 +101,29 @@ function AgentsPanel() {
       const res = await api.get('/agent/keys');
       setKeys(res.data.keys || []);
     } catch { setKeys([]); }
+  };
+
+  const loadPersonalAgents = async () => {
+    try {
+      const res = await api.get('/agent/activity');
+      setPersonalAgents(res.data.agents || []);
+    } catch { setPersonalAgents([]); }
+  };
+
+  const handleCreatePersonalPat = async () => {
+    if (!newAgentName.trim()) return;
+    setCreatingPat(true);
+    try {
+      const res = await api.post('/agent/keys/personal', { name: newAgentName.trim() });
+      const key: string = res.data?.api_key || '';
+      if (key) {
+        await navigator.clipboard.writeText(key);
+        toast.success(`PAT for "${newAgentName.trim()}" copied to clipboard! Store it — shown once.`);
+        setNewAgentName('');
+        loadPersonalAgents();
+      }
+    } catch { toast.error('Failed to create PAT'); }
+    setCreatingPat(false);
   };
 
   const handleConnect = async (slug: string) => {
@@ -221,6 +256,54 @@ function AgentsPanel() {
             );
           })}
         </Stack>
+      </Box>
+
+      {/* Personal Agent PATs */}
+      <Box>
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1 }}>
+          Personal Agent Tokens
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+          Any agent authenticates with your Praxis account using a PAT. It can post check-ins, log trackers and update goal progress on your behalf.
+        </Typography>
+        {/* Create new PAT */}
+        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Agent name (e.g. Aura, research-bot)"
+            value={newAgentName}
+            onChange={e => setNewAgentName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleCreatePersonalPat(); }}
+            sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+          />
+          <Button
+            variant="contained"
+            size="small"
+            disabled={creatingPat || !newAgentName.trim()}
+            onClick={handleCreatePersonalPat}
+            sx={{ borderRadius: '8px', minWidth: 100 }}
+          >
+            {creatingPat ? <CircularProgress size={14} color="inherit" /> : 'Create PAT'}
+          </Button>
+        </Box>
+        {/* Active personal agents */}
+        {personalAgents.length > 0 && (
+          <Stack spacing={1}>
+            {personalAgents.map(a => (
+              <Box key={a.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: 'rgba(0,255,136,0.06)', borderRadius: '10px' }}>
+                <Box>
+                  <Typography variant="body2" fontWeight={700}>{a.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {a.last_used_at ? 'Last active: ' + new Date(a.last_used_at).toLocaleDateString() : 'Never used'}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" sx={{ color: 'rgba(0,255,136,0.7)', fontWeight: 700 }}>
+                  ACTIVE
+                </Typography>
+              </Box>
+            ))}
+          </Stack>
+        )}
       </Box>
     </Stack>
   );

@@ -100,10 +100,14 @@ export const checkIn = catchAsync(async (req: Request, res: Response) => {
     streakUpdate.current_streak >= 7  ? 2 : 1;
   const xpAwarded = 20 * xpMultiplier;
 
-  // Insert checkin record
+  // Insert checkin record (propagate actor context from PAT-authenticated agents)
+  const actorType = req.actorType ?? 'human';
+  const agentName = req.agentName;
   await supabase.from('checkins').insert({
     user_id: userId,
     streak_day: streakUpdate.current_streak,
+    actor_type: actorType,
+    ...(agentName ? { agent_name: agentName } : {}),
     ...(mood ? { mood } : {}),
     ...(winOfTheDay ? { win_of_the_day: winOfTheDay } : {}),
   });

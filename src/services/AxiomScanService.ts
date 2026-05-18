@@ -639,6 +639,16 @@ export class AxiomScanService {
       supabase.from('checkins').select('mood').eq('user_id', userId).gte('checked_in_at', oneWeekAgoStr),
     ]);
 
+    // Agent checkins (last 7 days) — separate query to keep destructure clean
+    const { data: agentCheckins } = await supabase
+      .from('checkins')
+      .select('agent_name, mood, win_of_the_day, checked_in_at')
+      .eq('user_id', userId)
+      .eq('actor_type', 'agent')
+      .gte('checked_in_at', oneWeekAgoStr)
+      .order('checked_in_at', { ascending: false })
+      .limit(20);
+
     const nodes: any[] = goalTreeRes.data?.nodes ?? [];
     const userDomains = extractUserDomains(nodes);
 
@@ -803,6 +813,22 @@ ${enrichGoalsContext(goalsSlice)}
   return `avg=${avg}% | ${breakdown}${stagnating.length > 0 ? ` | ⚠ stagnating: ${stagnating.join(', ')}` : ''}${wins.length > 0 ? ` | wins: ${wins.join('; ')}` : ''}`;
 })()}
 - Tracker trends: ${metrics.trackerTrends?.map((t: any) => `${t.trackerName}: ${t.direction}`).join(', ') || 'None'}
+- Agent actions (last 7 days): ${(() => {
+  const ac = (agentCheckins || []) as any[];
+  if (ac.length === 0) return 'none';
+  const byAgent: Record<string, { count: number; wins: string[]; grades: number[] }> = {};
+  ac.forEach((c: any) => {
+    const name = c.agent_name || 'agent';
+    if (!byAgent[name]) byAgent[name] = { count: 0, wins: [], grades: [] };
+    byAgent[name].count++;
+    if (c.win_of_the_day) byAgent[name].wins.push(c.win_of_the_day);
+    if (c.mood && c.mood.includes(':')) byAgent[name].grades.push(parseInt(c.mood.split(':')[1] || '0', 10));
+  });
+  return Object.entries(byAgent).map(([name, d]) => {
+    const avgGrade = d.grades.length > 0 ? Math.round(d.grades.reduce((a: number, b: number) => a + b, 0) / d.grades.length) : null;
+    return `${name}: ${d.count} check-in${d.count > 1 ? 's' : ''}${avgGrade !== null ? ` avg=${avgGrade}%` : ''}${d.wins.length > 0 ? ` | "${d.wins[0]}"` : ''}`;
+  }).join(' · ');
+})()}
 ${notebookContext}
 ${calendarContext ? `\n${calendarContext}` : ''}
 ${recapText ? `- Yesterday's activity: ${recapText}` : '- Yesterday: No activity logged'}

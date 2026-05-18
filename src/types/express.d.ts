@@ -5,5 +5,7 @@ declare namespace Express {
       id: string;
       email?: string;
     };
+    actorType?: 'human' | 'agent';
+    agentName?: string;
   }
 }
