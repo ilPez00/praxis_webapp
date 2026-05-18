@@ -56,6 +56,7 @@ import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import NoteIcon from '@mui/icons-material/Note';
 import WarningIcon from '@mui/icons-material/Warning';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import RouterIcon from '@mui/icons-material/Router';
 
 interface AppNotification {
   id: string;
@@ -260,6 +261,7 @@ const Navbar: React.FC = () => {
                   {[
                     { label: 'Today', to: '/dashboard' },
                     { label: 'Notebook', to: '/notes' },
+                    { label: 'Lattice', to: '/lattice' },
                     { label: 'Discover', to: '/discover' },
                     { label: 'Chat', to: '/communication' },
                   ].map(({ label, to }) => {
@@ -306,8 +308,7 @@ const Navbar: React.FC = () => {
                       </Button>
                     );
                   })}
-                  {false && ( /* Axiom vision removed — use Aura app for image capture */
-                  )}
+                  {/* Axiom vision removed — use Aura app for image capture */}
                 </>
               )}
             </Box>
@@ -789,6 +790,7 @@ const Navbar: React.FC = () => {
               {[
                 { label: 'Today', to: '/dashboard', icon: <DashboardIcon />, primary: true },
                 { label: 'Notebook', to: '/notes', icon: <NoteIcon />, primary: true },
+                { label: 'Lattice', to: '/lattice', icon: <RouterIcon />, primary: true },
                 { label: 'Capture', to: '/camera/axiom', icon: <AutoAwesomeIcon />, primary: true },
                 { label: 'Discover', to: '/discover', icon: <ExploreIcon />, primary: true },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
