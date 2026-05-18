@@ -81,6 +81,13 @@ export const toolSchemas = {
   suggest_match: z.object({
     goalId: z.string().uuid().optional().describe('Optional goal UUID to match on'),
   }),
+
+  dispatch_job: z.object({
+    deviceSlug: z.string().min(1).max(100).describe('Target device slug (from user lattice)'),
+    jobType: z.string().min(1).max(100).describe('Job type string (e.g. print_file, run_script, capture_photo)'),
+    payload: z.record(z.string(), z.unknown()).optional().describe('Job parameters as JSON object'),
+    goalId: z.string().optional().describe('Optional goal UUID — completion bumps goal progress'),
+  }),
 };
 
 export type ToolName = keyof typeof toolSchemas;
@@ -193,6 +200,39 @@ export async function routeAction(
     case 'suggest_match': {
       const p = params as z.infer<typeof toolSchemas.suggest_match>;
       result = await axiomActionExecutor.suggestMatch(userId, p);
+      break;
+    }
+    case 'dispatch_job': {
+      const p = params as z.infer<typeof toolSchemas.dispatch_job>;
+      // Resolve device slug → device id
+      const { data: dev } = await supabase
+        .from('devices')
+        .select('id, status')
+        .eq('user_id', userId)
+        .eq('slug', p.deviceSlug)
+        .single();
+      if (!dev) {
+        result = { success: false, error: `Device '${p.deviceSlug}' not found in user lattice` };
+        break;
+      }
+      const { data: job, error: jobErr } = await supabase
+        .from('device_jobs')
+        .insert({
+          user_id:      userId,
+          device_id:    dev.id,
+          type:         p.jobType,
+          payload:      p.payload ?? {},
+          goal_id:      p.goalId ?? null,
+          submitted_by: 'axiom',
+          status:       'pending',
+        })
+        .select('id')
+        .single();
+      if (jobErr || !job) {
+        result = { success: false, error: jobErr?.message ?? 'Job insert failed' };
+      } else {
+        result = { success: true, result: { jobId: job.id, device: p.deviceSlug, type: p.jobType } };
+      }
       break;
     }
     default:
@@ -367,6 +407,20 @@ export function getToolDeclarations(): any[] {
         properties: {
           goalId: { type: 'string', description: 'Optional goal UUID to match on' },
         },
+      },
+    },
+    {
+      name: 'dispatch_job',
+      description: 'Dispatch a job to one of the user\'s physical Lattice devices (3D printer, CNC mill, computer, smart home, etc.). Use when user requests a physical task or automation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          deviceSlug:  { type: 'string', description: 'Target device slug from user lattice' },
+          jobType:     { type: 'string', description: 'Job type, e.g. print_file, run_script, capture_photo, toggle_light' },
+          payload:     { type: 'object', description: 'Job parameters as key/value pairs' },
+          goalId:      { type: 'string', description: 'Optional goal UUID — completion bumps goal progress' },
+        },
+        required: ['deviceSlug', 'jobType'],
       },
     },
   ];

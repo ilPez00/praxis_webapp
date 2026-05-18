@@ -13,7 +13,7 @@ const personaService = new AxiomPersonaService();
 const aiCoachingService = new AICoachingService();
 
 interface AxiomAction {
-  type: 'create_entry' | 'update_goal' | 'suggest_match' | 'search_web' | 'respond' | 'create_bet' | 'create_duel' | 'create_team_challenge' | 'log_tracker' | 'create_goal' | 'push_notification';
+  type: 'create_entry' | 'update_goal' | 'suggest_match' | 'search_web' | 'respond' | 'create_bet' | 'create_duel' | 'create_team_challenge' | 'log_tracker' | 'create_goal' | 'push_notification' | 'dispatch_job';
   params?: Record<string, any>;
   content?: string;
 }
@@ -456,7 +456,7 @@ QUESTION: "${query}"
 CONTEXT:
 ${prompt.split('NOTEBOOK SEARCH RESULTS:')[0]}
 
-Available tools: create_bet, create_duel, create_team_challenge, log_tracker, create_goal, update_goal_progress, create_notebook_entry, push_notification, suggest_match
+Available tools: create_bet, create_duel, create_team_challenge, log_tracker, create_goal, update_goal_progress, create_notebook_entry, push_notification, suggest_match, dispatch_job
 
 If taking actions, respond with JSON:
 {"actions": [{"tool": "TOOL_NAME", "params": {...}}]}

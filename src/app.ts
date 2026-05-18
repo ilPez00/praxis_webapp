@@ -70,6 +70,7 @@ import actionRoutes from './routes/actionRoutes';
 import weeklyChallengeRoutes from './routes/weeklyChallengeRoutes';
 import agentRoutes from './routes/agentRoutes';
 import rachmaninov from './routes/rachmaninov';
+import latticeRoutes from './routes/latticeRoutes';
 import { handleWebhook as handleStripeWebhook } from './controllers/stripeController';
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -113,7 +114,7 @@ app.use(cors({
 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Secret', 'X-API-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Secret', 'X-API-Key', 'X-Device-Key'],
   exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
 }));
 
@@ -297,6 +298,7 @@ apiRouter.use('/actions', generalLimiter, actionRoutes);
 apiRouter.use('/weekly-challenge', generalLimiter, weeklyChallengeRoutes);
 apiRouter.use('/agent', generalLimiter, agentRoutes);
 apiRouter.use('/rachmaninov', generalLimiter, rachmaninov);
+apiRouter.use('/lattice', generalLimiter, latticeRoutes);
 
 app.use('/api', apiRouter);
 
