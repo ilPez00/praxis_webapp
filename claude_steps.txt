@@ -2417,3 +2417,4 @@ Closed the full PDCA loop: Aura's CheckinDialog grade now flows into both local 
 - CHECK: CheckinDialog → postCheckin ✅
 - ACT: RachmaAct.record() → computeStats() → actInsight() → injects into next PLAN ✅
        Axiom brief ingests grade data for next-day brief adjustment ✅
+\n### 2026-05-18: Global Federation & Pantheon Injection\n- Built real-time anonymized sync between Aura and Praxis.\n- Added community_wiki_aggregates table and ingestion endpoint.\n- Expanded matching algorithm with ontology similarity (weight 0.15).\n- Injected 40+ adaptive Titan archetypes into global wiki.\n- Enhanced Persona service with Big Five and Shadow trait inference.\n- Fixed NetworkToolsClient and LatticeScreen build errors in Aura.
