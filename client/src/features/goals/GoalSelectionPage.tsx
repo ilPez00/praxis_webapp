@@ -413,11 +413,11 @@ const GoalSelectionPage: React.FC = () => {
         {isFirstRun && (
           <Button
             variant="text"
-            onClick={() => {
+            onClick={async () => {
               // Complete onboarding without goals — user can add later
-              supabase.from('profiles').update({ onboarding_completed: true }).eq('id', currentUserId);
-              supabase.auth.updateUser({ data: { onboarding_completed: true } });
-              refetch();
+              await supabase.from('profiles').update({ onboarding_completed: true }).eq('id', currentUserId);
+              await supabase.auth.updateUser({ data: { onboarding_completed: true } });
+              await refetch();
               navigate('/dashboard');
             }}
             sx={{ borderRadius: '10px', color: 'text.secondary' }}

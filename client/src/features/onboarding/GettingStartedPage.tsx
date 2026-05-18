@@ -138,11 +138,12 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
     setCompleting(true);
     try {
       await api.post('/users/complete-onboarding', {});
-      // Also update auth metadata for faster client-side resolution
       await supabase.auth.updateUser({ data: { onboarding_completed: true } });
       await refetch();
-      toast.success('Onboarding complete! Welcome to Praxis.');
-      navigate('/dashboard');
+      toast.success('Setup complete! Now create your first goals.');
+      // Navigate to goal-selection so user creates goals — avoids dashboard loop
+      // (DashboardPage shows GettingStartedPage again when onboarding_completed && !hasGoals)
+      navigate('/goal-selection');
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to complete onboarding.');
@@ -192,10 +193,10 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
     {
       num: 2,
       icon: <MenuBookIcon sx={{ fontSize: 32 }} />,
-      title: 'Build your Notebook',
-      description: "Your Notebook is the foundation of Praxis. Create topics, break them into chapters, and write notes inside each. The more you map out, the smarter Praxis gets at helping you stay on track.",
-      cta: 'Open Notebook',
-      to: '/notes',
+      title: 'Set up your Notebook',
+      description: "Your Notebook is built from your goals — pick your life domains, name your goals, and Praxis builds your tracking structure. The more you map out, the smarter Axiom gets. You'll do this right after this guide.",
+      cta: 'Set up goals',
+      to: '/goal-selection',
       color: '#F59E0B',
     },
     {
@@ -269,11 +270,11 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
               disabled={savingProfile || (connectionIntent.length === 0 && !lifeStage)}
               sx={{ borderRadius: '10px', bgcolor: '#F472B6', '&:hover': { bgcolor: '#EC4899' } }}
             >
-              {savingProfile ? <CircularProgress size={20} /> : 'Save my profile'}
+              {savingProfile ? <CircularProgress size={20} /> : 'Save preferences'}
             </Button>
           ) : (
             <Typography variant="body2" sx={{ color: '#10B981', fontWeight: 700 }}>
-              Connection profile saved — Axiom knows what you're looking for.
+              Preferences saved — Axiom knows what you're looking for.
             </Typography>
           )}
         </Box>
@@ -388,7 +389,7 @@ const GettingStartedPage: React.FC<{ userId: string }> = ({ userId }) => {
               transition: 'all 0.2s',
             }}
           >
-            {completing ? 'Completing...' : "Got it, let's go!"}
+            {completing ? 'Completing...' : 'Continue → Set up goals'}
           </Button>
         </Box>
       </Container>
