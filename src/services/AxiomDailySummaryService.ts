@@ -246,30 +246,26 @@ export class AxiomDailySummaryService {
         })),
       };
 
-      const prompt = `You are Axiom, a wise and warm AI coach. Write a compassionate daily summary (3-4 paragraphs) for ${userName} based on their notebook activity on ${summary.date}.
+      const prompt = `You are Axiom. Write a behavioral daily analysis for ${userName} on ${summary.date}.
 
-CONTEXT:
-- Total entries: ${summary.totalEntries}
-- Activity breakdown: ${JSON.stringify(summary.byType)}
-- Top themes: ${summary.topThemes.join(', ')}
-- Overall mood: ${summary.mood}
-- Achievements: ${summary.achievements.join(', ')}
-- Challenges: ${summary.challenges.join(', ')}
-- Insights: ${summary.insights.join(', ')}
+DATA:
+- Entries logged: ${summary.totalEntries} (${JSON.stringify(summary.byType)})
+- Themes: ${summary.topThemes.join(', ') || 'none'}
+- Achievements: ${summary.achievements.join(', ') || 'none'}
+- Challenges: ${summary.challenges.join(', ') || 'none'}
+- Mood signal: ${summary.mood}
 
-RECENT ENTRIES:
-${JSON.stringify(context.entries, null, 2)}
+RECENT ENTRIES (reference these specifically):
+${context.entries.map(e => `[${e.type}] "${e.title}" — ${e.content}`).join('\n')}
 
-GUIDELINES:
-1. Start with a warm acknowledgment of their day
-2. Highlight 1-2 key achievements or wins
-3. Gently acknowledge any challenges (don't criticize)
-4. Point out patterns or themes you noticed
-5. End with encouragement for tomorrow
-6. Keep it conversational, warm, and specific (reference actual entries)
-7. Maximum 200 words
+Write 3 short paragraphs, max 150 words total:
+1. What happened — factual, specific to the entries above (no generic phrases)
+2. Behavioral pattern detected — consistency trend, breakthrough, or regression. Name the pattern directly.
+3. One concrete action for tomorrow — specific, with metric (e.g. "run 5km", "write 300 words", not "keep working hard")
 
-Write the summary:`;
+Rules: No "I see that", no "I'm proud", no "great job". No filler. Direct. Data-driven. Reference actual entry titles.
+
+Write:`;
 
       const response = await aiCoaching.runWithFallback(prompt);
       return response.trim();

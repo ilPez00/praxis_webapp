@@ -4,6 +4,7 @@ import { AxiomScanService } from '../services/AxiomScanService';
 import { AxiomDailySummaryService } from '../services/AxiomDailySummaryService';
 import { AxiomProgressEstimationService } from '../services/AxiomProgressEstimationService';
 import { AxiomUnifiedScanService } from '../services/AxiomUnifiedScanService';
+import { AxiomMorningBriefService } from '../services/AxiomMorningBriefService';
 import { AICoachingService } from '../services/AICoachingService';
 import { catchAsync, UnauthorizedError } from '../utils/appErrors';
 import { authenticateToken } from '../middleware/authenticateToken';
@@ -11,8 +12,28 @@ import * as axiomAgentController from '../controllers/axiomAgentController';
 import { submitAxiomFeedback, getFeedbackStats } from '../controllers/axiomFeedbackController';
 import logger from '../utils/logger';
 
+const morningBriefService = new AxiomMorningBriefService();
+
 const router = Router();
 const unifiedScanService = new AxiomUnifiedScanService();
+
+/**
+ * GET /axiom/morning-brief
+ * Returns structured morning brief: priority goal + concrete action + behavioral context.
+ * Aura polls this at 7am. Cached 1h server-side (ETag on goal tree version).
+ */
+router.get('/morning-brief', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  const brief = await morningBriefService.generate(userId);
+  if (!brief) {
+    return res.json({ brief: null, message: 'No active goals found.' });
+  }
+
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+  res.json({ brief });
+}));
 
 /**
  * POST /axiom/regenerate
