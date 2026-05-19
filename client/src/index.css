@@ -1,9 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #080808;
+  --color-surface: #111111;
+  --color-raised: #1a1a1a;
+  --color-border: #222222;
+  --color-muted: #333333;
+  --color-fg: #eeeeee;
+  --color-sub: #aaaaaa;
+  --color-dim: #666666;
+  --color-amber: #f59e0b;
+  --color-red: #ef4444;
+  --color-green: #22c55e;
+  --color-blue: #3b82f6;
+  --font-family-mono:
+    "JetBrains Mono", "Fira Code", "Fira Mono", "Courier New", monospace;
+  --font-size-2xs: 0.65rem;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    background: #080808;
+  }
+  body {
+    background: #080808;
+    color: #eeeeee;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 2px;
+  }
+
+  /* Tap highlight off on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 :root {
-  --background-color: #0A0B14;
-  --text-color: #F9FAFB;
-  --accent-color: #F59E0B;
+  --background-color: #0a0b14;
+  --text-color: #f9fafb;
+  --accent-color: #f59e0b;
   --container-bg-color: #111827;
-  --border-color: rgba(255,255,255,0.08);
+  --border-color: rgba(255, 255, 255, 0.08);
 }
 
 body {
@@ -17,8 +68,8 @@ body {
   -webkit-app-region: drag;
 }
 
-.draggable button, 
-.draggable a, 
+.draggable button,
+.draggable a,
 .draggable .MuiIconButton-root,
 .draggable input,
 .draggable [role="button"] {

@@ -37,6 +37,8 @@ const WordsPage = React.lazy(() => import('../features/admin/WordsPage'));
 const LeaderboardPage = React.lazy(() => import('../features/leaderboard/LeaderboardPage'));
 const ServicesPage = React.lazy(() => import('../features/services/ServicesPage'));
 const BettingPage = React.lazy(() => import('../features/betting/BettingPage'));
+const GoalsView = React.lazy(() => import('../features/goals/GoalsView'));
+const SocialView = React.lazy(() => import('../features/social/SocialView'));
 // TODO: re-enable when events feature is ready
 // const EventsPage = React.lazy(() => import('../features/events/EventsPage'));
 // const EventCheckinPage = React.lazy(() => import('../features/events/EventCheckinPage'));
@@ -70,8 +72,8 @@ export const publicRoutes: RouteObject[] = [
 export const privateRoutes: RouteObject[] = [
   { path: 'notes', element: <NotesPage /> },
   { path: 'notes/:userId', element: <PublicNotebookPage /> },
-  { path: 'dashboard', element: <DashboardPage /> },
-  { path: 'discover', element: <DiscoverPage /> },
+  { path: 'dashboard', element: <GoalsView /> },
+  { path: 'discover', element: <SocialView /> },
   { path: 'profile', element: <ProfilePage /> },
   { path: 'profile/:id', element: <ProfilePage /> },
   { path: 'matches', element: <MatchesPage /> },

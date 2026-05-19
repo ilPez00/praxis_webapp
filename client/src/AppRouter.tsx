@@ -1,19 +1,21 @@
 import React, { Suspense, useEffect } from 'react';
-import { createBrowserRouter, createHashRouter, RouterProvider, Outlet } from 'react-router-dom';
-import Box from '@mui/material/Box';
+import { createBrowserRouter, createHashRouter, RouterProvider, Outlet, useLocation } from 'react-router-dom';
 import PageSkeleton from './components/common/PageSkeleton';
-import Navbar from './components/common/Navbar';
 import InstallPwaBanner from './components/common/InstallPwaBanner';
 import PrivateRoute from './features/auth/PrivateRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import RouteErrorBoundary from './components/common/RouteErrorBoundary';
-import QuickActionFAB from './components/common/QuickActionFAB';
 import { Toaster } from 'react-hot-toast';
 import { publicRoutes, privateRoutes } from './config/routes';
 import { useLocationSync } from './hooks/useLocationSync';
 import { useUser } from './hooks/useUser';
 import { useOfflineSync } from './hooks/useOfflineSync';
 import { CelebrationProvider } from './hooks/useCelebrations';
+import BottomNav from './layout/BottomNav';
+import TopBar from './layout/TopBar';
+
+// Routes that get the old top navbar (admin, special pages)
+const LEGACY_NAV_PATHS = ['/admin', '/lattice', '/go-live', '/stream', '/desktop-widget', '/mobile-widget'];
 
 const PageLoader = () => <PageSkeleton cards={3} />;
 
@@ -24,14 +26,14 @@ const basename = (!isElectron && window.location.hostname === 'ilpez00.github.io
   ? '/praxis_webapp'
   : '';
 
-/** Root layout rendered for every route — provides navbar, toaster, FAB, and global hooks */
+/** Root layout — new bottom-tab shell replacing MUI Navbar */
 const RootLayout: React.FC = () => {
   const { user } = useUser();
+  const { pathname } = useLocation();
 
   useLocationSync();
   useOfflineSync();
 
-  // Conditional mobile debug console (Eruda)
   useEffect(() => {
     const isPrivileged = user?.is_admin || ['admin', 'moderator', 'staff'].includes(user?.role || '');
     const eruda = (window as any).eruda;
@@ -42,15 +44,24 @@ const RootLayout: React.FC = () => {
     }
   }, [user]);
 
+  const isLegacy = LEGACY_NAV_PATHS.some(p => pathname.startsWith(p));
+  const hideShell = isWidget || isLegacy;
+
   return (
     <CelebrationProvider>
-      {!isWidget && <Navbar />}
-      {!isWidget && !isElectron && <InstallPwaBanner />}
-      {!isWidget && <QuickActionFAB />}
-      <Toaster position="top-right" />
-      <Suspense fallback={<PageLoader />}>
-        <Outlet />
-      </Suspense>
+      <div className="min-h-screen bg-bg flex flex-col max-w-lg mx-auto">
+        {!hideShell && <TopBar />}
+        {!hideShell && !isElectron && <InstallPwaBanner />}
+        <Toaster position="top-center" toastOptions={{
+          style: { background: '#1a1a1a', color: '#eee', border: '1px solid #333', fontFamily: 'monospace', fontSize: '12px' },
+        }} />
+        <main className="flex-1 overflow-y-auto">
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
+        </main>
+        {!hideShell && <BottomNav />}
+      </div>
     </CelebrationProvider>
   );
 };
