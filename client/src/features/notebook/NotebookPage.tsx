@@ -300,6 +300,23 @@ const NotebookPage: React.FC = () => {
             <Button
               variant="outlined"
               size="small"
+              onClick={() => navigate('/wiki')}
+              sx={{
+                borderRadius: '12px',
+                fontWeight: 700,
+                px: 2,
+                py: 0.5,
+                border: '2px solid #F59E0B',
+                color: '#F59E0B',
+                fontSize: '0.85rem',
+                '&:hover': { border: '2px solid #D97706', bgcolor: 'rgba(245,158,11,0.08)' },
+              }}
+            >
+              📚 Wiki
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
               startIcon={<AutoAwesomeIcon />}
               onClick={() => setAxiomDialogOpen(true)}
               sx={{

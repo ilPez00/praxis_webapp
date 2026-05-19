@@ -49,6 +49,7 @@ const NotebookPage = React.lazy(() => import('../features/notebook/NotebookPage'
 const PlacesPage = React.lazy(() => import('../features/places/PlacesPage'));
 
 const MarketplacePage = React.lazy(() => import('../features/marketplace/MarketplacePage'));
+const WikiBrowserPage = React.lazy(() => import('../features/wiki/WikiBrowserPage'));
 
 // Commented out — not in current scope
 // const CoachingPage = React.lazy(() => import('../features/coaching/CoachingPage'));
@@ -119,6 +120,7 @@ export const privateRoutes: RouteObject[] = [
   { path: 'camera', element: <CameraPage /> },
   { path: 'lattice', element: <LatticePage /> },
   { path: 'marketplace', element: <MarketplacePage /> },
+  { path: 'wiki', element: <WikiBrowserPage /> },
 
   // Legacy dashboard (keep for any existing links)
   { path: 'dashboard-old', element: <DashboardPage /> },
