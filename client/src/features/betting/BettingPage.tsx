@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
@@ -54,6 +55,7 @@ const MIN_STAKE = 50;
 const MAX_STAKE = 2000;
 
 const BettingPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useUser();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [bets, setBets] = useState<Bet[]>([]);
@@ -214,6 +216,19 @@ const BettingPage: React.FC = () => {
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 8 }}>
+      {/* Open bets banner */}
+      <div className="mx-4 mt-3 mb-0">
+        <button
+          onClick={() => navigate('/open-bets')}
+          className="w-full flex items-center justify-between px-3 py-2 bg-surface border border-amber/20 rounded-lg hover:border-amber/40 transition-colors"
+        >
+          <div className="text-left">
+            <span className="font-mono text-2xs text-amber font-bold tracking-widest">OPEN CHALLENGES</span>
+            <p className="font-mono text-xs text-sub">Public bets anyone can join →</p>
+          </div>
+          <span className="font-mono text-sm text-amber">⚡</span>
+        </button>
+      </div>
       <Container maxWidth="lg" sx={{ pt: 4 }}>
 
         {/* Header */}

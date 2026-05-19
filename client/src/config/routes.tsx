@@ -12,36 +12,27 @@ import DesktopWidget from '../features/dashboard/components/DesktopWidget';
 import MobileWidget from '../features/widgets/MobileWidget';
 
 // Private Pages — lazy loaded
-const DashboardPage = React.lazy(() => import('../features/dashboard/DashboardPage'));
-const DiscoverPage = React.lazy(() => import('../features/discover/DiscoverPage'));
+const GoalsView = React.lazy(() => import('../features/goals/GoalsView'));
+const SocialView = React.lazy(() => import('../features/social/SocialView'));
+const DiaryPage = React.lazy(() => import('../features/diary/DiaryPage'));
+const OpenBetsPage = React.lazy(() => import('../features/betting/OpenBetsPage'));
+const BettingPage = React.lazy(() => import('../features/betting/BettingPage'));
 const ProfilePage = React.lazy(() => import('../features/profile/ProfilePage'));
 const MatchesPage = React.lazy(() => import('../features/matches/MatchesPage'));
 const ChatPage = React.lazy(() => import('../features/chat/ChatPage'));
+const ChatRoom = React.lazy(() => import('../features/chat/ChatRoom'));
 const OnboardingPage = React.lazy(() => import('../features/onboarding/OnboardingPage'));
 const GoalTreePage = React.lazy(() => import('../features/goals/GoalTreePage'));
 const GoalSelectionPage = React.lazy(() => import('../features/goals/GoalSelectionPage'));
-const ChatRoom = React.lazy(() => import('../features/chat/ChatRoom'));
 const UpgradePage = React.lazy(() => import('../features/payments/UpgradePage'));
-// TODO: re-enable when needed
-// const IdentityVerificationPage = React.lazy(() => import('../features/identity/IdentityVerificationPage'));
 const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
 const GroupsPage = React.lazy(() => import('../features/groups/GroupsPage'));
 const GroupRoom = React.lazy(() => import('../features/groups/GroupRoom'));
 const BoardsPage = React.lazy(() => import('../features/groups/BoardsPage'));
-const CommunicationPage = React.lazy(() => import('../features/communication/CommunicationPage'));
-const CoachingPage = React.lazy(() => import('../features/coaching/CoachingPage'));
 const SearchPage = React.lazy(() => import('../features/search/SearchPage'));
-const MarketplacePage = React.lazy(() => import('../features/marketplace/MarketplacePage'));
 const AdminPage = React.lazy(() => import('../features/admin/AdminPage'));
 const WordsPage = React.lazy(() => import('../features/admin/WordsPage'));
 const LeaderboardPage = React.lazy(() => import('../features/leaderboard/LeaderboardPage'));
-const ServicesPage = React.lazy(() => import('../features/services/ServicesPage'));
-const BettingPage = React.lazy(() => import('../features/betting/BettingPage'));
-const GoalsView = React.lazy(() => import('../features/goals/GoalsView'));
-const SocialView = React.lazy(() => import('../features/social/SocialView'));
-// TODO: re-enable when events feature is ready
-// const EventsPage = React.lazy(() => import('../features/events/EventsPage'));
-// const EventCheckinPage = React.lazy(() => import('../features/events/EventCheckinPage'));
 const FriendsPage = React.lazy(() => import('../features/friends/FriendsPage'));
 const PostThreadPage = React.lazy(() => import('../features/posts/PostThreadPage'));
 const SettingsPage = React.lazy(() => import('../features/settings/SettingsPage'));
@@ -50,11 +41,18 @@ const FailsPage = React.lazy(() => import('../features/fails/FailsPage'));
 const NotesPage = React.lazy(() => import('../features/notes/NotesPage'));
 const PublicNotebookPage = React.lazy(() => import('../features/notes/PublicNotebookPage'));
 const AchievementCollectionPage = React.lazy(() => import('../features/achievements/AchievementCollectionPage'));
-const GoLivePage = React.lazy(() => import('../features/streaming/GoLivePage'));
-const WatchStreamPage = React.lazy(() => import('../features/streaming/WatchStreamPage'));
 const CameraPage = React.lazy(() => import('../features/camera/CameraPage'));
 const LatticePage = React.lazy(() => import('../features/lattice/LatticePage'));
-// AxiomCameraCapture removed — vision/image analysis is handled by Aura, not Praxis
+const DiscoverPage = React.lazy(() => import('../features/discover/DiscoverPage'));
+const DashboardPage = React.lazy(() => import('../features/dashboard/DashboardPage'));
+
+// Commented out — not in current scope
+// const CoachingPage = React.lazy(() => import('../features/coaching/CoachingPage'));
+// const ServicesPage = React.lazy(() => import('../features/services/ServicesPage'));
+// const GoLivePage = React.lazy(() => import('../features/streaming/GoLivePage'));
+// const WatchStreamPage = React.lazy(() => import('../features/streaming/WatchStreamPage'));
+// const MarketplacePage = React.lazy(() => import('../features/marketplace/MarketplacePage'));
+// const CommunicationPage = React.lazy(() => import('../features/communication/CommunicationPage'));
 
 // Route definitions used by AppRouter to build the data router
 export const publicRoutes: RouteObject[] = [
@@ -66,52 +64,66 @@ export const publicRoutes: RouteObject[] = [
   { path: 'cancel', element: <CancelPage /> },
   { path: 'desktop-widget', element: <DesktopWidget /> },
   { path: 'mobile-widget', element: <MobileWidget /> },
-  // { path: 'events/checkin', element: <EventCheckinPage /> },  // TODO: re-enable
 ];
 
 export const privateRoutes: RouteObject[] = [
-  { path: 'notes', element: <NotesPage /> },
-  { path: 'notes/:userId', element: <PublicNotebookPage /> },
+  // Core tabs
   { path: 'dashboard', element: <GoalsView /> },
+  { path: 'diary', element: <DiaryPage /> },
   { path: 'discover', element: <SocialView /> },
-  { path: 'profile', element: <ProfilePage /> },
-  { path: 'profile/:id', element: <ProfilePage /> },
+  { path: 'commitments', element: <BettingPage /> },
+  { path: 'open-bets', element: <OpenBetsPage /> },
+
+  // Goals (accessed from diary / goal cards)
+  { path: 'goals', element: <GoalTreePage /> },
+  { path: 'goals/:id', element: <GoalTreePage /> },
+  { path: 'goal-selection', element: <GoalSelectionPage /> },
+
+  // Social
+  { path: 'posts/:postId', element: <PostThreadPage /> },
+  { path: 'friends', element: <FriendsPage /> },
   { path: 'matches', element: <MatchesPage /> },
   { path: 'matches/:id', element: <MatchesPage /> },
   { path: 'chat', element: <ChatPage /> },
   { path: 'chat/:user1Id/:user2Id', element: <ChatRoom /> },
-  { path: 'onboarding', element: <OnboardingPage /> },
-  { path: 'goals', element: <GoalTreePage /> },
-  { path: 'goals/:id', element: <GoalTreePage /> },
-  { path: 'goal-selection', element: <GoalSelectionPage /> },
-  { path: 'upgrade', element: <UpgradePage /> },
-  // { path: 'verify-identity', element: <IdentityVerificationPage /> },
-  { path: 'analytics', element: <AnalyticsPage /> },
-  { path: 'communication', element: <CommunicationPage /> },
+  { path: 'search', element: <SearchPage /> },
   { path: 'groups', element: <GroupsPage /> },
   { path: 'groups/:roomId', element: <GroupRoom /> },
   { path: 'boards', element: <BoardsPage /> },
   { path: 'boards/:roomId', element: <GroupRoom /> },
-  { path: 'coaching', element: <CoachingPage /> },
-  { path: 'search', element: <SearchPage /> },
-  { path: 'marketplace', element: <MarketplacePage /> },
+  { path: 'challenges', element: <ChallengesPage /> },
+
+  // Me
+  { path: 'profile', element: <ProfilePage /> },
+  { path: 'profile/:id', element: <ProfilePage /> },
+  { path: 'analytics', element: <AnalyticsPage /> },
+  { path: 'achievements', element: <AchievementCollectionPage /> },
+  { path: 'fails', element: <FailsPage /> },
+  { path: 'settings', element: <SettingsPage /> },
+  { path: 'upgrade', element: <UpgradePage /> },
+
+  // Notes / notebook
+  { path: 'notes', element: <NotesPage /> },
+  { path: 'notes/:userId', element: <PublicNotebookPage /> },
+
+  // Admin / misc
   { path: 'admin', element: <AdminPage /> },
   { path: 'leaderboard', element: <LeaderboardPage /> },
-  { path: 'services', element: <ServicesPage /> },
-  { path: 'commitments', element: <BettingPage /> },
   { path: 'words', element: <WordsPage /> },
-  // { path: 'events', element: <EventsPage /> },  // TODO: re-enable
-  { path: 'friends', element: <FriendsPage /> },
-  { path: 'posts/:postId', element: <PostThreadPage /> },
-  { path: 'settings', element: <SettingsPage /> },
-  { path: 'challenges', element: <ChallengesPage /> },
-  { path: 'fails', element: <FailsPage /> },
-  { path: 'achievements', element: <AchievementCollectionPage /> },
-  { path: 'go-live', element: <GoLivePage /> },
-  { path: 'stream/:id', element: <WatchStreamPage /> },
+  { path: 'onboarding', element: <OnboardingPage /> },
   { path: 'camera', element: <CameraPage /> },
-  // camera/axiom removed — vision handled by Aura
   { path: 'lattice', element: <LatticePage /> },
+
+  // Legacy dashboard (keep for any existing links)
+  { path: 'dashboard-old', element: <DashboardPage /> },
+
+  // Commented out — not in current scope
+  // { path: 'coaching', element: <CoachingPage /> },
+  // { path: 'services', element: <ServicesPage /> },
+  // { path: 'go-live', element: <GoLivePage /> },
+  // { path: 'stream/:id', element: <WatchStreamPage /> },
+  // { path: 'marketplace', element: <MarketplacePage /> },
+  // { path: 'communication', element: <CommunicationPage /> },
 ];
 
 export default { publicRoutes, privateRoutes };

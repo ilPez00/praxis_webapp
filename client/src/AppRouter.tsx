@@ -14,8 +14,8 @@ import { CelebrationProvider } from './hooks/useCelebrations';
 import BottomNav from './layout/BottomNav';
 import TopBar from './layout/TopBar';
 
-// Routes that get the old top navbar (admin, special pages)
-const LEGACY_NAV_PATHS = ['/admin', '/lattice', '/go-live', '/stream', '/desktop-widget', '/mobile-widget'];
+// Routes that skip the new shell (admin, streaming widgets)
+const LEGACY_NAV_PATHS = ['/admin', '/lattice', '/desktop-widget', '/mobile-widget'];
 
 const PageLoader = () => <PageSkeleton cards={3} />;
 
