@@ -908,4 +908,67 @@ WRITE THE FULL WORKBOOK NOW.`;
   }
 }));
 
+/**
+ * POST /diary/export/rewrite
+ * 150 PP. Axiom rewrites raw diary entries as clean narrative prose.
+ * Returns Markdown text (not PDF).
+ * Body: { dateFrom?: string, dateTo?: string }
+ */
+router.post('/export/rewrite', authenticateToken, catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Not authenticated');
+
+  const COST = 150;
+  const { data: profile } = await supabase.from('profiles').select('praxis_points, name').eq('id', userId).single();
+  const balance = profile?.praxis_points ?? 0;
+  if (balance < COST) throw new BadRequestError(`Need ${COST} PP, you have ${balance}.`);
+
+  const { dateFrom, dateTo } = req.body as { dateFrom?: string; dateTo?: string };
+
+  // Fetch diary entries
+  let query = supabase
+    .from('diary_entries')
+    .select('entry_type, title, content, mood, tags, occurred_at, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(300);
+  if (dateFrom) query = query.gte('created_at', dateFrom);
+  if (dateTo) query = query.lte('created_at', dateTo + 'T23:59:59');
+
+  const { data: entries } = await query;
+  if (!entries?.length) throw new BadRequestError('No diary entries found for the selected range.');
+
+  await supabase.from('profiles').update({ praxis_points: balance - COST }).eq('id', userId);
+
+  try {
+    const userName = profile?.name || 'the author';
+    const raw = entries.map(e => {
+      const d = new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return `[${d}] [${e.entry_type}]${e.mood ? ` [mood: ${e.mood}]` : ''}\n${e.title ? `Title: ${e.title}\n` : ''}${e.content || '(no text)'}`;
+    }).join('\n\n---\n\n');
+
+    const maxChars = 20000;
+    const truncated = raw.length > maxChars ? raw.slice(0, maxChars) + '\n\n[...truncated...]' : raw;
+
+    const prompt = `You are Axiom, a skilled personal memoirist. Below are raw diary entries from ${userName}'s journal. Rewrite them as clean, readable prose — preserve every date, fact, mood, and event but improve the writing. Fix typos, remove noise, add natural transitions between entries.
+
+Output format: pure Markdown. Keep the date as a heading for each entry group. Do not invent events. Do not add analysis or commentary — just clean prose.
+
+RAW ENTRIES:
+${truncated}
+
+REWRITTEN DIARY (Markdown):`;
+
+    const aiCoaching = new AICoachingService();
+    const rewritten = await aiCoaching.runWithFallback(prompt);
+    logger.info(`[DiaryExport] Rewrite complete for ${userId} (${rewritten.length} chars)`);
+
+    res.json({ markdown: rewritten });
+  } catch (err: any) {
+    await supabase.from('profiles').update({ praxis_points: balance }).eq('id', userId);
+    logger.error(`[DiaryExport] Rewrite failed, refunded ${COST} PP: ${err.message}`);
+    throw new Error('Failed to rewrite diary. PP refunded.');
+  }
+}));
+
 export default router;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import DiaryExportDialog from './DiaryExportDialog';
 import {
   Container, Box, Typography, TextField, InputAdornment,
   Chip, IconButton, Menu, MenuItem, Button, Dialog,
@@ -86,7 +87,9 @@ const DiaryPage: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
+  // Legacy simple export — kept for direct MD/JSON download fallback
   const handleExport = (format: 'json' | 'md') => {
     if (!entries.length) return;
     let content: string;
@@ -333,16 +336,10 @@ const DiaryPage: React.FC = () => {
             Save moments, people, places, and thoughts
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1}>
-          <Button size="small" variant="outlined" onClick={() => handleExport('md')}
-            sx={{ fontFamily: 'monospace', fontSize: '0.65rem', borderColor: '#333', color: '#aaa' }}>
-            .md
-          </Button>
-          <Button size="small" variant="outlined" onClick={() => handleExport('json')}
-            sx={{ fontFamily: 'monospace', fontSize: '0.65rem', borderColor: '#333', color: '#aaa' }}>
-            .json
-          </Button>
-        </Stack>
+        <Button size="small" variant="outlined" onClick={() => setExportDialogOpen(true)}
+          sx={{ fontFamily: 'monospace', fontSize: '0.65rem', borderColor: '#F59E0B', color: '#F59E0B', fontWeight: 700 }}>
+          EXPORT ↓
+        </Button>
       </Box>
 
       {/* Stats Cards */}
@@ -745,6 +742,13 @@ const DiaryPage: React.FC = () => {
       >
         <AddIcon />
       </Fab>
+
+      <DiaryExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        entryCount={entries.length}
+        praxisPoints={user?.praxis_points ?? 0}
+      />
     </Container>
   );
 };
