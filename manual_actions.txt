@@ -523,3 +523,69 @@ Setup:
 
 Data ingested on startup as "Health: YYYY-MM-DD" wiki page.
 Sources: any app writing to Health Connect (Samsung Health, Google Fit, Garmin, etc.)
+
+## Social Integrations OAuth Setup (2026-05-19)
+
+### Required env vars (Railway → Variables):
+
+STRAVA_CLIENT_ID=...
+STRAVA_CLIENT_SECRET=...
+
+SPOTIFY_CLIENT_ID=...
+SPOTIFY_CLIENT_SECRET=...
+
+REDDIT_CLIENT_ID=...
+REDDIT_CLIENT_SECRET=...
+
+API_BASE_URL=https://web-production-646a4.up.railway.app
+# (already set or use RAILWAY_STATIC_URL)
+
+### Strava App Setup:
+1. https://www.strava.com/settings/api → Create App
+2. Authorization Callback Domain: web-production-646a4.up.railway.app
+3. Redirect URI registered: https://web-production-646a4.up.railway.app/api/strava/callback
+4. Copy Client ID + Client Secret → env vars
+
+### Spotify App Setup:
+1. https://developer.spotify.com/dashboard → Create App
+2. Add Redirect URI: https://web-production-646a4.up.railway.app/api/spotify/callback
+3. Scopes needed: user-read-recently-played user-top-read user-read-currently-playing
+4. Copy Client ID + Secret → env vars
+
+### Reddit App Setup:
+1. https://www.reddit.com/prefs/apps → Create App
+2. Type: web app
+3. Redirect URI: https://web-production-646a4.up.railway.app/api/reddit/callback
+4. Copy App ID (client_id) + Secret → env vars
+5. Note: Reddit requires HTTPS redirect URI
+
+### YouTube:
+- Reuses Google OAuth (no new app needed)
+- Reconnect Google via /api/calendar/auth-url to grant youtube.readonly scope
+- Endpoint: GET /api/youtube/summary?limit=20
+
+### Endpoints summary:
+GET  /api/strava/auth-url     → OAuth URL
+GET  /api/strava/callback     → OAuth callback (no auth)
+GET  /api/strava/summary      → recent activities (days=14)
+DELETE /api/strava/connect    → disconnect
+
+GET  /api/spotify/auth-url    → OAuth URL
+GET  /api/spotify/callback    → OAuth callback (no auth)
+GET  /api/spotify/summary     → current + recent + top tracks
+DELETE /api/spotify/connect   → disconnect
+
+GET  /api/reddit/auth-url     → OAuth URL
+GET  /api/reddit/callback     → OAuth callback (no auth)
+GET  /api/reddit/summary      → saved + upvoted + recent comments
+DELETE /api/reddit/connect    → disconnect
+
+GET  /api/youtube/summary     → liked videos (uses Google token)
+
+### Aura key-only integrations (no Praxis needed):
+Set in Aura Settings → KEYS tab:
+- hackernews_user: your HN username (e.g. "ilpez00")
+- bluesky_handle: your handle (e.g. "user.bsky.social")
+- bluesky_app_password: App Password from bsky.social/settings/app-passwords
+- discord_bot_token: bot token (create bot at discord.com/developers/applications)
+- discord_channel_id: channel ID to monitor (enable Developer Mode → right-click channel → Copy ID)

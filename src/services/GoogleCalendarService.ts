@@ -33,6 +33,7 @@ export class GoogleCalendarService {
       scope: [
         'https://www.googleapis.com/auth/calendar.events',
         'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/youtube.readonly',
         'https://www.googleapis.com/auth/userinfo.email',
       ],
       state: userId, // Pass userId in state to verify in callback
