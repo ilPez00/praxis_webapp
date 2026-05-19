@@ -17,9 +17,9 @@ import logger from '../utils/logger';
 
 const execFileAsync = promisify(execFileSync);
 
-const WIKI_ROOT = '/home/gio/ai/wiki';
-const UBER_WIKI_ROOT = '/home/gio/uber-wiki/wiki';
-const LLMWIKI_BIN = '/home/gio/.cargo/bin/llmwiki';
+const WIKI_ROOT = process.env.WIKI_ROOT || '/home/gio/ai/wiki';
+const UBER_WIKI_ROOT = process.env.UBER_WIKI_ROOT || '/home/gio/uber-wiki/wiki';
+const LLMWIKI_BIN = process.env.LLMWIKI_BIN || '/home/gio/.cargo/bin/llmwiki';
 
 export interface WikiSnippet {
   pagePath: string;
