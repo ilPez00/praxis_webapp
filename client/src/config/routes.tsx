@@ -48,12 +48,13 @@ const DashboardPage = React.lazy(() => import('../features/dashboard/DashboardPa
 const NotebookPage = React.lazy(() => import('../features/notebook/NotebookPage'));
 const PlacesPage = React.lazy(() => import('../features/places/PlacesPage'));
 
+const MarketplacePage = React.lazy(() => import('../features/marketplace/MarketplacePage'));
+
 // Commented out — not in current scope
 // const CoachingPage = React.lazy(() => import('../features/coaching/CoachingPage'));
 // const ServicesPage = React.lazy(() => import('../features/services/ServicesPage'));
 // const GoLivePage = React.lazy(() => import('../features/streaming/GoLivePage'));
 // const WatchStreamPage = React.lazy(() => import('../features/streaming/WatchStreamPage'));
-// const MarketplacePage = React.lazy(() => import('../features/marketplace/MarketplacePage'));
 // const CommunicationPage = React.lazy(() => import('../features/communication/CommunicationPage'));
 
 // Route definitions used by AppRouter to build the data router
@@ -117,6 +118,7 @@ export const privateRoutes: RouteObject[] = [
   { path: 'onboarding', element: <OnboardingPage /> },
   { path: 'camera', element: <CameraPage /> },
   { path: 'lattice', element: <LatticePage /> },
+  { path: 'marketplace', element: <MarketplacePage /> },
 
   // Legacy dashboard (keep for any existing links)
   { path: 'dashboard-old', element: <DashboardPage /> },
@@ -126,7 +128,6 @@ export const privateRoutes: RouteObject[] = [
   // { path: 'services', element: <ServicesPage /> },
   // { path: 'go-live', element: <GoLivePage /> },
   // { path: 'stream/:id', element: <WatchStreamPage /> },
-  // { path: 'marketplace', element: <MarketplacePage /> },
   // { path: 'communication', element: <CommunicationPage /> },
 ];
 

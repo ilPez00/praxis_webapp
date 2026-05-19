@@ -14,9 +14,13 @@ import { CelebrationProvider } from './hooks/useCelebrations';
 import BottomNav from './layout/BottomNav';
 import TopBar from './layout/TopBar';
 import SpeedDial from './components/common/SpeedDial';
+import WelcomeTour from './features/onboarding/WelcomeTour';
 
-// Routes that skip the new shell (admin, streaming widgets)
-const LEGACY_NAV_PATHS = ['/admin', '/lattice', '/desktop-widget', '/mobile-widget'];
+// Routes that skip the shell entirely (auth pages, admin, widgets)
+const LEGACY_NAV_PATHS = [
+  '/admin', '/lattice', '/desktop-widget', '/mobile-widget',
+  '/login', '/signup', '/auth/', '/success', '/cancel',
+];
 
 const PageLoader = () => <PageSkeleton cards={3} />;
 
@@ -63,6 +67,7 @@ const RootLayout: React.FC = () => {
         </main>
         {!hideShell && <SpeedDial />}
         {!hideShell && <BottomNav />}
+        {!hideShell && <WelcomeTour />}
       </div>
     </CelebrationProvider>
   );
