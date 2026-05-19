@@ -26,6 +26,7 @@ RUN npm prune --production
 # Environment
 ENV NODE_ENV=production
 ENV LLMWIKI_BIN=/usr/local/bin/llmwiki
+RUN export NODE_ENV=production
 
 EXPOSE 3001
 
