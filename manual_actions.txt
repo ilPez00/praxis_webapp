@@ -414,3 +414,13 @@ Then in Aura app Settings → Praxis → paste the PAT in the token field (or us
 
 The PAT lets Aura call all existing endpoints (/checkins, /trackers/log, /goals/.../progress)
 as an agent actor — all actions appear in your Praxis feed with actor_type='agent'.
+
+## Community Pool — Goal Sharing (2026-05-19)
+
+Run migration to create goal_sharing and community_flows tables:
+
+  psql "$SUPABASE_DB_URL" -f migrations/2026-05-19-community-pool.sql
+
+Or paste into Supabase SQL editor.
+
+Migration is idempotent — safe to re-run.

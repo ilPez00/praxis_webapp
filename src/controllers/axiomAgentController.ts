@@ -6,7 +6,10 @@ import { AxiomWikiSearchService } from '../services/AxiomWikiSearchService';
 import { catchAsync, UnauthorizedError, BadRequestError } from '../utils/appErrors';
 import { routeActions, getToolDeclarations } from '../services/AxiomActionRouter';
 import { axiomMultimodalService } from '../services/AxiomMultimodalService';
+import { CommunityPool, SterileFlow } from '../services/CommunityPool';
 import logger from '../utils/logger';
+
+const communityPool = new CommunityPool();
 
 const personaService = new AxiomPersonaService();
 
@@ -301,6 +304,67 @@ async function buildAgentContext(userId: string, query: string): Promise<any> {
     // Wiki may not be available
   }
 
+  // Community pool — push opted-in sterile flows, retrieve community context
+  let communityContext: SterileFlow[] = [];
+  try {
+    const { data: sharingRows } = await supabase
+      .from('goal_sharing')
+      .select('goal_id, sharing')
+      .eq('user_id', userId);
+
+    const sharingMap = new Map<string, string>(
+      (sharingRows || []).map((r: any) => [r.goal_id, r.sharing]),
+    );
+
+    const checkins = checkinsRes.data || [];
+    const recentGrade = checkins.length > 0
+      ? String(checkins[0].mood || '5')
+      : '5';
+    const recentOutcome = checkins[0]?.win_of_the_day || '';
+
+    // heuristic user vector: avg progress across goals (0-1), grade norm (0-1), checkin density
+    const avgProgress = goals.length > 0
+      ? goals.reduce((s: number, g: any) => s + g.progress / 100, 0) / goals.length
+      : 0.5;
+    const gradeNorm = Math.min(parseFloat(recentGrade) / 10, 1);
+    const checkinDensity = Math.min(checkins.length / 7, 1);
+    const userVector = [avgProgress, gradeNorm, checkinDensity];
+
+    for (const goal of goals) {
+      const sharing = sharingMap.get(goal.id) || 'private';
+      const domain = goal.domain || 'General';
+
+      if (sharing === 'opted_in') {
+        // Push current sterile flow (best-effort, non-blocking)
+        const flow: SterileFlow = {
+          will:    goal.name,
+          action:  query || 'goal check-in',
+          effect:  `progress: ${goal.progress}%`,
+          grade:   recentGrade,
+          outcome: recentOutcome,
+          domain,
+        };
+        communityPool.push(flow, domain).catch(() => {});
+
+        const tailored = await communityPool.retrieve(domain, userVector, 3, 'tailored');
+        communityContext.push(...tailored);
+      } else {
+        const generic = await communityPool.retrieve(domain, userVector, 2, 'generic');
+        communityContext.push(...generic);
+      }
+    }
+    // Deduplicate and cap — community flows are sterile, entity map never applied
+    const seen = new Set<string>();
+    communityContext = communityContext.filter(f => {
+      const key = `${f.domain}|${f.will}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 6);
+  } catch (err) {
+    logger.warn('[buildAgentContext] community pool error (non-fatal):', err);
+  }
+
   return {
     userId,
     userName: profile?.name || 'User',
@@ -312,6 +376,7 @@ async function buildAgentContext(userId: string, query: string): Promise<any> {
     matches: matchesRes.data || [],
     persona: personaRes,
     wikiSnippets,
+    communityContext,
     query,
   };
 }

@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS public.community_wiki_aggregates (
     scores JSONB DEFAULT '{}'::jsonb,
     tags TEXT[] DEFAULT '{}',
     content TEXT,
+    utility_score FLOAT DEFAULT 0.0,
+    feedback_count INTEGER DEFAULT 0,
     logged_at TIMESTAMPTZ DEFAULT now(),
     created_at TIMESTAMPTZ DEFAULT now()
 );

@@ -829,3 +829,49 @@ export const deleteGoalNode = catchAsync(async (req: Request, res: Response, _ne
 
   res.json({ message: 'Node deleted.', deletedCount: toDelete.size, newBalance });
 });
+
+/**
+ * GET /goals/:userId/node/:nodeId/sharing
+ * Return current sharing preference for one goal node.
+ */
+export const getGoalSharing = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId, nodeId } = req.params;
+  const { data } = await supabase
+    .from('goal_sharing')
+    .select('sharing')
+    .eq('user_id', userId)
+    .eq('goal_id', nodeId)
+    .maybeSingle();
+  res.json({ sharing: data?.sharing || 'private' });
+});
+
+/**
+ * PATCH /goals/:userId/node/:nodeId/sharing
+ * Upsert goal-level sharing preference for community pool opt-in.
+ */
+export const updateGoalSharing = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  const { userId, nodeId } = req.params;
+  const requesterId = req.user?.id;
+  if (requesterId !== userId) throw new ForbiddenError('You can only modify your own goals.');
+
+  const { sharing } = req.body;
+  if (sharing !== 'private' && sharing !== 'opted_in') {
+    throw new BadRequestError('sharing must be "private" or "opted_in".');
+  }
+
+  const row: Record<string, any> = {
+    user_id: userId,
+    goal_id: nodeId,
+    sharing,
+    updated_at: new Date().toISOString(),
+    sharing_enabled_at: sharing === 'opted_in' ? new Date().toISOString() : null,
+  };
+
+  const { error } = await supabase
+    .from('goal_sharing')
+    .upsert(row, { onConflict: 'user_id,goal_id' });
+
+  if (error) throw new InternalServerError(`Failed to update sharing: ${error.message}`);
+
+  res.json({ sharing });
+});

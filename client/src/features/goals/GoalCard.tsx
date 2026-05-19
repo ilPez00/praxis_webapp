@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -31,6 +31,8 @@ interface GoalCardProps {
   onCheckIn?: () => void;
 }
 
+type Sharing = 'private' | 'opted_in';
+
 function daysLeft(date?: string): number | null {
   if (!date) return null;
   return Math.ceil((new Date(date).getTime() - Date.now()) / 86400000);
@@ -42,6 +44,27 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, axiomAction, bet, userId, onC
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [localProgress, setLocalProgress] = useState(goal.progress);
+  const [sharing, setSharing] = useState<Sharing>('private');
+  const [sharingBusy, setSharingBusy] = useState(false);
+
+  useEffect(() => {
+    api.get(`/goals/${userId}/node/${goal.id}/sharing`)
+      .then(r => setSharing(r.data?.sharing || 'private'))
+      .catch(() => {});
+  }, [userId, goal.id]);
+
+  const toggleSharing = async () => {
+    const next: Sharing = sharing === 'opted_in' ? 'private' : 'opted_in';
+    setSharingBusy(true);
+    try {
+      await api.patch(`/goals/${userId}/node/${goal.id}/sharing`, { sharing: next });
+      setSharing(next);
+    } catch {
+      toast.error('Failed to update sharing preference.');
+    } finally {
+      setSharingBusy(false);
+    }
+  };
 
   const name = goal.name || goal.title || 'Untitled';
   const domain = goal.domain || 'defaultDomain';
@@ -186,6 +209,28 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, axiomAction, bet, userId, onC
             </motion.button>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Community sharing toggle */}
+      <div className="px-3 pb-3 border-t border-border/50 pt-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-mono text-2xs text-dim">Share anonymized progress with community</span>
+          <button
+            onClick={e => { e.stopPropagation(); toggleSharing(); }}
+            disabled={sharingBusy}
+            className={`relative w-8 h-4 rounded-full transition-colors shrink-0 ${sharing === 'opted_in' ? 'bg-amber/80' : 'bg-muted'} disabled:opacity-50`}
+            aria-label="Toggle community sharing"
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform ${sharing === 'opted_in' ? 'translate-x-4' : 'translate-x-0'}`}
+            />
+          </button>
+        </div>
+        {sharing === 'opted_in' && (
+          <p className="font-mono text-2xs text-dim/70 mt-1 leading-relaxed">
+            You'll contribute sterile goal flows and receive tailored community insights in return.
+          </p>
+        )}
       </div>
     </motion.div>
   );

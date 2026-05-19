@@ -9,6 +9,8 @@ import {
   createGoalNode,
   updateGoalNode,
   deleteGoalNode,
+  getGoalSharing,
+  updateGoalSharing,
 } from '../controllers/goalController';
 
 const router = Router();
@@ -21,5 +23,7 @@ router.patch('/:userId/node/:nodeId/progress', authenticateToken, updateNodeProg
 router.post('/:userId/node', authenticateToken, validateBody(createGoalSchema), createGoalNode);
 router.patch('/:userId/node/:nodeId', authenticateToken, updateGoalNode);
 router.delete('/:userId/node/:nodeId', authenticateToken, deleteGoalNode);
+router.get('/:userId/node/:nodeId/sharing', authenticateToken, getGoalSharing);
+router.patch('/:userId/node/:nodeId/sharing', authenticateToken, updateGoalSharing);
 
 export default router;
