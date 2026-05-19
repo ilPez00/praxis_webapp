@@ -13,6 +13,7 @@ import { useOfflineSync } from './hooks/useOfflineSync';
 import { CelebrationProvider } from './hooks/useCelebrations';
 import BottomNav from './layout/BottomNav';
 import TopBar from './layout/TopBar';
+import SpeedDial from './components/common/SpeedDial';
 
 // Routes that skip the new shell (admin, streaming widgets)
 const LEGACY_NAV_PATHS = ['/admin', '/lattice', '/desktop-widget', '/mobile-widget'];
@@ -60,6 +61,7 @@ const RootLayout: React.FC = () => {
             <Outlet />
           </Suspense>
         </main>
+        {!hideShell && <SpeedDial />}
         {!hideShell && <BottomNav />}
       </div>
     </CelebrationProvider>

@@ -86,6 +86,29 @@ const DiaryPage: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+
+  const handleExport = (format: 'json' | 'md') => {
+    if (!entries.length) return;
+    let content: string;
+    let filename: string;
+    let mime: string;
+    if (format === 'json') {
+      content = JSON.stringify(entries, null, 2);
+      filename = `diary-${new Date().toISOString().slice(0, 10)}.json`;
+      mime = 'application/json';
+    } else {
+      content = entries.map(e =>
+        `# ${e.title || e.entry_type}\n_${new Date(e.created_at).toLocaleString()}_ · ${e.entry_type}${e.mood ? ` · ${e.mood}` : ''}\n\n${e.content || ''}\n\n${e.tags?.length ? `Tags: ${e.tags.join(', ')}\n` : ''}---\n`
+      ).join('\n');
+      filename = `diary-${new Date().toISOString().slice(0, 10)}.md`;
+      mime = 'text/markdown';
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
   const [loading, setLoading] = useState(true);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('note');
@@ -310,6 +333,16 @@ const DiaryPage: React.FC = () => {
             Save moments, people, places, and thoughts
           </Typography>
         </Box>
+        <Stack direction="row" spacing={1}>
+          <Button size="small" variant="outlined" onClick={() => handleExport('md')}
+            sx={{ fontFamily: 'monospace', fontSize: '0.65rem', borderColor: '#333', color: '#aaa' }}>
+            .md
+          </Button>
+          <Button size="small" variant="outlined" onClick={() => handleExport('json')}
+            sx={{ fontFamily: 'monospace', fontSize: '0.65rem', borderColor: '#333', color: '#aaa' }}>
+            .json
+          </Button>
+        </Stack>
       </Box>
 
       {/* Stats Cards */}

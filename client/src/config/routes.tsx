@@ -45,6 +45,8 @@ const CameraPage = React.lazy(() => import('../features/camera/CameraPage'));
 const LatticePage = React.lazy(() => import('../features/lattice/LatticePage'));
 const DiscoverPage = React.lazy(() => import('../features/discover/DiscoverPage'));
 const DashboardPage = React.lazy(() => import('../features/dashboard/DashboardPage'));
+const NotebookPage = React.lazy(() => import('../features/notebook/NotebookPage'));
+const PlacesPage = React.lazy(() => import('../features/places/PlacesPage'));
 
 // Commented out — not in current scope
 // const CoachingPage = React.lazy(() => import('../features/coaching/CoachingPage'));
@@ -102,9 +104,11 @@ export const privateRoutes: RouteObject[] = [
   { path: 'settings', element: <SettingsPage /> },
   { path: 'upgrade', element: <UpgradePage /> },
 
-  // Notes / notebook
+  // Notes / notebook / places
   { path: 'notes', element: <NotesPage /> },
   { path: 'notes/:userId', element: <PublicNotebookPage /> },
+  { path: 'notebook', element: <NotebookPage /> },
+  { path: 'places', element: <PlacesPage /> },
 
   // Admin / misc
   { path: 'admin', element: <AdminPage /> },

@@ -31,6 +31,31 @@ function timeAgo(iso: string): string {
   return `${Math.floor(diff / 86400)}d`;
 }
 
+const QuickLinks: React.FC = () => {
+  const navigate = useNavigate();
+  const links = [
+    { label: 'DMs', icon: '💬', path: '/chat' },
+    { label: 'GROUPS', icon: '👥', path: '/groups' },
+    { label: 'FRIENDS', icon: '🤝', path: '/friends' },
+    { label: 'PLACES', icon: '📍', path: '/places' },
+    { label: 'SEARCH', icon: '🔍', path: '/search' },
+  ];
+  return (
+    <div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 pb-1">
+      {links.map(l => (
+        <button
+          key={l.path}
+          onClick={() => navigate(l.path)}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border rounded-full font-mono text-2xs text-sub hover:border-muted hover:text-fg transition-colors"
+        >
+          <span>{l.icon}</span>
+          <span className="tracking-widest font-bold">{l.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
 const SocialView: React.FC = () => {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
@@ -61,9 +86,14 @@ const SocialView: React.FC = () => {
 
   return (
     <div className="pb-20">
+      {/* Quick links: DMs, Groups, Friends, Places, Search */}
+      <div className="mt-3 mb-3">
+        <QuickLinks />
+      </div>
+
       {/* Matches strip */}
       {matches.length > 0 && (
-        <div className="mx-4 mt-3 mb-3">
+        <div className="mx-4 mb-3">
           <p className="font-mono text-2xs text-dim tracking-widest mb-2">MATCHES</p>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {matches.map(m => (

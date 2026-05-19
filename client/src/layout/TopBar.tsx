@@ -16,9 +16,9 @@ const TopBar: React.FC = () => {
       <span className="font-mono font-black tracking-widest text-base text-fg">PRAXIS</span>
       <div className="flex items-center gap-3">
         {streak > 0 && (
-          <span className="font-mono text-xs text-amber font-bold tracking-wide">
+          <button onClick={() => navigate('/analytics')} className="font-mono text-xs text-amber font-bold tracking-wide">
             🔥 {streak}d
-          </span>
+          </button>
         )}
         <button
           onClick={() => navigate('/settings')}
