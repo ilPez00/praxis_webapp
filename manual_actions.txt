@@ -476,3 +476,50 @@ Run migration to create goal_sharing and community_flows tables:
 Or paste into Supabase SQL editor.
 
 Migration is idempotent — safe to re-run.
+
+## GitHub Integration (2026-05-19)
+
+No DB migration needed — uses existing external_accounts table.
+
+Connect GitHub from Praxis (once implemented in frontend, or via API):
+  POST /api/github/connect
+  Body: { "pat": "github_pat_xxxx" }
+  Auth: Bearer <user JWT>
+
+Required PAT scopes (read-only):
+  - read:user
+  - repo (for private repos) OR public_repo (public only)
+
+To revoke:
+  DELETE /api/github/connect
+
+Activity endpoint:
+  GET /api/github/activity?days=7
+  Returns: { pushes, commits, repos[], recentMessages[], prActions[], issueActions[] }
+
+## Telegram Bot Integration (2026-05-19, Aura only)
+
+Aura reads messages from a Telegram bot (useful for self-notes while away from phone).
+
+Setup:
+1. Create bot via @BotFather → get token (e.g. 7123456789:AAFxxxx)
+2. Send any message to your bot from your Telegram account
+3. In Aura Settings → KEYS tab → "Telegram Bot Token" → paste token
+4. In Aura Settings → KEYS tab → "Telegram Chat ID" → paste your numeric chat ID
+   (Get it: visit https://api.telegram.org/bot<TOKEN>/getUpdates after sending a message,
+    find "chat":{"id":123456789})
+
+Messages ingested on app startup (last 24h, deduped by update_id offset in SharedPreferences).
+To send self-notes to Aura: just message your bot.
+
+## Health Connect Integration (2026-05-19, Aura only)
+
+No backend changes needed.
+
+Setup:
+1. Ensure Health Connect app is installed (Android 13) or built-in (Android 14+)
+2. In Aura Settings → HEALTH CONNECT section → tap "Grant permissions"
+3. Approve: Steps, Sleep, Heart Rate, Exercise Sessions
+
+Data ingested on startup as "Health: YYYY-MM-DD" wiki page.
+Sources: any app writing to Health Connect (Samsung Health, Google Fit, Garmin, etc.)
