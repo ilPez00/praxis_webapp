@@ -172,4 +172,78 @@ router.delete('/ontology/domain/:domain/override', authenticateToken, async (req
   res.json({ ok: true, domain, removed: true, newETag: currentETag() });
 });
 
+/**
+ * GET /api/rachmaninov/bridge
+ * Aura wiki bridge — returns user's Axiom wiki pages + goal entities
+ * in uberwiki notes/bridge JSON format, ready for WikiNotesImporter.
+ *
+ * Auth: PAT (x-api-key: pk_live_...) or Supabase JWT (Bearer ...).
+ * ETag: ISO timestamp of most-recently updated wiki page.
+ * 304 returned when Aura's cached ETag matches — no body sent.
+ */
+router.get('/bridge', authenticateToken, async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+
+  try {
+    const [wikiRes, goalsRes] = await Promise.all([
+      supabase
+        .from('axiom_wiki_pages')
+        .select('page_path, frontmatter, content, token_count, updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false }),
+      supabase
+        .from('goal_trees')
+        .select('nodes')
+        .eq('user_id', userId)
+        .maybeSingle(),
+    ]);
+
+    const pages = wikiRes.data || [];
+    const nodes: any[] = goalsRes.data?.nodes || [];
+
+    // ETag = most recent wiki updated_at (changes once per nightly write)
+    const latestAt = pages[0]?.updated_at ?? new Date().toISOString();
+    const etag = `"wiki-${latestAt}"`;
+
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
+
+    // notes array — uberwiki notes-export format
+    const notes = pages.map((p: any) => ({
+      title:     p.frontmatter?.title   || p.page_path.replace('.md', ''),
+      body:      p.content              || '',
+      tags:      [...(p.frontmatter?.tags || []), p.page_path.replace('.md', ''), 'axiom', 'wiki'],
+      source:    'axiom',
+      kind:      'synthesis',
+      timestamp: new Date(p.updated_at).getTime(),
+    }));
+
+    // entities array — goal nodes as named entities
+    const entities = nodes
+      .filter((n: any) => n.name || n.title)
+      .map((n: any) => ({
+        name: n.name || n.title,
+        tags: [n.domain || 'goal', 'goal', 'praxis'],
+      }));
+
+    const payload = {
+      version:   etag.replace(/"/g, ''),
+      updatedAt: latestAt,
+      notes,
+      entities,
+      relations: [],
+    };
+
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.json(payload);
+
+  } catch (err: any) {
+    logger.error('[Rachmaninov] /bridge failed:', err.message);
+    res.status(500).json({ error: 'Bridge generation failed.' });
+  }
+});
+
 export default router;
