@@ -32,4 +32,4 @@ EXPOSE 3001
 # Start
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["node", "dist/index.js"]
+CMD ["/usr/bin/node", "dist/index.js"]
