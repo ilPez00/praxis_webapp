@@ -29,6 +29,7 @@ ENV LLMWIKI_BIN=/usr/local/bin/llmwiki
 
 EXPOSE 3001
 
-# Start (llmwiki optional — if binary exists, run MCP server; else PG FTS fallback used)
-CMD (command -v llmwiki > /dev/null 2>&1 && llmwiki serve --wiki-root /wiki --port 8080 &); \
-    NODE_ENV=production node dist/index.js
+# Start
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["node", "dist/index.js"]
