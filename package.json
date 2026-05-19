@@ -39,7 +39,7 @@
     "@sentry/node": "^10.45.0",
     "@sentry/profiling-node": "^10.46.0",
     "@sentry/react": "^10.45.0",
-    "@supabase/supabase-js": "^2.95.3",
+    "@supabase/supabase-js": "^2.105.1",
     "@types/pdfkit": "^0.17.6",
     "@types/qrcode": "^1.5.6",
     "cors": "^2.8.6",
