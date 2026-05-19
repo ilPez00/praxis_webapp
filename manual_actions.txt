@@ -4,6 +4,58 @@ Praxis — Manual Actions Required
  Run these in order against the production Supabase DB.
 
 --------------------------------------------------------------------
+ 2026-05-19 — Google OAuth + Gmail integration
+--------------------------------------------------------------------
+
+ REQUIRED environment variables (Railway + local .env):
+
+   GOOGLE_CLIENT_ID=<from Google Cloud Console>
+   GOOGLE_OAUTH_CLIENT_SECRET=<from Google Cloud Console>
+   GOOGLE_REDIRECT_URI=https://<your-railway-domain>/api/calendar/google/callback
+
+ Google Cloud Console setup:
+   1. Go to https://console.cloud.google.com → APIs & Services → Credentials
+   2. Create OAuth 2.0 Client ID (Web application)
+   3. Add Authorized redirect URIs:
+      - https://<your-railway-domain>/api/calendar/google/callback
+      - http://localhost:3001/api/calendar/google/callback (dev)
+   4. Enable APIs:
+      - Google Calendar API
+      - Gmail API
+      - Google Drive API (optional, for future)
+   5. Set GOOGLE_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET in Railway env vars
+
+ Supabase: ensure external_accounts table exists:
+   CREATE TABLE IF NOT EXISTS external_accounts (
+     id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+     user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+     provider     TEXT NOT NULL,
+     provider_id  TEXT,
+     access_token TEXT,
+     refresh_token TEXT,
+     expires_at   TIMESTAMPTZ,
+     email        TEXT,
+     created_at   TIMESTAMPTZ DEFAULT now(),
+     updated_at   TIMESTAMPTZ DEFAULT now(),
+     UNIQUE(user_id, provider)
+   );
+   ALTER TABLE external_accounts ENABLE ROW LEVEL SECURITY;
+   DROP POLICY IF EXISTS "Users manage own accounts" ON external_accounts;
+   CREATE POLICY "Users manage own accounts" ON external_accounts
+     FOR ALL USING (auth.uid() = user_id);
+
+ Aura (Android) — Maps API key:
+   1. Google Cloud Console → APIs & Services → Credentials → Create API Key
+   2. Enable: Maps SDK for Android
+   3. Restrict key to: Android apps → com.aura.app
+   4. Add to app/src/main/res/values/strings.xml:
+      <string name="google_maps_key">YOUR_MAPS_API_KEY</string>
+   5. Add to AndroidManifest.xml inside <application>:
+      <meta-data android:name="com.google.android.geo.API_KEY"
+                 android:value="@string/google_maps_key" />
+
+
+--------------------------------------------------------------------
   2026-04-28 — Fix duels schema drift (goal_node_id missing)
   --------------------------------------------------------------------
 

@@ -73,6 +73,8 @@ import agentRoutes from './routes/agentRoutes';
 import rachmaninov from './routes/rachmaninov';
 import latticeRoutes from './routes/latticeRoutes';
 import wikiRoutes from './routes/wikiRoutes';
+import gmailRoutes from './routes/gmailRoutes';
+import dreamRoutes from './routes/dreamRoutes';
 import { handleWebhook as handleStripeWebhook } from './controllers/stripeController';
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -303,6 +305,8 @@ apiRouter.use('/agent', generalLimiter, agentRoutes);
 apiRouter.use('/rachmaninov', generalLimiter, rachmaninov);
 apiRouter.use('/lattice', generalLimiter, latticeRoutes);
 apiRouter.use('/wiki',    generalLimiter, wikiRoutes);
+apiRouter.use('/gmail',   generalLimiter, gmailRoutes);
+apiRouter.use('/dreams',  generalLimiter, dreamRoutes);
 
 app.use('/api', apiRouter);
 
