@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import AxiomQueryDialog from '../../features/notebook/AxiomQueryDialog';
+import { TRACKER_TYPES, TRACKER_MAP } from '../../features/trackers/trackerTypes';
+import EditableTrackerForm from '../../features/trackers/EditableTrackerForm';
 
 interface Action {
   key: string;
@@ -14,6 +16,7 @@ interface Action {
 
 const ACTIONS: Action[] = [
   { key: 'log',   icon: '📝', label: 'LOG',    color: '#A78BFA' },
+  { key: 'track', icon: '📊', label: 'TRACK',  color: '#10B981' },
   { key: 'post',  icon: '📣', label: 'POST',   color: '#3B82F6' },
   { key: 'bet',   icon: '⚡', label: 'BET',    color: '#F59E0B' },
   { key: 'chat',  icon: '💬', label: 'CHAT',   color: '#22C55E' },
@@ -203,6 +206,78 @@ const ChatSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   );
 };
 
+// ── Tracker quick-log sheet ───────────────────────────────────────────────────
+const TrackSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [pickedType, setPickedType] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (data: any) => {
+    if (!pickedType) return;
+    setSaving(true);
+    try {
+      await api.post('/trackers/log', { type: pickedType, data });
+      toast.success('Tracked! +1 PP');
+      onClose();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to log.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const def = pickedType ? TRACKER_MAP[pickedType] : null;
+  const fakeTracker = def ? { id: 'quick', type: pickedType!, def } : null;
+
+  return (
+    <Sheet onClose={pickedType ? () => setPickedType(null) : onClose}>
+      {!pickedType ? (
+        <>
+          <p className="font-mono text-xs font-bold text-emerald-400 tracking-widest mb-3">TRACK</p>
+          <div className="overflow-y-auto max-h-80 space-y-1.5 pr-1">
+            {TRACKER_TYPES.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setPickedType(t.id)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 bg-raised border border-border rounded-lg hover:border-emerald-500/30 transition-colors text-left"
+              >
+                <span className="text-xl leading-none">{t.icon}</span>
+                <div>
+                  <p className="font-mono text-xs font-bold" style={{ color: t.color }}>{t.label}</p>
+                  <p className="font-mono text-2xs text-dim">{t.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setPickedType(null)}
+              className="font-mono text-2xs text-dim hover:text-fg transition-colors"
+            >
+              ← back
+            </button>
+            <span className="text-lg leading-none">{def!.icon}</span>
+            <p className="font-mono text-xs font-bold" style={{ color: def!.color }}>
+              {def!.label.toUpperCase()}
+            </p>
+          </div>
+          <EditableTrackerForm
+            open={true}
+            onClose={() => setPickedType(null)}
+            tracker={fakeTracker}
+            onSave={handleSave}
+            saving={saving}
+            inline={true}
+            accentColor={def!.color}
+          />
+        </>
+      )}
+    </Sheet>
+  );
+};
+
 // ── Shared bottom sheet wrapper ───────────────────────────────────────────────
 const Sheet: React.FC<{ onClose: () => void; children: React.ReactNode }> = ({ onClose, children }) => (
   <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60" onClick={onClose}>
@@ -221,7 +296,7 @@ const Sheet: React.FC<{ onClose: () => void; children: React.ReactNode }> = ({ o
 );
 
 // ── Main SpeedDial ────────────────────────────────────────────────────────────
-type SheetKey = 'log' | 'post' | 'bet' | 'chat' | null;
+type SheetKey = 'log' | 'track' | 'post' | 'bet' | 'chat' | null;
 
 const SpeedDial: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -285,10 +360,11 @@ const SpeedDial: React.FC = () => {
 
       {/* Sheets */}
       <AnimatePresence>
-        {sheet === 'log' && <LogSheet onClose={() => setSheet(null)} />}
-        {sheet === 'post' && <PostSheet onClose={() => setSheet(null)} />}
-        {sheet === 'bet' && <BetSheet onClose={() => setSheet(null)} />}
-        {sheet === 'chat' && <ChatSheet onClose={() => setSheet(null)} />}
+        {sheet === 'log'   && <LogSheet   onClose={() => setSheet(null)} />}
+        {sheet === 'track' && <TrackSheet onClose={() => setSheet(null)} />}
+        {sheet === 'post'  && <PostSheet  onClose={() => setSheet(null)} />}
+        {sheet === 'bet'   && <BetSheet   onClose={() => setSheet(null)} />}
+        {sheet === 'chat'  && <ChatSheet  onClose={() => setSheet(null)} />}
       </AnimatePresence>
 
       <AxiomQueryDialog open={axiomOpen} onClose={() => setAxiomOpen(false)} />

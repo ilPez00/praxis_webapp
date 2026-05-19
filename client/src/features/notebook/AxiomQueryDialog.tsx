@@ -66,13 +66,10 @@ const AxiomQueryDialog: React.FC<AxiomQueryDialogProps> = ({ open, onClose }) =>
 
   const fetchUserProfile = async () => {
     try {
-      const { data: profile } = await api.get('/auth/profile');
-      if (profile) {
-        setUserPoints(profile.praxis_points || 0);
-        setIsPremium(profile.is_premium || false);
-      }
+      const { data } = await api.get('/points/balance');
+      setUserPoints(data.balance ?? 0);
     } catch (err) {
-      console.error('Failed to fetch user profile:', err);
+      console.error('Failed to fetch user points:', err);
     }
   };
 

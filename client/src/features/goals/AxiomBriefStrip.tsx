@@ -9,6 +9,7 @@ interface Brief {
   why: string;
   secondary?: string;
   patternAlert?: string;
+  dreamProposal?: string;
   meta: { consistency: number; daysSinceCheckin: number; daysToDeadline: number };
 }
 
@@ -101,6 +102,12 @@ const AxiomBriefStrip: React.FC = () => {
               {brief.patternAlert && (
                 <div className="bg-red/5 border border-red/20 rounded px-2 py-1.5">
                   <p className="font-mono text-xs text-red leading-snug">{brief.patternAlert}</p>
+                </div>
+              )}
+              {brief.dreamProposal && (
+                <div className="bg-amber/5 border border-amber/20 rounded px-2 py-1.5">
+                  <span className="font-mono text-2xs text-amber font-bold tracking-widest block mb-0.5">DREAM</span>
+                  <p className="font-mono text-xs text-sub leading-snug whitespace-pre-line">{brief.dreamProposal}</p>
                 </div>
               )}
               <div className="flex gap-4 pt-1">

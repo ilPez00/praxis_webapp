@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabaseClient';
 import { AICoachingService } from './AICoachingService';
 import { PRAXIS_ONTOLOGY } from '../models/PraxisOntology';
 import { Domain } from '../models/Domain';
+import { dreamEngine } from './DreamEngine';
 import logger from '../utils/logger';
 
 interface ScoredGoal {
@@ -37,6 +38,7 @@ export interface MorningBrief {
   why: string;
   secondary?: string;
   patternAlert?: string;
+  dreamProposal?: string;  // variation pattern from DreamEngine (only for stalled goals)
   meta: { consistency: number; daysSinceCheckin: number; daysToDeadline: number };
 }
 
@@ -45,6 +47,9 @@ export class AxiomMorningBriefService {
 
   async generate(userId: string): Promise<MorningBrief | null> {
     try {
+      // Bootstrap dream schedule lazily on first brief (fire-and-forget)
+      dreamEngine.bootstrapSchedule(userId).catch(() => {});
+
       const [tree, checkinData] = await Promise.all([
         supabase.from('goal_trees').select('nodes').eq('user_id', userId).maybeSingle(),
         supabase
@@ -144,6 +149,12 @@ SECONDARY GOAL: ${second ? `"${second.name}" | domain: ${second.domain} | progre
         return this.buildFallback(top, second, response);
       }
 
+      // Inject dream proposal for stalled goals (>3 days without checkin)
+      let dreamProposal: string | undefined;
+      if (top.daysSinceCheckin > 3) {
+        dreamProposal = (await dreamEngine.getDreamContext(userId, top.name)) ?? undefined;
+      }
+
       return {
         date: new Date().toISOString().slice(0, 10),
         priority: { id: top.id, name: top.name, domain: top.domain, progress: top.progress, deadline: top.deadline },
@@ -151,6 +162,7 @@ SECONDARY GOAL: ${second ? `"${second.name}" | domain: ${second.domain} | progre
         why: why || `${top.name} at ${Math.round(top.progress * 100)}% — check in to maintain momentum.`,
         secondary: get('SECONDARY:') || undefined,
         patternAlert: get('ALERT:') || undefined,
+        dreamProposal,
         meta: {
           consistency: top.consistency,
           daysSinceCheckin: top.daysSinceCheckin,

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import CircularProgress from '@mui/material/CircularProgress';
 import {
     Container,
@@ -18,16 +18,24 @@ import {
     AccordionSummary,
     AccordionDetails,
     Stack,
+    TextField,
+    Button,
+    Collapse,
+    IconButton,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import ForumIcon from '@mui/icons-material/Forum';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PersonIcon from '@mui/icons-material/Person';
+import CommentIcon from '@mui/icons-material/Comment';
+import SendIcon from '@mui/icons-material/Send';
 import { supabase } from '../../lib/supabase';
 import api from '../../lib/api';
 import { useUser } from '../../hooks/useUser';
 import GlassCard from '../../components/common/GlassCard';
+import AxiomBriefStrip from '../goals/AxiomBriefStrip';
+import toast from 'react-hot-toast';
 
 function checkinDotColor(lastCheckinDate?: string | null): string {
     if (!lastCheckinDate) return '#4B5563';
@@ -61,6 +69,112 @@ interface ConversationSummary {
     avatarUrl?: string;
     timestamp?: number;
 }
+
+// ── Axiom chat card: brief strip + inline comment ─────────────────────────────
+const AxiomChatCard: React.FC = () => {
+    const navigate = useNavigate();
+    const [commentOpen, setCommentOpen] = useState(false);
+    const [comment, setComment] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleComment = async () => {
+        if (!comment.trim() || submitting) return;
+        setSubmitting(true);
+        try {
+            await api.post('/diary/entries', {
+                content: comment.trim(),
+                entry_type: 'note',
+                is_private: false,
+                tags: ['axiom-brief'],
+            });
+            toast.success('Comment logged!');
+            setComment('');
+            setCommentOpen(false);
+        } catch {
+            toast.error('Failed to post comment.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <GlassCard sx={{ mb: 3, border: '1px solid rgba(245,158,11,0.2)', overflow: 'hidden' }}>
+            {/* Header row */}
+            <Box sx={{
+                display: 'flex', alignItems: 'center', gap: 1.5, px: 2, pt: 2,
+                background: 'linear-gradient(135deg, rgba(245,158,11,0.05) 0%, rgba(139,92,246,0.03) 100%)',
+            }}>
+                <Avatar sx={{
+                    background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
+                    border: '2px solid rgba(245,158,11,0.4)',
+                    width: 40, height: 40, fontSize: '1.2rem',
+                }}>🥋</Avatar>
+                <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="subtitle1" sx={{ color: '#F59E0B', fontWeight: 800 }}>Axiom</Typography>
+                        <Chip label="AI COACH" size="small" sx={{ height: 16, fontSize: '0.55rem', fontWeight: 900, bgcolor: 'rgba(245,158,11,0.15)', color: '#F59E0B' }} />
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">Strategy, accountability, your daily protocol.</Typography>
+                </Box>
+                <Button size="small" onClick={() => navigate('/coaching')} sx={{ color: '#F59E0B', fontWeight: 700, fontSize: '0.7rem' }}>
+                    Open →
+                </Button>
+            </Box>
+
+            {/* Morning brief */}
+            <AxiomBriefStrip />
+
+            {/* Comment row */}
+            <Box sx={{ px: 2, pb: 1.5, pt: 0.5 }}>
+                <Button
+                    size="small"
+                    startIcon={<CommentIcon sx={{ fontSize: 14 }} />}
+                    onClick={() => { setCommentOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 80); }}
+                    sx={{ color: 'text.secondary', fontSize: '0.72rem', fontWeight: 600 }}
+                >
+                    Comment on brief
+                </Button>
+                <Collapse in={commentOpen}>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                        <TextField
+                            inputRef={inputRef}
+                            size="small"
+                            fullWidth
+                            multiline
+                            maxRows={4}
+                            placeholder="React to today's brief, add context..."
+                            value={comment}
+                            onChange={e => setComment(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleComment(); }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '12px',
+                                    fontSize: '0.82rem',
+                                    '& fieldset': { borderColor: 'rgba(245,158,11,0.25)' },
+                                    '&:hover fieldset': { borderColor: 'rgba(245,158,11,0.4)' },
+                                    '&.Mui-focused fieldset': { borderColor: '#F59E0B' },
+                                },
+                            }}
+                        />
+                        <IconButton
+                            onClick={handleComment}
+                            disabled={submitting || !comment.trim()}
+                            sx={{
+                                bgcolor: '#F59E0B', color: '#0D0E1A', width: 40, height: 40, alignSelf: 'flex-end',
+                                '&:hover': { bgcolor: '#FBBF24' },
+                                '&:disabled': { bgcolor: 'rgba(245,158,11,0.2)', color: 'transparent' },
+                            }}
+                        >
+                            {submitting ? <CircularProgress size={16} sx={{ color: '#0D0E1A' }} /> : <SendIcon sx={{ fontSize: 18 }} />}
+                        </IconButton>
+                    </Box>
+                    <Typography variant="caption" color="text.disabled" sx={{ ml: 0.5 }}>⌘+Enter to post · logged to your diary</Typography>
+                </Collapse>
+            </Box>
+        </GlassCard>
+    );
+};
 
 const ChatPage: React.FC = () => {
     const { user: currentUser, loading: currentUserLoading } = useUser();
@@ -291,34 +405,8 @@ const ChatPage: React.FC = () => {
                 Messages
             </Typography>
 
-            {/* Axiom pinned always */}
-            <GlassCard sx={{ mb: 3, border: '1px solid rgba(245,158,11,0.2)' }}>
-                <ListItem
-                    component={RouterLink}
-                    to="/coaching"
-                    sx={{
-                        py: 2, textDecoration: 'none', color: 'inherit',
-                        background: 'linear-gradient(135deg, rgba(245,158,11,0.05) 0%, rgba(139,92,246,0.03) 100%)',
-                    }}
-                >
-                    <ListItemAvatar>
-                        <Avatar sx={{
-                            background: 'linear-gradient(135deg, #78350F 0%, #92400E 100%)',
-                            border: '2px solid rgba(245,158,11,0.4)',
-                            width: 48, height: 48,
-                        }}>🥋</Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                        primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="h6" sx={{ color: '#F59E0B', fontWeight: 800 }}>Axiom</Typography>
-                                <Chip label="AI COACH" size="small" sx={{ height: 16, fontSize: '0.55rem', fontWeight: 900, bgcolor: 'rgba(245,158,11,0.15)', color: '#F59E0B' }} />
-                            </Box>
-                        }
-                        secondary="Strategy, accountability, and your daily protocol."
-                    />
-                </ListItem>
-            </GlassCard>
+            {/* Axiom pinned — brief + interactive comment */}
+            <AxiomChatCard />
 
             <Stack spacing={2}>
                 <Accordion defaultExpanded sx={{ bgcolor: 'transparent', boxShadow: 'none', '&:before': { display: 'none' } }}>

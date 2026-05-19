@@ -57,6 +57,10 @@ import NoteIcon from '@mui/icons-material/Note';
 import WarningIcon from '@mui/icons-material/Warning';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import RouterIcon from '@mui/icons-material/Router';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
 
 interface AppNotification {
   id: string;
@@ -795,13 +799,15 @@ const Navbar: React.FC = () => {
                 { label: 'Discover', to: '/discover', icon: <ExploreIcon />, primary: true },
                 { label: 'Chat', to: '/communication', icon: <ChatIcon />, primary: true },
                 { label: 'Marketplace', to: '/marketplace', icon: <StorefrontOutlinedIcon />, primary: true },
-                { label: 'Fails', to: '/fails', icon: <WarningIcon />, primary: false },
+                { label: 'Wiki', to: '/wiki', icon: <LibraryBooksIcon />, primary: true },
                 { label: 'Analytics', to: '/analytics', icon: <BarChartIcon />, primary: false },
+                { label: 'Ontology', to: '/ontology', icon: <AccountTreeIcon />, primary: false },
+                { label: 'Aura', to: '/aura-web', icon: <PhoneAndroidIcon />, primary: false },
+                { label: 'Fails', to: '/fails', icon: <WarningIcon />, primary: false },
                 { label: 'My Profile', to: `/profile/${user.id}`, icon: <AccountCircleIcon />, primary: false },
                 { label: 'Settings', to: '/settings', icon: <SettingsIcon />, primary: false },
               ].map(({ label, to, icon, primary }, idx, arr) => (
                 <React.Fragment key={label}>
-                  {/* Divider between primary and secondary items */}
                   {!primary && idx > 0 && arr[idx - 1].primary && (
                     <Box sx={{ px: 2, py: 0.75 }}>
                       <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.62rem' }}>More</Typography>
@@ -820,6 +826,14 @@ const Navbar: React.FC = () => {
                   <ListItemButton onClick={() => handleNav('/admin')}>
                     <ListItemIcon sx={{ minWidth: 40, color: 'error.main' }}><AdminPanelSettingsIcon /></ListItemIcon>
                     <ListItemText primary="Admin" primaryTypographyProps={{ fontWeight: 700, color: 'error.main' }} />
+                  </ListItemButton>
+                </ListItem>
+              )}
+              {user.email === 'pezzingiovanniantonio@gmail.com' && (
+                <ListItem disablePadding>
+                  <ListItemButton onClick={() => handleNav('/admin')}>
+                    <ListItemIcon sx={{ minWidth: 40, color: '#F59E0B' }}><WhatshotIcon /></ListItemIcon>
+                    <ListItemText primary="God Mode" primaryTypographyProps={{ fontWeight: 800, color: '#F59E0B' }} />
                   </ListItemButton>
                 </ListItem>
               )}

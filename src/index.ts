@@ -4,6 +4,7 @@ import { AxiomScanService } from './services/AxiomScanService';
 import { AxiomMonthlySummaryService } from './services/AxiomMonthlySummaryService';
 import { startFailsCron } from './services/failsCron';
 import { startDuelResolutionCron } from './services/duelResolutionCron';
+import { startDreamCron } from './services/DreamCron';
 import { supabase } from './lib/supabaseClient';
 
 const port = process.env.PORT || 3001;
@@ -45,6 +46,7 @@ try {
   AxiomMonthlySummaryService.start();
   startFailsCron();
   startDuelResolutionCron();
+  startDreamCron();
   logger.info('[Startup] Services started successfully');
 } catch (error: any) {
   logger.error('[Startup] Failed to start background services:', error.message);

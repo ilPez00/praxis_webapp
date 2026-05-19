@@ -322,7 +322,7 @@ class AxiomMultimodalService {
    * Run Mistral OCR on an image URL to extract text
    */
   async ocrImage(imageUrl: string): Promise<string | null> {
-    const mistralKey = process.env.AI_MISTRAL_KEY || process.env.MISTRAL_API_KEY;
+    const mistralKey = process.env.AI_MISTRAL_KEY || process.env.MISTRAL_API_KEY || process.env.MISTRAL;
     if (!mistralKey) return null;
     return runMistralOCR(imageUrl, mistralKey);
   }

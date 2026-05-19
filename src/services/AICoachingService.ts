@@ -22,7 +22,8 @@ export interface LLMProvider {
 
 const OPENAI_COMPAT_PROVIDERS: Omit<LLMProvider, 'apiKey' | 'enabled'>[] = [
   { name: 'orchestrator',  baseUrl: 'http://localhost:8000/v1',           models: ['langgraph-orchestrator'],                                                            priority: 0,  type: 'openai' },
-  { name: 'groq',          baseUrl: 'https://api.groq.com/openai/v1',     models: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],             priority: 1,  type: 'openai' },
+  { name: 'vertex',        baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', models: ['gemini-2.5-flash', 'gemini-2.0-flash'],                        priority: 1,  type: 'openai' },
+  { name: 'groq',          baseUrl: 'https://api.groq.com/openai/v1',     models: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],             priority: 2,  type: 'openai' },
   { name: 'deepseek',      baseUrl: 'https://api.deepseek.com/v1',         models: ['deepseek-chat', 'deepseek-reasoner'],                                               priority: 20, type: 'openai' },
   { name: 'openrouter',    baseUrl: 'https://openrouter.ai/api/v1',        models: ['openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'meta-llama/llama-3.3-70b-instruct'], priority: 10, type: 'openai' },
   { name: 'mistral',       baseUrl: 'https://api.mistral.ai/v1',           models: ['mistral-large-latest', 'mistral-small-latest', 'pixtral-large-latest'],              priority: 15, type: 'openai' },
@@ -324,11 +325,14 @@ export class AICoachingService {
   private openAIProviders: LLMProvider[] = [];
   
   constructor() {
-    // 1. Scavenge Gemini Pool (AI_GEMINI_KEY in .env)
-    const geminiKeys = (process.env.AI_GEMINI_KEY || process.env.GEMINI_API_KEY || '').split(',');
-    const cleanedGemini = geminiKeys
+    // 1. Scavenge Gemini + Vertex pool
+    const rawGemini = [
+      ...(process.env.AI_GEMINI_KEY || process.env.GEMINI_API_KEY || '').split(','),
+      ...(process.env.VERTEX_API_KEY || '').split(','),
+    ];
+    const cleanedGemini = rawGemini
       .map(k => k.replace(/['"\s\u200B-\u200D\uFEFF]+/g, '').trim())
-      .filter(k => k.startsWith('AIza'));
+      .filter(k => k.length > 10);
     this.apiKeys = Array.from(new Set(cleanedGemini));
 
     // 2. Scavenge All Other Providers
@@ -360,6 +364,7 @@ export class AICoachingService {
 
     // Map provider name to its env key suffix (with fallback aliases)
     const nameToEnv: Record<string, string[]> = {
+      vertex: ['VERTEX_API_KEY', 'AI_VERTEX_KEY'],
       groq: ['AI_GROQ_KEY', 'GROQ_KEY'],
       deepseek: ['AI_DEEPSEEK_KEY', 'DEEPSEEK_KEY'],
       openrouter: ['AI_OPENROUTER_KEY', 'OPENROUTER_KEY'],

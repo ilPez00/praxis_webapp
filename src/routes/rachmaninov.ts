@@ -246,4 +246,102 @@ router.get('/bridge', authenticateToken, async (req: Request, res: Response) => 
   }
 });
 
+// ── Per-user ontology overrides ───────────────────────────────────────────────
+
+async function getUserOverrides(userId: string): Promise<Record<string, any>> {
+  try {
+    const { data } = await supabase
+      .from('system_config')
+      .select('value')
+      .eq('key', `rachmaninov_overrides_${userId}`)
+      .maybeSingle();
+    return (data?.value as any) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * GET /api/rachmaninov/user-ontology
+ * Returns PRAXIS_ONTOLOGY merged with this user's own overrides.
+ */
+router.get('/user-ontology', authenticateToken, async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+
+  const overrides = await getUserOverrides(userId);
+
+  const ontology = Object.fromEntries(
+    Object.entries(PRAXIS_ONTOLOGY).map(([domain, def]) => {
+      const ov = overrides[domain] ?? {};
+      return [domain, {
+        ayuDomain:    ov.ayuDomain    ?? def.ayuDomain,
+        defaultMode:  ov.defaultMode  ?? def.defaultMode,
+        scoreAxis:    def.scoreAxis,
+        unit:         ov.unit         ?? def.unit,
+        contextHints: ov.contextHints ?? def.contextHints,
+        color:        (def as any).color ?? '#6366F1',
+        icon:         (def as any).icon  ?? '◈',
+      }];
+    })
+  );
+
+  res.json({ ontology, overrides, updatedAt: new Date().toISOString() });
+});
+
+/**
+ * PATCH /api/rachmaninov/user-ontology/domain/:domain
+ * Any authenticated user can override their own domain definitions.
+ */
+router.patch('/user-ontology/domain/:domain', authenticateToken, async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+
+  const domain = String(req.params.domain);
+  if (!PRAXIS_ONTOLOGY[domain as keyof typeof PRAXIS_ONTOLOGY]) {
+    return res.status(400).json({ error: `Unknown domain: ${domain}` });
+  }
+
+  const { contextHints, unit, defaultMode, ayuDomain } = req.body;
+  const current = await getUserOverrides(userId);
+
+  current[domain] = {
+    ...(current[domain] ?? {}),
+    ...(contextHints !== undefined ? { contextHints } : {}),
+    ...(unit         !== undefined ? { unit }         : {}),
+    ...(defaultMode  !== undefined ? { defaultMode }  : {}),
+    ...(ayuDomain    !== undefined ? { ayuDomain }    : {}),
+  };
+
+  await supabase.from('system_config').upsert({
+    key: `rachmaninov_overrides_${userId}`,
+    value: current,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' });
+
+  logger.info(`[Rachmaninov] User ${userId} updated domain ${domain}`);
+  res.json({ ok: true, domain, overrides: current[domain] });
+});
+
+/**
+ * DELETE /api/rachmaninov/user-ontology/domain/:domain
+ * Remove user's override for a domain (revert to global default).
+ */
+router.delete('/user-ontology/domain/:domain', authenticateToken, async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated.' });
+
+  const domain = String(req.params.domain);
+  const current = await getUserOverrides(userId);
+  delete current[domain];
+
+  await supabase.from('system_config').upsert({
+    key: `rachmaninov_overrides_${userId}`,
+    value: current,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' });
+
+  res.json({ ok: true, domain, removed: true });
+});
+
 export default router;

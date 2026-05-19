@@ -54,7 +54,7 @@ export const getWikiPage = catchAsync(async (req: Request, res: Response, _next:
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Not authenticated.');
 
-  const pagePath = decodeURIComponent(req.params.path);
+  const pagePath = decodeURIComponent(String(req.params.path));
 
   const { data, error } = await supabase
     .from('axiom_wiki_pages')
