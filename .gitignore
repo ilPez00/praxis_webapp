@@ -64,3 +64,5 @@ docs/*.out
 docs/*.toc
 docs/*.lof
 docs/*.lot
+!dist/praxis-ontology.json
+!dist/PraxisOntology.kt

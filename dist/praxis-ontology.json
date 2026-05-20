@@ -1,0 +1,18 @@
+{
+  "BODY_FITNESS": {
+    "ayuDomain": "HEAL",
+    "unit": "reps",
+    "contextHints": [
+      "gym",
+      "workout"
+    ]
+  },
+  "CAREER_CRAFT": {
+    "ayuDomain": "FABRICATE",
+    "unit": "deliverables",
+    "contextHints": [
+      "desk",
+      "office"
+    ]
+  }
+}
