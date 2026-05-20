@@ -80,6 +80,7 @@ import spotifyRoutes from './routes/spotifyRoutes';
 import redditRoutes from './routes/redditRoutes';
 import youtubeRoutes from './routes/youtubeRoutes';
 import dreamRoutes from './routes/dreamRoutes';
+import ganttRoutes from './routes/ganttRoutes';
 import { handleWebhook as handleStripeWebhook } from './controllers/stripeController';
 import { supabase } from './lib/supabaseClient';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
@@ -317,6 +318,7 @@ apiRouter.use('/spotify', generalLimiter, spotifyRoutes);
 apiRouter.use('/reddit',  generalLimiter, redditRoutes);
 apiRouter.use('/youtube', generalLimiter, youtubeRoutes);
 apiRouter.use('/dreams',  generalLimiter, dreamRoutes);
+apiRouter.use('/gantt',   generalLimiter, ganttRoutes);
 
 app.use('/api', apiRouter);
 

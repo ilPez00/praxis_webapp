@@ -52,6 +52,7 @@ const MarketplacePage = React.lazy(() => import('../features/marketplace/Marketp
 const WikiBrowserPage = React.lazy(() => import('../features/wiki/WikiBrowserPage'));
 const OntologyPage = React.lazy(() => import('../features/ontology/OntologyPage'));
 const AuraWebPage = React.lazy(() => import('../features/aura-web/AuraWebPage'));
+const GanttPage = React.lazy(() => import('../features/gantt/GanttPage'));
 
 // Commented out — not in current scope
 // const CoachingPage = React.lazy(() => import('../features/coaching/CoachingPage'));
@@ -125,6 +126,7 @@ export const privateRoutes: RouteObject[] = [
   { path: 'wiki', element: <WikiBrowserPage /> },
   { path: 'ontology', element: <OntologyPage /> },
   { path: 'aura-web', element: <AuraWebPage /> },
+  { path: 'gantt', element: <GanttPage /> },
 
   // Legacy dashboard (keep for any existing links)
   { path: 'dashboard-old', element: <DashboardPage /> },
