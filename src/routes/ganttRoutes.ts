@@ -15,7 +15,8 @@ const UBERWIKI_GANTT_DIR = '/home/gio/uber-wiki/wiki/gantt';
  */
 router.get('/day', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const date = String(req.query.date || '') || new Date().toISOString().slice(0, 10);
+    const dateQuery = String(req.query.date || '');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(dateQuery) ? dateQuery : new Date().toISOString().slice(0, 10);
     const filePath = path.join(UBERWIKI_GANTT_DIR, 'processed', `${date}.json`);
 
     if (!fs.existsSync(filePath)) {
@@ -82,7 +83,8 @@ router.post('/plan', authenticateToken, async (req: Request, res: Response) => {
  */
 router.get('/plan', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const date = String(req.query.date || '') || new Date().toISOString().slice(0, 10);
+    const dateQuery = String(req.query.date || '');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(dateQuery) ? dateQuery : new Date().toISOString().slice(0, 10);
     const filePath = path.join(UBERWIKI_GANTT_DIR, 'plans', `${date}.json`);
 
     if (!fs.existsSync(filePath)) {
